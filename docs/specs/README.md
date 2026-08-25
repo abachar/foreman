@@ -1,6 +1,6 @@
 # Specs
 
-Les règles de codage transverses (langage, architecture, concurrence, dépendances, tests) sont dans [`../coding-rules.md`](../coding-rules.md).
+L'assemblage (principes, structure, dépendances retenues) est dans [`../architecture.md`](../architecture.md) ; le style de code dans [`../coding-rules.md`](../coding-rules.md).
 
 Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dépend que des lignes au-dessus ; c'est l'ordre des milestones du [README](../../README.md)) :
 
@@ -17,7 +17,7 @@ Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dép
 | 9 | [git](git/) | changes, diff, historique, remote, branches | explorer, editor (openFile), `HighlightService` | M4 |
 | 10 | [postgres](postgres/) | connexion unique, schéma, requêtes, résultats | layout, `HighlightService` | M5 |
 
-`PaletteService` et `HighlightService` sont des capacités du noyau (`coding-rules` R5.10), livrées toutes deux avec `editor` (M1 : quick open et highlighting). Le terminal vient après l'éditeur : l'app doit déjà être utilisable (ouvrir, lire, éditer) avant d'héberger des process.
+`Palette` et `Highlight` sont des dossiers partagés (`architecture.md`), livrés tous deux avec `editor` (M1 : quick open et highlighting). Le terminal vient après l'éditeur : l'app doit déjà être utilisable (ouvrir, lire, éditer) avant d'héberger des process.
 
 Chaque dossier contient :
 

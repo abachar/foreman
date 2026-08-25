@@ -10,7 +10,7 @@ Personal project, Apple Silicon first, local use only for now.
 
 ## Contributing and Developing
 
-Specs, studies, decisions and progress live in [`docs/specs/`](docs/specs/), one folder per domain. How the code itself is written — language, architecture, concurrency, dependencies, tests — is in [`docs/coding-rules.md`](docs/coding-rules.md). Read both before touching the code.
+Specs, studies, decisions and progress live in [`docs/specs/`](docs/specs/), one folder per domain. How it is assembled — principles, structure, dependencies — is in [`docs/architecture.md`](docs/architecture.md); how the code is written is in [`docs/coding-rules.md`](docs/coding-rules.md). Read all three before touching the code.
 
 ```bash
 git clone git@github.com:abachar/wraith.git
