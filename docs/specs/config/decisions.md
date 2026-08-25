@@ -1,4 +1,4 @@
-# 01-config — Décisions
+# config — Décisions
 
 | Date | Décision | Alternatives rejetées | Raison |
 |---|---|---|---|

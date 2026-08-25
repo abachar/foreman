@@ -1,6 +1,8 @@
 # Architecture (brouillon initial)
 
 > Extrait du README d'origine (2026-08-25). Source de départ, à ventiler et affiner dans `specs/`. En cas de conflit, `specs/` fait foi.
+>
+> Déjà remplacé par les specs : `.wraith.json` → `.wraith/config.json` (`config`) ; SwiftGit2/libgit2 → binaire `git` (`git`) ; libghostty → SwiftTerm avec PTY possédé par Wraith, un onglet = un process (`terminal`) ; ajout d'une barre d'outils (`layout`) et du plugin `agents`.
 
 ## Vision
 

@@ -2,16 +2,29 @@
 
 Les règles de codage transverses (langage, architecture, concurrence, dépendances, tests) sont dans [`../coding-rules.md`](../coding-rules.md).
 
-Un dossier par domaine, dans l'ordre de dépendance. Chaque dossier contient l'étude, les décisions, le découpage et la progression (voir le `README.md` de chaque dossier).
+Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dépend que des lignes au-dessus ; c'est l'ordre des milestones du [README](../../README.md)) :
 
-| Dossier | Domaine |
+| # | Dossier | Domaine | Dépend de | Milestone |
+|---|---|---|---|---|
+| 1 | [product](product/) | vision, utilisateur cible, non-objectifs, pas de shell libre | — | M0 |
+| 2 | [config](config/) | `.wraith/config.json`, `state.json`, Keychain, rechargement à chaud | product | M0 |
+| 3 | [layout](layout/) | zones, splits, groupes d'onglets, PanelManager, ShortcutRegistry, barre d'outils, écran d'accueil | config | M0 |
+| 4 | [explorer](explorer/) | arbre de fichiers, FSEvents, CRUD, badges git | layout | M1 |
+| 5 | [editor](editor/) | viewer/éditeur, `HighlightService`, markdown, quick open, recherche | explorer, `PaletteService`, `HighlightService` | M1 |
+| 6 | [terminal](terminal/) | PTY possédé par Wraith + surface SwiftTerm, `TerminalService` (un onglet = un process, pas de shell) | layout | M2 |
+| 7 | [agents](agents/) | agents CLI (Claude Code, Antigravity, OpenCode) : boutons de la barre d'outils, onglet par agent | terminal | M2 |
+| 8 | [run](run/) | commandes du workspace → surface terminal, palette `cmd+r`, bouton ▶ Run | terminal, `PaletteService` | M3 |
+| 9 | [git](git/) | changes, diff, historique, remote, branches | explorer, editor (openFile), `HighlightService` | M4 |
+| 10 | [postgres](postgres/) | connexion unique, schéma, requêtes, résultats | layout, `HighlightService` | M5 |
+
+`PaletteService` et `HighlightService` sont des capacités du noyau (`coding-rules` R5.10), livrées toutes deux avec `editor` (M1 : quick open et highlighting). Le terminal vient après l'éditeur : l'app doit déjà être utilisable (ouvrir, lire, éditer) avant d'héberger des process.
+
+Chaque dossier contient :
+
+| Fichier | Rôle |
 |---|---|
-| [00-product](00-product/) | vision, utilisateurs cibles, non-objectifs, distribution |
-| [01-config](01-config/) | `.wraith.json`, workspace, secrets |
-| [02-layout](02-layout/) | zones, PanelManager, ShortcutRegistry |
-| [03-terminal](03-terminal/) | PTY, libghostty, onglets |
-| [04-explorer](04-explorer/) | arbre de fichiers, FSEvents |
-| [05-editor](05-editor/) | viewer/éditeur, highlighting, markdown, quick open |
-| [06-git](06-git/) | changes, diff, historique |
-| [07-postgres](07-postgres/) | connexion, schéma, requêtes |
-| [08-run](08-run/) | commandes du workspace → terminal |
+| `NN-study.md` | étude(s), numérotée(s) dans l'ordre d'écriture : objectif, user stories, règles fonctionnelles (R1, R2…), cas limites, hors périmètre, options techniques |
+| `decisions.md` | décisions prises (date, choix, alternatives rejetées, raison) |
+| `breakdown.md` | découpage en tâches (créé au démarrage du milestone) |
+| `progress.md` | avancement (idem) |
+| `questions.md` | questions ouvertes ; une question tranchée devient une ligne de `decisions.md` |

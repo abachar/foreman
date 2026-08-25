@@ -1,4 +1,4 @@
-# 01-config — Étude
+# config — Étude
 
 ## Objectif
 
@@ -16,7 +16,7 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
 ## User stories
 
 - US1 — J'ouvre un dossier sans aucune config : tout fonctionne avec des valeurs par défaut (repos auto-détectés, pas de commandes, pas de Postgres).
-- US2 — Je décris mon workspace dans `.wraith/config.json` (repos, commandes, connexion PG) et les plugins s'en servent.
+- US2 — Je décris mon workspace dans `.wraith/config.json` (repos, commandes, connexion PG, agents) et les plugins s'en servent.
 - US3 — Je modifie `config.json` pendant que Wraith tourne : la config est rechargée sans redémarrer.
 - US4 — Je peux surcharger un raccourci par workspace.
 - US5 — Je ferme et rouvre le workspace : je retrouve mon état.
@@ -31,12 +31,15 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
     "repos": ["backend", "frontend"],
     "commands": { "backend": { "build": "mvn compile", "test": "mvn test" } },
     "postgres": { "host": "localhost", "port": 5432, "database": "ccoe", "user": "postgres" },
+    "agents": { "claude": { "command": "claude --continue" } },
     "shortcuts": { "git.status": "cmd+shift+g" }
   }
   ```
   - `repos` : chemins relatifs à la racine ; absent → scan des `.git/` (profondeur ≤ 2, ignore `node_modules`, `target`, `.build`).
   - `commands` : `<repo ou "."> → <nom> → <commande shell>`, exécutées dans le dossier du repo.
-  - `postgres` : paramètres de connexion sans mot de passe ; le mot de passe est lu dans le Keychain (clé `wraith.postgres.<host>:<port>/<database>/<user>`).
+  - `postgres` : **un seul objet** (une connexion par workspace), sans mot de passe ; le mot de passe est lu dans le Keychain (clé `wraith.postgres.<host>:<port>/<database>/<user>`). Détail dans [postgres](../postgres/).
+  - `agents` : `<id> → { title, command, icon, enabled }` ; surcharge un agent intégré ou en déclare un nouveau. Détail dans [agents](../agents/).
+  - `commands` : forme courte (chaîne) ou longue (`{ "run", "cwd", "env" }`). Détail dans [run](../run/).
   - `shortcuts` : `<panel/action id> → <raccourci>` ; surcharge les défauts déclarés par les plugins.
 - R4 — Précédence : défauts des plugins < global `~/.config/wraith/config.json` < workspace `.wraith/config.json`.
 - R5 — Le core expose la config aux plugins via `WorkspaceService` ; chaque plugin lit sa propre section (`config.section("postgres")`), le core ne connaît pas les schémas des plugins.
@@ -51,7 +54,7 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
 
 - Racine du workspace en lecture seule : `state.json` n'est pas écrit, l'app fonctionne sans persistance et le signale une fois.
 - `$HOME` comme workspace : `~/.wraith/` est créé chez l'utilisateur ; acceptable (c'est le comportement d'un shell avec ses dotfiles).
-- `.wraith/` versionné ou non : au choix de l'utilisateur ; recommandation `.gitignore` → `.wraith/state.json`.
+- `.wraith/` versionné ou non : au choix de l'utilisateur ; recommandation `.gitignore` → `.wraith/state.json` et `.wraith/postgres-history.json` (tout fichier écrit par l'app).
 - Repo déclaré dans `repos` mais absent sur disque : ignoré avec avertissement.
 
 ## Hors périmètre v1

@@ -1,10 +1,10 @@
 # Wraith 👻
 
-**A terminal-first workspace for macOS.**
+**An agentic workspace for macOS.**
 
 ## About
 
-Wraith is a native macOS app built around an embedded [Ghostty](https://github.com/ghostty-org/ghostty) terminal. One window is one folder is one workspace, like an IDE — except the terminal is the center of it, and everything else (file explorer, git, editor, Postgres browser, run commands) is a plugin that attaches panels around it.
+Wraith is a native macOS app. One window is one folder is one workspace, like an IDE — except the center of it is your CLI agents (Claude Code, Antigravity, OpenCode), each running in its own tab on an embedded terminal surface ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)), one click away in the toolbar. There is no free-form shell: terminal surfaces only exist to host agents and run commands. Everything else (file explorer, git, editor, Postgres browser, run commands) is a plugin that attaches panels around it.
 
 Personal project, Apple Silicon first, local use only for now.
 
@@ -22,14 +22,11 @@ swift build
 
 | Milestone | Scope | Status |
 |---|---|---|
-| M0 — Shell | window, layout, panels, shortcuts, `wraith` CLI | 🟡 specs |
-| M1 — Terminal | PTY + libghostty rendering, tabs, splits | ⚪ |
-| M2 — Explorer + Editor | file tree, file tabs, highlighting, quick open | ⚪ |
-| M3 — Git | changes, diff, history | ⚪ |
-| M4 — Run | workspace commands → terminal | ⚪ |
+| M0 — Shell | window, layout, panels, shortcuts, toolbar, welcome screen, `wraith` CLI | 🟡 specs |
+| M1 — Explorer + Editor | file tree, file tabs, highlighting (`HighlightService`), quick open (`PaletteService`) | ⚪ |
+| M2 — Terminal host + Agents | PTY + SwiftTerm surface, `TerminalService`, agent buttons and tabs | ⚪ |
+| M3 — Run | workspace commands → terminal, `cmd+r` palette, ▶ Run button | ⚪ |
+| M4 — Git | changes, diff, history | ⚪ |
 | M5 — Postgres | schema browser, query editor, results | ⚪ |
 | M6 — Polish | themes, settings, distribution | ⚪ |
 
----
-
-*Wraith wraps the ghost.* Built on the shoulders of [Ghostty](https://ghostty.org).
