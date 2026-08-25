@@ -1,5 +1,7 @@
 # Specs
 
+Les règles de codage transverses (langage, architecture, concurrence, dépendances, tests) sont dans [`../coding-rules.md`](../coding-rules.md).
+
 Un dossier par domaine, dans l'ordre de dépendance. Chaque dossier contient l'étude, les décisions, le découpage et la progression (voir le `README.md` de chaque dossier).
 
 | Dossier | Domaine |
