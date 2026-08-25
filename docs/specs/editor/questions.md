@@ -1,4 +1,4 @@
 # Questions ouvertes
 
-- [ ] TextKit 2 : valider par prototype (M1) que les attributs par plage tiennent la cadence du highlighting incrémental sans retomber en TextKit 1.
-- [ ] Source des grammaires : packages SPM ChimeHQ (`tree-sitter-*`) ou build local dans un target C unique ? À trancher au découpage selon la disponibilité de chaque grammaire de la liste.
+- [ ] TextKit 2 : valider par prototype (M1) que Neon sur `NSTextView` TextKit 2 tient la cadence sans retomber en TextKit 1.
+- [ ] Grammaires : vérifier au découpage de M1 que chaque langage de R11 existe en package SPM `tree-sitter-*` compatible Neon ; sinon retirer le langage de la liste plutôt que builder un target C.

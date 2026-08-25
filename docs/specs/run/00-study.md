@@ -2,7 +2,7 @@
 
 ## Objectif
 
-Plugin `run` : lancer les commandes déclarées dans `config.json` (`commands`) sur une surface terminal du workspace, depuis une palette (`cmd+r`) ou le bouton **▶ Run** de la barre d'outils, avec un onglet terminal réutilisé par commande et un indicateur d'état. Pas de panneau. Aucune détection automatique, aucune composition : la config est la seule source. Les agents CLI ne sont pas des commandes `run` : voir [agents](../agents/).
+Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`) sur une surface terminal du workspace, depuis une palette (`cmd+r`) ou le bouton **▶ Run** de la barre d'outils, avec un onglet terminal réutilisé par commande et un indicateur d'état. Pas de panneau. Aucune détection automatique, aucune composition : la config est la seule source. Les agents CLI ne sont pas des commandes `run` : voir [agents](../agents/).
 
 ## User stories
 
@@ -18,21 +18,21 @@ Plugin `run` : lancer les commandes déclarées dans `config.json` (`commands`) 
 ### Config
 
 - R1 — Section `commands` (`config` R3) : `{ "<repo ou .>": { "<nom>": "<commande>" | { "run": "<commande>", "cwd": "<sous-dossier>", "env": { "K": "V" } } } }`. La forme courte est une chaîne ; la forme longue ajoute `cwd` (relatif au repo, défaut le repo) et `env`. Un `env` au niveau du repo (clé réservée `"$env"`) s'applique à toutes ses commandes.
-- R2 — Le `<repo>` doit être `.` ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`coding-rules` R16.4).
+- R2 — Le `<repo>` doit être `.` ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`architecture.md`, sécurité).
 - R3 — Le nom d'une commande : `[a-z0-9][a-z0-9:_-]*`, unique par repo. Identifiant complet `repo:nom` (`.` devient `root`). Ces ids servent aux raccourcis (`config.shortcuts["run.backend:test"]`, R11).
 - R3b — Précédence `config` R4 : une commande peut venir de la config globale (typiquement sur `.`) ; le workspace la surcharge par `repo:nom`.
-- R4 — Rechargement à chaud sur `configChanged` (`config` R6) : la palette et les raccourcis sont recalculés ; un onglet en cours n'est pas affecté.
+- R4 — Rechargement à chaud sur `Workspace.configChanges` (`config` R6) : la palette et les raccourcis sont recalculés ; un onglet en cours n'est pas affecté.
 
 ### Palette et bouton
 
-- R5 — `cmd+r` ouvre une palette (`PaletteService` du noyau, `coding-rules` R5.10, partagée avec le quick open). Entrées `repo › nom` avec la commande en sous-titre ; fuzzy sur `repo nom` ; ordre par défaut : dernières lancées en premier, puis alphabétique.
+- R5 — `cmd+r` ouvre une palette (`Palette`, dossier partagé, la même que le quick open). Entrées `repo › nom` avec la commande en sous-titre ; fuzzy sur `repo nom` ; ordre par défaut : dernières lancées en premier, puis alphabétique.
 - R6 — `enter` lance (R7) ; `cmd+enter` lance dans un **nouvel** onglet (sans réutilisation) ; `alt+enter` copie la commande dans le presse-papiers. `escape` ferme.
-- R6b — Bouton **▶ Run** (`run.toolbar`, `ToolbarItemDescriptor` `trailing`, `kind: .menu`, `layout` R30) : le menu liste les commandes groupées par repo, avec la commande en sous-titre et le badge d'état (R10) de l'onglet correspondant ; un clic lance (R7). Le bouton porte un badge bleu si au moins une commande tourne, rouge si la dernière terminée a échoué (effacé à l'activation de l'onglet). Sans aucune commande configurée, le menu affiche un exemple de config. Ni `commands` ni bouton ne sont touchés par les agents.
+- R6b — Bouton **▶ Run** (`run.toolbar`, élément de toolbar déclaré à `Layout`, côté `trailing`, de type menu, `layout` R30) : le menu liste les commandes groupées par repo, avec la commande en sous-titre et le badge d'état (R10) de l'onglet correspondant ; un clic lance (R7). Le bouton porte un badge bleu si au moins une commande tourne, rouge si la dernière terminée a échoué (effacé à l'activation de l'onglet). Sans aucune commande configurée, le menu affiche un exemple de config. Ni `commands` ni bouton ne sont touchés par les agents.
 
 ### Exécution
 
 - R7 — Lancer `repo:nom` : si un onglet `run.<id>` existe → il est activé ; s'il est `running`, le process reçoit `SIGINT` (R9) et, après `exited`, `TerminalService.relaunch` ; s'il est `idle`/`exited`, `relaunch` direct. Sinon → `TerminalService.spawn(command:, cwd:, env:, kind: "run.<id>", title: "repo:nom")` (`terminal` R16) : le process démarre immédiatement, sans shell ni prompt.
-- R8 — La commande est passée **telle quelle** à `$SHELL -l -c` (`terminal` R1) ; les `env` sont injectés dans l'environnement du process (`terminal` R3), jamais préfixés dans la ligne de commande. Rien n'est recomposé (`coding-rules` R16.3) : la commande est le texte de l'utilisateur.
+- R8 — La commande est passée **telle quelle** à `$SHELL -l -c` (`terminal` R1) ; les `env` sont injectés dans l'environnement du process (`terminal` R3), jamais préfixés dans la ligne de commande. Rien n'est recomposé (`architecture.md`, sécurité) : la commande est le texte de l'utilisateur.
 - R9 — Arrêt : `cmd+.` (portée : onglet `run`) envoie `SIGINT` au groupe de process (`terminal` R9) ; un second `cmd+.` dans les 2 s envoie `SIGTERM` ; jamais `SIGKILL` automatique. Relance (R7) = arrêt puis attente d'`exited` (10 s max, puis abandon avec bannière) avant `relaunch`.
 - R10 — État par onglet `run` : `idle` / `running` / `succeeded` / `failed(code)`, dérivé de `terminal` R6 (`exited(0)` → `succeeded`, sinon `failed`). Badge sur l'onglet : point bleu (running), vert (0), rouge (≠ 0) ; effacé à l'activation de l'onglet après la fin, ou à la relance.
 - R11 — Raccourci par commande : `config.shortcuts["run.<id>"]` (`config` R3) ; aucun défaut. Portée globale.
@@ -56,9 +56,10 @@ Plugin `run` : lancer les commandes déclarées dans `config.json` (`commands`) 
 
 ## Options techniques
 
-- **Palette partagée** : `PaletteService` du noyau (`coding-rules` R5.10, §12.8) : `present(items:, onSelect:)` avec items inertes `PaletteItem(id, title, subtitle, keywords)` ; fuzzy et UI dans `WraithApp`. Le quick open (`editor` R17) consomme le même service.
-- **Signaux / état** : `TerminalService.signal(_:to:)`, `state(of:)`, événements `exited` (`terminal` R16) ; rien de spécifique au plugin.
-- **Tests** : parsing/validation de `commands` (R1–R3), construction de l'environnement (R8), machine d'états d'un onglet `run` (R7, R9, R10) sur `FakeTerminalService`.
+- **Dossier** : `Run/` (`architecture.md`). `RunFeature` déclare à `Layout` l'élément de toolbar `run.toolbar` et le kind d'onglet `run.<id>`.
+- **Palette partagée** : `Palette/` (dossier partagé) : `present(items:, onSelect:)` avec items `PaletteItem(id, title, subtitle, keywords)` ; fuzzy (lib SPM) et UI dans `Palette/`. Le quick open (`editor` R17) utilise la même.
+- **Signaux / état** : `TerminalService.signal(_:to:)`, `state(of:)`, événements `exited` (`terminal` R16) ; rien de spécifique à la feature.
+- **Tests** : parsing/validation de `commands` (R1–R3), construction de l'environnement (R8), machine d'états d'un onglet `run` (R7, R9, R10) pilotée par des événements terminal simulés.
 
 ## Décisions
 

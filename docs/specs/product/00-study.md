@@ -2,7 +2,7 @@
 
 ## Objectif
 
-Wraith est un environnement de développement macOS natif et **agentic** : une fenêtre = un dossier = un workspace (modèle IDE). Le cœur, ce sont les agents CLI (Claude Code, Antigravity, OpenCode…), chacun dans son onglet sur une surface terminal (SwiftTerm), lancés d'un clic depuis la barre d'outils ([agents](../agents/)). **Il n'y a pas de shell libre** : une surface terminal n'existe que pour héberger un agent ou une commande `run` — pas d'onglet pour taper `cd`, `ls`… Le reste (explorer, éditeur, git, Postgres, run) sont des plugins qui attachent des panneaux autour.
+Wraith est un environnement de développement macOS natif et **agentic** : une fenêtre = un dossier = un workspace (modèle IDE). Le cœur, ce sont les agents CLI (Claude Code, Antigravity, OpenCode…), chacun dans son onglet sur une surface terminal (SwiftTerm), lancés d'un clic depuis la barre d'outils ([agents](../agents/)). **Il n'y a pas de shell libre** : une surface terminal n'existe que pour héberger un agent ou une commande `run` — pas d'onglet pour taper `cd`, `ls`… Le reste (explorer, éditeur, git, Postgres, run) sont des features qui attachent des panneaux autour (`architecture`).
 
 ## Utilisateur cible
 
@@ -23,14 +23,14 @@ Wraith est un environnement de développement macOS natif et **agentic** : une f
 - R1 — Une fenêtre correspond à exactement un dossier racine (le workspace). Ouvrir un dossier déjà ouvert active la fenêtre existante au lieu d'en créer une nouvelle.
 - R2 — Plusieurs fenêtres/workspaces peuvent coexister ; l'état (onglets, panneaux, config) est isolé par workspace.
 - R3 — La zone centrale est un arbre de splits (H/V) dont les feuilles sont des **groupes d'onglets**. Le groupe d'onglets est un composant unique, réutilisé pour chaque feuille.
-- R4 — Chaque groupe d'onglets accepte tous les types d'onglets (agent, run, éditeur, diff, vues plugin). Il n'y a **pas de type par défaut** ni d'onglet shell libre : un groupe sans onglet affiche l'**écran d'accueil** (`layout` R33).
+- R4 — Chaque groupe d'onglets accepte tous les types d'onglets (agent, run, éditeur, diff…). Il n'y a **pas de type par défaut** ni d'onglet shell libre : un groupe sans onglet affiche l'**écran d'accueil** (`layout` R33).
 - R5 — La zone centrale reste toujours visible ; les panneaux left/right/bottom s'ajoutent autour, un seul panneau visible par slot (détail dans [layout](../layout/)).
 - R6 — L'état du workspace est persisté à la fermeture et restauré à l'ouverture : arbre de splits, onglets (type + cwd/fichier), onglet actif par groupe, panneaux visibles, tailles des zones.
 - R7 — Les onglets agent/run restaurés sont **recréés** (nouvelle surface dans le même cwd, commande non relancée, `agents` R8 / `run` R13) ; le contenu du scrollback n'est pas restauré en v1.
 - R8 — Lancer Wraith sans dossier ouvre un workspace sur `$HOME`, comme un shell. Il n'existe pas de fenêtre sans dossier.
 - R9 — Chaque workspace possède un dossier `.wraith/` à sa racine pour la config locale et l'état persisté (détail dans [config](../config/)).
 - R10 — Exécution locale uniquement : pas de signature, notarisation, Homebrew, auto-update ni télémétrie en v1.
-- R11 — Chaque fenêtre a une **barre d'outils** native au-dessus des zones : à gauche les boutons des agents ([agents](../agents/)), à droite le bouton Run ([run](../run/)). Les plugins y déclarent leurs éléments ; le layout la possède (détail dans [layout](../layout/)).
+- R11 — Chaque fenêtre a une **barre d'outils** native au-dessus des zones : à gauche les boutons des agents ([agents](../agents/)), à droite le bouton Run ([run](../run/)). Les features y déclarent leurs éléments ; le layout la possède (détail dans [layout](../layout/)).
 
 ## Cas limites
 
@@ -44,7 +44,7 @@ Wraith est un environnement de développement macOS natif et **agentic** : une f
 - Multi-utilisateurs, synchronisation d'état entre machines.
 - Fenêtre détachée / onglets flottants.
 - Restauration du scrollback des terminaux.
-- Plugins dynamiques (chargés à l'exécution).
+- Extensions tierces ou chargées à l'exécution : les features sont compilées dans l'app (`architecture`).
 
 ## Décisions
 

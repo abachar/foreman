@@ -16,7 +16,7 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
 ## User stories
 
 - US1 — J'ouvre un dossier sans aucune config : tout fonctionne avec des valeurs par défaut (repos auto-détectés, pas de commandes, pas de Postgres).
-- US2 — Je décris mon workspace dans `.wraith/config.json` (repos, commandes, connexion PG, agents) et les plugins s'en servent.
+- US2 — Je décris mon workspace dans `.wraith/config.json` (repos, commandes, connexion PG, agents) et les features s'en servent.
 - US3 — Je modifie `config.json` pendant que Wraith tourne : la config est rechargée sans redémarrer.
 - US4 — Je peux surcharger un raccourci par workspace.
 - US5 — Je ferme et rouvre le workspace : je retrouve mon état.
@@ -40,10 +40,10 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
   - `postgres` : **un seul objet** (une connexion par workspace), sans mot de passe ; le mot de passe est lu dans le Keychain (clé `wraith.postgres.<host>:<port>/<database>/<user>`). Détail dans [postgres](../postgres/).
   - `agents` : `<id> → { title, command, icon, enabled }` ; surcharge un agent intégré ou en déclare un nouveau. Détail dans [agents](../agents/).
   - `commands` : forme courte (chaîne) ou longue (`{ "run", "cwd", "env" }`). Détail dans [run](../run/).
-  - `shortcuts` : `<panel/action id> → <raccourci>` ; surcharge les défauts déclarés par les plugins.
-- R4 — Précédence : défauts des plugins < global `~/.config/wraith/config.json` < workspace `.wraith/config.json`.
-- R5 — Le core expose la config aux plugins via `WorkspaceService` ; chaque plugin lit sa propre section (`config.section("postgres")`), le core ne connaît pas les schémas des plugins.
-- R6 — `config.json` est surveillé (via le flux FSEvents unique) ; à chaque changement valide, un événement `configChanged` est publié sur l'`EventBus`.
+  - `shortcuts` : `<panel/action id> → <raccourci>` ; surcharge les défauts déclarés par les features.
+- R4 — Précédence : défauts des features < global `~/.config/wraith/config.json` < workspace `.wraith/config.json`.
+- R5 — `Workspace` expose la config aux features ; chaque feature décode sa propre section (`config.section("postgres")`), `Workspace` ne connaît pas les schémas des features (`architecture` : config par section).
+- R6 — `config.json` est surveillé (via le flux FSEvents unique) ; à chaque changement valide, `Workspace` publie la nouvelle config sur son flux `configChanges` (`AsyncStream`), auquel les features intéressées s'abonnent.
 - R7 — Un `config.json` invalide (JSON malformé, type inattendu) n'empêche pas l'ouverture : la dernière config valide reste active et l'erreur est affichée (ligne + message).
 - R8 — `state.json` est écrit par Wraith uniquement, de façon débouncée (~1 s après le dernier changement) et à la fermeture. Il n'est jamais surveillé.
 - R9 — `state.json` porte un numéro de version de schéma ; un état illisible ou d'une version inconnue est ignoré (démarrage à l'état par défaut) et sauvegardé en `state.json.bak`.

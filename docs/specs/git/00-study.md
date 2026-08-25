@@ -2,7 +2,7 @@
 
 ## Objectif
 
-Plugin `git` : vue d'ensemble des changements de tous les repos du workspace, stage/unstage/discard, commit, diff inline, historique linéaire, et les opérations courantes (fetch/pull/push, branches, stash) — le tout en appelant le binaire `git` de l'utilisateur, afin d'honorer sa config (hooks, signing, credential helpers, aliases exclus).
+Feature `git` (dossier `Git/`) : vue d'ensemble des changements de tous les repos du workspace, stage/unstage/discard, commit, diff inline, historique linéaire, et les opérations courantes (fetch/pull/push, branches, stash) — le tout en appelant le binaire `git` de l'utilisateur, afin d'honorer sa config (hooks, signing, credential helpers, aliases exclus).
 
 Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.history` (`cmd+shift+h`), onglet central `git.diff`.
 
@@ -22,15 +22,15 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 
 - R1 — Repos = `config.repos` (`config` R3) sinon auto-détection (`.git/` jusqu'à profondeur 2, exclusions communes). La racine du workspace elle-même, si c'est un repo, est le repo `"."`. Un `.git` fichier (worktree/submodule) est accepté.
 - R2 — Chaque repo est une **section** du panneau changes : en-tête (nom, branche courante ou `HEAD détachée @ abc1234`, `↑n ↓m` vs upstream, boutons fetch/pull/push, menu), corps = liste des changements. Section repliée automatiquement si aucun changement ; l'état replié manuel est persisté.
-- R3 — Aucun travail avant l'activation du panneau (`coding-rules` P4). À l'activation : `status` de chaque repo en parallèle ; le panneau affiche chaque section dès son résultat. Aucun `fetch` automatique, jamais (`coding-rules` R16.5).
-- R4 — Rafraîchissement (`coding-rules` §12.3) : via `FSWatchService`, sur les chemins du repo **et** sur `.git/HEAD`, `.git/index`, `.git/refs/`, `.git/MERGE_HEAD` ; un événement → `status` du repo concerné, coalescé (une exécution à la fois par repo, la suivante attend). Le panneau masqué n'écoute rien ; réactivation = `status` complet.
-- R5 — Le plugin publie `gitStatusChanged(repo, [path: GitFileStatus])` sur l'`EventBus` après chaque `status` (consommé par `explorer` R15, `editor` R18). Le statut inclut les fichiers ignorés à la demande (`--ignored` uniquement pour l'arbre visible ; détail au découpage).
+- R3 — Aucun travail avant l'activation du panneau (paresse, `architecture.md`). À l'activation : `status` de chaque repo en parallèle ; le panneau affiche chaque section dès son résultat. Aucun `fetch` automatique, jamais (aucun accès réseau non demandé, `architecture.md`).
+- R4 — Rafraîchissement : via `FSWatchService`, sur les chemins du repo **et** sur `.git/HEAD`, `.git/index`, `.git/refs/`, `.git/MERGE_HEAD` ; un événement → `status` du repo concerné, coalescé (une exécution à la fois par repo, la suivante attend). Le panneau masqué n'écoute rien ; réactivation = `status` complet.
+- R5 — La feature expose `Git.statusChanges` (`AsyncStream<(repo, [path: GitFileStatus])>`), émis après chaque `status` (consommé par `explorer` R15, `editor` R18). Le statut inclut les fichiers ignorés à la demande (`--ignored` uniquement pour l'arbre visible ; détail au découpage).
 
 ### Changes
 
 - R6 — Deux listes par repo : **Staged** et **Changes** (worktree + non suivis), plus **Conflicts** en tête quand il y en a. Chaque ligne : statut (`M A D R C U ?`), chemin relatif au repo (nom en gras, dossier en gris), boutons au survol : stage/unstage, discard, ouvrir le fichier.
-- R7 — Actions par fichier : stage (`git add -- <path>`), unstage (`git restore --staged -- <path>`), discard (`git restore -- <path>` ; non suivi → `git clean -f -- <path>`), ouvrir le fichier (`openFile`, `editor`), ouvrir le diff (R12). Actions par section : stage all / unstage all / discard all.
-- R8 — **Discard demande toujours confirmation** (fichier ou tout), avec le nombre de fichiers et la mention « irréversible » (`coding-rules` §12.3). Aucune autre action n'est destructive au sens git (tout reste dans le reflog).
+- R7 — Actions par fichier : stage (`git add -- <path>`), unstage (`git restore --staged -- <path>`), discard (`git restore -- <path>` ; non suivi → `git clean -f -- <path>`), ouvrir le fichier (`Editor.open(path)`), ouvrir le diff (R12). Actions par section : stage all / unstage all / discard all.
+- R8 — **Discard demande toujours confirmation** (fichier ou tout), avec le nombre de fichiers et la mention « irréversible ». Aucune autre action n'est destructive au sens git (tout reste dans le reflog).
 - R9 — Conflits : la ligne propose *Marquer comme résolu* (`git add`) et ouvre le fichier avec ses marqueurs ; pas d'outil de merge en v1. Un état `MERGING`/`REBASING`/`CHERRY-PICKING` est affiché dans l'en-tête avec *Abort* et *Continue* (`git merge --abort`, `rebase --continue`, etc.).
 
 ### Commit
@@ -41,7 +41,7 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 
 ### Diff
 
-- R13 — Onglet central `git.diff` (aperçu, `explorer` R12 par analogie ; fixé par double clic) : diff **unifié inline**, en-tête par fichier, hunks numérotés, lignes ajoutées/supprimées colorées, numéros de lignes ancien/nouveau, **highlighting syntaxique** via le `HighlightService` du noyau (`coding-rules` R5.10, grammaire déduite de l'extension, dégradable en couleurs +/− seules). Lecture seule.
+- R13 — Onglet central `git.diff` (aperçu, `explorer` R12 par analogie ; fixé par double clic) : diff **unifié inline**, en-tête par fichier, hunks numérotés, lignes ajoutées/supprimées colorées, numéros de lignes ancien/nouveau, **highlighting syntaxique** via le dossier partagé `Highlight/` (grammaire déduite de l'extension, dégradable en couleurs +/− seules). Lecture seule.
 - R14 — Sources : fichier du worktree vs index (`git diff -- <path>`), index vs HEAD (`git diff --cached`), commit entier (`git show <sha>`), fichier d'un commit. Titre : `path (working tree)`, `path (staged)`, `abc1234 sujet`.
 - R15 — Par hunk : *Stage hunk* / *Unstage hunk* / *Discard hunk* (patch appliqué via `git apply --cached` / `--reverse` sur un patch temporaire ; discard confirmé, R8). Pas d'édition ligne à ligne.
 - R16 — Fichier binaire : « binaire, N Ko → M Ko ». Diff > 5 000 lignes : replié par fichier, dépliage à la demande. Renommages détectés (`-M`).
@@ -63,10 +63,10 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 
 ### Exécution des commandes git
 
-- R26 — Un seul `GitService` (protocole, `coding-rules` §12.3) implémenté par `GitCLI` : `Process` avec `arguments: [String]`, exécutable résolu une fois (`/usr/bin/env git` → chemin réel, ou `git.path` de la config globale), `cwd` = racine du repo, env minimal + `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` pour les lectures, stdout/stderr séparés, **timeout** (30 s lecture, 10 min opérations distantes), annulation = `SIGTERM` puis `SIGKILL`.
+- R26 — Un seul type `GitCLI` (pas de protocole : une seule implémentation) : `Process` avec `arguments: [String]`, exécutable résolu une fois (`/usr/bin/env git` → chemin réel, ou `git.path` de la config globale), `cwd` = racine du repo, env minimal + `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` pour les lectures, stdout/stderr séparés, **timeout** (30 s lecture, 10 min opérations distantes), annulation = `SIGTERM` puis `SIGKILL`.
 - R27 — Formats machine uniquement : `status --porcelain=v2 -z --branch`, `log --format=<champs séparés par \x1f> -z`, `diff` avec `--no-color --no-ext-diff -M`, `for-each-ref --format`, `stash list --format`. Jamais de parsing d'une sortie destinée à l'humain ; aucune sortie utilisateur n'est réinjectée dans une commande sauf comme argument après `--`.
-- R28 — Erreurs traduites en `GitError` (`notARepo`, `commandFailed(stderr)`, `needsInteraction`, `timeout`, `conflict`, `gitNotFound`) ; `git` introuvable → le plugin affiche une bannière unique et reste inerte (`coding-rules` P5).
-- R29 — Le plugin **n'écrit jamais** dans `.git/` autrement que par le binaire, et ne modifie jamais la config git de l'utilisateur.
+- R28 — Erreurs traduites en `GitError` (`notARepo`, `commandFailed(stderr)`, `needsInteraction`, `timeout`, `conflict`, `gitNotFound`) ; `git` introuvable → la feature affiche une bannière unique et reste inerte (rien ne casse l'ouverture, `architecture.md`).
+- R29 — La feature **n'écrit jamais** dans `.git/` autrement que par le binaire, et ne modifie jamais la config git de l'utilisateur.
 
 ## Cas limites
 
@@ -74,9 +74,9 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 - Submodules : listés comme repos seulement s'ils sont dans `config.repos` ; sinon apparaissent comme entrée modifiée du parent.
 - Repo énorme (status > 30 s) : timeout, bannière proposant de retirer le repo de `config.repos`.
 - `git` moderne requis (≥ 2.35 pour `--porcelain=v2` stable et `restore`) : version vérifiée au premier appel, bannière sinon.
-- Deux fenêtres sur des workspaces partageant un repo : chacune a son plugin ; l'index lock de git arbitre, l'erreur `index.lock` est retentée une fois après 500 ms.
+- Deux fenêtres sur des workspaces partageant un repo : chacune a sa propre instance de la feature ; l'index lock de git arbitre, l'erreur `index.lock` est retentée une fois après 500 ms.
 - Hook lent (tests en pre-commit) : indicateur d'activité, annulable (tue le hook).
-- Fichiers avec `\n` ou non-UTF-8 dans le nom : `-z` partout, chemins traités en octets → `URL` (`coding-rules` R10.1).
+- Fichiers avec `\n` ou non-UTF-8 dans le nom : `-z` partout, chemins traités en octets → `URL`.
 
 ## Hors périmètre v1
 
@@ -89,9 +89,9 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 
 ## Options techniques
 
-- **Adaptateur** : `GitCLI: GitService` dans `PluginGit/Services/`, un `actor` par repo sérialisant les commandes d'écriture, lectures concurrentes autorisées. Parsing dans des fonctions pures (`StatusParser`, `LogParser`, `DiffParser`) → `GitStatus`, `GitCommit`, `GitDiff` (`WraithKit` ne les connaît pas : seul `GitFileStatus` transite par l'`EventBus`).
-- **Diff** : parseur de diff unifié maison (~150 lignes) → `GitDiff { files: [FileDiff { hunks: [Hunk { lines }] }] }`. Highlighting : `context.highlight.highlight(text, language)` (`HighlightService` du noyau) appliqué par fichier sur le texte « nouveau » et « ancien » des hunks ; le plugin n'importe ni tree-sitter ni `PluginEditor` (`coding-rules` R4.1, R5.10).
-- **Tests** : parseurs (status v2, log, diff, for-each-ref) sur fixtures réelles ; construction d'arguments (jamais de shell, `--` avant les chemins) ; détection `needsInteraction` sur stderr ; `FakeGitService` pour la logique du panneau (R6–R9).
+- **Exécution** : `GitCLI` (type concret, `actor`) dans `Git/`, un par repo, sérialisant les commandes d'écriture, lectures concurrentes autorisées. Parsing dans des fonctions pures (`StatusParser`, `LogParser`, `DiffParser`) → `GitStatus`, `GitCommit`, `GitDiff`, types propres à la feature ; seul `GitFileStatus` sort de `Git/` (R5).
+- **Diff** : `git diff` est déjà structuré par hunks (`@@ … @@`) ; un parseur de diff unifié minimal (~150 lignes) suffit pour produire `GitDiff { files: [FileDiff { hunks: [Hunk { lines }] }] }` — on garde le plus simple, pas de librairie. Highlighting : `Highlight.highlight(text, language)` (dossier partagé) appliqué par fichier sur le texte « nouveau » et « ancien » des hunks ; `Git/` n'importe pas tree-sitter.
+- **Tests** : parseurs (status v2, log, diff, for-each-ref) sur fixtures réelles ; construction d'arguments (jamais de shell, `--` avant les chemins) ; détection `needsInteraction` sur stderr. La logique du panneau (R6–R9) est testée sur des `GitStatus` construits à la main, sans double de `GitCLI`.
 
 ## Décisions
 
