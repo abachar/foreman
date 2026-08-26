@@ -50,7 +50,7 @@ Le besoin a changé : on n'émule pas un terminal pour l'utilisateur, on affiche
 
 ### Service pour les features (`Terminal/`)
 
-- R16 — `TerminalService` (type concret du dossier partagé `Terminal/`, injecté aux features) : `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (crée l'onglet et lance), `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (saisie brute, rarement utile), `state(of:) -> TerminalState`, `pid(of:)`, et un flux `events` (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `closed(tab)`) en `AsyncStream`. Le `kind` est celui de la feature appelante (`agent.<id>`, `run.<id>`) ; il n'existe pas de kind `terminal`.
+- R16 — `TerminalService` (type concret du dossier partagé `Terminal/`, injecté aux features) : `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (crée l'onglet et lance), `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (saisie brute, rarement utile), `state(of:) -> TerminalState`, `pid(of:)`, et un flux `events` (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `activated(tab)` — marqueur R7 effacé —, `closed(tab)`) en `AsyncStream`, un par consommateur (2026-08-27). Le `kind` est celui de la feature appelante (`agent.<id>`, `run.<id>`) ; il n'existe pas de kind `terminal`.
 - R17 — Une feature ne peut agir que sur les onglets de la fenêtre courante ; un `TabID` inconnu ou fermé → `TerminalError.noSuchTab`.
 - R18 — Plusieurs surfaces coexistent sans limite ; chacune a son PTY et son process. Une surface `exited` ou inactive ne consomme pas de CPU (`architecture.md`, performance).
 

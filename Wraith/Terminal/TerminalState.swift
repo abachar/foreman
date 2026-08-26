@@ -54,6 +54,8 @@ nonisolated enum TerminalEvent: Equatable, Sendable {
     case started(TabID, pid: pid_t)
     case exited(TabID, TerminalExit)
     case bell(TabID)
+    /// terminal R7: the tab was shown, its mark is cleared.
+    case activated(TabID)
     case closed(TabID)
 }
 

@@ -60,7 +60,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
-| *(aucun défaut)* | `agents.<id>` | Ouvrir / activer l'onglet de l'agent | global | ⚪ (M2) |
+| *(aucun défaut)* | `agents.<id>` | Ouvrir / activer l'onglet de l'agent | global | 🟢 |
 
 ## Run (`run` R5, R6, R9)
 

@@ -120,6 +120,7 @@ final class TerminalService {
         guard let tab = tabs[id] else { return }
         tab.didActivate()
         syncBadge(id, tab)
+        publish(.activated(id))
     }
 
     // MARK: - Closing (terminal R10, R11)
