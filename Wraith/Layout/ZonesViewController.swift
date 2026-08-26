@@ -18,6 +18,8 @@ final class ZonesViewController: NSSplitViewController {
         var onFirstFrame: () -> Void
         /// The window is known: the shortcut monitor can be installed (layout, options).
         var onWindow: (NSWindow) -> Void
+        /// The user moved or resized the window (layout R27).
+        var onWindowFrame: (CGRect) -> Void
     }
 
     private let column = NSSplitViewController()
@@ -28,6 +30,13 @@ final class ZonesViewController: NSSplitViewController {
     private var configuration: Configuration?
     private var isApplying = false
     private var hasShownFirstFrame = false
+    private var frameObservations: [Task<Void, Never>] = []
+
+    isolated deinit {
+        for observation in frameObservations {
+            observation.cancel()
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -54,8 +63,23 @@ final class ZonesViewController: NSSplitViewController {
         if !hasShownFirstFrame, let window = view.window {
             hasShownFirstFrame = true
             configuration?.onWindow(window)
+            observeFrame(of: window)
             DispatchQueue.main.async { [weak self] in
                 self?.configuration?.onFirstFrame()
+            }
+        }
+    }
+
+    /// layout R27: the frame is reported after a move or a resize, never during one.
+    private func observeFrame(of window: NSWindow) {
+        let names = [NSWindow.didMoveNotification, NSWindow.didEndLiveResizeNotification]
+        frameObservations = names.map { name in
+            let events = NotificationCenter.default.notifications(named: name, object: window).map { _ in () }
+            return Task { [weak self, weak window] in
+                for await _ in events {
+                    guard let self, let window else { return }
+                    configuration?.onWindowFrame(window.frame)
+                }
             }
         }
     }

@@ -4,7 +4,7 @@ import SwiftUI
 import os
 
 /// The three optional slots around the center zone (layout R1).
-nonisolated enum PanelSide: String, Codable, Sendable, CaseIterable {
+nonisolated enum PanelSide: String, Codable, Sendable, CaseIterable, CodingKeyRepresentable {
     case left
     case right
     case bottom

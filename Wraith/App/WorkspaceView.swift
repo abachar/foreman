@@ -14,6 +14,7 @@ struct WorkspaceView: View {
     @State private var isFolderReachable = true
     @State private var workspace: Workspace
     @State private var layout = LayoutManager()
+    @State private var isStateLoaded = false
 
     init(folder: URL, appDelegate: WraithAppDelegate) {
         self.folder = folder
@@ -32,6 +33,7 @@ struct WorkspaceView: View {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
+                restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
                 for await config in workspace.configChanges {
@@ -69,9 +71,15 @@ struct WorkspaceView: View {
                         .frame(maxWidth: .infinity)
                         .background(.bar)
                 }
-                ZonesView(layout: layout) {
-                    // layout R29: restored panels start their work after the first frame.
-                    layout.panels.activateVisible()
+                if isStateLoaded {
+                    ZonesView(layout: layout) {
+                        // layout R29: restored panels start their work after the first frame.
+                        layout.panels.activateVisible()
+                    }
+                    // layout R27, config R8: every change of the layout is persisted, debounced.
+                    .onChange(of: layout.snapshot()) { _, snapshot in
+                        workspace.setState("layout", to: snapshot)
+                    }
                 }
             }
         } else {
@@ -81,6 +89,19 @@ struct WorkspaceView: View {
                 description: Text(folder.path(percentEncoded: false))
             )
         }
+    }
+
+    /// layout R29: the layout comes back before the zones are built, so the first frame is final.
+    private func restoreLayout() {
+        guard !isStateLoaded else { return }
+        do {
+            if let state = try workspace.state.section("layout", as: LayoutState.self) {
+                layout.restore(state)
+            }
+        } catch {
+            // config R9: an unreadable section is ignored, the layout starts from the default.
+        }
+        isStateLoaded = true
     }
 
     /// config R4, layout R26: the user's `shortcuts` section, at startup and on every reload.

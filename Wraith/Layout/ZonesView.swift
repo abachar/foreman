@@ -32,12 +32,19 @@ struct ZonesView: NSViewControllerRepresentable {
             onPanelResized: { layout.setPanelSize($1, for: $0) },
             onFirstFrame: onFirstFrame,
             onWindow: { [toolbar = context.coordinator] window in
+                if let frame = layout.windowFrame {
+                    let screens = NSScreen.screens.map(\.visibleFrame)
+                    let main = NSScreen.main?.visibleFrame ?? screens.first ?? frame
+                    window.setFrame(LayoutManager.frameToRestore(frame, screens: screens, main: main), display: true)
+                }
+                layout.windowFrame = window.frame
                 toolbar.attach(to: window)
                 // layout R25: no terminal surface yet (M2); the active tab's kind drives the scopes.
                 layout.shortcuts.startMonitoring(window: window) {
                     (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false)
                 }
-            }
+            },
+            onWindowFrame: { layout.windowFrame = $0 }
         )
     }
 }

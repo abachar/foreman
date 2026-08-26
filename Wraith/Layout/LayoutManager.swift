@@ -12,7 +12,7 @@ import os
 @Observable
 @MainActor
 final class LayoutManager {
-    private(set) var model = LayoutModel()
+    var model = LayoutModel()
     let panels = PanelManager()
     let shortcuts = ShortcutRegistry()
     private(set) var homeEntries: [HomeEntry] = []
@@ -21,6 +21,8 @@ final class LayoutManager {
     private(set) var badges: [String: ToolbarBadge] = [:]
     /// layout R32: `cmd+alt+t`, persisted.
     var isToolbarVisible = true
+    /// layout R27: where the window was; `nil` until the window reports it.
+    var windowFrame: CGRect?
 
     /// layout R18: one persisted thickness per slot, whatever panel is shown.
     private(set) var panelSizes = ZoneSizing.defaults
@@ -30,8 +32,8 @@ final class LayoutManager {
     /// `cmd+shift+n` (layout R23): opening a folder is the app's, not the layout's.
     var openFolder: () -> Void = {}
 
-    private var tabKinds: [String: CenterTabDescriptor] = [:]
-    private var tabViews: [TabID: AnyView] = [:]
+    var tabKinds: [String: CenterTabDescriptor] = [:]
+    var tabViews: [TabID: AnyView] = [:]
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "layout")
 
     init() {
