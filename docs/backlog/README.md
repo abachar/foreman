@@ -4,7 +4,7 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 
 | Milestone | Fichier | Domaines | Statut |
 |---|---|---|---|
-| M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟡 (tâches faites, PR en cours de revue) |
+| M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟢 (2026-08-26 ; CI Xcode 27 non vérifiée) |
 | M1 — Explorer + Editor | *(au démarrage de M1)* | explorer, editor, Palette, Highlight | |
 | M2 — Terminal + Agents | | terminal, agents | |
 | M3 — Run | | run | |
