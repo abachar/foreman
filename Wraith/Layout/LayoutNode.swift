@@ -105,15 +105,20 @@ nonisolated indirect enum LayoutNode: Equatable, Codable, Sendable {
         }
     }
 
-    /// layout R11: the adjacent group in `direction` whose frame overlaps `id` the most.
+    /// layout R11: the adjacent group in `direction` whose frame overlaps `id` the most; on a tie,
+    /// the first in reading order.
     func neighbor(of id: GroupID, _ direction: Direction, in size: CGSize) -> GroupID? {
         let frames = frames(in: CGRect(origin: .zero, size: size))
         guard let origin = frames[id] else { return nil }
-        let candidates = frames.filter { candidate, frame in
-            candidate != id && Self.isAdjacent(frame, to: origin, direction)
+        var best: (id: GroupID, overlap: CGFloat)?
+        for candidate in groups where candidate != id {
+            guard let frame = frames[candidate], Self.isAdjacent(frame, to: origin, direction) else { continue }
+            let overlap = Self.overlap(frame, origin, direction)
+            if overlap > 0, overlap > (best?.overlap ?? 0) {
+                best = (candidate, overlap)
+            }
         }
-        return candidates.max { Self.overlap($0.value, origin, direction) < Self.overlap($1.value, origin, direction) }?
-            .key
+        return best?.id
     }
 
     private static func isAdjacent(_ frame: CGRect, to origin: CGRect, _ direction: Direction) -> Bool {
