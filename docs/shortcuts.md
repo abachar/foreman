@@ -51,10 +51,10 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
-| `cmd+c` / `cmd+v` | — | Copier la sélection / coller | natif (SwiftTerm) | ⚪ (M2) |
-| `cmd+k` | `terminal.clear` | Effacer le scrollback | terminal | ⚪ (M2) |
-| `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Zoom de la police | terminal | ⚪ (M2) |
-| `ctrl+…`, `opt+…`, `esc`, flèches | — | Au process (`layout` R25) | natif | ⚪ (M2) |
+| `cmd+c` / `cmd+v` | — | Copier la sélection / coller | natif (SwiftTerm) | 🟢 |
+| `cmd+k` | `terminal.clear` | Effacer le scrollback | terminal | 🟢 |
+| `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Zoom de la police | terminal | 🟢 |
+| `ctrl+…`, `opt+…`, `esc`, flèches | — | Au process (`layout` R25) | natif | 🟢 |
 
 ## Agents (`agents` R9)
 
