@@ -19,12 +19,12 @@ Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dép
 
 `Palette` et `Highlight` sont des dossiers partagés (`architecture.md`), livrés tous deux avec `editor` (M1 : quick open et highlighting). Le terminal vient après l'éditeur : l'app doit déjà être utilisable (ouvrir, lire, éditer) avant d'héberger des process.
 
+Le découpage en tâches et l'avancement sont dans [`../backlog/`](../backlog/), un fichier par milestone.
+
 Chaque dossier contient :
 
 | Fichier | Rôle |
 |---|---|
 | `NN-study.md` | étude(s), numérotée(s) dans l'ordre d'écriture : objectif, user stories, règles fonctionnelles (R1, R2…), cas limites, hors périmètre, options techniques |
 | `decisions.md` | décisions prises (date, choix, alternatives rejetées, raison) |
-| `breakdown.md` | découpage en tâches (créé au démarrage du milestone) |
-| `progress.md` | avancement (idem) |
 | `questions.md` | questions ouvertes ; une question tranchée devient une ligne de `decisions.md` |
