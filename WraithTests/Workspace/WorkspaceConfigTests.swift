@@ -39,12 +39,12 @@ struct WorkspaceConfigTests {
         defer { fixture.remove() }
         try fixture.writeWorkspace("{\n  \"a\": 1,\n  \"b\": [1, 2,\n}\n")
 
-        await #expect(throws: WorkspaceConfigError.self) {
+        await #expect(throws: WorkspaceError.self) {
             try await fixture.load()
         }
         do {
             _ = try await fixture.load()
-        } catch let WorkspaceConfigError.invalidJSON(file, line, _) {
+        } catch let WorkspaceError.invalidJSON(file, line, _) {
             #expect(file.lastPathComponent == "config.json")
             #expect(line == 4)
         }
@@ -54,7 +54,7 @@ struct WorkspaceConfigTests {
         defer { fixture.remove() }
         try fixture.writeWorkspace("[1, 2]")
 
-        await #expect(throws: WorkspaceConfigError.self) {
+        await #expect(throws: WorkspaceError.self) {
             try await fixture.load()
         }
     }
@@ -89,7 +89,7 @@ struct WorkspaceConfigTests {
 
         let config = try await fixture.load()
 
-        #expect(throws: WorkspaceConfigError.self) {
+        #expect(throws: WorkspaceError.self) {
             try config.section("postgres", as: Postgres.self)
         }
     }

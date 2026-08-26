@@ -27,7 +27,7 @@ nonisolated struct WorkspaceConfig: Sendable {
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch {
-            throw WorkspaceConfigError.invalidSection(name, underlying: error)
+            throw WorkspaceError.invalidSection(name, underlying: error)
         }
     }
 
@@ -62,11 +62,11 @@ nonisolated struct WorkspaceConfig: Sendable {
         do {
             object = try JSONSerialization.jsonObject(with: data)
         } catch {
-            throw WorkspaceConfigError.invalidJSON(
+            throw WorkspaceError.invalidJSON(
                 file: file, line: line(of: error, in: data), message: message(of: error))
         }
         guard let dictionary = object as? [String: Any] else {
-            throw WorkspaceConfigError.invalidJSON(file: file, line: 1, message: "The top level must be an object.")
+            throw WorkspaceError.invalidJSON(file: file, line: 1, message: "The top level must be an object.")
         }
         return withoutPasswords(dictionary, file: file, warnings: &warnings)
     }
@@ -117,25 +117,5 @@ nonisolated struct WorkspaceConfig: Sendable {
 
     private static func message(of error: Error) -> String {
         (error as NSError).userInfo[NSDebugDescriptionErrorKey] as? String ?? error.localizedDescription
-    }
-}
-
-/// What can go wrong with `config.json` (config R7).
-nonisolated enum WorkspaceConfigError: Error {
-    /// The file is not valid JSON, or not a JSON object; `line` is 1-based when known.
-    case invalidJSON(file: URL, line: Int?, message: String)
-    /// A feature could not decode its section.
-    case invalidSection(String, underlying: Error)
-}
-
-extension WorkspaceConfigError: CustomStringConvertible {
-    var description: String {
-        switch self {
-        case .invalidJSON(let file, let line, let message):
-            let location = line.map { "\(file.lastPathComponent):\($0)" } ?? file.lastPathComponent
-            return "\(location): \(message)"
-        case .invalidSection(let name, let underlying):
-            return "Section \"\(name)\": \(underlying)"
-        }
     }
 }
