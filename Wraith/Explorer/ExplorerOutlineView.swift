@@ -24,6 +24,9 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.rowSizeStyle = .small
         outline.indentationPerLevel = 12
         outline.autoresizesOutlineColumn = true
+        // The only column takes the whole width from the first frame (bug: names hidden until
+        // the panel was resized).
+        outline.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         outline.usesAutomaticRowHeights = false
         outline.allowsEmptySelection = true
         outline.autosaveExpandedItems = false
@@ -40,6 +43,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.sync(version: model.version, hidesExcluded: model.hidesExcluded)
+        context.coordinator.outline?.sizeLastColumnToFit()
         if isFocused, let window = scroll.window, let outline = context.coordinator.outline,
             window.firstResponder !== outline
         {
