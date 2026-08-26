@@ -1,0 +1,24 @@
+{
+  "originHash" : "5a34a333990c17c1a11fc71b17bfabab93360e4e4c1bcd361f8baebb57e9705a",
+  "pins" : [
+    {
+      "identity" : "asyncfilemonitor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/CleanCocoa/AsyncFileMonitor.git",
+      "state" : {
+        "revision" : "df573cba62a5845a1a98d96bef7a22b5ccb9557b",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
+        "version" : "1.6.0"
+      }
+    }
+  ],
+  "version" : 3
+}

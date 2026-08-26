@@ -47,10 +47,15 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXBuildFile section */
+		A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D400000000000000A2 /* AsyncFileMonitor */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		158380C4303E6BB500F921C8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */,
 			);
 		};
 		158380D1303E6BB600F921C8 /* Frameworks */ = {
@@ -96,6 +101,9 @@
 				158380C9303E6BB500F921C8 /* Wraith */,
 			);
 			name = Wraith;
+			packageProductDependencies = (
+				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
+			);
 			productName = Wraith;
 			productReference = 158380C7303E6BB500F921C8 /* Wraith.app */;
 			productType = "com.apple.product-type.application";
@@ -148,6 +156,9 @@
 				Base,
 			);
 			mainGroup = 158380BE303E6BB500F921C8;
+			packageReferences = (
+				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
+			);
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 158380C8303E6BB500F921C8 /* Products */;
@@ -461,6 +472,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CleanCocoa/AsyncFileMonitor.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D400000000000000A2 /* AsyncFileMonitor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */;
+			productName = AsyncFileMonitor;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 158380BF303E6BB500F921C8 /* Project object */;
 	validationLevel = 1;

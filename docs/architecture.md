@@ -80,7 +80,7 @@ On importe là où on utilise. Versions `.upToNextMinor`, `Package.resolved` com
 | Fuzzy | lib SPM (Ifrit ou équivalent, à choisir au découpage de M1) | palette |
 | Recherche contenu | binaire `rg` (repli `grep`) | `cmd+shift+f` |
 | Secrets | Security.framework (Keychain) | mot de passe PG |
-| Surveillance disque | FSEvents | un flux, multiplexé |
+| Surveillance disque | **AsyncFileMonitor** (CleanCocoa) sur FSEvents | un `FolderContentMonitor` par workspace, multicast ; `FSWatchService` n'ajoute que le filtrage par chemin et les lots débouncés |
 
 Critère d'ajout : la lib fait le travail, est maintenue, compatible Swift 6 → on l'utilise. « Je peux l'écrire moi-même » n'est un argument que sous 50 lignes triviales.
 
