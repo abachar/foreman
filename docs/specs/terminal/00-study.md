@@ -45,7 +45,7 @@ Le besoin a changé : on n'émule pas un terminal pour l'utilisateur, on affiche
 
 - R12 — Clavier : `layout` R25 — tout ce qui n'est pas un raccourci `cmd+…` de Wraith va au process (dont `ctrl+c`, `ctrl+d`, flèches, `esc`). `cmd+c`/`cmd+v` copient/collent (sélection SwiftTerm), `cmd+k` efface le scrollback, `cmd+=`/`cmd+-` zoom police (portée `tab(terminal)`).
 - R13 — Souris : sélection, copie, scroll, transmission des événements souris aux TUI qui la demandent — délégués à SwiftTerm. Liens détectés cliquables (`cmd+clic`).
-- R14 — Apparence : police monospace et thème définis par Wraith (`ThemeService`) ; `~/.config/wraith/config.json` (`terminal.font`, `terminal.fontSize`, `terminal.theme`) les surcharge. Scrollback : 10 000 lignes.
+- R14 — Apparence : police monospace et thème définis par Wraith (`ThemeService`) ; la section `terminal` de `.wraith/config.json` (`font`, `fontSize`, `theme`) les surcharge (config locale uniquement, décision config 2026-08-26). Scrollback : 10 000 lignes.
 - R15 — Redimensionnement : la surface reçoit sa taille en points depuis le layout (`layout` R21) ; SwiftTerm en déduit lignes/colonnes et propage la taille de fenêtre au process.
 
 ### Service pour les features (`Terminal/`)
@@ -72,7 +72,7 @@ Le besoin a changé : on n'émule pas un terminal pour l'utilisateur, on affiche
 
 ## Options techniques
 
-- **Dépendance** : `SwiftTerm` (SPM, `.upToNextMinor`), importé dans `Terminal/`. On utilise `LocalProcessTerminalView` **telle qu'elle est conçue** : elle ouvre le PTY, lance le process (`startProcess(executable: $SHELL, args: ["-l", "-c", command], environment:, execName:)` après `chdir` sur le cwd), rend la sortie, transmet la saisie, propage le redimensionnement, et signale la fin via `LocalProcessTerminalViewDelegate.processTerminated(_:exitCode:)`. Aucun PTY ni `forkpty` maison.
+- **Dépendance** : `SwiftTerm` (SPM, `.upToNextMinor`), importé dans `Terminal/`. On utilise `LocalProcessTerminalView` **telle qu'elle est conçue** : elle ouvre le PTY, lance le process (`startProcess(executable: $SHELL, args: ["-l", "-c", command], environment:, currentDirectory: cwd)` (vérifié sur SwiftTerm 1.20.0, 2026-08-27)), rend la sortie, transmet la saisie, propage le redimensionnement, et signale la fin via `LocalProcessTerminalViewDelegate.processTerminated(source:exitCode:)`. Aucun PTY ni `forkpty` maison.
 - **Vue** : `LocalProcessTerminalView` (AppKit) dans un `NSViewRepresentable` ; un `TerminalTab` (`@MainActor @Observable`) par onglet porte l'état R6, le pid (`process.shellPid`), le titre et le badge. Signaux (R9, R11) : `killpg(pid, SIGINT|SIGTERM|SIGHUP)` sur le groupe du process, puis `SIGKILL` après 5 s en fermeture forcée uniquement. *Relancer* (R8) = nouvelle vue/nouveau process dans le même onglet.
 - **Événements** : les callbacks du délégué SwiftTerm (`processTerminated`, `setTerminalTitle`, bell) sont convertis en `AsyncStream<TerminalEvent>` par `TerminalService`.
 - **Tests** : logique d'état (R6 : transitions idle → running → exited), badge (R7), confirmation à la fermeture (R10) et relance (R8) sur `TerminalTab` piloté par des événements simulés ; pas de test de SwiftTerm lui-même.

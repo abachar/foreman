@@ -2,7 +2,7 @@
 
 > Table unique des raccourcis par défaut, toutes features confondues, et leur état d'implémentation. La règle source est dans la spec citée ; la tâche qui livre un raccourci met à jour sa ligne. Notation `config` (`cmd`, `shift`, `opt` = Option ⌥, `ctrl`, `+` ; `alt` accepté en alias). Tout raccourci est surchargeable via `config.shortcuts["<id>"]` (`config` R4).
 
-Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a le focus) — `layout` R22b — ; `natif` (composant natif, hors registre), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
+Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a le focus), `terminal` (l'onglet actif est une surface terminal, M2) — `layout` R22b — ; `natif` (composant natif, hors registre), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
 
 ## Layout (`layout` R23)
 
@@ -46,6 +46,15 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` ferme la barre (natif) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | 🟢 |
 | `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette : ouvrir / nouveau groupe / fermer / naviguer | natif | 🟢 |
+
+## Terminal (`terminal` R12) — surfaces `agent.*` / `run.*`
+
+| Raccourci | Id | Action | Portée | Statut |
+|---|---|---|---|---|
+| `cmd+c` / `cmd+v` | — | Copier la sélection / coller | natif (SwiftTerm) | ⚪ (M2) |
+| `cmd+k` | `terminal.clear` | Effacer le scrollback | terminal | ⚪ (M2) |
+| `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Zoom de la police | terminal | ⚪ (M2) |
+| `ctrl+…`, `opt+…`, `esc`, flèches | — | Au process (`layout` R25) | natif | ⚪ (M2) |
 
 ## Agents (`agents` R9)
 
