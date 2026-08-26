@@ -36,7 +36,7 @@ Ce n'est **pas** du `run` : une commande `run` est définie par l'utilisateur et
 - R6 — État = celui de l'onglet terminal (`terminal` R6) : `idle` / `running` / `exited(code)`. Badge : point sur le bouton et sur l'onglet quand `running` ; la bell d'un onglet agent inactif marque l'onglet (`terminal` R7) et le bouton. Agent quitté (`exited`) : la surface reste figée avec *Relancer* (`terminal` R8) ; cliquer le bouton de l'agent relance dans ce même onglet.
 - R7 — Fermeture : `terminal` R10–R11 (confirmation si l'agent tourne ; arrêt propre).
 - R8 — Restauration (`layout` R28) : onglet recréé en état `idle` au même cwd, titre conservé, surface vide avec *Relancer* ; la commande **n'est pas relancée** automatiquement (même choix que `run` R13). Voir question ouverte.
-- R9 — Raccourcis : `config.shortcuts["agents.<id>"]`, aucun défaut. Portée globale. `cmd+alt+t` masque la barre d'outils (`layout` R32), les raccourcis restent actifs.
+- R9 — Raccourcis : `config.shortcuts["agents.<id>"]`, aucun défaut. Portée globale. `cmd+opt+t` masque la barre d'outils (`layout` R32), les raccourcis restent actifs.
 
 ## Cas limites
 

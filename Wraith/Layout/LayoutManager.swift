@@ -19,7 +19,7 @@ final class LayoutManager {
     /// layout R30: in registration order; `WorkspaceToolbar` splits leading and trailing.
     private(set) var toolbarItems: [ToolbarItemDescriptor] = []
     private(set) var badges: [String: ToolbarBadge] = [:]
-    /// layout R32: `cmd+alt+t`, persisted.
+    /// layout R32: `cmd+opt+t`, persisted.
     var isToolbarVisible = true
     /// layout R27: where the window was; `nil` until the window reports it.
     var windowFrame: CGRect?
@@ -190,21 +190,21 @@ final class LayoutManager {
             ),
             ("layout.split.vertical", "Split Right", "cmd+d", { [weak self] in self?.split(.vertical) }),
             ("layout.split.horizontal", "Split Down", "cmd+shift+d", { [weak self] in self?.split(.horizontal) }),
-            ("layout.focus.left", "Focus Group Left", "cmd+alt+left", { [weak self] in self?.focusGroup(.left) }),
-            ("layout.focus.right", "Focus Group Right", "cmd+alt+right", { [weak self] in self?.focusGroup(.right) }),
-            ("layout.focus.up", "Focus Group Above", "cmd+alt+up", { [weak self] in self?.focusGroup(.up) }),
-            ("layout.focus.down", "Focus Group Below", "cmd+alt+down", { [weak self] in self?.focusGroup(.down) }),
-            ("layout.move.left", "Move Tab Left", "cmd+alt+shift+left", { [weak self] in self?.moveActiveTab(.left) }),
+            ("layout.focus.left", "Focus Group Left", "cmd+opt+left", { [weak self] in self?.focusGroup(.left) }),
+            ("layout.focus.right", "Focus Group Right", "cmd+opt+right", { [weak self] in self?.focusGroup(.right) }),
+            ("layout.focus.up", "Focus Group Above", "cmd+opt+up", { [weak self] in self?.focusGroup(.up) }),
+            ("layout.focus.down", "Focus Group Below", "cmd+opt+down", { [weak self] in self?.focusGroup(.down) }),
+            ("layout.move.left", "Move Tab Left", "cmd+opt+shift+left", { [weak self] in self?.moveActiveTab(.left) }),
             (
-                "layout.move.right", "Move Tab Right", "cmd+alt+shift+right",
+                "layout.move.right", "Move Tab Right", "cmd+opt+shift+right",
                 { [weak self] in self?.moveActiveTab(.right) }
             ),
-            ("layout.move.up", "Move Tab Up", "cmd+alt+shift+up", { [weak self] in self?.moveActiveTab(.up) }),
-            ("layout.move.down", "Move Tab Down", "cmd+alt+shift+down", { [weak self] in self?.moveActiveTab(.down) }),
+            ("layout.move.up", "Move Tab Up", "cmd+opt+shift+up", { [weak self] in self?.moveActiveTab(.up) }),
+            ("layout.move.down", "Move Tab Down", "cmd+opt+shift+down", { [weak self] in self?.moveActiveTab(.down) }),
             ("layout.focus.center", "Focus Center", "escape", { [weak self] in self?.panels.focusCenter() }),
             ("layout.window.new", "New Window", "cmd+shift+n", { [weak self] in self?.openFolder() }),
             (
-                "layout.toolbar.toggle", "Toggle Toolbar", "cmd+alt+t",
+                "layout.toolbar.toggle", "Toggle Toolbar", "cmd+opt+t",
                 { [weak self] in self?.isToolbarVisible.toggle() }
             ),
         ]

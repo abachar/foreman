@@ -7,7 +7,8 @@ import Testing
 struct ShortcutTests {
     @Test(arguments: [
         ("cmd+shift+g", "g", Shortcut.Modifiers([.command, .shift])),
-        ("CMD+ALT+Left", "left", Shortcut.Modifiers([.command, .option])),
+        ("CMD+OPT+Left", "left", Shortcut.Modifiers([.command, .option])),
+        ("cmd+alt+t", "t", Shortcut.Modifiers([.command, .option])),
         ("escape", "escape", Shortcut.Modifiers([])),
         ("ctrl+[", "[", Shortcut.Modifiers.control),
         ("cmd+9", "9", Shortcut.Modifiers.command),
@@ -26,5 +27,6 @@ struct ShortcutTests {
 
     @Test func printsInTheSameNotation() {
         #expect(Shortcut(parsing: "shift+cmd+G")?.description == "cmd+shift+g")
+        #expect(Shortcut(parsing: "alt+cmd+t")?.description == "cmd+opt+t")
     }
 }

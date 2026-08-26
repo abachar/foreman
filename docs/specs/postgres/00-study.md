@@ -49,7 +49,7 @@ Feature `postgres` (dossier `Postgres/`) : explorer le schéma d'une base et ex�
 
 ### Historique
 
-- R20 — Chaque requête exécutée (texte, `user@host/database`, date, durée, nombre de lignes / erreur) est ajoutée à `.wraith/postgres-history.json` (max 500 entrées, FIFO, jamais versionné : recommandé dans `.gitignore` avec `state.json`). Panneau d'historique (bouton ou `cmd+alt+h` en portée panneau) : recherche, clic → recharge dans l'éditeur, *Épingler* (conservée hors FIFO). Rien du résultat n'est persisté.
+- R20 — Chaque requête exécutée (texte, `user@host/database`, date, durée, nombre de lignes / erreur) est ajoutée à `.wraith/postgres-history.json` (max 500 entrées, FIFO, jamais versionné : recommandé dans `.gitignore` avec `state.json`). Panneau d'historique (bouton ou `cmd+opt+h` en portée panneau) : recherche, clic → recharge dans l'éditeur, *Épingler* (conservée hors FIFO). Rien du résultat n'est persisté.
 
 ## Cas limites
 

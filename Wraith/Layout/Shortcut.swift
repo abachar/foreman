@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-/// A key combination in the `config` notation: `"cmd+shift+g"`, `"escape"`, `"cmd+alt+left"`.
+/// A key combination in the `config` notation: `"cmd+shift+g"`, `"escape"`, `"cmd+opt+left"`.
 nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
     struct Modifiers: OptionSet, Hashable, Sendable {
         let rawValue: Int
@@ -18,8 +18,9 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
 
     static let namedKeys: Set<String> = ["left", "right", "up", "down", "escape", "return", "tab", "space", "delete"]
 
+    /// `opt` is the Option key (layout, decision 2026-08-26); `alt` stays accepted in `config.json`.
     private static let modifierNames: [(String, Modifiers)] = [
-        ("cmd", .command), ("shift", .shift), ("alt", .option), ("ctrl", .control),
+        ("cmd", .command), ("shift", .shift), ("opt", .option), ("alt", .option), ("ctrl", .control),
     ]
 
     /// `nil` for anything that is not `modifier(+modifier)*+key` with known names.
@@ -69,7 +70,7 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
     }
 
     var description: String {
-        let names = Self.modifierNames.filter { modifiers.contains($0.1) }.map(\.0)
+        let names = Self.modifierNames.filter { $0.0 != "alt" && modifiers.contains($0.1) }.map(\.0)
         return (names + [key]).joined(separator: "+")
     }
 }

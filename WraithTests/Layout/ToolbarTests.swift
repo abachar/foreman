@@ -41,7 +41,7 @@ struct ToolbarTests {
     @Test func toolbarToggleIsALayoutShortcut() {
         #expect(layout.isToolbarVisible)
 
-        layout.shortcuts.resolve(Shortcut(parsing: "cmd+alt+t")!, activeTabKind: nil, isTerminalFocused: false)?
+        layout.shortcuts.resolve(Shortcut(parsing: "cmd+opt+t")!, activeTabKind: nil, isTerminalFocused: false)?
             .perform()
 
         #expect(!layout.isToolbarVisible)

@@ -26,7 +26,7 @@ Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`)
 ### Palette et bouton
 
 - R5 — `cmd+r` ouvre une palette (`Palette`, dossier partagé, la même que le quick open). Entrées `repo › nom` avec la commande en sous-titre ; fuzzy sur `repo nom` ; ordre par défaut : dernières lancées en premier, puis alphabétique.
-- R6 — `enter` lance (R7) ; `cmd+enter` lance dans un **nouvel** onglet (sans réutilisation) ; `alt+enter` copie la commande dans le presse-papiers. `escape` ferme.
+- R6 — `enter` lance (R7) ; `cmd+enter` lance dans un **nouvel** onglet (sans réutilisation) ; `opt+enter` copie la commande dans le presse-papiers. `escape` ferme.
 - R6b — Bouton **▶ Run** (`run.toolbar`, élément de toolbar déclaré à `Layout`, côté `trailing`, de type menu, `layout` R30) : le menu liste les commandes groupées par repo, avec la commande en sous-titre et le badge d'état (R10) de l'onglet correspondant ; un clic lance (R7). Le bouton porte un badge bleu si au moins une commande tourne, rouge si la dernière terminée a échoué (effacé à l'activation de l'onglet). Sans aucune commande configurée, le menu affiche un exemple de config. Ni `commands` ni bouton ne sont touchés par les agents.
 
 ### Exécution

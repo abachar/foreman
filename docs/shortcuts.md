@@ -1,6 +1,6 @@
 # Raccourcis
 
-> Table unique des raccourcis par défaut, toutes features confondues, et leur état d'implémentation. La règle source est dans la spec citée ; la tâche qui livre un raccourci met à jour sa ligne. Notation `config` (`cmd`, `shift`, `alt`, `ctrl`, `+`). Tout raccourci est surchargeable via `config.shortcuts["<id>"]` (`config` R4).
+> Table unique des raccourcis par défaut, toutes features confondues, et leur état d'implémentation. La règle source est dans la spec citée ; la tâche qui livre un raccourci met à jour sa ligne. Notation `config` (`cmd`, `shift`, `opt` = Option ⌥, `ctrl`, `+` ; `alt` accepté en alias). Tout raccourci est surchargeable via `config.shortcuts["<id>"]` (`config` R4).
 
 Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel` (composant du panneau focalisé, hors registre : géré par la vue native), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
 
@@ -12,11 +12,11 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 | `cmd+1` … `cmd+9` | `layout.tab.N` | Onglet N (9 = dernier) | global | 🟢 |
 | `cmd+shift+[` / `cmd+shift+]` | `layout.tab.previous` / `.next` | Onglet précédent / suivant | global | 🟢 |
 | `cmd+d` / `cmd+shift+d` | `layout.split.vertical` / `.horizontal` | Split à droite / en bas | global | 🟢 |
-| `cmd+alt+←→↑↓` | `layout.focus.*` | Focus sur le groupe voisin | global | 🟢 |
-| `cmd+alt+shift+←→↑↓` | `layout.move.*` | Déplacer l'onglet actif vers le groupe voisin | global | 🟢 |
+| `cmd+opt+←→↑↓` | `layout.focus.*` | Focus sur le groupe voisin | global | 🟢 |
+| `cmd+opt+shift+←→↑↓` | `layout.move.*` | Déplacer l'onglet actif vers le groupe voisin | global | 🟢 |
 | `escape` | `layout.focus.center` | Rendre le focus au centre | global | 🟢 |
 | `cmd+shift+n` | `layout.window.new` | Nouvelle fenêtre (ouvrir un dossier) | global | 🟢 |
-| `cmd+alt+t` | `layout.toolbar.toggle` | Masquer / afficher la barre d'outils | global | 🟢 |
+| `cmd+opt+t` | `layout.toolbar.toggle` | Masquer / afficher la barre d'outils | global | 🟢 |
 | `cmd+o` | — | *File ▸ Open…* | menu | 🟢 |
 
 ## Explorer (`explorer` R21)
@@ -36,14 +36,14 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 |---|---|---|---|---|
 | `cmd+p` | `editor.quickOpen` | Quick open | global | ⚪ (1.13) |
 | `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | ⚪ (1.14) |
-| `cmd+s` / `cmd+alt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | ⚪ (1.9) |
+| `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | ⚪ (1.9) |
 | `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | ⚪ (1.9, natif `NSTextView`) |
 | `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indenter / désindenter | tab(editor.file) | ⚪ (1.9) |
 | `cmd+/` | `editor.comment` | Commenter / décommenter | tab(editor.file) | ⚪ (1.9) |
-| `alt+↑` / `alt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | ⚪ (1.9) |
+| `opt+↑` / `opt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | ⚪ (1.9) |
 | `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | ⚪ (1.9) |
 | `cmd+k enter` | `editor.keepOpen` | Fixer l'onglet aperçu | tab(editor.file) | ⚪ (1.9) |
-| `cmd+f` / `cmd+alt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier | tab(editor.file) | ⚪ (1.11, `NSTextFinder`) |
+| `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier | tab(editor.file) | ⚪ (1.11, `NSTextFinder`) |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | ⚪ (1.12) |
 | `enter` / `cmd+enter` / `escape` | — | Palette : ouvrir / nouveau groupe / fermer | panel | ⚪ (1.13) |
 
@@ -58,7 +58,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
 | `cmd+r` | `run.palette` | Palette des commandes | global | ⚪ (M3) |
-| `enter` / `cmd+enter` / `alt+enter` / `escape` | — | Palette : lancer / nouvel onglet / copier / fermer | panel | ⚪ (M3) |
+| `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette : lancer / nouvel onglet / copier / fermer | panel | ⚪ (M3) |
 | `cmd+.` | `run.stop` | Arrêter le process | tab(run) | ⚪ (M3) |
 
 ## Git (`git`)

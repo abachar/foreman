@@ -80,14 +80,14 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
   | Aller à l'onglet N du groupe actif | `cmd+1` … `cmd+9` (`cmd+9` = dernier) |
   | Onglet précédent / suivant | `cmd+shift+[` / `cmd+shift+]` |
   | Split vertical / horizontal | `cmd+d` / `cmd+shift+d` |
-  | Focus groupe voisin | `cmd+alt+←` `→` `↑` `↓` |
-  | Déplacer l'onglet vers le groupe voisin | `cmd+alt+shift+←` `→` `↑` `↓` |
+  | Focus groupe voisin | `cmd+opt+←` `→` `↑` `↓` |
+  | Déplacer l'onglet vers le groupe voisin | `cmd+opt+shift+←` `→` `↑` `↓` |
   | Rendre le focus au centre | `escape` (depuis un panneau uniquement) |
   | Nouvelle fenêtre (ouvrir un dossier) | `cmd+shift+n` |
-  | Masquer / afficher la barre d'outils | `cmd+alt+t` |
+  | Masquer / afficher la barre d'outils | `cmd+opt+t` |
 
 - R24 — Conflits : deux actions sur le même raccourci **après** application des surcharges → aucune des deux n'est liée, une erreur est affichée au démarrage avec les deux ids. Une feature ne peut pas redéfinir un raccourci du layout ; seul l'utilisateur le peut via `config.json`.
-- R25 — Priorité de capture : le registre reçoit l'événement clavier avant le contenu de l'onglet, **sauf** pour une surface terminal (agent, run) qui a le focus : elle reçoit tout ce qui n'est pas un raccourci `cmd+…` (les combinaisons `ctrl`/`alt` seules lui appartiennent). Un raccourci sans `cmd` ne peut donc être déclaré que pour un contexte hors terminal (`escape` en est le seul cas en v1).
+- R25 — Priorité de capture : le registre reçoit l'événement clavier avant le contenu de l'onglet, **sauf** pour une surface terminal (agent, run) qui a le focus : elle reçoit tout ce qui n'est pas un raccourci `cmd+…` (les combinaisons `ctrl`/`opt` seules lui appartiennent). Un raccourci sans `cmd` ne peut donc être déclaré que pour un contexte hors terminal (`escape` en est le seul cas en v1).
 - R26 — Les raccourcis sont surchargeables à chaud (`config` R6) : un événement de `Workspace.configChanges` recalcule la table entière et réapplique R24.
 
 ### Persistance (`state.json`, cf. `config`)
@@ -100,7 +100,7 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
 
 - R30 — La fenêtre a une barre d'outils native (`NSToolbar`). Elle ne contient que des éléments déclarés par les features (`id`, titre, icône, placement, genre) : placement `leading` (agents) ou `trailing` (run) ; genre *action* (clic → callback) ou *menu* (clic → liste d'entrées fournies à la demande, avec sous-titres et badges). Ordre : ordre d'enregistrement des features, `leading` à gauche, `trailing` à droite. Le layout ne déclare aucun élément propre en v1.
 - R31 — Un élément peut porter un **badge** (`none` / `dot(color)`) mis à jour par la feature propriétaire (agent en cours, run échoué). Un élément dont l'`id` est déjà pris est refusé et loggé en `fault`. Le clic droit (ou clic long) sur un élément *action* ouvre son menu secondaire s'il en déclare un.
-- R32 — `cmd+alt+t` masque/affiche la barre d'outils (persisté dans `state.json`). Les actions des éléments restent accessibles par leurs raccourcis et par la palette.
+- R32 — `cmd+opt+t` masque/affiche la barre d'outils (persisté dans `state.json`). Les actions des éléments restent accessibles par leurs raccourcis et par la palette.
 
 ### Écran d'accueil
 

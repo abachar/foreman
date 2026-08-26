@@ -35,7 +35,7 @@ Panneau gauche `explorer.tree` : l'arbre de fichiers du workspace, paresseux, ra
 ### Ouverture
 
 - R12 — Simple clic sur un fichier : ouverture en onglet **aperçu** dans le groupe actif via `Editor.open(path, preview: true)` ; un seul onglet aperçu par groupe, remplacé par l'aperçu suivant. Double clic, ou toute édition dans l'onglet, le fixe (`editor` définit l'onglet). Clic sur un fichier déjà ouvert : active son onglet.
-- R13 — `alt+clic` (ou entrée de menu) : ouvre dans un **nouveau groupe** à droite (`layout` R9) si l'on veut comparer.
+- R13 — `opt+clic` (ou entrée de menu) : ouvre dans un **nouveau groupe** à droite (`layout` R9) si l'on veut comparer.
 - R14 — Suivi de l'onglet actif (`Layout.activeTab`) : quand l'onglet actif change et qu'il correspond à un fichier sous la racine, l'arbre déplie le chemin et sélectionne le fichier (sans le faire défiler si déjà visible). Désactivable par toggle du panneau (persisté). Un fichier hors racine ne déplie rien.
 - R15 — Badges git : l'explorer s'abonne à `Git.statusChanges` (`AsyncStream` de `(repo, [path: GitFileStatus])`) ; il colore les fichiers (modifié, ajouté, non suivi, conflit) et propage un point sur les dossiers ancêtres. Hors repo : aucun badge, aucune erreur.
 
