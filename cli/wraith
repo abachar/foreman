@@ -1,0 +1,17 @@
+#!/bin/sh
+# Opens a folder in Wraith: `wraith` for the current directory, `wraith <folder>` for another one.
+#
+# `open -a` launches or activates the running app and hands it the folder, which Wraith receives in
+# application(_:open:); a folder already open activates its window instead of opening a second one
+# (product R1, R2). The path is made absolute and symlink-free here so that `wraith .` and
+# `wraith /full/path` designate the same window.
+set -eu
+
+folder="${1:-.}"
+
+if [ ! -d "$folder" ]; then
+    printf 'wraith: not a folder: %s\n' "$folder" >&2
+    exit 1
+fi
+
+exec open -a Wraith "$(cd -- "$folder" && pwd -P)"
