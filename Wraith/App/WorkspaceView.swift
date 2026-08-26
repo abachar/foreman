@@ -15,6 +15,8 @@ struct WorkspaceView: View {
     @State private var isFolderReachable = true
     @State private var workspace: Workspace
     @State private var layout = LayoutManager()
+    @State private var theme = ThemeService()
+    @State private var editor: EditorFeature?
     @State private var isStateLoaded = false
     @State private var hostWindow: NSWindow?
 
@@ -35,7 +37,9 @@ struct WorkspaceView: View {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
-                ExplorerFeature.register(in: layout, workspace: workspace)
+                let editor = EditorFeature(layout: layout, workspace: workspace, theme: theme)
+                self.editor = editor
+                ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)

@@ -9,9 +9,10 @@ import SwiftUI
 struct ExplorerOutlineView: NSViewRepresentable {
     let model: ExplorerModel
     let isFocused: Bool
+    let onOpen: (FileNode) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(model: model)
+        Coordinator(model: model, onOpen: onOpen)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -32,6 +33,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.autosaveExpandedItems = false
         outline.dataSource = context.coordinator
         outline.delegate = context.coordinator
+        outline.target = context.coordinator
+        outline.action = #selector(Coordinator.clicked)
         context.coordinator.outline = outline
 
         let scroll = NSScrollView()
@@ -70,14 +73,25 @@ struct ExplorerOutlineView: NSViewRepresentable {
     final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
         weak var outline: NSOutlineView?
         private let model: ExplorerModel
+        private let onOpen: (FileNode) -> Void
         private var items: [String: OutlineItem] = [:]
         private var moreItems: [String: OutlineItem] = [:]
         private var version = -1
         private var hidesExcluded: Bool
 
-        init(model: ExplorerModel) {
+        init(model: ExplorerModel, onOpen: @escaping (FileNode) -> Void) {
             self.model = model
+            self.onOpen = onOpen
             hidesExcluded = model.hidesExcluded
+        }
+
+        /// explorer R12: a single click on a file opens it as a preview.
+        @objc func clicked() {
+            guard let outline, outline.clickedRow >= 0,
+                let item = outline.item(atRow: outline.clickedRow) as? OutlineItem,
+                case .node(let node) = item.kind, !node.isExpandable, node.kind != .directory
+            else { return }
+            onOpen(node)
         }
 
         func sync(version: Int, hidesExcluded: Bool) {

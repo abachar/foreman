@@ -5,6 +5,7 @@ struct ExplorerPanelView: View {
     let model: ExplorerModel
     let layout: LayoutManager
     let onStateChange: (ExplorerState) -> Void
+    let onOpen: (FileNode) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +21,8 @@ struct ExplorerPanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.bar)
             }
-            ExplorerOutlineView(model: model, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID))
+            ExplorerOutlineView(
+                model: model, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID), onOpen: onOpen)
         }
         .onChange(of: model.persisted) { _, state in
             onStateChange(state)
