@@ -14,6 +14,10 @@ final class TerminalService {
     private let root: URL
     private var tabs: [TabID: TerminalTab] = [:]
     private var surfaces: [TabID: TerminalSurfaceView] = [:]
+    /// terminal R11: surfaces of closed tabs, kept until their process is gone.
+    private var closing: [TabID: TerminalSurfaceView] = [:]
+    /// terminal R11: the grace period before `SIGKILL`, only on closing.
+    static let closeGrace: Duration = .seconds(5)
     /// The tab `spawn` is creating: the feature's `makeView` asks for its view before `openTab` returns.
     private var opening: TerminalTab?
     private var subscribers: [UUID: AsyncStream<TerminalEvent>.Continuation] = [:]
@@ -27,6 +31,10 @@ final class TerminalService {
     }
 
     isolated deinit {
+        // terminal R11: the window goes, its processes get SIGHUP; nothing survives the service.
+        for surface in surfaces.values.filter({ $0.process.running }) + closing.values {
+            killpg(surface.process.shellPid, SIGHUP)
+        }
         for continuation in subscribers.values {
             continuation.finish()
         }
@@ -112,6 +120,52 @@ final class TerminalService {
         guard let tab = tabs[id] else { return }
         tab.didActivate()
         syncBadge(id, tab)
+    }
+
+    // MARK: - Closing (terminal R10, R11)
+
+    /// terminal R10, layout R15: a running process asks before the tab closes.
+    func confirmClose(_ id: TabID) async -> Bool {
+        guard let tab = tabs[id], tab.isRunning, let window = surfaces[id]?.window ?? NSApp.keyWindow else {
+            return true
+        }
+        let alert = NSAlert()
+        alert.messageText = "\(tab.title) is still running"
+        alert.informativeText = "Closing the tab stops the process."
+        alert.addButton(withTitle: "Close")
+        alert.addButton(withTitle: "Cancel")
+        return await alert.beginSheetModal(for: window) == .alertFirstButtonReturn
+    }
+
+    /// terminal R11: the tab left the layout; hang up the process group, kill it only if it is still
+    /// there after the grace period, then let the view close the PTY.
+    func closed(_ id: TabID) {
+        guard let tab = tabs[id] else { return }
+        tabs[id] = nil
+        let surface = surfaces.removeValue(forKey: id)
+        publish(.closed(id))
+        guard let surface, let pid = tab.pid, let signal = Self.signalOnClose(tab.state) else { return }
+        killpg(pid, signal)
+        closing[id] = surface
+        Task { [weak self] in
+            try? await Task.sleep(for: Self.closeGrace)
+            guard let self else { return }
+            if let signal = Self.signalAfterGrace(isStillRunning: surface.process.running) {
+                killpg(pid, signal)
+            }
+            closing[id] = nil
+        }
+    }
+
+    /// terminal R11: `SIGHUP` to a running process; nothing to an idle or exited one.
+    nonisolated static func signalOnClose(_ state: TerminalState) -> Int32? {
+        if case .running = state { return SIGHUP }
+        return nil
+    }
+
+    /// terminal R11: `SIGKILL` only when the process ignored the hang-up for the whole grace period.
+    nonisolated static func signalAfterGrace(isStillRunning: Bool) -> Int32? {
+        isStillRunning ? SIGKILL : nil
     }
 
     private func known(_ id: TabID) throws(TerminalError) -> TerminalTab {
@@ -218,6 +272,10 @@ extension TerminalService: @preconcurrency LocalProcessTerminalViewDelegate {
     }
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
+        if let id = closing.first(where: { $0.value === source })?.key {
+            closing[id] = nil
+            return
+        }
         guard let id = surfaces.first(where: { $0.value === source })?.key, let tab = tabs[id] else { return }
         let exit = TerminalExit(waitStatus: exitCode)
         tab.didExit(exit, isActive: isActive(id))

@@ -46,4 +46,29 @@ struct TerminalServiceTests {
         #expect(layout.shortcuts.shortcut(for: "terminal.zoomOut") == Shortcut(parsing: "cmd+-"))
         #expect(layout.shortcuts.problems.isEmpty)
     }
+
+    @Test func closesWithoutAskingWhenNothingRuns() async throws {
+        let id = TabID()
+        _ = service.restore(id, kind: "agent.claude", title: "Claude", command: "claude", cwd: URL(filePath: "/tmp"))
+
+        #expect(await service.confirmClose(id))
+        #expect(await service.confirmClose(TabID()))
+
+        var closed: [TerminalEvent] = []
+        let events = service.events()
+        service.closed(id)
+        for await event in events.prefix(1) {
+            closed.append(event)
+        }
+        #expect(closed == [.closed(id)])
+        #expect(throws: TerminalError.noSuchTab) { try service.state(of: id) }
+    }
+
+    @Test func hangsUpARunningProcessAndKillsOnlyAfterTheGrace() {
+        #expect(TerminalService.signalOnClose(.running(pid: 1)) == SIGHUP)
+        #expect(TerminalService.signalOnClose(.idle) == nil)
+        #expect(TerminalService.signalOnClose(.exited(.code(0))) == nil)
+        #expect(TerminalService.signalAfterGrace(isStillRunning: true) == SIGKILL)
+        #expect(TerminalService.signalAfterGrace(isStillRunning: false) == nil)
+    }
 }
