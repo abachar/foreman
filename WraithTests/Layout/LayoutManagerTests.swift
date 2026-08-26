@@ -44,4 +44,44 @@ struct LayoutManagerTests {
         #expect(layout.openTab(kind: "nope", title: "x", payload: "x", newGroup: true) == nil)
         #expect(layout.model.tree.groups.count == 1)
     }
+
+    @Test func badgeFollowsTheTab() {
+        let layout = manager()
+        let id = layout.openTab(kind: "editor.file", title: "a", payload: "a")!
+
+        layout.update(id, title: "a", isDirty: true, badge: .dot(.green))
+
+        #expect(layout.model.active.active?.badge == .dot(.green))
+        #expect(layout.model.active.active?.isDirty == true)
+    }
+
+    @Test func closingTellsTheOwnerOnceTheTabIsGone() async {
+        let layout = LayoutManager()
+        var closed: [TabID] = []
+        layout.register(
+            tabKind: CenterTabDescriptor(
+                kind: "agent.claude", isTerminal: true, makeView: { _, _ in AnyView(EmptyView()) },
+                serialize: { _ in nil }, onClose: { closed.append($0) }))
+        let id = layout.openTab(kind: "agent.claude", title: "Claude", payload: "")!
+        #expect(layout.isTerminalTabActive)
+
+        await layout.closeTab(id)
+
+        #expect(closed == [id])
+        #expect(!layout.isTerminalTabActive)
+    }
+
+    @Test func removesAToolbarItemWithItsBadge() {
+        let layout = LayoutManager()
+        layout.register(
+            toolbarItem: ToolbarItemDescriptor(
+                id: "agent.claude", title: "Claude", icon: "circle", placement: .leading,
+                kind: .action(perform: {}, secondaryMenu: nil)))
+        layout.setBadge(.dot(.green), on: "agent.claude")
+
+        layout.removeToolbarItem("agent.claude")
+
+        #expect(layout.toolbarItem("agent.claude") == nil)
+        #expect(layout.badge(of: "agent.claude") == .none)
+    }
 }

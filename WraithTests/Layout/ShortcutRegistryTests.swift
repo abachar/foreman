@@ -102,6 +102,23 @@ struct ShortcutRegistryTests {
         #expect(registry.shortcut(for: "git.status")?.description == "cmd+shift+g")
         #expect(registry.shortcut(for: "git.history") == nil)
     }
+    @Test func terminalScopeAppliesToAnyTerminalKindAndMasksGlobal() {
+        registry.register(action("editor.keepOpen", "cmd+k", scope: .tab(kind: "editor.file")))
+        registry.register(action("terminal.clear", "cmd+k", scope: .terminal))
+        registry.register(action("app.other", "cmd+k"))
+
+        #expect(registry.problems.isEmpty)
+        #expect(resolve("cmd+k", kind: "agent.claude", terminal: true) == "terminal.clear")
+        #expect(resolve("cmd+k", kind: "run.build", terminal: true) == "terminal.clear")
+        #expect(resolve("cmd+k", kind: "editor.file") == "editor.keepOpen")
+        #expect(resolve("cmd+k", kind: "git.diff") == "app.other")
+    }
+
+    @Test func terminalKeepsEverythingWithoutCommand() {
+        registry.register(action("terminal.clear", "ctrl+l", scope: .terminal))
+
+        #expect(resolve("ctrl+l", kind: "agent.claude", terminal: true) == nil)
+    }
 }
 
 /// layout R22b, R23: the `panel` scope.

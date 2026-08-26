@@ -40,10 +40,12 @@ struct ZonesView: NSViewControllerRepresentable {
                 }
                 layout.windowFrame = window.frame
                 toolbar.attach(to: window)
-                // layout R25: no terminal surface yet (M2); the active tab's kind drives the scopes.
+                // layout R25: a terminal surface has the focus when it is the active tab and the
+                // center has the keyboard.
                 layout.shortcuts.startMonitoring(window: window) {
                     (
-                        activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false,
+                        activeTabKind: layout.model.active.active?.kind,
+                        isTerminalFocused: layout.isTerminalTabActive && layout.panels.focus == .center,
                         isPanelFocused: layout.panels.focus != .center
                     )
                 }

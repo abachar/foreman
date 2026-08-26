@@ -27,13 +27,19 @@ nonisolated struct Tab: Identifiable, Equatable, Sendable {
     var isDirty = false
     /// editor R2: shown in italics; the owner decides when it becomes pinned.
     var isPreview = false
+    /// terminal R7: a mark set by the owner (process running, bell, exit), never persisted.
+    var badge: ToolbarBadge = .none
 
-    init(id: TabID = TabID(), kind: String, title: String, isDirty: Bool = false, isPreview: Bool = false) {
+    init(
+        id: TabID = TabID(), kind: String, title: String, isDirty: Bool = false, isPreview: Bool = false,
+        badge: ToolbarBadge = .none
+    ) {
         self.id = id
         self.kind = kind
         self.title = title
         self.isDirty = isDirty
         self.isPreview = isPreview
+        self.badge = badge
     }
 }
 
@@ -97,11 +103,14 @@ nonisolated struct TabGroup: Equatable, Sendable {
         step(by: -1)
     }
 
-    mutating func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false) {
+    mutating func update(
+        _ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false, badge: ToolbarBadge = .none
+    ) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].title = title
         tabs[index].isDirty = isDirty
         tabs[index].isPreview = isPreview
+        tabs[index].badge = badge
     }
 
     private mutating func step(by offset: Int) {

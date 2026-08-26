@@ -10,6 +10,8 @@ nonisolated enum ShortcutScope: Hashable, Sendable {
     case tab(kind: String)
     /// Only while a panel has the keyboard focus (layout R23: `escape` from a panel only).
     case panel
+    /// Only while the active tab is a terminal surface, whatever its kind (terminal R12).
+    case terminal
 }
 
 /// An action a feature or the layout binds to a shortcut (layout R22).
@@ -116,6 +118,9 @@ final class ShortcutRegistry {
             return actions.first { $0.id == id }
         }
         if let kind = activeTabKind, let id = bindings[.tab(kind: kind)]?[shortcut] {
+            return actions.first { $0.id == id }
+        }
+        if isTerminalFocused, let id = bindings[.terminal]?[shortcut] {
             return actions.first { $0.id == id }
         }
         guard let id = bindings[.global]?[shortcut] else { return nil }

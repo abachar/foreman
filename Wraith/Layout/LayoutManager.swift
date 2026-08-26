@@ -90,6 +90,12 @@ final class LayoutManager {
         toolbarItems.first { $0.id == id }
     }
 
+    /// agents R2, US5: an agent that disappears from the config or the PATH loses its button.
+    func removeToolbarItem(_ id: String) {
+        toolbarItems.removeAll { $0.id == id }
+        badges[id] = nil
+    }
+
     func setBadge(_ badge: ToolbarBadge, on itemID: String) {
         badges[itemID] = badge
     }
@@ -126,8 +132,14 @@ final class LayoutManager {
         tabViews[tab.id]
     }
 
-    func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false) {
-        model.update(id, title: title, isDirty: isDirty, isPreview: isPreview)
+    func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false, badge: ToolbarBadge = .none) {
+        model.update(id, title: title, isDirty: isDirty, isPreview: isPreview, badge: badge)
+    }
+
+    /// layout R25: the active tab of the active group is a terminal surface.
+    var isTerminalTabActive: Bool {
+        guard let kind = model.active.active?.kind else { return false }
+        return tabKinds[kind]?.isTerminal == true
     }
 
     func activate(_ id: TabID, in group: GroupID) {
@@ -149,6 +161,7 @@ final class LayoutManager {
         }
         model.close(id)
         tabViews[id] = nil
+        tabKinds[tab.kind]?.onClose(id)
     }
 
     /// layout R15: confirmations one by one, in reading order; a refusal stops everything.

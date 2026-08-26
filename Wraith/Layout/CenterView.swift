@@ -105,7 +105,14 @@ struct TabBarView: View {
     private func tabButton(_ tab: Tab) -> some View {
         let isActive = tab.id == group.activeTab
         return HStack(spacing: 6) {
-            Text(tab.title + (tab.isDirty ? " •" : ""))
+            // terminal R7: the owner's mark; a running process is dirty (terminal R10) but the
+            // dot says it already.
+            if case .dot(let color) = tab.badge {
+                Circle()
+                    .fill(Self.color(color))
+                    .frame(width: 7, height: 7)
+            }
+            Text(tab.title + (tab.isDirty && tab.badge == .none ? " •" : ""))
                 .lineLimit(1)
                 .font(.callout)
                 .italic(tab.isPreview)
@@ -125,6 +132,14 @@ struct TabBarView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             layout.activate(tab.id, in: group.id)
+        }
+    }
+
+    private static func color(_ color: ToolbarBadge.BadgeColor) -> Color {
+        switch color {
+        case .green: return .green
+        case .orange: return .orange
+        case .red: return .red
         }
     }
 }

@@ -2,7 +2,7 @@
 
 > Table unique des raccourcis par défaut, toutes features confondues, et leur état d'implémentation. La règle source est dans la spec citée ; la tâche qui livre un raccourci met à jour sa ligne. Notation `config` (`cmd`, `shift`, `opt` = Option ⌥, `ctrl`, `+` ; `alt` accepté en alias). Tout raccourci est surchargeable via `config.shortcuts["<id>"]` (`config` R4).
 
-Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a le focus), `terminal` (l'onglet actif est une surface terminal, M2) — `layout` R22b — ; `natif` (composant natif, hors registre), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
+Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a le focus), `terminal` (l'onglet actif est une surface terminal et le centre a le clavier) — `layout` R22b — ; `natif` (composant natif, hors registre), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
 
 ## Layout (`layout` R23)
 

@@ -13,17 +13,26 @@ struct CenterTabDescriptor {
     let serialize: (TabID) -> String?
     /// layout R15: the owner asks in its own words; `true` closes.
     let confirmClose: (TabID) async -> Bool
+    /// Called once the tab left the layout (`cmd+w`, group, window): the owner releases what it
+    /// holds — a terminal stops its process (terminal R11).
+    let onClose: (TabID) -> Void
+    /// layout R25: a terminal surface takes every key that is not a `cmd+…` shortcut.
+    let isTerminal: Bool
 
     init(
         kind: String,
+        isTerminal: Bool = false,
         makeView: @escaping (TabID, String) -> AnyView?,
         serialize: @escaping (TabID) -> String?,
-        confirmClose: @escaping (TabID) async -> Bool = { _ in true }
+        confirmClose: @escaping (TabID) async -> Bool = { _ in true },
+        onClose: @escaping (TabID) -> Void = { _ in }
     ) {
         self.kind = kind
+        self.isTerminal = isTerminal
         self.makeView = makeView
         self.serialize = serialize
         self.confirmClose = confirmClose
+        self.onClose = onClose
     }
 }
 
