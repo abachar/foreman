@@ -32,7 +32,7 @@ nonisolated indirect enum LayoutNode: Equatable, Codable, Sendable {
     case split(orientation: SplitOrientation, first: LayoutNode, second: LayoutNode)
 
     /// layout R19: what the center zone guarantees to every group.
-    static let minimumGroupSize = CGSize(width: 400, height: 200)
+    static let minimumGroupSize = CGSize(width: 300, height: 150)
 
     /// Leaves in reading order: left before right, top before bottom.
     var groups: [GroupID] {

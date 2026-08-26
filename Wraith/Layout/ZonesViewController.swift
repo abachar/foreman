@@ -4,7 +4,7 @@ import SwiftUI
 /// The four zones as native split views (layout, options): `left | (center / bottom) | right`.
 ///
 /// Panels are collapsible items with their minimum thickness; the center never goes under
-/// 400 x 200 pt (R19). On resize the panels shrink then hide in the order right, left, bottom and
+/// 300 x 150 pt (R19). On resize the panels shrink then hide in the order right, left, bottom and
 /// come back by themselves (R20), without touching the persisted sizes.
 final class ZonesViewController: NSSplitViewController {
     /// What the SwiftUI side asks for; applied on every update.

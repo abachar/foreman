@@ -5,7 +5,7 @@ import Foundation
 nonisolated enum ZoneSizing {
     static let defaults: [PanelSide: CGFloat] = [.left: 260, .right: 320, .bottom: 240]
     static let minimumPanel: CGFloat = 160
-    static let minimumCenter = CGSize(width: 400, height: 200)
+    static let minimumCenter = CGSize(width: 300, height: 150)
     static let minimumWindow = CGSize(width: 800, height: 500)
 
     /// Order in which panels are shrunk, then hidden, when the window is too small (R20).

@@ -63,9 +63,9 @@ struct LayoutNodeTests {
         let tree = LayoutNode.group(a).splitting(a, .vertical, adding: b)
 
         #expect(tree.canSplit(a, .vertical, in: size))
-        #expect(!tree.canSplit(a, .vertical, in: CGSize(width: 1500, height: 800)))
+        #expect(!tree.canSplit(a, .vertical, in: CGSize(width: 1100, height: 800)))
         #expect(tree.canSplit(a, .horizontal, in: size))
-        #expect(!tree.canSplit(a, .horizontal, in: CGSize(width: 1600, height: 300)))
+        #expect(!tree.canSplit(a, .horizontal, in: CGSize(width: 1600, height: 250)))
     }
 
     @Test func findsTheNeighborWithTheLargestOverlap() {

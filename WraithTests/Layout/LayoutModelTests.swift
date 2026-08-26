@@ -31,7 +31,7 @@ struct LayoutModelTests {
     @Test func refusesASplitThatWouldBreakTheMinimumSize() {
         var model = LayoutModel()
 
-        let didSplit = model.split(.vertical, in: CGSize(width: 700, height: 500))
+        let didSplit = model.split(.vertical, in: CGSize(width: 500, height: 500))
         #expect(!didSplit)
         #expect(model.tree.groups.count == 1)
     }

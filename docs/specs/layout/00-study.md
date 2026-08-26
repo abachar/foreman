@@ -64,7 +64,7 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
 ### Redimensionnement et tailles
 
 - R18 — Seuls les panneaux se redimensionnent, à la souris, par leur bord intérieur. Largeur des panneaux latéraux et hauteur du panneau bas sont persistées **par slot** (pas par panneau) dans `state.json`.
-- R19 — Tailles par défaut : `left` 260 pt, `right` 320 pt, `bottom` 240 pt. Minimum d'un panneau : 160 pt. La zone centrale garde toujours au moins 400 × 200 pt.
+- R19 — Tailles par défaut : `left` 260 pt, `right` 320 pt, `bottom` 240 pt. Minimum d'un panneau : 160 pt. La zone centrale garde toujours au moins 300 × 150 pt (400 × 200 jusqu'au 2026-08-26).
 - R20 — Taille minimale de la fenêtre : 800 × 500 pt. Si l'espace manque malgré tout (fenêtre réduite avec trois panneaux ouverts), les panneaux sont **rétrécis jusqu'à leur minimum** dans l'ordre `right`, `left`, `bottom`, puis masqués dans le même ordre ; ils réapparaissent d'eux-mêmes quand la place revient. Leur taille persistée n'est pas modifiée par cet ajustement.
 - R21 — Les onglets d'un groupe reçoivent la taille du groupe ; un contenu qui a besoin de connaître sa taille (surface terminal) la reçoit par un callback de redimensionnement, débouncé par le producteur.
 
@@ -113,7 +113,7 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
 - Deux features déclarent le même `PanelID` : le second est refusé et loggé en `fault` (invariant de programmation, les features sont compilées ensemble).
 - Un panneau change de slot entre deux versions (la feature a modifié son `side`) : l'état `[side: id]` ne le trouve plus dans l'ancien slot → considéré masqué.
 - `cmd+N` avec N > nombre d'onglets : aucun effet (sauf `cmd+9` = dernier).
-- Split quand la zone centrale ne peut plus garantir 400 × 200 pt par groupe après division : le split est refusé (bip système), rien ne change.
+- Split quand la zone centrale ne peut plus garantir 300 × 150 pt par groupe après division : le split est refusé (bip système), rien ne change.
 - Fermeture de fenêtre pendant une confirmation R15 : annuler la confirmation annule la fermeture.
 
 ## Hors périmètre v1
