@@ -29,7 +29,9 @@ struct TerminalTabView: View {
                 id: id, service: service, font: service.theme.editorFont,
                 palette: service.theme.terminalPalette(dark: service.theme.isDark(systemIsDark: colorScheme == .dark))
             )
-            .id(tab.generation)
+            // One native view per tab and per process: two terminal tabs are views of the same
+            // type, SwiftUI would otherwise update the first surface instead of making the second.
+            .id("\(id.uuid)-\(tab.generation)")
             .help(tab.subtitle ?? "")
             if case .exited(let exit) = tab.state {
                 Divider()
