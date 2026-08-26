@@ -16,6 +16,8 @@ final class EditorFeature {
     /// The tab `open` is creating: `openTab` asks for its view before returning its id.
     private var opening: EditorTab?
     private var watch: Task<Void, Never>?
+    private let palette: Palette
+    private let index: QuickOpenIndex
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
 
@@ -23,11 +25,13 @@ final class EditorFeature {
         var recent: [String]
     }
 
-    init(layout: LayoutManager, workspace: Workspace, theme: ThemeService) {
+    init(layout: LayoutManager, workspace: Workspace, theme: ThemeService, palette: Palette) {
         self.layout = layout
         self.workspace = workspace
         self.theme = theme
+        self.palette = palette
         highlighter = Highlighter(theme: theme)
+        index = QuickOpenIndex(root: workspace.root)
         layout.register(
             tabKind: CenterTabDescriptor(
                 kind: Self.tabKind,
@@ -36,7 +40,52 @@ final class EditorFeature {
                 confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true }))
         registerActions()
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
+        publishRecents()
         watchDisk()
+    }
+
+    // MARK: - Quick open (editor R17–R19)
+
+    /// `cmd+p`: the palette over the window, fed by the index (built on first use, R18).
+    private func quickOpen() {
+        guard let window = NSApp.keyWindow else { return }
+        let source = PaletteSource(
+            placeholder: "Open file…",
+            results: { [weak self] query in await self?.quickOpenResults(query) ?? PaletteSource.Results(items: []) },
+            select: { [weak self] item, newGroup in
+                guard let self else { return }
+                open(Workspace.url(forPersistedPath: item.id, root: workspace.root), preview: false, newGroup: newGroup)
+            })
+        palette.present(source, over: window)
+    }
+
+    private func quickOpenResults(_ query: String) async -> PaletteSource.Results {
+        if query.isEmpty {
+            // editor R19: no query, the recent files.
+            let existing = recentPaths.filter {
+                FileManager.default.fileExists(
+                    atPath: Workspace.url(forPersistedPath: $0, root: workspace.root).path(percentEncoded: false))
+            }
+            return PaletteSource.Results(items: existing.map { PaletteItem(id: $0, title: AttributedString($0)) })
+        }
+        await index.build()
+        let search = await index.search(query, limit: Palette.limit)
+        return PaletteSource.Results(
+            items: search.paths.map { PaletteItem(id: $0, title: PaletteItem.highlighted($0, matching: query)) },
+            notice: search.isIndexTruncated
+                ? "Index truncated at \(QuickOpenIndex.limit) files — open a subfolder for a full search" : nil)
+    }
+
+    /// editor R19 and layout R33: the home screen's Recent section.
+    private func publishRecents() {
+        layout.replaceHomeEntries(
+            in: .recent,
+            with: recentPaths.prefix(10).map { path in
+                HomeEntry(id: "editor.recent.\(path)", title: path, icon: "doc", section: .recent) { [weak self] in
+                    guard let self else { return }
+                    open(Workspace.url(forPersistedPath: path, root: workspace.root), preview: false)
+                }
+            })
     }
 
     isolated deinit {
@@ -53,6 +102,7 @@ final class EditorFeature {
                 for tab in tabs.values where changed.contains(tab.url.standardizedFileURL.path(percentEncoded: false)) {
                     await tab.fileChangedOnDisk()
                 }
+                await index.apply(batch)
             }
         }
     }
@@ -92,6 +142,7 @@ final class EditorFeature {
     private func noteRecent(_ path: String) {
         recentPaths = Self.pushRecent(path, into: recentPaths)
         workspace.setState("editor", to: State(recent: recentPaths))
+        publishRecents()
     }
 
     // MARK: - Editing (editor R6, R8, R10, R23)
@@ -123,6 +174,17 @@ final class EditorFeature {
                 ShortcutAction(
                     id: id, title: title, scope: .tab(kind: Self.tabKind), defaultShortcut: shortcut, perform: perform))
         }
+        // editor R23: quick open is global.
+        layout.shortcuts.register(
+            ShortcutAction(id: "editor.quickOpen", title: "Quick Open", defaultShortcut: "cmd+p") { [weak self] in
+                self?.quickOpen()
+            })
+        layout.register(
+            homeEntry: HomeEntry(
+                id: "editor.quickOpen", title: "Open File", icon: "doc.text.magnifyingglass", section: .actions
+            ) {
+                [weak self] in self?.quickOpen()
+            })
     }
 
     private var active: (id: TabID, tab: EditorTab)? {

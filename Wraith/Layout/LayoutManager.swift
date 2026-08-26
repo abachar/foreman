@@ -61,6 +61,12 @@ final class LayoutManager {
     }
 
     /// layout R33: same rules as toolbar items, a duplicated id is refused.
+    /// layout R33: a section whose entries change over time (recent files, editor R19).
+    func replaceHomeEntries(in section: HomeEntry.Section, with entries: [HomeEntry]) {
+        homeEntries.removeAll { $0.section == section }
+        homeEntries.append(contentsOf: entries)
+    }
+
     func register(homeEntry: HomeEntry) {
         guard !homeEntries.contains(where: { $0.id == homeEntry.id }) else {
             logger.fault("home entry \(homeEntry.id, privacy: .public) registered twice, second refused")

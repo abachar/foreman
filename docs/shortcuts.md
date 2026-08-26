@@ -34,7 +34,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
-| `cmd+p` | `editor.quickOpen` | Quick open | global | ⚪ (1.13) |
+| `cmd+p` | `editor.quickOpen` | Quick open | global | 🟢 |
 | `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | ⚪ (1.14) |
 | `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | 🟢 |
 | `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | 🟢 (natif `NSTextView`, menu Edit) |
@@ -45,7 +45,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` ferme la barre (natif) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | 🟢 |
-| `enter` / `cmd+enter` / `escape` | — | Palette : ouvrir / nouveau groupe / fermer | natif | ⚪ (1.13) |
+| `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette : ouvrir / nouveau groupe / fermer / naviguer | natif | 🟢 |
 
 ## Agents (`agents` R9)
 

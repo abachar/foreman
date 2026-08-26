@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D400000000000000A2 /* AsyncFileMonitor */; };
+		B1B2C3D40000003000030000 /* FuzzyMatch in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000003000020000 /* FuzzyMatch */; };
 		B1B2C3D40000002000030000 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000002000020000 /* Markdown */; };
 		B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000010002 /* SwiftTreeSitter */; };
 		B1B2C3D40000000000020003 /* Neon in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000020002 /* Neon */; };
@@ -72,6 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */,
+				B1B2C3D40000003000030000 /* FuzzyMatch in Frameworks */,
 				B1B2C3D40000002000030000 /* Markdown in Frameworks */,
 				B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */,
 				B1B2C3D40000000000020003 /* Neon in Frameworks */,
@@ -135,6 +137,7 @@
 			name = Wraith;
 			packageProductDependencies = (
 				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
+				B1B2C3D40000003000020000 /* FuzzyMatch */,
 				B1B2C3D40000002000020000 /* Markdown */,
 				B1B2C3D40000000000010002 /* SwiftTreeSitter */,
 				B1B2C3D40000000000020002 /* Neon */,
@@ -207,6 +210,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
+				B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */,
 				B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */,
 				B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */,
@@ -674,6 +678,14 @@
 				minimumVersion = 0.8.0;
 			};
 		};
+		B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ordo-one/FuzzyMatch";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -761,6 +773,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */;
 			productName = Markdown;
+		};
+		B1B2C3D40000003000020000 /* FuzzyMatch */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */;
+			productName = FuzzyMatch;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

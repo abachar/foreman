@@ -14,7 +14,7 @@ struct EditorFeatureTests {
         try Data("b".utf8).write(to: root.appending(path: "b.txt"))
         let layout = LayoutManager()
         let workspace = Workspace(root: root)
-        let editor = EditorFeature(layout: layout, workspace: workspace, theme: ThemeService())
+        let editor = EditorFeature(layout: layout, workspace: workspace, theme: ThemeService(), palette: Palette())
 
         editor.open(root.appending(path: "a.txt"), preview: false)
         editor.open(root.appending(path: "a.txt"), preview: false)
