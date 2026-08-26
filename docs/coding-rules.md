@@ -13,9 +13,9 @@ Pas d'accents ni de caractères non ASCII dans les identifiants et noms de fichi
 
 ## Toolchain
 
-- Swift 6, mode langage 6, concurrence stricte. Cible `macOS 15`, Apple Silicon.
-- SwiftPM est la source de vérité du build.
-- Avertissements = erreurs. `swift format lint --strict --recursive Sources Tests` doit passer (`.swift-format` à la racine : 4 espaces, largeur 120).
+- Swift 6, mode langage 6, concurrence stricte. Apple Silicon. Deployment target = **la dernière version stable de macOS** (26 à la création du projet) ; on monte quand la machine de l'auteur monte, jamais de code conditionnel pour une version antérieure.
+- Le projet Xcode (`Wraith.xcodeproj`) est la source de vérité du build ; SwiftPM ne sert qu'aux dépendances.
+- Avertissements = erreurs. `swift format lint --strict --recursive Wraith WraithTests` doit passer (`.swift-format` à la racine : 4 espaces, largeur 120).
 
 ## Fichiers
 
@@ -93,7 +93,7 @@ Pas d'accents ni de caractères non ASCII dans les identifiants et noms de fichi
 - Branches `feat/<domaine>-<sujet>`, `fix/…`, `docs/…`, `chore/…` ; `<domaine>` = dossier de spec.
 - Commits conventionnels `type(scope): sujet`, impératif, ≤ 72 caractères ; le corps dit *pourquoi* et cite la spec.
 - Un commit compile et passe les tests. Pas de « wip » ni de réécriture d'historique sur une branche partagée.
-- Jamais commité : `.build/`, `.DS_Store`, `.wraith/state.json`, secrets. `Package.resolved` est commité.
+- Jamais commité : `xcuserdata/`, `DerivedData/`, `.build/`, `.DS_Store`, `.wraith/state.json`, secrets. `Package.resolved` (dans le `.xcodeproj`) est commité.
 - Un changement de comportement met à jour la spec (règle, décision) dans le même commit.
 
 ## Checklist avant de pousser

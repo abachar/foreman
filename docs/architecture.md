@@ -35,10 +35,11 @@ Une fenêtre = un dossier = un workspace. Au centre, des groupes d'onglets dans 
 
 ## Structure
 
-Une seule target exécutable, un dossier par feature. Pas de framework interne, pas de targets « plugin », pas de chargement dynamique.
+Un projet Xcode (app macOS SwiftUI, sans App Sandbox : on lit tout le disque et on lance des process), une target app, une target de tests, un dossier par feature. Pas de framework interne, pas de targets « plugin », pas de chargement dynamique.
 
 ```
-Sources/Wraith/
+Wraith.xcodeproj
+Wraith/
 ├── App/          # entrée, fenêtres, menus, ThemeService
 ├── Workspace/    # config.json, state.json, FSWatch, Keychain
 ├── Layout/       # splits, groupes d'onglets, PanelManager, ShortcutRegistry, toolbar, écran d'accueil
@@ -46,8 +47,8 @@ Sources/Wraith/
 ├── Highlight/    # tree-sitter → attributs, partagé (editor, diff, sql)
 ├── Terminal/     # surface SwiftTerm + process, TerminalService
 ├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/
-Tests/WraithTests/   # même découpage
-cli/wraith           # script shell : ouvre un dossier dans l'app
+WraithTests/         # même découpage
+cli/wraith           # script shell : `open -a Wraith "$(pwd)"`
 ```
 
 - Sens des dépendances, par convention : `App` → features → dossiers partagés (`Layout`, `Palette`, `Highlight`, `Terminal`, `Workspace`). Une feature peut appeler une autre feature directement (`Git` appelle `Editor.open(path)`) ; on évite les cycles, c'est tout.
