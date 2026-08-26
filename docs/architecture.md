@@ -77,7 +77,7 @@ On importe là où on utilise. Versions `.upToNextMinor`, `Package.resolved` com
 | Postgres | **PostgresNIO** | schéma via `pg_catalog` |
 | Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ), grammaires SPM | editor, diff git, SQL |
 | Markdown | **swift-markdown** | preview |
-| Fuzzy | lib SPM (Ifrit ou équivalent, à choisir au découpage de M1) | palette |
+| Fuzzy | **FuzzyMatch** (ordo-one) | Smith-Waterman façon fzf : bonus de frontières, ranges pour le surlignage (décision editor 2026-08-26) |
 | Recherche contenu | binaire `rg` (repli `grep`) | `cmd+shift+f` |
 | Secrets | Security.framework (Keychain) | mot de passe PG |
 | Surveillance disque | **AsyncFileMonitor** (CleanCocoa) sur FSEvents | un `FolderContentMonitor` par workspace, multicast ; `FSWatchService` n'ajoute que le filtrage par chemin et les lots débouncés |
