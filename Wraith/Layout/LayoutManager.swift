@@ -205,7 +205,6 @@ final class LayoutManager {
             ),
             ("layout.move.up", "Move Tab Up", "cmd+opt+shift+up", { [weak self] in self?.moveActiveTab(.up) }),
             ("layout.move.down", "Move Tab Down", "cmd+opt+shift+down", { [weak self] in self?.moveActiveTab(.down) }),
-            ("layout.focus.center", "Focus Center", "escape", { [weak self] in self?.panels.focusCenter() }),
             ("layout.window.new", "New Window", "cmd+shift+n", { [weak self] in self?.openFolder() }),
             (
                 "layout.toolbar.toggle", "Toggle Toolbar", "cmd+opt+t",
@@ -216,6 +215,14 @@ final class LayoutManager {
             shortcuts.register(
                 ShortcutAction(id: id, title: title, defaultShortcut: shortcut, isLayout: true, perform: perform))
         }
+        // layout R23: `escape` from a panel only; at the center it belongs to the content (find bar…).
+        shortcuts.register(
+            ShortcutAction(
+                id: "layout.focus.center", title: "Focus Center", scope: .panel, defaultShortcut: "escape",
+                isLayout: true
+            ) {
+                [weak self] in self?.panels.focusCenter()
+            })
         for number in 1...9 {
             shortcuts.register(
                 ShortcutAction(

@@ -42,7 +42,10 @@ struct ZonesView: NSViewControllerRepresentable {
                 toolbar.attach(to: window)
                 // layout R25: no terminal surface yet (M2); the active tab's kind drives the scopes.
                 layout.shortcuts.startMonitoring(window: window) {
-                    (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false)
+                    (
+                        activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false,
+                        isPanelFocused: layout.panels.focus != .center
+                    )
                 }
                 onWindow(window)
             },

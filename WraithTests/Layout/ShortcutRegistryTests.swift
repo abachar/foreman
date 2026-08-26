@@ -103,3 +103,19 @@ struct ShortcutRegistryTests {
         #expect(registry.shortcut(for: "git.history") == nil)
     }
 }
+
+/// layout R22b, R23: the `panel` scope.
+@MainActor
+struct PanelScopeTests {
+    @Test func panelScopedActionOnlyResolvesWhenAPanelHasFocus() throws {
+        let layout = LayoutManager()
+        let escape = try #require(Shortcut(parsing: "escape"))
+        #expect(
+            layout.shortcuts.resolve(escape, activeTabKind: nil, isTerminalFocused: false, isPanelFocused: true)?.id
+                == "layout.focus.center")
+        #expect(
+            layout.shortcuts.resolve(
+                escape, activeTabKind: "editor.file", isTerminalFocused: false, isPanelFocused: false) == nil)
+        #expect(layout.shortcuts.problems.isEmpty)
+    }
+}

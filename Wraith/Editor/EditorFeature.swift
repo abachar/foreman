@@ -111,8 +111,6 @@ final class EditorFeature {
                 "editor.replace", "Find and Replace", "cmd+opt+f",
                 { [weak self] in self?.findActive(.showReplaceInterface) }
             ),
-            // editor R7: `escape` closes the bar; layout R6 (focus center) still applies (R22b).
-            ("editor.escape", "Close Find Bar", "escape", { [weak self] in self?.escapeActive() }),
         ]
         for (id, title, shortcut, perform) in actions {
             layout.shortcuts.register(
@@ -183,11 +181,6 @@ final class EditorFeature {
         let sender = NSMenuItem()
         sender.tag = action.rawValue
         textView.performFindPanelAction(sender)
-    }
-
-    private func escapeActive() {
-        findActive(.hideFindInterface)
-        layout.panels.focusCenter()
     }
 
     /// The dirty marker follows the tab (editor R1, R5); the first edit pins a preview (R2).

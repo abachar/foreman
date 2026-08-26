@@ -71,7 +71,7 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
 ### Raccourcis
 
 - R22 — Un raccourci est déclaré, jamais capté ad hoc (`coding-rules`). Le `ShortcutRegistry` est la seule table `raccourci → action`, alimentée par : les actions du layout (ci-dessous), les panneaux et actions des features, puis les surcharges (`config` R4).
-- R22b — Chaque action a une **portée** : `global` (défaut), ou `tab(kind)` (active uniquement quand un onglet de ce kind a le focus dans le groupe actif). Deux actions de portées disjointes peuvent partager un raccourci ; une action `tab(kind)` masque une action `global` de même raccourci quand elle est active. Les actions du layout sont globales.
+- R22b — Chaque action a une **portée** : `global` (défaut), `tab(kind)` (active uniquement quand un onglet de ce kind a le focus dans le groupe actif), ou `panel` (active uniquement quand un panneau a le focus ; `escape`, décision 2026-08-27). Deux actions de portées disjointes peuvent partager un raccourci ; une action `tab(kind)` masque une action `global` de même raccourci quand elle est active. Les actions du layout sont globales.
 - R23 — Raccourcis par défaut du layout (notation `config`) :
 
   | Action | Raccourci |

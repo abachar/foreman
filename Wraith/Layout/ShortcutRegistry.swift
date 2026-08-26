@@ -8,6 +8,8 @@ nonisolated enum ShortcutScope: Hashable, Sendable {
     case global
     /// Only while a tab of this kind is active in the active group.
     case tab(kind: String)
+    /// Only while a panel has the keyboard focus (layout R23: `escape` from a panel only).
+    case panel
 }
 
 /// An action a feature or the layout binds to a shortcut (layout R22).
@@ -104,9 +106,14 @@ final class ShortcutRegistry {
     }
 
     /// layout R22b, R25: the action for `shortcut` in the current context, if any.
-    func resolve(_ shortcut: Shortcut, activeTabKind: String?, isTerminalFocused: Bool) -> ShortcutAction? {
+    func resolve(
+        _ shortcut: Shortcut, activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool = false
+    ) -> ShortcutAction? {
         if isTerminalFocused, !shortcut.requiresCommand {
             return nil
+        }
+        if isPanelFocused, let id = bindings[.panel]?[shortcut] {
+            return actions.first { $0.id == id }
         }
         if let kind = activeTabKind, let id = bindings[.tab(kind: kind)]?[shortcut] {
             return actions.first { $0.id == id }
@@ -117,14 +124,18 @@ final class ShortcutRegistry {
 
     /// layout, options: one local monitor per window, ahead of SwiftUI; `context` says what has
     /// the focus at the time of the event.
-    func startMonitoring(window: NSWindow, context: @escaping () -> (activeTabKind: String?, isTerminalFocused: Bool)) {
+    func startMonitoring(
+        window: NSWindow,
+        context: @escaping () -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool)
+    ) {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak window] event in
             guard let self, event.window === window, let shortcut = Shortcut(event: event) else { return event }
             let focus = context()
             guard
                 let action = resolve(
-                    shortcut, activeTabKind: focus.activeTabKind, isTerminalFocused: focus.isTerminalFocused)
+                    shortcut, activeTabKind: focus.activeTabKind, isTerminalFocused: focus.isTerminalFocused,
+                    isPanelFocused: focus.isPanelFocused)
             else { return event }
             action.perform()
             return nil
