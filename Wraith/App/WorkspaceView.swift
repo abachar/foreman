@@ -28,6 +28,7 @@ struct WorkspaceView: View {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
+                workspace.watchConfig()
             }
             .onDisappear {
                 // config R8: whatever is still pending is written when the window closes.

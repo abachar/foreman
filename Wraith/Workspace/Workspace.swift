@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import os
 
-/// A folder opened in a window, and everything Wraith knows about it: its config and persisted
-/// state today, file watching with the next task (config, architecture).
+/// A folder opened in a window, and everything Wraith knows about it: its config, its persisted
+/// state and the FSEvents stream the features share (config, architecture).
 @Observable
 @MainActor
 final class Workspace {
@@ -22,13 +22,30 @@ final class Workspace {
     /// once (config, edge cases: read-only root).
     private(set) var isStatePersisted = true
 
+    /// The single FSEvents stream of this workspace (architecture: shared services).
+    let fsWatch: FSWatchService
+
+    /// Every config accepted after a change on disk (config R6).
+    ///
+    /// Features subscribe from a task they own; nothing is emitted for a rejected file.
+    let configChanges: AsyncStream<WorkspaceConfig>
+
+    private let configChangesContinuation: AsyncStream<WorkspaceConfig>.Continuation
     private let stateWriteDelay: Duration
     private var pendingStateWrite: Task<Void, Never>?
+    private var configWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "workspace")
 
     init(root: URL, stateWriteDelay: Duration = .seconds(1)) {
         self.root = root
         self.stateWriteDelay = stateWriteDelay
+        fsWatch = FSWatchService(roots: [root])
+        (configChanges, configChangesContinuation) = AsyncStream.makeStream()
+    }
+
+    isolated deinit {
+        configWatch?.cancel()
+        configChangesContinuation.finish()
     }
 
     // MARK: - Config
@@ -44,12 +61,25 @@ final class Workspace {
             }
             config = loaded
             configError = nil
+            configChangesContinuation.yield(loaded)
         } catch let error as WorkspaceError {
             logger.error("config.json rejected: \(error.description, privacy: .public)")
             configError = error
         } catch {
             logger.error("config.json rejected: \(error.localizedDescription, privacy: .public)")
             configError = .invalidJSON(file: root, line: nil, message: error.localizedDescription)
+        }
+    }
+
+    /// config R6: reloads the config whenever the file changes on disk.
+    func watchConfig() {
+        guard configWatch == nil else { return }
+        let file = WorkspaceConfig.file(under: root)
+        configWatch = Task { [weak self, fsWatch] in
+            for await _ in await fsWatch.changes(under: file) {
+                guard let self else { return }
+                await self.reloadConfig()
+            }
         }
     }
 
