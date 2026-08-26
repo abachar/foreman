@@ -30,6 +30,7 @@ The failure mode we guard against is an agent rewriting what a library or Apple 
 - Git identity for commits: `a.bachar@hotmail.fr`.
 - Never read or list private keys under `~/.ssh`.
 - Use absolute paths in shell commands (the user's shell rewrites relative `cd`).
+- The project requires Xcode 27 (project format 110). If `xcodebuild -version` reports an older Xcode, prefix commands with `DEVELOPER_DIR=<path to Xcode 27>/Contents/Developer`.
 - Do not touch specs or docs unless the task is about them; when you do, keep rule numbers (`R1`, `R2`…) stable and date decisions.
 
 ## Before opening a PR — self-review with one question

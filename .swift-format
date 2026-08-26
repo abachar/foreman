@@ -1,7 +1,9 @@
 {
   "version": 1,
   "lineLength": 120,
-  "indentation": { "spaces": 4 },
+  "indentation": {
+    "spaces": 4
+  },
   "tabWidth": 4,
   "maximumBlankLines": 1,
   "respectsExistingLineBreaks": true,
@@ -14,7 +16,9 @@
   "indentSwitchCaseLabels": false,
   "spacesAroundRangeFormationOperators": false,
   "multiElementCollectionTrailingCommas": true,
-  "fileScopedDeclarationPrivacy": { "accessLevel": "private" },
+  "fileScopedDeclarationPrivacy": {
+    "accessLevel": "private"
+  },
   "rules": {
     "AllPublicDeclarationsHaveDocumentation": true,
     "AlwaysUseLiteralForEmptyCollectionInit": true,
@@ -49,9 +53,7 @@
     "OrderedImports": true,
     "ReplaceForEachWithForLoop": true,
     "ReturnVoidInsteadOfEmptyTuple": true,
-    "TypeNamesShouldBeUpperCamelCase": true,
     "UseEarlyExits": true,
-    "UseExplicitNilComparisonInConditions": true,
     "UseLetInEveryBoundCaseVariable": true,
     "UseShorthandTypeNames": true,
     "UseSingleLinePropertyGetter": true,

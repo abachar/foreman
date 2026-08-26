@@ -12,7 +12,7 @@ Chaque tâche ne dépend que des précédentes. Une tâche = une PR.
 
 | # | Tâche | Règles | Lib / natif | Tests | Taille | Statut | PR |
 |---|---|---|---|---|---|---|---|
-| 0.1 | **Squelette** : projet Xcode créé par l'auteur (app macOS SwiftUI, Swift 6, strict concurrency, target 26, sans sandbox, target de tests Swift Testing), `.gitignore` Xcode, `.swift-format`, arborescence `Wraith/<feature>/`, workflow CI `xcodebuild test` + lint | — | Xcode template | aucun | S | 🟡 | |
+| 0.1 | **Squelette** : projet Xcode créé par l'auteur (app macOS SwiftUI, Swift 6, strict concurrency, target 26, sans sandbox, target de tests Swift Testing), `.gitignore` Xcode, `.swift-format`, arborescence `Wraith/<feature>/`, workflow CI `xcodebuild test` + lint | — | Xcode template | aucun | S | 🟢 | — |
 | 0.2 | **Fenêtre = dossier** : ouverture d'un dossier (menu *Open…*, argument CLI, `application(_:open:)`), une fenêtre par dossier, activation si déjà ouvert, `$HOME` par défaut ; script `cli/wraith` | product R1, R2, R8 ; cas limite dossier disparu | SwiftUI `WindowGroup(for: URL.self)` + `openWindow`, `NSOpenPanel`, `NSApplicationDelegateAdaptor` ; CLI = `open -a Wraith "$(pwd)"` | résolution du dossier (arg → URL canonique, `$HOME` par défaut) | S | ⚪ | |
 | 0.3 | **`Workspace` : config** : lecture `.wraith/config.json` + `~/.config/wraith/config.json`, précédence, sections par feature (`config.section("x")` → `Decodable`), erreur avec ligne, clé `password` ignorée avec avertissement, `repos` absents ignorés | config R1–R5, R7, R11 | `JSONDecoder` (tolérant aux clés inconnues), `JSONSerialization` pour la position d'erreur | précédence défauts < global < workspace ; JSON invalide → dernière config valide + erreur ligne/message ; `password` ignoré ; section absente → vide | M | ⚪ | |
 | 0.4 | **`Workspace` : `state.json`** : lecture au démarrage, écriture atomique débouncée ~1 s et à la fermeture, version de schéma, `.bak` si illisible, chemins relatifs/absolus, racine en lecture seule signalée une fois | config R8–R10 ; cas limites | `FileManager.replaceItemAt`, `Codable`, `Task` + `Task.sleep` pour le debounce | roundtrip ; version inconnue → défaut + `.bak` ; chemin sous/hors racine ; debounce (deux écritures rapprochées = une seule) | M | ⚪ | |
@@ -39,6 +39,8 @@ Taille : S < ½ jour d'agent, M ≈ 1 jour, L ≈ 2 jours. Statut : ⚪ à faire
 - `xcodebuild test` couvre toutes les lignes « Tests » ci-dessus ; lint propre ; aucune dépendance SPM ajoutée.
 
 ## À trancher pendant M0 (décisions attendues)
+
+- 0.1 : la CI cible Xcode 27 via `setup-xcode` ; non vérifiée tant que les runners GitHub n'ont pas la 27 — à confirmer au premier push, sinon passer le workflow en `continue-on-error` jusqu'à disponibilité.
 
 - 0.2 : mécanisme d'ouverture depuis le CLI (`open -a Wraith <dir>` + `application(_:open:)` vs URL scheme `wraith://open?path=`). Recommandation : `open -a`, zéro code de plus.
 - 0.11 : rendu du centre en SwiftUI pur ou `NSSplitView` imbriqués — trancher sur le prototype de la tâche.

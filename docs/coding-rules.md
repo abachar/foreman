@@ -14,7 +14,7 @@ Pas d'accents ni de caractères non ASCII dans les identifiants et noms de fichi
 ## Toolchain
 
 - Swift 6, mode langage 6, concurrence stricte. Apple Silicon. Deployment target = **la dernière version stable de macOS** (26 à la création du projet) ; on monte quand la machine de l'auteur monte, jamais de code conditionnel pour une version antérieure.
-- Le projet Xcode (`Wraith.xcodeproj`) est la source de vérité du build ; SwiftPM ne sert qu'aux dépendances.
+- Le projet Xcode (`Wraith.xcodeproj`, format 110, créé avec Xcode 27 beta) est la source de vérité du build ; SwiftPM ne sert qu'aux dépendances. Réglages figés dans le projet : Swift 6, strict concurrency `complete`, warnings as errors, approachable concurrency + isolation `MainActor` par défaut, App Sandbox désactivé.
 - Avertissements = erreurs. `swift format lint --strict --recursive Wraith WraithTests` doit passer (`.swift-format` à la racine : 4 espaces, largeur 120).
 
 ## Fichiers
