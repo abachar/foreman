@@ -16,6 +16,8 @@ final class ZonesViewController: NSSplitViewController {
         var panelView: (PanelID) -> AnyView?
         var onPanelResized: (PanelSide, CGFloat) -> Void
         var onFirstFrame: () -> Void
+        /// The window is known: the shortcut monitor can be installed (layout, options).
+        var onWindow: (NSWindow) -> Void
     }
 
     private let column = NSSplitViewController()
@@ -49,8 +51,9 @@ final class ZonesViewController: NSSplitViewController {
     override func viewDidLayout() {
         super.viewDidLayout()
         applyRoom()
-        if !hasShownFirstFrame, view.window != nil {
+        if !hasShownFirstFrame, let window = view.window {
             hasShownFirstFrame = true
+            configuration?.onWindow(window)
             DispatchQueue.main.async { [weak self] in
                 self?.configuration?.onFirstFrame()
             }

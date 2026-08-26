@@ -30,20 +30,9 @@ private struct OpenFolderButton: View {
 
     var body: some View {
         Button("Open…") {
-            guard let folder = chooseFolder() else { return }
+            guard let folder = WraithAppDelegate.chooseFolder() else { return }
             openWindow(value: WorkspaceFolder.canonical(folder))
         }
         .keyboardShortcut("o", modifiers: .command)
-    }
-
-    private func chooseFolder() -> URL? {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Open"
-        panel.message = "Choose the folder to open as a workspace."
-        guard panel.runModal() == .OK else { return nil }
-        return panel.url
     }
 }

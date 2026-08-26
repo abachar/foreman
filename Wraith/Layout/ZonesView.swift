@@ -4,7 +4,6 @@ import SwiftUI
 /// SwiftUI face of `ZonesViewController`: reads the manager, hands over what to show.
 struct ZonesView: NSViewControllerRepresentable {
     let layout: LayoutManager
-    let center: AnyView
     let onFirstFrame: () -> Void
 
     func makeNSViewController(context: Context) -> ZonesViewController {
@@ -23,10 +22,16 @@ struct ZonesView: NSViewControllerRepresentable {
             visible: layout.panels.visible,
             sizes: layout.panelSizes,
             focus: layout.panels.focus,
-            center: center,
+            center: AnyView(CenterView(layout: layout)),
             panelView: { layout.panels.view(for: $0) },
             onPanelResized: { layout.setPanelSize($1, for: $0) },
-            onFirstFrame: onFirstFrame
+            onFirstFrame: onFirstFrame,
+            onWindow: { window in
+                // layout R25: no terminal surface yet (M2); the active tab's kind drives the scopes.
+                layout.shortcuts.startMonitoring(window: window) {
+                    (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false)
+                }
+            }
         )
     }
 }

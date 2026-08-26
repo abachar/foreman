@@ -33,6 +33,10 @@ struct WorkspaceView: View {
                 await workspace.reloadConfig()
                 await workspace.loadState()
                 workspace.watchConfig()
+                applyShortcutOverrides(workspace.config)
+                for await config in workspace.configChanges {
+                    applyShortcutOverrides(config)
+                }
             }
             .onDisappear {
                 // config R8: whatever is still pending is written when the window closes.
@@ -40,15 +44,35 @@ struct WorkspaceView: View {
             }
             .onAppear {
                 appDelegate.adopt(openWindow)
+                layout.openFolder = { appDelegate.openFolderFromPanel() }
             }
     }
 
     @ViewBuilder
     private var content: some View {
         if isFolderReachable {
-            ZonesView(layout: layout, center: AnyView(placeholder)) {
-                // layout R29: restored panels start their work after the first frame.
-                layout.panels.activateVisible()
+            VStack(spacing: 0) {
+                // config R7: the last valid config stays active, the error is shown with its line.
+                if let error = workspace.configError {
+                    Label(error.description, systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .padding(6)
+                        .frame(maxWidth: .infinity)
+                        .background(.bar)
+                }
+                ForEach(layout.shortcuts.problems, id: \.description) { problem in
+                    Label(problem.description, systemImage: "keyboard")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .padding(6)
+                        .frame(maxWidth: .infinity)
+                        .background(.bar)
+                }
+                ZonesView(layout: layout) {
+                    // layout R29: restored panels start their work after the first frame.
+                    layout.panels.activateVisible()
+                }
             }
         } else {
             ContentUnavailableView(
@@ -59,20 +83,13 @@ struct WorkspaceView: View {
         }
     }
 
-    /// Until the center renders the split tree (M0 0.11).
-    private var placeholder: some View {
-        VStack(spacing: 8) {
-            Text(folder.path(percentEncoded: false))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            // config R7: the last valid config stays active, the error is shown with its line.
-            if let error = workspace.configError {
-                Label(error.description, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
+    /// config R4, layout R26: the user's `shortcuts` section, at startup and on every reload.
+    private func applyShortcutOverrides(_ config: WorkspaceConfig) {
+        do {
+            layout.shortcuts.apply(overrides: try config.section("shortcuts", as: [String: String].self) ?? [:])
+        } catch {
+            layout.shortcuts.apply(overrides: [:])
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Reading the folder is disk IO, so it runs off the main actor (coding rules, concurrency).

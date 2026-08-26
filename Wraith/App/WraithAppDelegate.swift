@@ -39,6 +39,23 @@ final class WraithAppDelegate: NSObject, NSApplicationDelegate {
         return homeFolder()
     }
 
+    /// `cmd+shift+n` (layout R23): the same panel as *File > Open…*.
+    func openFolderFromPanel() {
+        guard let folder = Self.chooseFolder() else { return }
+        open(folder: WorkspaceFolder.canonical(folder))
+    }
+
+    static func chooseFolder() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Open"
+        panel.message = "Choose the folder to open as a workspace."
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
+    }
+
     /// Called by the first window: from now on the app opens windows by itself.
     func adopt(_ action: OpenWindowAction) {
         guard openWindow == nil else { return }
