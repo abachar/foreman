@@ -33,6 +33,8 @@ Une fenêtre = un dossier = un workspace. Au centre, des groupes d'onglets dans 
 | Git | panneau gauche : changes ; panneau bas : historique ; onglet central : diff | `cmd+shift+g` / `cmd+shift+h` |
 | Postgres | panneau droit : schéma ; panneau bas : requête + résultats | `cmd+shift+d` / `cmd+shift+q` |
 
+Table complète des raccourcis et leur état : [`shortcuts.md`](shortcuts.md).
+
 ## Structure
 
 Un projet Xcode (app macOS SwiftUI, sans App Sandbox : on lit tout le disque et on lance des process), une target app, une target de tests, un dossier par feature. Pas de framework interne, pas de targets « plugin », pas de chargement dynamique.
