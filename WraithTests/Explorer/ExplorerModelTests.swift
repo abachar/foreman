@@ -84,3 +84,23 @@ struct ExplorerReloadTests {
         #expect(outside == [])
     }
 }
+
+/// explorer R14: which folders open to reach the active tab's file.
+struct ExplorerRevealTests {
+    @Test func listsAncestorsRootFirst() {
+        #expect(ExplorerModel.foldersToExpand(toReach: "src/app/Main.swift") == ["src", "src/app"])
+        #expect(ExplorerModel.foldersToExpand(toReach: "README.md") == [])
+    }
+
+    @Test func ignoresFilesOutsideTheRoot() {
+        #expect(ExplorerModel.foldersToExpand(toReach: "/etc/hosts") == nil)
+        #expect(ExplorerModel.foldersToExpand(toReach: "") == nil)
+    }
+
+    @Test func decodesAStateWithoutTheFollowToggle() throws {
+        let data = Data(#"{"expanded":["a"],"hidesExcluded":true}"#.utf8)
+        let state = try JSONDecoder().decode(ExplorerState.self, from: data)
+        #expect(state.followsActiveTab)
+        #expect(state.hidesExcluded)
+    }
+}

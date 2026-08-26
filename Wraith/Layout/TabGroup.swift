@@ -25,12 +25,15 @@ nonisolated struct Tab: Identifiable, Equatable, Sendable {
     let kind: String
     var title: String
     var isDirty = false
+    /// editor R2: shown in italics; the owner decides when it becomes pinned.
+    var isPreview = false
 
-    init(id: TabID = TabID(), kind: String, title: String, isDirty: Bool = false) {
+    init(id: TabID = TabID(), kind: String, title: String, isDirty: Bool = false, isPreview: Bool = false) {
         self.id = id
         self.kind = kind
         self.title = title
         self.isDirty = isDirty
+        self.isPreview = isPreview
     }
 }
 
@@ -94,10 +97,11 @@ nonisolated struct TabGroup: Equatable, Sendable {
         step(by: -1)
     }
 
-    mutating func update(_ id: TabID, title: String, isDirty: Bool) {
+    mutating func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].title = title
         tabs[index].isDirty = isDirty
+        tabs[index].isPreview = isPreview
     }
 
     private mutating func step(by offset: Int) {

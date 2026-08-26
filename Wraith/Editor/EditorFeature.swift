@@ -32,7 +32,7 @@ final class EditorFeature {
             if let tab = tabs[existing.id] {
                 tab.requestedLine = line
                 if !preview {
-                    tab.isPinned = true
+                    pin(existing.id, tab)
                 }
             }
             layout.activate(existing.id, in: layout.model.activeGroup)
@@ -43,7 +43,8 @@ final class EditorFeature {
         let tab = EditorTab(path: path, url: url, isPinned: !preview, line: line)
         guard
             let id = layout.openTab(
-                kind: Self.tabKind, title: url.lastPathComponent, payload: encode(tab.payload), newGroup: newGroup)
+                kind: Self.tabKind, title: url.lastPathComponent, payload: encode(tab.payload), newGroup: newGroup,
+                isPreview: preview)
         else { return }
         tabs[id] = tab
         if let replaced {
@@ -51,6 +52,20 @@ final class EditorFeature {
             Task { await layout.closeTab(replaced.id) }
         }
         retitle(group: layout.model.activeGroup)
+    }
+
+    /// explorer R14: the file of a tab, `nil` for a tab that is not the editor's.
+    func path(of id: TabID) -> String? {
+        tabs[id]?.path
+    }
+
+    /// editor R2: a preview becomes pinned (double click, `cmd+k enter`, first edit).
+    private func pin(_ id: TabID, _ tab: EditorTab) {
+        guard !tab.isPinned, let owner = layout.model.owner(of: id),
+            let title = layout.model[group: owner]?.tabs.first(where: { $0.id == id })?.title
+        else { return }
+        tab.isPinned = true
+        layout.update(id, title: title, isDirty: false, isPreview: false)
     }
 
     private func restore(_ id: TabID, payload: String) -> AnyView? {
@@ -66,6 +81,15 @@ final class EditorFeature {
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
             tab = EditorTab(path: decoded.path, url: url, isPinned: decoded.pinned)
             tabs[id] = tab
+            if !decoded.pinned {
+                // The layout inserts the tab right after this call; the italic follows.
+                Task { [layout] in
+                    guard let owner = layout.model.owner(of: id),
+                        let title = layout.model[group: owner]?.tabs.first(where: { $0.id == id })?.title
+                    else { return }
+                    layout.update(id, title: title, isDirty: false, isPreview: true)
+                }
+            }
         }
         return AnyView(EditorTabView(tab: tab, theme: theme, highlighter: highlighter))
     }
@@ -84,8 +108,8 @@ final class EditorFeature {
         guard let tabsInGroup = layout.model[group: group]?.tabs else { return }
         let editorTabs = tabsInGroup.compactMap { tab in tabs[tab.id].map { (tab, $0) } }
         let titles = EditorTitles.titles(for: editorTabs.map(\.1.path))
-        for ((tab, _), title) in zip(editorTabs, titles) where tab.title != title {
-            layout.update(tab.id, title: title, isDirty: tab.isDirty)
+        for ((tab, editorTab), title) in zip(editorTabs, titles) where tab.title != title {
+            layout.update(tab.id, title: title, isDirty: tab.isDirty, isPreview: !editorTab.isPinned)
         }
     }
 }

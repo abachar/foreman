@@ -25,8 +25,8 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 |---|---|---|---|---|
 | `cmd+shift+e` | `explorer.tree` | Afficher / masquer l'arbre | global | 🟢 |
 | `↑↓` `←` `→` | — | Naviguer, replier, déplier | panel | 🟢 (natif `NSOutlineView`) |
-| `space` | — | Ouvrir en aperçu | panel | ⚪ (1.8) |
-| `cmd+↓` | — | Ouvrir fixe | panel | ⚪ (1.8) |
+| `space` | — | Ouvrir en aperçu | panel | 🟢 |
+| `cmd+↓` | — | Ouvrir fixe | panel | 🟢 |
 | `enter` | — | Renommer | panel | ⚪ (1.15) |
 | `cmd+delete` | — | Supprimer (corbeille) | panel | ⚪ (1.15) |
 

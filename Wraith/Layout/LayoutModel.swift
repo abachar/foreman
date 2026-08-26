@@ -77,9 +77,9 @@ nonisolated struct LayoutModel: Equatable, Sendable {
         groups[activeGroup] = group
     }
 
-    mutating func update(_ id: TabID, title: String, isDirty: Bool) {
+    mutating func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false) {
         guard let owner = owner(of: id) else { return }
-        groups[owner]?.update(id, title: title, isDirty: isDirty)
+        groups[owner]?.update(id, title: title, isDirty: isDirty, isPreview: isPreview)
     }
 
     /// Removes the tab; layout R10: an emptied group closes unless it is the last one.

@@ -55,7 +55,7 @@ Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l
 
 ### Groupes d'onglets
 
-- R13 — Un groupe est une liste ordonnée d'onglets + un onglet actif. Chaque onglet a un `id` stable (UUID généré à la création, persisté), un `kind` (id namespacé déclaré par une feature : `editor.file`, `agent.claude`, `run.backend:test`, `git.diff`…), un titre et un état « modifié » (`isDirty`) fournis par son propriétaire.
+- R13 — Un groupe est une liste ordonnée d'onglets + un onglet actif. Chaque onglet a un `id` stable (UUID généré à la création, persisté), un `kind` (id namespacé déclaré par une feature : `editor.file`, `agent.claude`, `run.backend:test`, `git.diff`…), un titre, un état « modifié » (`isDirty`) et un état « aperçu » (`isPreview`, titre en italique, `editor` R2) fournis par son propriétaire.
 - R14 — Un nouvel onglet s'insère juste après l'onglet actif et devient actif. Fermer l'onglet actif active son voisin de gauche, ou le premier onglet s'il n'y en a pas.
 - R15 — Fermer un onglet `isDirty` demande confirmation (la formulation appartient à la feature propriétaire, le mécanisme au layout). Fermer un groupe ou une fenêtre enchaîne les confirmations une par une.
 - R16 — La barre d'onglets est un composant unique (R3 de `product`) : onglets défilables horizontalement si trop nombreux, onglet actif toujours visible, aucun onglet tronqué en dessous d'une largeur minimale.

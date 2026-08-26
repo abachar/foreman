@@ -100,8 +100,12 @@ final class LayoutManager {
     /// `newGroup` (explorer R13) splits the active group to the right first; when the split is
     /// refused (edge cases: minimum size) the tab opens in the active group, without a beep.
     @discardableResult
-    func openTab(kind: String, title: String, payload: String, newGroup: Bool = false) -> TabID? {
-        let tab = Tab(kind: kind, title: title)
+    func openTab(
+        kind: String, title: String, payload: String, newGroup: Bool = false, isPreview: Bool = false
+    )
+        -> TabID?
+    {
+        let tab = Tab(kind: kind, title: title, isPreview: isPreview)
         guard let view = tabKinds[kind]?.makeView(tab.id, payload) else { return nil }
         tabViews[tab.id] = view
         if newGroup {
@@ -116,8 +120,8 @@ final class LayoutManager {
         tabViews[tab.id]
     }
 
-    func update(_ id: TabID, title: String, isDirty: Bool) {
-        model.update(id, title: title, isDirty: isDirty)
+    func update(_ id: TabID, title: String, isDirty: Bool, isPreview: Bool = false) {
+        model.update(id, title: title, isDirty: isDirty, isPreview: isPreview)
     }
 
     func activate(_ id: TabID, in group: GroupID) {

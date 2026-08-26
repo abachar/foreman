@@ -5,7 +5,8 @@ struct ExplorerPanelView: View {
     let model: ExplorerModel
     let layout: LayoutManager
     let onStateChange: (ExplorerState) -> Void
-    let onOpen: (FileNode) -> Void
+    let onOpen: (FileNode, ExplorerOpenMode) -> Void
+    let pathOfTab: (TabID) -> String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,6 +28,11 @@ struct ExplorerPanelView: View {
         .onChange(of: model.persisted) { _, state in
             onStateChange(state)
         }
+        // explorer R14: the tree follows the active tab when it shows a file under the root.
+        .onChange(of: layout.model.active.active?.id) { _, id in
+            guard model.followsActiveTab, let id, let path = pathOfTab(id) else { return }
+            model.revealRequest = path
+        }
     }
 
     private var header: some View {
@@ -38,6 +44,7 @@ struct ExplorerPanelView: View {
             Menu {
                 // explorer R5: persisted, default visible.
                 Toggle("Hide Ignored Files", isOn: Bindable(model).hidesExcluded)
+                Toggle("Follow Active Tab", isOn: Bindable(model).followsActiveTab)
             } label: {
                 Image(systemName: "ellipsis.circle")
             }

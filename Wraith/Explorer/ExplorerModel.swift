@@ -16,6 +16,10 @@ final class ExplorerModel {
     var expanded: Set<String> = []
     /// explorer R5: persisted.
     var hidesExcluded = false
+    /// explorer R14: persisted.
+    var followsActiveTab = true
+    /// explorer R14: the file the tree must expand to and select; consumed by the outline view.
+    var revealRequest: String?
     /// explorer R19: the last IO error, shown in the panel until the next successful operation.
     private(set) var error: ExplorerError?
 
@@ -38,12 +42,20 @@ final class ExplorerModel {
     }
 
     var persisted: ExplorerState {
-        ExplorerState(expanded: expanded.sorted(), hidesExcluded: hidesExcluded)
+        ExplorerState(expanded: expanded.sorted(), hidesExcluded: hidesExcluded, followsActiveTab: followsActiveTab)
     }
 
     func restore(_ state: ExplorerState) {
         expanded = Set(state.expanded)
         hidesExcluded = state.hidesExcluded
+        followsActiveTab = state.followsActiveTab
+    }
+
+    /// explorer R14: the folders to expand, root first, to reach `path`; `nil` outside the root.
+    nonisolated static func foldersToExpand(toReach path: String) -> [String]? {
+        guard !path.hasPrefix("/"), !path.isEmpty else { return nil }
+        let components = path.split(separator: "/").dropLast()
+        return components.indices.map { components[...$0].joined(separator: "/") }
     }
 
     /// explorer R8: the first level is read at activation; layout R4: nothing before.

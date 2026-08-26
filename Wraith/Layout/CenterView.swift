@@ -108,6 +108,7 @@ struct TabBarView: View {
             Text(tab.title + (tab.isDirty ? " •" : ""))
                 .lineLimit(1)
                 .font(.callout)
+                .italic(tab.isPreview)
                 .foregroundStyle(isActive && isActiveGroup ? .primary : .secondary)
             Button {
                 Task { await layout.closeTab(tab.id) }

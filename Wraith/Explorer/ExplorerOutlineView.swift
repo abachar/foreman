@@ -6,17 +6,25 @@ import SwiftUI
 /// Items are `OutlineItem`s cached per relative path so the outline view keeps expansion,
 /// selection and scroll across reloads (R10). A folder's level is asked to the model at its
 /// first expansion (R7); the model's `version` tells this view what to reload.
+/// explorer R12, R13: how a file is opened from the tree.
+enum ExplorerOpenMode {
+    case preview
+    case pinned
+    case newGroup
+}
+
 struct ExplorerOutlineView: NSViewRepresentable {
     let model: ExplorerModel
     let isFocused: Bool
-    let onOpen: (FileNode) -> Void
+    let onOpen: (FileNode, ExplorerOpenMode) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(model: model, onOpen: onOpen)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let outline = NSOutlineView()
+        let outline = KeyboardOutlineView()
+        outline.onKey = { [coordinator = context.coordinator] key in coordinator.handle(key) }
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
         column.resizingMask = .autoresizingMask
         outline.addTableColumn(column)
@@ -35,6 +43,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.delegate = context.coordinator
         outline.target = context.coordinator
         outline.action = #selector(Coordinator.clicked)
+        outline.doubleAction = #selector(Coordinator.doubleClicked)
         context.coordinator.outline = outline
 
         let scroll = NSScrollView()
@@ -47,6 +56,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.sync(version: model.version, hidesExcluded: model.hidesExcluded)
         context.coordinator.outline?.sizeLastColumnToFit()
+        if let path = model.revealRequest {
+            model.revealRequest = nil
+            context.coordinator.reveal(path)
+        }
         if isFocused, let window = scroll.window, let outline = context.coordinator.outline,
             window.firstResponder !== outline
         {
@@ -73,25 +86,80 @@ struct ExplorerOutlineView: NSViewRepresentable {
     final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
         weak var outline: NSOutlineView?
         private let model: ExplorerModel
-        private let onOpen: (FileNode) -> Void
+        private let onOpen: (FileNode, ExplorerOpenMode) -> Void
         private var items: [String: OutlineItem] = [:]
+        private var reveal: Task<Void, Never>?
         private var moreItems: [String: OutlineItem] = [:]
         private var version = -1
         private var hidesExcluded: Bool
 
-        init(model: ExplorerModel, onOpen: @escaping (FileNode) -> Void) {
+        init(model: ExplorerModel, onOpen: @escaping (FileNode, ExplorerOpenMode) -> Void) {
             self.model = model
             self.onOpen = onOpen
             hidesExcluded = model.hidesExcluded
         }
 
-        /// explorer R12: a single click on a file opens it as a preview.
+        /// explorer R12, R13: a click opens a preview; with `opt`, in a new group on the right.
         @objc func clicked() {
-            guard let outline, outline.clickedRow >= 0,
-                let item = outline.item(atRow: outline.clickedRow) as? OutlineItem,
-                case .node(let node) = item.kind, !node.isExpandable, node.kind != .directory
-            else { return }
-            onOpen(node)
+            guard let node = clickedFile() else { return }
+            let isOption = NSApp.currentEvent?.modifierFlags.contains(.option) == true
+            onOpen(node, isOption ? .newGroup : .preview)
+        }
+
+        /// explorer R12: a double click pins the tab.
+        @objc func doubleClicked() {
+            guard let node = clickedFile() else { return }
+            onOpen(node, .pinned)
+        }
+
+        /// explorer R21: `space` previews, `cmd+↓` opens pinned; anything else is the outline's.
+        func handle(_ key: KeyboardOutlineView.Key) -> Bool {
+            guard let outline, outline.selectedRow >= 0, let node = file(atRow: outline.selectedRow) else {
+                return false
+            }
+            switch key {
+            case .space:
+                onOpen(node, .preview)
+            case .commandDown:
+                onOpen(node, .pinned)
+            }
+            return true
+        }
+
+        /// explorer R14: expands the folders down to `path` and selects it, scrolling only when
+        /// it is not already visible.
+        func reveal(_ path: String) {
+            guard let folders = ExplorerModel.foldersToExpand(toReach: path) else { return }
+            reveal?.cancel()
+            reveal = Task { [weak self] in
+                for folder in folders {
+                    guard let self, !Task.isCancelled else { return }
+                    if model.level(folder) == nil {
+                        await model.load(folder)
+                    }
+                    guard let item = items[folder] else { return }
+                    outline?.expandItem(item)
+                }
+                guard let self, let outline, let item = items[path] else { return }
+                let row = outline.row(forItem: item)
+                guard row >= 0 else { return }
+                outline.selectRowIndexes([row], byExtendingSelection: false)
+                if !outline.visibleRect.contains(outline.rect(ofRow: row)) {
+                    outline.scrollRowToVisible(row)
+                }
+            }
+        }
+
+        private func clickedFile() -> FileNode? {
+            guard let outline, outline.clickedRow >= 0 else { return nil }
+            return file(atRow: outline.clickedRow)
+        }
+
+        private func file(atRow row: Int) -> FileNode? {
+            guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind,
+                !node.isExpandable, node.kind != .directory
+            else { return nil }
+            return node
         }
 
         func sync(version: Int, hidesExcluded: Bool) {
@@ -268,5 +336,32 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 return "link"
             }
         }
+    }
+}
+
+/// `NSOutlineView` that hands a few keys to its owner (explorer R21) before its own handling.
+final class KeyboardOutlineView: NSOutlineView {
+    enum Key {
+        case space
+        case commandDown
+    }
+
+    var onKey: (Key) -> Bool = { _ in false }
+
+    override func keyDown(with event: NSEvent) {
+        let key: Key?
+        if event.charactersIgnoringModifiers == " ",
+            event.modifierFlags.intersection([.command, .option, .control]).isEmpty
+        {
+            key = .space
+        } else if event.keyCode == 125, event.modifierFlags.contains(.command) {
+            key = .commandDown
+        } else {
+            key = nil
+        }
+        if let key, onKey(key) {
+            return
+        }
+        super.keyDown(with: event)
     }
 }

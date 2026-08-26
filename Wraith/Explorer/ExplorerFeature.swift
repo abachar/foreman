@@ -18,10 +18,13 @@ enum ExplorerFeature {
                         ExplorerPanelView(
                             model: model, layout: layout,
                             onStateChange: { state in workspace.setState("explorer", to: state) },
-                            // explorer R12: a click opens a preview in the active group.
-                            onOpen: { node in
-                                editor.open(workspace.root.appending(path: node.relativePath), preview: true)
-                            }
+                            // explorer R12, R13: preview, pinned, or a new group on the right.
+                            onOpen: { node, mode in
+                                editor.open(
+                                    workspace.root.appending(path: node.relativePath), preview: mode == .preview,
+                                    newGroup: mode == .newGroup)
+                            },
+                            pathOfTab: { editor.path(of: $0) }
                         ))
                 },
                 // explorer R8: the first level is read when the panel is shown, off the main actor.
