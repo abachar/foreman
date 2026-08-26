@@ -35,7 +35,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
 | `cmd+p` | `editor.quickOpen` | Quick open | global | 🟢 |
-| `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | ⚪ (1.14) |
+| `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | 🟢 |
 | `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | 🟢 |
 | `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | 🟢 (natif `NSTextView`, menu Edit) |
 | `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indenter / désindenter | tab(editor.file) | 🟢 |

@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 final class EditorFeature {
     static let tabKind = "editor.file"
+    static let searchPanelID: PanelID = "editor.search"
 
     private let layout: LayoutManager
     private let workspace: Workspace
@@ -42,6 +43,27 @@ final class EditorFeature {
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()
         watchDisk()
+        registerSearchPanel()
+    }
+
+    // MARK: - Content search (editor R20–R22)
+
+    private func registerSearchPanel() {
+        let model = SearchModel(root: workspace.root)
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.searchPanelID, title: "Search", side: .bottom, defaultShortcut: "cmd+shift+f",
+                makeView: { [weak self] in
+                    AnyView(
+                        SearchPanelView(model: model) { match, pinned in
+                            guard let self else { return }
+                            // editor R21: click opens a preview at the line, `cmd` pins it.
+                            self.open(
+                                self.workspace.root.appending(path: match.path), preview: !pinned, line: match.line)
+                        })
+                },
+                // editor R21: closing the panel cancels the running search.
+                deactivate: { model.cancel() }))
     }
 
     // MARK: - Quick open (editor R17–R19)
