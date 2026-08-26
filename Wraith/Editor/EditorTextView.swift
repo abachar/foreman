@@ -36,6 +36,10 @@ struct EditorTextView: NSViewRepresentable {
         textView.string = document.text
         textView.delegate = context.coordinator
         tab.textView = textView
+        // editor R6: the gutter.
+        scroll.verticalRulerView = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        scroll.hasVerticalRuler = true
+        scroll.rulersVisible = true
         if document.isHighlightable, let language = tab.language {
             context.coordinator.highlighter = highlighter.attach(to: textView, language: language)
         }
