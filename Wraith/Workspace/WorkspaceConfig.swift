@@ -1,7 +1,6 @@
 import Foundation
 
-/// The merged configuration of a workspace, read from `~/.config/wraith/config.json` and
-/// `<root>/.wraith/config.json` (config R3, R4).
+/// The configuration of a workspace, read from `<root>/.wraith/config.json` (config R3, R4).
 ///
 /// `Workspace` does not know the schemas of the features: each feature decodes its own top-level
 /// section with `section(_:as:)` (config R5). Only `repos` is interpreted here, because it belongs
@@ -34,24 +33,25 @@ nonisolated struct WorkspaceConfig: Sendable {
 
     // MARK: - Loading
 
-    /// Reads and merges both files.
+    static func file(under root: URL) -> URL {
+        root.appending(components: ".wraith", "config.json")
+    }
+
+    /// Reads the file.
     ///
     /// Disk IO and parsing, so it never runs on the main actor.
     @concurrent
-    static func load(root: URL, globalFile: URL) async throws -> WorkspaceConfig {
-        let workspaceFile = root.appending(components: ".wraith", "config.json")
+    static func load(root: URL) async throws -> WorkspaceConfig {
         var warnings: [String] = []
-        let global = try read(globalFile, warnings: &warnings)
-        let workspace = try read(workspaceFile, warnings: &warnings)
-        let merged = merge(global, over: workspace)
+        let object = try read(file(under: root), warnings: &warnings)
 
         var sections: [String: Data] = [:]
-        for (name, value) in merged where name != "repos" {
+        for (name, value) in object where name != "repos" {
             // Values come from JSONSerialization, so they are serializable again.
             sections[name] = try JSONSerialization.data(
                 withJSONObject: value, options: [.sortedKeys, .fragmentsAllowed])
         }
-        let repos = repos(declared: merged["repos"], root: root, warnings: &warnings)
+        let repos = repos(declared: object["repos"], root: root, warnings: &warnings)
         return WorkspaceConfig(sections: sections, repos: repos, warnings: warnings)
     }
 
@@ -69,23 +69,6 @@ nonisolated struct WorkspaceConfig: Sendable {
             throw WorkspaceConfigError.invalidJSON(file: file, line: 1, message: "The top level must be an object.")
         }
         return withoutPasswords(dictionary, file: file, warnings: &warnings)
-    }
-
-    /// config R4: workspace wins.
-    ///
-    /// Inside a section that is an object in both files, keys are merged one level down so a
-    /// workspace can override a single shortcut or command without repeating the global ones
-    /// (config decisions, 2026-08-26).
-    private static func merge(_ global: [String: Any], over workspace: [String: Any]) -> [String: Any] {
-        var result = global
-        for (name, value) in workspace {
-            if let base = result[name] as? [String: Any], let override = value as? [String: Any] {
-                result[name] = base.merging(override) { _, workspace in workspace }
-            } else {
-                result[name] = value
-            }
-        }
-        return result
     }
 
     /// config R11: a `password` key anywhere in the file is dropped and reported, never used.

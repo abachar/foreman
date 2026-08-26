@@ -2,7 +2,7 @@
 
 ## Objectif
 
-Définir où et comment Wraith lit sa configuration et persiste son état, par workspace et globalement.
+Définir où et comment Wraith lit sa configuration et persiste son état, par workspace.
 
 ## Emplacements
 
@@ -10,7 +10,6 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
 |---|---|---|
 | Workspace | `<root>/.wraith/config.json` | config du workspace (repos, commands, postgres, shortcuts…) |
 | Workspace | `<root>/.wraith/state.json` | état d'UI persisté (splits, onglets, panneaux, tailles) |
-| Global | `~/.config/wraith/config.json` | préférences utilisateur (thème, police, raccourcis par défaut…) |
 | Secrets | Keychain macOS | mots de passe Postgres, jamais dans un fichier |
 
 ## User stories
@@ -41,7 +40,7 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
   - `agents` : `<id> → { title, command, icon, enabled }` ; surcharge un agent intégré ou en déclare un nouveau. Détail dans [agents](../agents/).
   - `commands` : forme courte (chaîne) ou longue (`{ "run", "cwd", "env" }`). Détail dans [run](../run/).
   - `shortcuts` : `<panel/action id> → <raccourci>` ; surcharge les défauts déclarés par les features.
-- R4 — Précédence : défauts des features < global `~/.config/wraith/config.json` < workspace `.wraith/config.json`.
+- R4 — Précédence : défauts des features < `.wraith/config.json`. Il n'y a pas de configuration globale : tout est par workspace.
 - R5 — `Workspace` expose la config aux features ; chaque feature décode sa propre section (`config.section("postgres")`), `Workspace` ne connaît pas les schémas des features (`architecture` : config par section).
 - R6 — `config.json` est surveillé (via le flux FSEvents unique) ; à chaque changement valide, `Workspace` publie la nouvelle config sur son flux `configChanges` (`AsyncStream`), auquel les features intéressées s'abonnent.
 - R7 — Un `config.json` invalide (JSON malformé, type inattendu) n'empêche pas l'ouverture : la dernière config valide reste active et l'erreur est affichée (ligne + message).

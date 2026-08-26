@@ -3,8 +3,7 @@ import Testing
 
 @testable import Wraith
 
-/// Reading and merging `config.json` (config R2, R4, R5, R7, R11) on a temporary folder: the
-/// global file is injected, `$HOME` is never touched.
+/// Reading `config.json` (config R2, R5, R7, R11) on a temporary folder.
 struct WorkspaceConfigTests {
     private struct Postgres: Decodable, Equatable {
         let host: String
@@ -24,18 +23,16 @@ struct WorkspaceConfigTests {
         #expect(config.warnings.isEmpty)
     }
 
-    @Test func workspaceOverridesGlobalWhichOverridesDefaults() async throws {
+    @Test func exposesEachSectionToItsFeature() async throws {
         defer { fixture.remove() }
-        try fixture.writeGlobal(#"{ "shortcuts": { "git.status": "cmd+g", "run": "cmd+r" }, "theme": "dark" }"#)
         try fixture.writeWorkspace(
             #"{ "shortcuts": { "git.status": "cmd+shift+g" }, "postgres": { "host": "db", "port": 1 } }"#)
 
         let config = try await fixture.load()
 
-        #expect(
-            try config.section("shortcuts", as: [String: String].self) == ["git.status": "cmd+shift+g", "run": "cmd+r"])
-        #expect(try config.section("theme", as: String.self) == "dark")
+        #expect(try config.section("shortcuts", as: [String: String].self) == ["git.status": "cmd+shift+g"])
         #expect(try config.section("postgres", as: Postgres.self) == Postgres(host: "db", port: 1))
+        #expect(try config.section("theme", as: String.self) == nil)
     }
 
     @Test func reportsTheLineOfInvalidJSON() async throws {
@@ -100,7 +97,7 @@ struct WorkspaceConfigTests {
     @Test @MainActor func workspaceKeepsTheLastValidConfigOnError() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace(#"{ "theme": "dark" }"#)
-        let workspace = Workspace(root: fixture.root, globalConfigFile: fixture.globalFile)
+        let workspace = Workspace(root: fixture.root)
 
         await workspace.reloadConfig()
         try fixture.writeWorkspace("{ oops")
@@ -118,24 +115,17 @@ struct WorkspaceConfigTests {
     }
 }
 
-/// A temporary workspace root and a global file next to it.
+/// A temporary workspace root.
 private struct Fixture {
     let root: URL
-    let globalFile: URL
 
     init() {
-        let base = FileManager.default.temporaryDirectory
+        root = FileManager.default.temporaryDirectory
             .appending(path: "WorkspaceConfigTests-\(UUID().uuidString)", directoryHint: .isDirectory)
-        root = base.appending(path: "workspace", directoryHint: .isDirectory)
-        globalFile = base.appending(components: "global", "config.json")
     }
 
     func load() async throws -> WorkspaceConfig {
-        try await WorkspaceConfig.load(root: root, globalFile: globalFile)
-    }
-
-    func writeGlobal(_ json: String) throws {
-        try write(json, to: globalFile)
+        try await WorkspaceConfig.load(root: root)
     }
 
     func writeWorkspace(_ json: String) throws {
@@ -150,7 +140,7 @@ private struct Fixture {
     }
 
     func remove() {
-        try? FileManager.default.removeItem(at: root.deletingLastPathComponent())
+        try? FileManager.default.removeItem(at: root)
     }
 
     private func write(_ json: String, to file: URL) throws {

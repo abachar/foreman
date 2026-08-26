@@ -15,21 +15,18 @@ final class Workspace {
     /// Why the last reload was rejected, `nil` when `config` is current.
     private(set) var configError: WorkspaceConfigError?
 
-    private let globalConfigFile: URL
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "workspace")
 
-    init(root: URL, globalConfigFile: URL = URL.homeDirectory.appending(components: ".config", "wraith", "config.json"))
-    {
+    init(root: URL) {
         self.root = root
-        self.globalConfigFile = globalConfigFile
     }
 
-    /// Reads both `config.json` again.
+    /// Reads `config.json` again.
     ///
     /// Warnings are logged, an error keeps the previous config.
     func reloadConfig() async {
         do {
-            let loaded = try await WorkspaceConfig.load(root: root, globalFile: globalConfigFile)
+            let loaded = try await WorkspaceConfig.load(root: root)
             for warning in loaded.warnings {
                 logger.warning("\(warning, privacy: .public)")
             }
