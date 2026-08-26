@@ -12,6 +12,13 @@ struct WorkspaceView: View {
 
     @Environment(\.openWindow) private var openWindow
     @State private var isFolderReachable = true
+    @State private var workspace: Workspace
+
+    init(folder: URL, appDelegate: WraithAppDelegate) {
+        self.folder = folder
+        self.appDelegate = appDelegate
+        _workspace = State(initialValue: Workspace(root: folder))
+    }
 
     var body: some View {
         content
@@ -19,6 +26,7 @@ struct WorkspaceView: View {
             .navigationTitle(folder.lastPathComponent)
             .task(id: folder) {
                 isFolderReachable = await Self.isDirectory(folder)
+                await workspace.reloadConfig()
             }
             .onAppear {
                 appDelegate.adopt(openWindow)
@@ -28,9 +36,17 @@ struct WorkspaceView: View {
     @ViewBuilder
     private var content: some View {
         if isFolderReachable {
-            Text(folder.path(percentEncoded: false))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                Text(folder.path(percentEncoded: false))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                // config R7: the last valid config stays active, the error is shown with its line.
+                if let error = workspace.configError {
+                    Label(error.description, systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
+            }
         } else {
             ContentUnavailableView(
                 "Folder Not Found",

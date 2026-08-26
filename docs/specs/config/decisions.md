@@ -8,3 +8,4 @@
 | 2026-08-25 | Rechargement à chaud de `config.json`, pas de `state.json` | Redémarrage requis | Confort ; `state.json` n'est écrit que par l'app |
 | 2026-08-26 | Changement de config diffusé par un `AsyncStream` de `Workspace`, pas par un bus d'événements | `EventBus` + événement `configChanged` (2026-08-25) | `architecture` : pas d'`EventBus`, le propriétaire de l'information expose un flux |
 | 2026-08-25 | Raccourcis en chaîne ASCII `"cmd+shift+g"` (modificateurs `cmd`, `shift`, `alt`, `ctrl`, touche en minuscule) | Notation `⌘⇧G` | Lisible, saisissable au clavier, sans ambiguïté d'encodage |
+| 2026-08-26 | Fusion global/workspace : une section objet dans les deux fichiers est fusionnée clé par clé (un niveau, le workspace prime) ; toute autre valeur est remplacée | Remplacement de la section entière ; fusion récursive profonde | Surcharger un seul raccourci ou une seule commande sans recopier les globaux, sans la complexité d'une fusion profonde |

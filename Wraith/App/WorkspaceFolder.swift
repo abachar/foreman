@@ -6,7 +6,7 @@ import Foundation
 /// existing window only when the presented value is *equal*: two paths that reach the same
 /// directory must therefore produce the same URL. Everything here is pure — the current directory
 /// and the home directory are passed in — so it is testable without touching `$HOME`.
-enum WorkspaceFolder {
+nonisolated enum WorkspaceFolder {
     /// Canonical folder designated by `path`, or `home` when no path is given (product R8).
     ///
     /// A leading `~` is expanded against `home`, a relative path is resolved against
