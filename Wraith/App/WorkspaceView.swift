@@ -13,6 +13,7 @@ struct WorkspaceView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var isFolderReachable = true
     @State private var workspace: Workspace
+    @State private var layout = LayoutManager()
 
     init(folder: URL, appDelegate: WraithAppDelegate) {
         self.folder = folder
@@ -22,7 +23,10 @@ struct WorkspaceView: View {
 
     var body: some View {
         content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(
+                minWidth: ZoneSizing.minimumWindow.width, maxWidth: .infinity,
+                minHeight: ZoneSizing.minimumWindow.height, maxHeight: .infinity
+            )
             .navigationTitle(folder.lastPathComponent)
             .task(id: folder) {
                 isFolderReachable = await Self.isDirectory(folder)
@@ -42,16 +46,9 @@ struct WorkspaceView: View {
     @ViewBuilder
     private var content: some View {
         if isFolderReachable {
-            VStack(spacing: 8) {
-                Text(folder.path(percentEncoded: false))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                // config R7: the last valid config stays active, the error is shown with its line.
-                if let error = workspace.configError {
-                    Label(error.description, systemImage: "exclamationmark.triangle")
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                }
+            ZonesView(layout: layout, center: AnyView(placeholder)) {
+                // layout R29: restored panels start their work after the first frame.
+                layout.panels.activateVisible()
             }
         } else {
             ContentUnavailableView(
@@ -60,6 +57,22 @@ struct WorkspaceView: View {
                 description: Text(folder.path(percentEncoded: false))
             )
         }
+    }
+
+    /// Until the center renders the split tree (M0 0.11).
+    private var placeholder: some View {
+        VStack(spacing: 8) {
+            Text(folder.path(percentEncoded: false))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            // config R7: the last valid config stays active, the error is shown with its line.
+            if let error = workspace.configError {
+                Label(error.description, systemImage: "exclamationmark.triangle")
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Reading the folder is disk IO, so it runs off the main actor (coding rules, concurrency).
