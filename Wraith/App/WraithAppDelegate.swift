@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 import SwiftUI
 
 /// The AppKit entry points SwiftUI does not cover, and the window opener they need.
@@ -10,15 +11,29 @@ import SwiftUI
 /// SwiftUI only, so the first window hands it over (`adopt(_:)`). Folders that arrive before that,
 /// while the app is launching, wait in `pendingFolders`: the window created at launch takes one
 /// through `takeLaunchFolder()`, `adopt(_:)` opens the rest.
+///
+/// `open -a Wraith <folder>` may deliver the folder *after* the launch window was created on
+/// `$HOME` (product R8): that window is then superseded and closes itself, so `wraith .` opens
+/// exactly one window (product R1).
+@Observable
 final class WraithAppDelegate: NSObject, NSApplicationDelegate {
-    private var openWindow: OpenWindowAction?
-    private var pendingFolders: [URL] = []
-    private var hasTakenLaunchFolder = false
+    /// The `$HOME` window created at launch that a folder replaced right away, if any.
+    private(set) var supersededLaunchFolder: URL?
+
+    @ObservationIgnored private var openWindow: OpenWindowAction?
+    @ObservationIgnored private var pendingFolders: [URL] = []
+    @ObservationIgnored private var hasTakenLaunchFolder = false
+    @ObservationIgnored private var launchedOnHome: Date?
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             open(folder: WorkspaceFolder.canonical(url))
         }
+        // A folder right after launch is the folder the app was launched for, not a second one.
+        if let launchedOnHome, Date.now.timeIntervalSince(launchedOnHome) < 2, !urls.isEmpty {
+            supersededLaunchFolder = homeFolder()
+        }
+        launchedOnHome = nil
     }
 
     /// Folder the window created at launch is rooted at: the command-line argument, the folder the
@@ -36,6 +51,7 @@ final class WraithAppDelegate: NSObject, NSApplicationDelegate {
         if !pendingFolders.isEmpty {
             return pendingFolders.removeFirst()
         }
+        launchedOnHome = .now
         return homeFolder()
     }
 

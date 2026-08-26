@@ -35,6 +35,7 @@ Wraith est un environnement de développement macOS natif et **agentic** : une f
 ## Cas limites
 
 - Dossier supprimé/déplacé entre deux ouvertures : la fenêtre s'ouvre sur une erreur claire, l'état persisté est conservé (pas effacé).
+- `open -a Wraith <dossier>` peut livrer le dossier après la création de la fenêtre de lancement sur `$HOME` (R8) : cette fenêtre est alors remplacée (fermée sans rien persister), il n'y a qu'une fenêtre (R1).
 - Fichier d'un onglet éditeur disparu à la restauration : l'onglet est ignoré (ou ouvert vide en lecture seule — à trancher dans editor).
 - Fermeture du dernier groupe d'onglets d'un split : le split se replie ; il reste toujours au moins un groupe dans la zone centrale.
 

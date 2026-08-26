@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -15,6 +16,7 @@ struct WorkspaceView: View {
     @State private var workspace: Workspace
     @State private var layout = LayoutManager()
     @State private var isStateLoaded = false
+    @State private var hostWindow: NSWindow?
 
     init(folder: URL, appDelegate: WraithAppDelegate) {
         self.folder = folder
@@ -49,6 +51,9 @@ struct WorkspaceView: View {
                 appDelegate.adopt(openWindow)
                 layout.openFolder = { appDelegate.openFolderFromPanel() }
             }
+            .onChange(of: appDelegate.supersededLaunchFolder, initial: true) { _, _ in
+                closeIfSuperseded()
+            }
     }
 
     @ViewBuilder
@@ -76,6 +81,9 @@ struct WorkspaceView: View {
                     ZonesView(layout: layout) {
                         // layout R29: restored panels start their work after the first frame.
                         layout.panels.activateVisible()
+                    } onWindow: { window in
+                        hostWindow = window
+                        closeIfSuperseded()
                     }
                     // layout R27, config R8: every change of the layout is persisted, debounced.
                     .onChange(of: layout.snapshot()) { _, snapshot in
@@ -90,6 +98,14 @@ struct WorkspaceView: View {
                 description: Text(folder.path(percentEncoded: false))
             )
         }
+    }
+
+    /// product R1, edge cases: the `$HOME` window created at launch was replaced by the folder the
+    /// app was opened for; it closes without persisting anything.
+    private func closeIfSuperseded() {
+        guard appDelegate.supersededLaunchFolder == folder else { return }
+        workspace.disablePersistence()
+        hostWindow?.close()
     }
 
     /// layout R29: the layout comes back before the zones are built, so the first frame is final.

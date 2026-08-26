@@ -33,6 +33,7 @@ final class Workspace {
     private let configChangesContinuation: AsyncStream<WorkspaceConfig>.Continuation
     private let stateWriteDelay: Duration
     private var pendingStateWrite: Task<Void, Never>?
+    private var isPersistenceDisabled = false
     private var configWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "workspace")
 
@@ -93,6 +94,7 @@ final class Workspace {
     /// Stores a feature's section and schedules the write: ~1 s after the last change, so a burst
     /// of changes costs one write (config R8).
     func setState(_ name: String, to value: some Encodable) {
+        guard !isPersistenceDisabled else { return }
         do {
             try state.setSection(name, to: value)
         } catch {
@@ -106,6 +108,13 @@ final class Workspace {
             guard (try? await Task.sleep(for: stateWriteDelay)) != nil else { return }
             await writeState()
         }
+    }
+
+    /// Stops persisting for good: a window that closes without having been used writes nothing.
+    func disablePersistence() {
+        isPersistenceDisabled = true
+        pendingStateWrite?.cancel()
+        pendingStateWrite = nil
     }
 
     /// Writes now what is pending: called when the window closes (config R8).

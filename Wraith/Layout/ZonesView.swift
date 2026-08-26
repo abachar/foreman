@@ -5,6 +5,7 @@ import SwiftUI
 struct ZonesView: NSViewControllerRepresentable {
     let layout: LayoutManager
     let onFirstFrame: () -> Void
+    let onWindow: (NSWindow) -> Void
 
     func makeCoordinator() -> WorkspaceToolbar {
         WorkspaceToolbar(layout: layout)
@@ -43,6 +44,7 @@ struct ZonesView: NSViewControllerRepresentable {
                 layout.shortcuts.startMonitoring(window: window) {
                     (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false)
                 }
+                onWindow(window)
             },
             onWindowFrame: { layout.windowFrame = $0 }
         )
