@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D400000000000000A2 /* AsyncFileMonitor */; };
 		B1B2C3D40000003000030000 /* FuzzyMatch in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000003000020000 /* FuzzyMatch */; };
+		C1B2C3D40000000000010003 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = C1B2C3D40000000000010002 /* SwiftTerm */; };
 		B1B2C3D40000002000030000 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000002000020000 /* Markdown */; };
 		B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000010002 /* SwiftTreeSitter */; };
 		B1B2C3D40000000000020003 /* Neon in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000020002 /* Neon */; };
@@ -74,6 +75,7 @@
 			files = (
 				A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */,
 				B1B2C3D40000003000030000 /* FuzzyMatch in Frameworks */,
+				C1B2C3D40000000000010003 /* SwiftTerm in Frameworks */,
 				B1B2C3D40000002000030000 /* Markdown in Frameworks */,
 				B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */,
 				B1B2C3D40000000000020003 /* Neon in Frameworks */,
@@ -138,6 +140,7 @@
 			packageProductDependencies = (
 				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
 				B1B2C3D40000003000020000 /* FuzzyMatch */,
+				C1B2C3D40000000000010002 /* SwiftTerm */,
 				B1B2C3D40000002000020000 /* Markdown */,
 				B1B2C3D40000000000010002 /* SwiftTreeSitter */,
 				B1B2C3D40000000000020002 /* Neon */,
@@ -211,6 +214,7 @@
 			packageReferences = (
 				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
 				B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */,
+				C1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 				B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */,
 				B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */,
@@ -686,6 +690,14 @@
 				minimumVersion = 1.0.0;
 			};
 		};
+		C1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.20.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -778,6 +790,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */;
 			productName = FuzzyMatch;
+		};
+		C1B2C3D40000000000010002 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -24,7 +24,7 @@ The failure mode we guard against is an agent rewriting what a library or Apple 
 
 ## Working rules
 
-- Small commits, one feature at a time. A commit builds and passes tests (`xcodebuild test -scheme Wraith`), passes `swift format lint --strict --recursive Wraith WraithTests`.
+- Small commits, one feature at a time. A commit builds and passes tests (`xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation` — SwiftTerm ships a build-tool plugin the CLI cannot approve interactively, and its Metal renderer needs the Metal toolchain: `xcodebuild -downloadComponent MetalToolchain` once), passes `swift format lint --strict --recursive Wraith WraithTests`.
 - Conventional commits in English (`feat(git): …`), body says *why* and cites the spec.
 - Never commit secrets, `.build/`, `.DS_Store`, `.wraith/state.json`.
 - Git identity for commits: `a.bachar@hotmail.fr`.
