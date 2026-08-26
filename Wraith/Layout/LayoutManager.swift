@@ -96,11 +96,17 @@ final class LayoutManager {
 
     /// Opens a tab of `kind` in the active group (layout R14, R17); `nil` when the kind is unknown
     /// or its feature refuses the payload.
+    ///
+    /// `newGroup` (explorer R13) splits the active group to the right first; when the split is
+    /// refused (edge cases: minimum size) the tab opens in the active group, without a beep.
     @discardableResult
-    func openTab(kind: String, title: String, payload: String) -> TabID? {
+    func openTab(kind: String, title: String, payload: String, newGroup: Bool = false) -> TabID? {
         let tab = Tab(kind: kind, title: title)
         guard let view = tabKinds[kind]?.makeView(tab.id, payload) else { return nil }
         tabViews[tab.id] = view
+        if newGroup {
+            _ = model.split(.vertical, in: centerSize)
+        }
         model.open(tab)
         panels.focusCenter()
         return tab.id
