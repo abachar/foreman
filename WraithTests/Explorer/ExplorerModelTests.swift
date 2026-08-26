@@ -57,3 +57,30 @@ struct ExplorerModelTests {
         #expect(model.lastLoaded == "a")
     }
 }
+
+/// explorer R9: which loaded folders a batch of FSEvents paths makes the explorer read again.
+struct ExplorerReloadTests {
+    private let root = URL(filePath: "/ws")
+
+    private func reload(_ paths: [String], loaded: Set<String>) -> Set<String> {
+        ExplorerModel.foldersToReload(paths.map { root.appending(path: $0) }, root: root, loaded: loaded)
+    }
+
+    @Test func reloadsTheParentOfEachChangedPathOnce() {
+        #expect(reload(["src/a.swift", "src/b.swift", "README.md"], loaded: ["", "src"]) == ["", "src"])
+    }
+
+    @Test func ignoresFoldersNotReadYet() {
+        #expect(reload(["src/deep/x.swift"], loaded: ["", "src"]) == [])
+        #expect(reload(["src/deep"], loaded: ["", "src"]) == ["src"])
+    }
+
+    @Test func reloadsAChangedFolderItselfWhenItIsLoaded() {
+        #expect(reload(["src"], loaded: ["", "src"]) == ["", "src"])
+    }
+
+    @Test func ignoresPathsOutsideTheRoot() {
+        let outside = ExplorerModel.foldersToReload([URL(filePath: "/elsewhere/x")], root: root, loaded: [""])
+        #expect(outside == [])
+    }
+}

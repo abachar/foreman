@@ -26,11 +26,14 @@ final class ExplorerModel {
     private(set) var lastLoaded: String?
 
     private let rootIsHome: Bool
+    private let fsWatch: FSWatchService?
     private var activation: Task<Void, Never>?
+    private var watch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "explorer")
 
-    init(root: URL) {
+    init(root: URL, fsWatch: FSWatchService? = nil) {
         self.root = root
+        self.fsWatch = fsWatch
         rootIsHome = root.standardizedFileURL == FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
     }
 
@@ -44,17 +47,54 @@ final class ExplorerModel {
     }
 
     /// explorer R8: the first level is read at activation; layout R4: nothing before.
+    ///
+    /// explorer R9: the FSEvents subscription lives while the panel is shown; on a second
+    /// activation the folders still expanded are read again once.
     func activate() {
-        guard levels[""] == nil, activation == nil else { return }
+        guard activation == nil else { return }
+        let known = levels.keys.sorted()
         activation = Task { [weak self] in
-            await self?.load("")
+            for folder in known.isEmpty ? [""] : known {
+                await self?.load(folder)
+            }
             self?.activation = nil
+        }
+        guard let fsWatch, watch == nil else { return }
+        watch = Task { [weak self, root] in
+            for await batch in await fsWatch.changes(under: root) {
+                guard let self else { return }
+                for folder in Self.foldersToReload(batch, root: root, loaded: Set(self.levels.keys)).sorted() {
+                    await self.load(folder)
+                }
+            }
         }
     }
 
     func deactivate() {
         activation?.cancel()
         activation = nil
+        watch?.cancel()
+        watch = nil
+    }
+
+    /// explorer R9: the loaded folders one batch of changed paths makes the explorer read again.
+    ///
+    /// The parent of each path, and the path itself when it is a loaded folder. Anything outside
+    /// the root or under a folder not read yet is ignored (a collapsed folder is read at expansion).
+    nonisolated static func foldersToReload(_ changes: [URL], root: URL, loaded: Set<String>) -> Set<String> {
+        var folders: Set<String> = []
+        for url in changes {
+            let path = Workspace.persistedPath(for: url, root: root)
+            guard !path.hasPrefix("/") else { continue }
+            if loaded.contains(path) {
+                folders.insert(path)
+            }
+            let parent = path.split(separator: "/").dropLast().joined(separator: "/")
+            if loaded.contains(parent) {
+                folders.insert(parent)
+            }
+        }
+        return folders
     }
 
     func level(_ relativePath: String) -> DirectoryLevel? {

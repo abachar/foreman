@@ -6,7 +6,7 @@ enum ExplorerFeature {
     static let panelID: PanelID = "explorer.tree"
 
     static func register(in layout: LayoutManager, workspace: Workspace) {
-        let model = ExplorerModel(root: workspace.root)
+        let model = ExplorerModel(root: workspace.root, fsWatch: workspace.fsWatch)
         if let state = try? workspace.state.section("explorer", as: ExplorerState.self) {
             model.restore(state)
         }

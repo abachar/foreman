@@ -86,8 +86,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 return
             }
             guard version != self.version else { return }
+            // Several levels may have changed since the last update (explorer R9, a burst):
+            // then everything is reloaded; items keep their identity so nothing is lost (R10).
+            let path = version - self.version == 1 ? model.lastLoaded ?? "" : ""
             self.version = version
-            let path = model.lastLoaded ?? ""
             outline.reloadItem(path.isEmpty ? nil : items[path], reloadChildren: true)
             restoreExpansion(under: path)
         }
