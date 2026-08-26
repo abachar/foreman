@@ -81,3 +81,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 ## Libres
 
 `cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`.
+
+## Points ouverts
+
+- Plusieurs défauts entrent en conflit avec des raccourcis système macOS de l'auteur (relevé 2026-08-26, liste à établir) ; à traiter en M6 (polish) — en attendant, surcharge par `config.shortcuts`.
