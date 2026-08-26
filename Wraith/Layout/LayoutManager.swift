@@ -16,6 +16,11 @@ final class LayoutManager {
     let panels = PanelManager()
     let shortcuts = ShortcutRegistry()
     private(set) var homeEntries: [HomeEntry] = []
+    /// layout R30: in registration order; `WorkspaceToolbar` splits leading and trailing.
+    private(set) var toolbarItems: [ToolbarItemDescriptor] = []
+    private(set) var badges: [String: ToolbarBadge] = [:]
+    /// layout R32: `cmd+alt+t`, persisted.
+    var isToolbarVisible = true
 
     /// layout R18: one persisted thickness per slot, whatever panel is shown.
     private(set) var panelSizes = ZoneSizing.defaults
@@ -60,6 +65,29 @@ final class LayoutManager {
             return
         }
         homeEntries.append(homeEntry)
+    }
+
+    /// layout R31: a duplicated id is refused and logged as a fault.
+    @discardableResult
+    func register(toolbarItem descriptor: ToolbarItemDescriptor) -> Bool {
+        guard toolbarItem(descriptor.id) == nil else {
+            logger.fault("toolbar item \(descriptor.id, privacy: .public) registered twice, second refused")
+            return false
+        }
+        toolbarItems.append(descriptor)
+        return true
+    }
+
+    func toolbarItem(_ id: String) -> ToolbarItemDescriptor? {
+        toolbarItems.first { $0.id == id }
+    }
+
+    func setBadge(_ badge: ToolbarBadge, on itemID: String) {
+        badges[itemID] = badge
+    }
+
+    func badge(of itemID: String) -> ToolbarBadge {
+        badges[itemID] ?? .none
     }
 
     // MARK: - Tabs
@@ -167,6 +195,10 @@ final class LayoutManager {
             ("layout.move.down", "Move Tab Down", "cmd+alt+shift+down", { [weak self] in self?.moveActiveTab(.down) }),
             ("layout.focus.center", "Focus Center", "escape", { [weak self] in self?.panels.focusCenter() }),
             ("layout.window.new", "New Window", "cmd+shift+n", { [weak self] in self?.openFolder() }),
+            (
+                "layout.toolbar.toggle", "Toggle Toolbar", "cmd+alt+t",
+                { [weak self] in self?.isToolbarVisible.toggle() }
+            ),
         ]
         for (id, title, shortcut, perform) in actions {
             shortcuts.register(

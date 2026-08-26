@@ -6,6 +6,10 @@ struct ZonesView: NSViewControllerRepresentable {
     let layout: LayoutManager
     let onFirstFrame: () -> Void
 
+    func makeCoordinator() -> WorkspaceToolbar {
+        WorkspaceToolbar(layout: layout)
+    }
+
     func makeNSViewController(context: Context) -> ZonesViewController {
         let controller = ZonesViewController()
         controller.apply(configuration(with: context))
@@ -14,6 +18,7 @@ struct ZonesView: NSViewControllerRepresentable {
 
     func updateNSViewController(_ controller: ZonesViewController, context: Context) {
         controller.apply(configuration(with: context))
+        context.coordinator.sync()
     }
 
     private func configuration(with context: Context) -> ZonesViewController.Configuration {
@@ -26,7 +31,8 @@ struct ZonesView: NSViewControllerRepresentable {
             panelView: { layout.panels.view(for: $0) },
             onPanelResized: { layout.setPanelSize($1, for: $0) },
             onFirstFrame: onFirstFrame,
-            onWindow: { window in
+            onWindow: { [toolbar = context.coordinator] window in
+                toolbar.attach(to: window)
                 // layout R25: no terminal surface yet (M2); the active tab's kind drives the scopes.
                 layout.shortcuts.startMonitoring(window: window) {
                     (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false)
