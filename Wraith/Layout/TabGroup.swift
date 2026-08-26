@@ -7,6 +7,15 @@ nonisolated struct TabID: Hashable, Codable, Sendable {
     init() {
         uuid = UUID()
     }
+
+    init(from decoder: Decoder) throws {
+        uuid = try decoder.singleValueContainer().decode(UUID.self)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(uuid)
+    }
 }
 
 /// What the layout knows about a tab (layout R13): the owner feature provides title and dirtiness.

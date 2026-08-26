@@ -8,6 +8,15 @@ nonisolated struct GroupID: Hashable, Codable, Sendable {
     init() {
         uuid = UUID()
     }
+
+    init(from decoder: Decoder) throws {
+        uuid = try decoder.singleValueContainer().decode(UUID.self)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(uuid)
+    }
 }
 
 /// `vertical` places the second child to the right, `horizontal` below (layout R9).

@@ -21,6 +21,15 @@ nonisolated struct PanelID: Hashable, Codable, Sendable, ExpressibleByStringLite
     init(stringLiteral value: String) {
         rawValue = value
     }
+
+    init(from decoder: Decoder) throws {
+        rawValue = try decoder.singleValueContainer().decode(String.self)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 /// What a feature declares for a panel (architecture: features declare, `PanelManager` decides).
