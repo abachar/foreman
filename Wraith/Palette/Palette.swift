@@ -31,9 +31,22 @@ final class Palette {
         query = ""
         results = PaletteSource.Results(items: [])
         selectedIndex = 0
-        let panel = NSPanel(
+        let panel = PalettePanel(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 420),
             styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.onKey = { [weak self] key in
+            guard let self else { return }
+            switch key {
+            case .up:
+                move(by: -1)
+            case .down:
+                move(by: 1)
+            case .return(let newGroup):
+                select(newGroup: newGroup)
+            case .escape:
+                dismiss()
+            }
+        }
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isMovable = false
@@ -93,5 +106,33 @@ final class Palette {
         let item = results.items[index]
         dismiss()
         source.select(item, newGroup)
+    }
+}
+
+/// The palette's window: arrows, return and escape are taken before the field editor sees them.
+private final class PalettePanel: NSPanel {
+    enum Key {
+        case up
+        case down
+        case `return`(newGroup: Bool)
+        case escape
+    }
+
+    var onKey: (Key) -> Void = { _ in }
+
+    override func sendEvent(_ event: NSEvent) {
+        guard event.type == .keyDown else { return super.sendEvent(event) }
+        switch event.keyCode {
+        case 126:
+            onKey(.up)
+        case 125:
+            onKey(.down)
+        case 36, 76:
+            onKey(.return(newGroup: event.modifierFlags.contains(.command)))
+        case 53:
+            onKey(.escape)
+        default:
+            super.sendEvent(event)
+        }
     }
 }

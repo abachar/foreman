@@ -14,22 +14,6 @@ struct PaletteView: View {
                 .font(.title3)
                 .padding(12)
                 .focused($isFieldFocused)
-                .onKeyPress(.upArrow) {
-                    palette.move(by: -1)
-                    return .handled
-                }
-                .onKeyPress(.downArrow) {
-                    palette.move(by: 1)
-                    return .handled
-                }
-                .onKeyPress(.return, phases: .down) { press in
-                    palette.select(newGroup: press.modifiers.contains(.command))
-                    return .handled
-                }
-                .onKeyPress(.escape) {
-                    palette.dismiss()
-                    return .handled
-                }
             Divider()
             ScrollViewReader { proxy in
                 List {
