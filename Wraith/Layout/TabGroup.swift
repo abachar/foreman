@@ -21,7 +21,7 @@ nonisolated struct TabID: Hashable, Codable, Sendable {
 /// What the layout knows about a tab (layout R13): the owner feature provides title and dirtiness.
 nonisolated struct Tab: Identifiable, Equatable, Sendable {
     let id: TabID
-    /// Namespaced id declared by a feature (`editor.file`, `agent.claude`, `demo.hello`).
+    /// Namespaced id declared by a feature (`editor.file`, `agent.claude`).
     let kind: String
     var title: String
     var isDirty = false

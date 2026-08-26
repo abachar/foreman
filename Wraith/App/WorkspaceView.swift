@@ -35,7 +35,6 @@ struct WorkspaceView: View {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
-                DemoFeature.register(in: layout)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
