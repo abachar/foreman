@@ -45,8 +45,10 @@ Taille : S < ½ jour d'agent, M ≈ 1 jour, L ≈ 2 jours. Statut : ⚪ à faire
 - `cmd+f` cherche, `cmd+opt+f` remplace ; `cmd+shift+v` bascule un markdown en preview sans requête réseau.
 - `cmd+p` + `usrctrl` → `UserController.java` en tête ; `cmd+shift+f` liste les occurrences groupées par fichier et ouvre à la ligne.
 - Clic droit : créer, renommer, supprimer (corbeille), révéler, copier le chemin.
-- `xcodebuild test` couvre toutes les lignes « Tests » ; lint propre ; dépendances SPM ajoutées : SwiftTreeSitter, Neon, les packages `tree-sitter-*` de R11, swift-markdown, FuzzyMatch — rien d'autre.
-- `docs/specs/explorer` et `editor` à jour ; `questions.md` d'`editor` vidé (TextKit 2 et grammaires tranchés).
+- `xcodebuild test` couvre toutes les lignes « Tests » ; lint propre ; dépendances SPM ajoutées : SwiftTreeSitter, Neon, les packages `tree-sitter-*` de R11, swift-markdown, FuzzyMatch — rien d'autre. **Fait (2026-08-27)** : 13 grammaires (sql en M5), Neon et SwiftTreeSitter sur `main`, swift-markdown 0.8, FuzzyMatch 1.4.
+- `docs/specs/explorer` et `editor` à jour ; `questions.md` d'`editor` vidé (TextKit 2 et grammaires tranchés). **Fait.**
+
+Hors DoD, ajoutés à l'usage (2026-08-27) : gouttière de numéros de ligne (editor R6), portée `panel` des raccourcis (`escape`, layout R22b), `cmd+k` sans chord, nouveau fichier/dossier par feuille.
 
 ## À trancher pendant M1 (décisions attendues)
 

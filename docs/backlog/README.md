@@ -5,7 +5,7 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 | Milestone | Fichier | Domaines | Statut |
 |---|---|---|---|
 | M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟢 (2026-08-26 ; CI Xcode 27 non vérifiée) |
-| M1 — Explorer + Editor | [m1-explorer-editor.md](m1-explorer-editor.md) | explorer, editor, Palette, Highlight | ⚪ (démarré 2026-08-26) |
+| M1 — Explorer + Editor | [m1-explorer-editor.md](m1-explorer-editor.md) | explorer, editor, Palette, Highlight | 🟢 (2026-08-27 ; sql en M5, gitignored en M4) |
 | M2 — Terminal + Agents | | terminal, agents | |
 | M3 — Run | | run | |
 | M4 — Git | | git | |
