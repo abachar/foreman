@@ -64,3 +64,34 @@ struct FileDocumentTests {
         }
     }
 }
+
+/// editor R8, R10: writing back what was read, and noticing a change on disk.
+struct FileDocumentWriteTests {
+    @Test func keepsBOMAndCRLFAndRewritesLatin1AsUTF8() {
+        let crlf = FileDocument.decode(Data([0xEF, 0xBB, 0xBF]) + Data("a\r\nb".utf8))
+        #expect(crlf.encode("a\nb\n") == Data([0xEF, 0xBB, 0xBF]) + Data("a\r\nb\r\n".utf8))
+        let latin = FileDocument.decode(Data([0x63, 0x61, 0x66, 0xE9]))
+        #expect(latin.encode(latin.text) == Data("café".utf8))
+    }
+
+    @Test func writesAtomicallyAndDetectsAStaleFile() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "FileDocumentWriteTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appending(path: "a.txt")
+        try Data("one\n".utf8).write(to: url)
+        let document = try await FileDocument.read(url)
+        #expect(!document.isStale(at: url))
+
+        let written = try await FileDocument.write("two\n", to: url, as: document)
+        #expect(try String(contentsOf: url, encoding: .utf8) == "two\n")
+        #expect(!written.isStale(at: url))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false)) == ["a.txt"])
+
+        try await Task.sleep(for: .milliseconds(20))
+        try Data("three\n".utf8).write(to: url)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()], ofItemAtPath: url.path(percentEncoded: false))
+        #expect(written.isStale(at: url))
+    }
+}

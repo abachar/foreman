@@ -36,13 +36,13 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 |---|---|---|---|---|
 | `cmd+p` | `editor.quickOpen` | Quick open | global | ⚪ (1.13) |
 | `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | ⚪ (1.14) |
-| `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | ⚪ (1.9) |
-| `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | ⚪ (1.9, natif `NSTextView`) |
-| `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indenter / désindenter | tab(editor.file) | ⚪ (1.9) |
-| `cmd+/` | `editor.comment` | Commenter / décommenter | tab(editor.file) | ⚪ (1.9) |
-| `opt+↑` / `opt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | ⚪ (1.9) |
-| `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | ⚪ (1.9) |
-| `cmd+k enter` | `editor.keepOpen` | Fixer l'onglet aperçu | tab(editor.file) | ⚪ (1.9) |
+| `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | 🟢 |
+| `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | 🟢 (natif `NSTextView`, menu Edit) |
+| `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indenter / désindenter | tab(editor.file) | 🟢 |
+| `cmd+/` | `editor.comment` | Commenter / décommenter | tab(editor.file) | 🟢 |
+| `opt+↑` / `opt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | 🟢 |
+| `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | 🟢 |
+| `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier | tab(editor.file) | ⚪ (1.11, `NSTextFinder`) |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | ⚪ (1.12) |
 | `enter` / `cmd+enter` / `escape` | — | Palette : ouvrir / nouveau groupe / fermer | panel | ⚪ (1.13) |

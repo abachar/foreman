@@ -32,6 +32,8 @@ nonisolated struct FileDocument: Equatable, Sendable {
     let bytes: Int
     /// editor, edge cases: no write permission, or R16 size.
     let isWritable: Bool
+    /// When the file was read (editor R10: a later change on disk is a conflict).
+    var modificationDate: Date? = nil
 
     var isReadOnly: Bool {
         !isWritable || bytes > Self.readOnlyThreshold
@@ -65,7 +67,11 @@ nonisolated struct FileDocument: Equatable, Sendable {
 
     /// Decodes what was read: UTF-8 (BOM tolerated), otherwise Latin-1; line endings detected on
     /// the first CR LF found; the text is normalized to LF for display.
-    static func decode(_ data: Data, bytes: Int? = nil, isWritable: Bool = true) -> FileDocument {
+    static func decode(
+        _ data: Data, bytes: Int? = nil, isWritable: Bool = true, modificationDate: Date? = nil
+    )
+        -> FileDocument
+    {
         let bom = Data([0xEF, 0xBB, 0xBF])
         let hasBOM = data.starts(with: bom)
         let payload = hasBOM ? data.dropFirst(bom.count) : data[...]
@@ -82,7 +88,8 @@ nonisolated struct FileDocument: Equatable, Sendable {
         let lineEnding: LineEnding = raw.contains("\r\n") ? .crlf : .lf
         let text = lineEnding == .crlf ? raw.replacingOccurrences(of: "\r\n", with: "\n") : raw
         return FileDocument(
-            text: text, encoding: encoding, lineEnding: lineEnding, bytes: bytes ?? data.count, isWritable: isWritable)
+            text: text, encoding: encoding, lineEnding: lineEnding, bytes: bytes ?? data.count, isWritable: isWritable,
+            modificationDate: modificationDate)
     }
 
     /// Reads `url` off the main actor (editor R3).
@@ -90,7 +97,8 @@ nonisolated struct FileDocument: Equatable, Sendable {
     static func read(_ url: URL) async throws(EditorError) -> FileDocument {
         let path = url.path(percentEncoded: false)
         let fileManager = FileManager.default
-        guard let size = (try? fileManager.attributesOfItem(atPath: path))?[.size] as? Int else {
+        let attributes = try? fileManager.attributesOfItem(atPath: path)
+        guard let size = attributes?[.size] as? Int else {
             throw .unreadable("\(url.lastPathComponent): not found")
         }
         guard size <= maximumSize else { throw .tooLarge(bytes: size) }
@@ -106,6 +114,8 @@ nonisolated struct FileDocument: Equatable, Sendable {
             throw .binary(bytes: size)
         }
         let rest = (try? handle.readToEnd()) ?? Data()
-        return decode(head + rest, bytes: size, isWritable: fileManager.isWritableFile(atPath: path))
+        return decode(
+            head + rest, bytes: size, isWritable: fileManager.isWritableFile(atPath: path),
+            modificationDate: attributes?[.modificationDate] as? Date)
     }
 }

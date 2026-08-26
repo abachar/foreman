@@ -6,6 +6,8 @@ struct EditorTabView: View {
     let tab: EditorTab
     let theme: ThemeService
     let highlighter: Highlighter
+    /// Called on every change of `isDirty`; the feature mirrors it on the layout's tab.
+    let onDirtyChange: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,6 +31,9 @@ struct EditorTabView: View {
         }
         .task(id: tab.url) {
             await tab.load()
+        }
+        .onChange(of: tab.isDirty) { _, _ in
+            onDirtyChange()
         }
     }
 

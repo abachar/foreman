@@ -18,7 +18,7 @@ Onglet central `editor.file` : lire et éditer les fichiers texte du workspace a
 ### Onglet et cycle de vie
 
 - R1 — Un onglet `editor.file` référence un fichier (chemin relatif à la racine, absolu sinon) et possède un état : `preview` / `pinned`, `isDirty`, position du curseur, scroll. Un même fichier n'est ouvert qu'une fois par groupe ; l'ouvrir à nouveau active l'onglet existant.
-- R2 — Aperçu (`explorer` R12) : titre en italique ; un seul aperçu par groupe, remplacé par le suivant. Devient fixe (`pinned`) sur double clic, première modification, ou `cmd+k enter` (« keep open »).
+- R2 — Aperçu (`explorer` R12) : titre en italique ; un seul aperçu par groupe, remplacé par le suivant. Devient fixe (`pinned`) sur double clic, première modification, ou `cmd+k` (« keep open » ; décision 2026-08-26 : pas de chord `cmd+k enter`, le registre ne les connaît pas).
 - R3 — Ouverture (`Editor.open(path, preview:, newGroup:, line:)`, appelé par l'explorer, git, la palette, la recherche) : lecture hors main actor ; détection d'encodage UTF-8 (BOM toléré), sinon Latin-1 avec avertissement ; fins de ligne détectées (LF/CRLF) et préservées à la sauvegarde ; si `line` est fourni, le curseur y est placé et la ligne centrée.
 - R4 — Persistance (`layout` R28) : chemin, `pinned`, curseur, scroll. `isDirty` n'est jamais persisté : à la fermeture de la fenêtre avec un onglet modifié, confirmation (`layout` R15) ; le contenu non sauvé est perdu si l'on confirme. Fichier disparu à la restauration : onglet ignoré (`product` cas limite tranché).
 - R5 — Titre : nom du fichier ; si deux onglets du même groupe portent le même nom, le dossier parent est ajouté (`a/index.ts`, `b/index.ts`). Marqueur `●` quand `isDirty`.
