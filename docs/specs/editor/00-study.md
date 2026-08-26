@@ -33,7 +33,7 @@ Onglet central `editor.file` : lire et éditer les fichiers texte du workspace a
 
 ### Highlighting
 
-- R11 — Grammaires v1 (mapping par extension et par nom de fichier) : java, kotlin, typescript, tsx, javascript, json, yaml, toml, markdown, sql, bash (`.sh`, `.zsh`, `.zshrc`…), swift, html, css, dockerfile (`Dockerfile*`). Extension inconnue → texte brut.
+- R11 — Grammaires v1 (mapping par extension et par nom de fichier) : java, kotlin, typescript, tsx, javascript, json, yaml, toml, markdown, bash (`.sh`, `.zsh`, `.zshrc`…), swift, html, css, dockerfile (`Dockerfile*`) ; sql arrive avec `postgres` (M5, décision 2026-08-26). Extension inconnue → texte brut.
 - R12 — Highlighting fourni par le dossier partagé `Highlight/` (`architecture.md`) : Neon attache un highlighter à l'`NSTextView`, parse hors main actor, de façon incrémentale et annulable à chaque frappe, et applique lui-même les attributs. L'éditeur ne fait que fournir la grammaire (R11) et le thème : les rôles (`keyword`, `string`, `comment`, `type`, `function`, `number`, `variable`, `punctuation`…) sont mappés en couleurs par `ThemeService`.
 - R13 — Le highlighting est dégradable : grammaire absente, parsing en erreur ou trop lent (> 200 ms sur le premier parse) → texte brut, log `debug`, aucune bannière.
 - R14 — Markdown : l'onglet a deux modes, `source` (défaut) et `preview`, bascule `cmd+shift+v` ; le mode est persisté avec l'onglet. Preview rendue depuis l'AST `swift-markdown` : titres, listes, code (coloré via R11 si le langage est connu), tableaux, liens (ouverts dans le navigateur sur `cmd+clic` ; liens relatifs vers un fichier du workspace ouverts dans Wraith), images locales du workspace uniquement, jamais de ressource distante (`architecture.md`, sécurité).

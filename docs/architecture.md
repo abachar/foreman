@@ -77,7 +77,7 @@ On importe là où on utilise. Versions `.upToNextMinor`, `Package.resolved` com
 | Surface terminal + process | **SwiftTerm** | `LocalProcessTerminalView` : PTY, process, vue, exit code via `processTerminated` |
 | Git | binaire `git` via `Process` | formats machine (`--porcelain=v2 -z`, `--format`) ; honore hooks, signing, helpers |
 | Postgres | **PostgresNIO** | schéma via `pg_catalog` |
-| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ), grammaires SPM | editor, diff git, SQL |
+| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, branche `main`, décision editor 2026-08-26), 14 grammaires SPM (`tree-sitter-*`) | editor, diff git ; sql en M5 |
 | Markdown | **swift-markdown** | preview |
 | Fuzzy | **FuzzyMatch** (ordo-one) | Smith-Waterman façon fzf : bonus de frontières, ranges pour le surlignage (décision editor 2026-08-26) |
 | Recherche contenu | binaire `rg` (repli `grep`) | `cmd+shift+f` |

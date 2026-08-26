@@ -8,6 +8,21 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D400000000000000A2 /* AsyncFileMonitor */; };
+		B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000010002 /* SwiftTreeSitter */; };
+		B1B2C3D40000000000020003 /* Neon in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000020002 /* Neon */; };
+		B1B2C3D40000000000030003 /* TreeSitterJava in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000030002 /* TreeSitterJava */; };
+		B1B2C3D40000000000040003 /* TreeSitterKotlin in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000040002 /* TreeSitterKotlin */; };
+		B1B2C3D40000000000050003 /* TreeSitterTypeScript in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000050002 /* TreeSitterTypeScript */; };
+		B1B2C3D40000000000060003 /* TreeSitterJavaScript in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000060002 /* TreeSitterJavaScript */; };
+		B1B2C3D40000000000070003 /* TreeSitterJSON in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000070002 /* TreeSitterJSON */; };
+		B1B2C3D40000000000080003 /* TreeSitterYAML in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000080002 /* TreeSitterYAML */; };
+		B1B2C3D40000000000090003 /* TreeSitterTOML in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000090002 /* TreeSitterTOML */; };
+		B1B2C3D400000000000A0003 /* TreeSitterMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000A0002 /* TreeSitterMarkdown */; };
+		B1B2C3D400000000000C0003 /* TreeSitterBash in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000C0002 /* TreeSitterBash */; };
+		B1B2C3D400000000000D0003 /* TreeSitterSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000D0002 /* TreeSitterSwift */; };
+		B1B2C3D400000000000E0003 /* TreeSitterHTML in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000E0002 /* TreeSitterHTML */; };
+		B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000F0002 /* TreeSitterCSS */; };
+		B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000100002 /* TreeSitterDockerfile */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +71,21 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */,
+				B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */,
+				B1B2C3D40000000000020003 /* Neon in Frameworks */,
+				B1B2C3D40000000000030003 /* TreeSitterJava in Frameworks */,
+				B1B2C3D40000000000040003 /* TreeSitterKotlin in Frameworks */,
+				B1B2C3D40000000000050003 /* TreeSitterTypeScript in Frameworks */,
+				B1B2C3D40000000000060003 /* TreeSitterJavaScript in Frameworks */,
+				B1B2C3D40000000000070003 /* TreeSitterJSON in Frameworks */,
+				B1B2C3D40000000000080003 /* TreeSitterYAML in Frameworks */,
+				B1B2C3D40000000000090003 /* TreeSitterTOML in Frameworks */,
+				B1B2C3D400000000000A0003 /* TreeSitterMarkdown in Frameworks */,
+				B1B2C3D400000000000C0003 /* TreeSitterBash in Frameworks */,
+				B1B2C3D400000000000D0003 /* TreeSitterSwift in Frameworks */,
+				B1B2C3D400000000000E0003 /* TreeSitterHTML in Frameworks */,
+				B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */,
+				B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */,
 			);
 		};
 		158380D1303E6BB600F921C8 /* Frameworks */ = {
@@ -103,6 +133,21 @@
 			name = Wraith;
 			packageProductDependencies = (
 				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
+				B1B2C3D40000000000010002 /* SwiftTreeSitter */,
+				B1B2C3D40000000000020002 /* Neon */,
+				B1B2C3D40000000000030002 /* TreeSitterJava */,
+				B1B2C3D40000000000040002 /* TreeSitterKotlin */,
+				B1B2C3D40000000000050002 /* TreeSitterTypeScript */,
+				B1B2C3D40000000000060002 /* TreeSitterJavaScript */,
+				B1B2C3D40000000000070002 /* TreeSitterJSON */,
+				B1B2C3D40000000000080002 /* TreeSitterYAML */,
+				B1B2C3D40000000000090002 /* TreeSitterTOML */,
+				B1B2C3D400000000000A0002 /* TreeSitterMarkdown */,
+				B1B2C3D400000000000C0002 /* TreeSitterBash */,
+				B1B2C3D400000000000D0002 /* TreeSitterSwift */,
+				B1B2C3D400000000000E0002 /* TreeSitterHTML */,
+				B1B2C3D400000000000F0002 /* TreeSitterCSS */,
+				B1B2C3D40000000000100002 /* TreeSitterDockerfile */,
 			);
 			productName = Wraith;
 			productReference = 158380C7303E6BB500F921C8 /* Wraith.app */;
@@ -159,6 +204,21 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
+				B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */,
+				B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */,
+				B1B2C3D40000000000030001 /* XCRemoteSwiftPackageReference "tree-sitter-java" */,
+				B1B2C3D40000000000040001 /* XCRemoteSwiftPackageReference "tree-sitter-kotlin" */,
+				B1B2C3D40000000000050001 /* XCRemoteSwiftPackageReference "tree-sitter-typescript" */,
+				B1B2C3D40000000000060001 /* XCRemoteSwiftPackageReference "tree-sitter-javascript" */,
+				B1B2C3D40000000000070001 /* XCRemoteSwiftPackageReference "tree-sitter-json" */,
+				B1B2C3D40000000000080001 /* XCRemoteSwiftPackageReference "tree-sitter-yaml" */,
+				B1B2C3D40000000000090001 /* XCRemoteSwiftPackageReference "tree-sitter-toml" */,
+				B1B2C3D400000000000A0001 /* XCRemoteSwiftPackageReference "tree-sitter-markdown" */,
+				B1B2C3D400000000000C0001 /* XCRemoteSwiftPackageReference "tree-sitter-bash" */,
+				B1B2C3D400000000000D0001 /* XCRemoteSwiftPackageReference "tree-sitter-swift" */,
+				B1B2C3D400000000000E0001 /* XCRemoteSwiftPackageReference "tree-sitter-html" */,
+				B1B2C3D400000000000F0001 /* XCRemoteSwiftPackageReference "tree-sitter-css" */,
+				B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 158380C8303E6BB500F921C8 /* Products */;
@@ -482,6 +542,126 @@
 				minimumVersion = 1.0.0;
 			};
 		};
+		B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChimeHQ/SwiftTreeSitter";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChimeHQ/Neon";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		B1B2C3D40000000000030001 /* XCRemoteSwiftPackageReference "tree-sitter-java" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-java";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.23.5;
+			};
+		};
+		B1B2C3D40000000000040001 /* XCRemoteSwiftPackageReference "tree-sitter-kotlin" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/fwcd/tree-sitter-kotlin";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.3.8;
+			};
+		};
+		B1B2C3D40000000000050001 /* XCRemoteSwiftPackageReference "tree-sitter-typescript" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-typescript";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.23.2;
+			};
+		};
+		B1B2C3D40000000000060001 /* XCRemoteSwiftPackageReference "tree-sitter-javascript" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-javascript";
+			requirement = {
+				kind = exactVersion;
+				version = 0.23.1;
+			};
+		};
+		B1B2C3D40000000000070001 /* XCRemoteSwiftPackageReference "tree-sitter-json" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-json";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.24.8;
+			};
+		};
+		B1B2C3D40000000000080001 /* XCRemoteSwiftPackageReference "tree-sitter-yaml" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter-grammars/tree-sitter-yaml";
+			requirement = {
+				kind = exactVersion;
+				version = 0.7.0;
+			};
+		};
+		B1B2C3D40000000000090001 /* XCRemoteSwiftPackageReference "tree-sitter-toml" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter-grammars/tree-sitter-toml";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.7.0;
+			};
+		};
+		B1B2C3D400000000000A0001 /* XCRemoteSwiftPackageReference "tree-sitter-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/MDeiml/tree-sitter-markdown";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.5.3;
+			};
+		};
+		B1B2C3D400000000000C0001 /* XCRemoteSwiftPackageReference "tree-sitter-bash" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-bash";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.25.1;
+			};
+		};
+		B1B2C3D400000000000D0001 /* XCRemoteSwiftPackageReference "tree-sitter-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/alex-pinkus/tree-sitter-swift";
+			requirement = {
+				branch = "with-generated-files";
+				kind = branch;
+			};
+		};
+		B1B2C3D400000000000E0001 /* XCRemoteSwiftPackageReference "tree-sitter-html" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-html";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.23.2;
+			};
+		};
+		B1B2C3D400000000000F0001 /* XCRemoteSwiftPackageReference "tree-sitter-css" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter/tree-sitter-css";
+			requirement = {
+				kind = exactVersion;
+				version = 0.23.2;
+			};
+		};
+		B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/camdencheek/tree-sitter-dockerfile";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -489,6 +669,81 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */;
 			productName = AsyncFileMonitor;
+		};
+		B1B2C3D40000000000010002 /* SwiftTreeSitter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */;
+			productName = SwiftTreeSitter;
+		};
+		B1B2C3D40000000000020002 /* Neon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */;
+			productName = Neon;
+		};
+		B1B2C3D40000000000030002 /* TreeSitterJava */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000030001 /* XCRemoteSwiftPackageReference "tree-sitter-java" */;
+			productName = TreeSitterJava;
+		};
+		B1B2C3D40000000000040002 /* TreeSitterKotlin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000040001 /* XCRemoteSwiftPackageReference "tree-sitter-kotlin" */;
+			productName = TreeSitterKotlin;
+		};
+		B1B2C3D40000000000050002 /* TreeSitterTypeScript */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000050001 /* XCRemoteSwiftPackageReference "tree-sitter-typescript" */;
+			productName = TreeSitterTypeScript;
+		};
+		B1B2C3D40000000000060002 /* TreeSitterJavaScript */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000060001 /* XCRemoteSwiftPackageReference "tree-sitter-javascript" */;
+			productName = TreeSitterJavaScript;
+		};
+		B1B2C3D40000000000070002 /* TreeSitterJSON */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000070001 /* XCRemoteSwiftPackageReference "tree-sitter-json" */;
+			productName = TreeSitterJSON;
+		};
+		B1B2C3D40000000000080002 /* TreeSitterYAML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000080001 /* XCRemoteSwiftPackageReference "tree-sitter-yaml" */;
+			productName = TreeSitterYAML;
+		};
+		B1B2C3D40000000000090002 /* TreeSitterTOML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000090001 /* XCRemoteSwiftPackageReference "tree-sitter-toml" */;
+			productName = TreeSitterTOML;
+		};
+		B1B2C3D400000000000A0002 /* TreeSitterMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D400000000000A0001 /* XCRemoteSwiftPackageReference "tree-sitter-markdown" */;
+			productName = TreeSitterMarkdown;
+		};
+		B1B2C3D400000000000C0002 /* TreeSitterBash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D400000000000C0001 /* XCRemoteSwiftPackageReference "tree-sitter-bash" */;
+			productName = TreeSitterBash;
+		};
+		B1B2C3D400000000000D0002 /* TreeSitterSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D400000000000D0001 /* XCRemoteSwiftPackageReference "tree-sitter-swift" */;
+			productName = TreeSitterSwift;
+		};
+		B1B2C3D400000000000E0002 /* TreeSitterHTML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D400000000000E0001 /* XCRemoteSwiftPackageReference "tree-sitter-html" */;
+			productName = TreeSitterHTML;
+		};
+		B1B2C3D400000000000F0002 /* TreeSitterCSS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D400000000000F0001 /* XCRemoteSwiftPackageReference "tree-sitter-css" */;
+			productName = TreeSitterCSS;
+		};
+		B1B2C3D40000000000100002 /* TreeSitterDockerfile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */;
+			productName = TreeSitterDockerfile;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
