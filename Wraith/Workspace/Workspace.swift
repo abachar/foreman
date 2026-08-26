@@ -35,6 +35,8 @@ final class Workspace {
     private var pendingStateWrite: Task<Void, Never>?
     private var isPersistenceDisabled = false
     private var configWatch: Task<Void, Never>?
+    /// terminal R3: resolved once, see `Workspace+LoginEnvironment`.
+    var loginEnvironmentTask: Task<[String: String], Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "workspace")
 
     init(root: URL, stateWriteDelay: Duration = .seconds(1)) {
