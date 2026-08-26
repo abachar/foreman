@@ -13,17 +13,25 @@ final class EditorTab {
     }
 
     /// The `payload` persisted by the layout (editor R4; `layout` R28).
+    /// editor R14: what a markdown tab shows.
+    nonisolated enum Mode: String, Codable, Sendable {
+        case source
+        case preview
+    }
+
     nonisolated struct Payload: Codable, Equatable, Sendable {
         var path: String
         var pinned: Bool
         var cursor = 0
         var scroll = 0.0
+        var mode = Mode.source
 
-        init(path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0) {
+        init(path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0, mode: Mode = .source) {
             self.path = path
             self.pinned = pinned
             self.cursor = cursor
             self.scroll = scroll
+            self.mode = mode
         }
 
         init(from decoder: Decoder) throws {
@@ -32,6 +40,7 @@ final class EditorTab {
             pinned = try container.decode(Bool.self, forKey: .pinned)
             cursor = try container.decodeIfPresent(Int.self, forKey: .cursor) ?? 0
             scroll = try container.decodeIfPresent(Double.self, forKey: .scroll) ?? 0
+            mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .source
         }
     }
 
@@ -55,6 +64,8 @@ final class EditorTab {
     /// editor R4: persisted with the tab, restored into the view.
     var cursor = 0
     var scroll = 0.0
+    /// editor R14: persisted; only meaningful for markdown.
+    var mode = Mode.source
     private(set) var diskState: DiskState = .current
     /// Bumped when the text must be replaced in the view (editor R9, silent reload).
     private(set) var reloadVersion = 0
@@ -69,7 +80,7 @@ final class EditorTab {
     }
 
     var payload: Payload {
-        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll)
+        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode)
     }
 
     var document: FileDocument? {
@@ -79,13 +90,28 @@ final class EditorTab {
         return nil
     }
 
-    init(path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0) {
+    init(
+        path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0,
+        mode: Mode = .source
+    ) {
         self.path = path
         self.url = url
         self.isPinned = isPinned
         requestedLine = line
         self.cursor = cursor
         self.scroll = scroll
+        self.mode = language == .markdown ? mode : .source
+    }
+
+    /// The text as it is now: the view's when it exists, the file's otherwise.
+    var currentText: String {
+        textView?.string ?? document?.text ?? ""
+    }
+
+    /// editor R14: `cmd+shift+v`, markdown only.
+    func togglePreview() {
+        guard language == .markdown else { return }
+        mode = mode == .source ? .preview : .source
     }
 
     /// editor R9: what to do when the file changed on disk.

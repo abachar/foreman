@@ -6,8 +6,11 @@ struct EditorTabView: View {
     let tab: EditorTab
     let theme: ThemeService
     let highlighter: Highlighter
+    let root: URL
     /// Called on every change of `isDirty`; the feature mirrors it on the layout's tab.
     let onDirtyChange: () -> Void
+    /// editor R14: a link to a workspace file opens it in Wraith.
+    let onOpenFile: (URL) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +20,13 @@ struct EditorTabView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .text(let document):
                 banners(for: document)
-                EditorTextView(tab: tab, document: document, theme: theme, highlighter: highlighter)
+                if tab.mode == .preview {
+                    MarkdownPreviewView(
+                        text: tab.currentText, file: tab.url, root: root, theme: theme, highlighter: highlighter,
+                        onOpenFile: onOpenFile)
+                } else {
+                    EditorTextView(tab: tab, document: document, theme: theme, highlighter: highlighter)
+                }
             case .failed(let error):
                 ContentUnavailableView {
                     Label(error.description, systemImage: "doc.questionmark")

@@ -1,6 +1,8 @@
 import AppKit
 import Neon
 import SwiftTreeSitter
+import SwiftUI
+import TreeSitterClient
 import os
 
 /// Attaches Neon to a text view (editor R12), sharing one parsed `LanguageConfiguration` per
@@ -36,6 +38,24 @@ final class Highlighter {
             )
             return nil
         }
+    }
+
+    /// A static string colored once (markdown preview, editor R14); `nil` when the grammar is
+    /// unavailable (R13).
+    func highlight(_ code: String, language: Language) async -> AttributedString? {
+        guard let configuration = try? configuration(for: language) else { return nil }
+        guard
+            var string = try? await TreeSitterClient.highlight(
+                string: code, attributeProvider: { [theme] token in theme.attributes(forCapture: token.name) },
+                rootLanguageConfig: configuration, languageProvider: { _ in nil })
+        else { return nil }
+        // Neon sets AppKit colors; SwiftUI's `Text` reads its own.
+        for run in string.runs {
+            if let color = run.appKit.foregroundColor {
+                string[run.range].swiftUI.foregroundColor = Color(nsColor: color)
+            }
+        }
+        return string
     }
 
     private func configuration(for language: Language) throws -> LanguageConfiguration {

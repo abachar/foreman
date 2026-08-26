@@ -44,7 +44,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | 🟢 |
 | `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` ferme la barre (natif) | tab(editor.file) | 🟢 |
-| `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | ⚪ (1.12) |
+| `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | 🟢 |
 | `enter` / `cmd+enter` / `escape` | — | Palette : ouvrir / nouveau groupe / fermer | natif | ⚪ (1.13) |
 
 ## Agents (`agents` R9)

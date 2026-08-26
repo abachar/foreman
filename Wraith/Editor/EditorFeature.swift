@@ -110,6 +110,10 @@ final class EditorFeature {
             ("editor.keepOpen", "Keep Open", "cmd+k", { [weak self] in self?.keepOpenActive() }),
             ("editor.find", "Find", "cmd+f", { [weak self] in self?.findActive(.showFindInterface) }),
             (
+                "editor.togglePreview", "Toggle Markdown Preview", "cmd+shift+v",
+                { [weak self] in self?.active?.tab.togglePreview() }
+            ),
+            (
                 "editor.replace", "Find and Replace", "cmd+opt+f",
                 { [weak self] in self?.findActive(.showReplaceInterface) }
             ),
@@ -347,7 +351,8 @@ final class EditorFeature {
             // editor R4: a file gone since is not restored (product, edge cases).
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
             tab = EditorTab(
-                path: decoded.path, url: url, isPinned: decoded.pinned, cursor: decoded.cursor, scroll: decoded.scroll)
+                path: decoded.path, url: url, isPinned: decoded.pinned, cursor: decoded.cursor, scroll: decoded.scroll,
+                mode: decoded.mode)
             tabs[id] = tab
             if !decoded.pinned {
                 // The layout inserts the tab right after this call; the italic follows.
@@ -360,7 +365,10 @@ final class EditorFeature {
             }
         }
         return AnyView(
-            EditorTabView(tab: tab, theme: theme, highlighter: highlighter) { [weak self] in self?.syncDirty(id) })
+            EditorTabView(
+                tab: tab, theme: theme, highlighter: highlighter, root: workspace.root,
+                onDirtyChange: { [weak self] in self?.syncDirty(id) },
+                onOpenFile: { [weak self] url in self?.open(url, preview: true) }))
     }
 
     private func serialize(_ id: TabID) -> String? {

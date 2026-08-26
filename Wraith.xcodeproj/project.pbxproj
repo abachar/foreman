@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D400000000000000A2 /* AsyncFileMonitor */; };
+		B1B2C3D40000002000030000 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000002000020000 /* Markdown */; };
 		B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000010002 /* SwiftTreeSitter */; };
 		B1B2C3D40000000000020003 /* Neon in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000020002 /* Neon */; };
 		B1B2C3D40000000000030003 /* TreeSitterJava in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000030002 /* TreeSitterJava */; };
@@ -71,6 +72,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				A1B2C3D400000000000000A3 /* AsyncFileMonitor in Frameworks */,
+				B1B2C3D40000002000030000 /* Markdown in Frameworks */,
 				B1B2C3D40000000000010003 /* SwiftTreeSitter in Frameworks */,
 				B1B2C3D40000000000020003 /* Neon in Frameworks */,
 				B1B2C3D40000000000030003 /* TreeSitterJava in Frameworks */,
@@ -133,6 +135,7 @@
 			name = Wraith;
 			packageProductDependencies = (
 				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
+				B1B2C3D40000002000020000 /* Markdown */,
 				B1B2C3D40000000000010002 /* SwiftTreeSitter */,
 				B1B2C3D40000000000020002 /* Neon */,
 				B1B2C3D40000000000030002 /* TreeSitterJava */,
@@ -204,6 +207,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
+				B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */,
 				B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */,
 				B1B2C3D40000000000030001 /* XCRemoteSwiftPackageReference "tree-sitter-java" */,
@@ -662,6 +666,14 @@
 				minimumVersion = 0.2.0;
 			};
 		};
+		B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swiftlang/swift-markdown";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.8.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -744,6 +756,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */;
 			productName = TreeSitterDockerfile;
+		};
+		B1B2C3D40000002000020000 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
