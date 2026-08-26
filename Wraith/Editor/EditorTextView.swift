@@ -68,6 +68,10 @@ struct EditorTextView: NSViewRepresentable {
         // SwiftUI may rebuild the native view when the tab is shown again: the commands must
         // reach the live instance.
         tab.textView = textView
+        // terminal R14: the font follows the config.
+        if textView.font != theme.editorFont {
+            textView.font = theme.editorFont
+        }
         if context.coordinator.reloadVersion != tab.reloadVersion, let document = tab.document {
             // editor R9: silent reload, cursor and scroll preserved.
             context.coordinator.reloadVersion = tab.reloadVersion

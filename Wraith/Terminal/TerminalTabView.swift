@@ -7,6 +7,8 @@ struct TerminalTabView: View {
     let id: TabID
     let service: TerminalService
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         if let tab = service.tab(id) {
             content(tab)
@@ -23,9 +25,12 @@ struct TerminalTabView: View {
             if tab.isCwdMissing {
                 banner("Folder not found: \(tab.cwd.path(percentEncoded: false))", symbol: "questionmark.folder")
             }
-            TerminalSurfaceRepresentable(id: id, service: service)
-                .id(tab.generation)
-                .help(tab.subtitle ?? "")
+            TerminalSurfaceRepresentable(
+                id: id, service: service, font: service.theme.editorFont,
+                palette: service.theme.terminalPalette(dark: service.theme.isDark(systemIsDark: colorScheme == .dark))
+            )
+            .id(tab.generation)
+            .help(tab.subtitle ?? "")
             if case .exited(let exit) = tab.state {
                 Divider()
                 HStack {
@@ -59,9 +64,12 @@ struct TerminalTabView: View {
 private struct TerminalSurfaceRepresentable: NSViewRepresentable {
     let id: TabID
     let service: TerminalService
+    let font: NSFont
+    let palette: ThemeService.TerminalPalette
 
     func makeNSView(context: Context) -> NSView {
         guard let surface = service.surface(for: id) else { return NSView() }
+        surface.apply(palette, font: font)
         // The surface takes the keyboard when its tab is shown (layout R25).
         DispatchQueue.main.async { [weak surface] in
             surface?.window?.makeFirstResponder(surface)
@@ -69,5 +77,8 @@ private struct TerminalSurfaceRepresentable: NSViewRepresentable {
         return surface
     }
 
-    func updateNSView(_ view: NSView, context: Context) {}
+    /// terminal R14: config reload or appearance change.
+    func updateNSView(_ view: NSView, context: Context) {
+        (view as? TerminalSurfaceView)?.apply(palette, font: font)
+    }
 }

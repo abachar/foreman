@@ -10,7 +10,7 @@ import os
 @MainActor
 final class TerminalService {
     private let layout: LayoutManager
-    private let theme: ThemeService
+    let theme: ThemeService
     private let root: URL
     private var tabs: [TabID: TerminalTab] = [:]
     private var surfaces: [TabID: TerminalSurfaceView] = [:]
