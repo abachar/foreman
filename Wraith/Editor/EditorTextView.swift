@@ -61,6 +61,9 @@ struct EditorTextView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let textView = scroll.documentView as? NSTextView else { return }
+        // SwiftUI may rebuild the native view when the tab is shown again: the commands must
+        // reach the live instance.
+        tab.textView = textView
         if context.coordinator.reloadVersion != tab.reloadVersion, let document = tab.document {
             // editor R9: silent reload, cursor and scroll preserved.
             context.coordinator.reloadVersion = tab.reloadVersion

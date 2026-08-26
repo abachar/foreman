@@ -13,6 +13,8 @@ final class EditorFeature {
     private let highlighter: Highlighter
     private let theme: ThemeService
     private var tabs: [TabID: EditorTab] = [:]
+    /// The tab `open` is creating: `openTab` asks for its view before returning its id.
+    private var opening: EditorTab?
     private var watch: Task<Void, Never>?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
@@ -124,6 +126,11 @@ final class EditorFeature {
         return (id, tab)
     }
 
+    /// Test seam: the tabs the feature knows.
+    var openTabCount: Int {
+        tabs.count
+    }
+
     private func apply(_ edit: TextEditing.Edit?, to textView: NSTextView) {
         guard let edit, textView.isEditable,
             textView.shouldChangeText(in: edit.range, replacementString: edit.replacement)
@@ -210,6 +217,7 @@ final class EditorFeature {
 
     /// editor R8: `cmd+opt+s`.
     private func saveAll() {
+        prune()
         Task {
             for (id, tab) in tabs where tab.isDirty {
                 _ = await save(id, tab)
@@ -273,6 +281,7 @@ final class EditorFeature {
 
     /// editor R1–R3: shows `url` in the active group, or activates the tab already showing it.
     func open(_ url: URL, preview: Bool, newGroup: Bool = false, line: Int? = nil) {
+        prune()
         let path = Workspace.persistedPath(for: url, root: workspace.root)
         if !newGroup, let existing = layout.model.active.tabs.first(where: { tabs[$0.id]?.path == path }) {
             if let tab = tabs[existing.id] {
@@ -287,12 +296,13 @@ final class EditorFeature {
         // editor R2: one preview per group, replaced by the next one.
         let replaced = preview && !newGroup ? layout.model.active.tabs.first { tabs[$0.id]?.isPinned == false } : nil
         let tab = EditorTab(path: path, url: url, isPinned: !preview, line: line)
+        opening = tab
+        defer { opening = nil }
         guard
-            let id = layout.openTab(
+            layout.openTab(
                 kind: Self.tabKind, title: url.lastPathComponent, payload: encode(tab.payload), newGroup: newGroup,
-                isPreview: preview)
+                isPreview: preview) != nil
         else { return }
-        tabs[id] = tab
         noteRecent(path)
         if let replaced {
             tabs[replaced.id] = nil
@@ -315,10 +325,20 @@ final class EditorFeature {
         layout.update(id, title: title, isDirty: false, isPreview: false)
     }
 
+    /// Forgets the tabs the layout closed (`cmd+w` does not tell the owner).
+    private func prune() {
+        let open = Set(layout.model.tree.groups.flatMap { layout.model[group: $0]?.tabs.map(\.id) ?? [] })
+        tabs = tabs.filter { open.contains($0.key) }
+    }
+
+    /// The one place a tab is bound to its view: `open` (through `opening`) or the restoration.
     private func restore(_ id: TabID, payload: String) -> AnyView? {
         let tab: EditorTab
         if let existing = tabs[id] {
             tab = existing
+        } else if let opening {
+            tab = opening
+            tabs[id] = tab
         } else {
             guard let data = payload.data(using: .utf8),
                 let decoded = try? JSONDecoder().decode(EditorTab.Payload.self, from: data)
