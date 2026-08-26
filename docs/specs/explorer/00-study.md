@@ -41,7 +41,7 @@ Panneau gauche `explorer.tree` : l'arbre de fichiers du workspace, paresseux, ra
 
 ### Opérations
 
-- R16 — Nouveau fichier / nouveau dossier : créés dans le dossier sélectionné (ou le parent du fichier sélectionné, ou la racine), nom saisi en ligne, puis le fichier est ouvert (fixe). Le nom peut contenir des `/` pour créer les dossiers intermédiaires.
+- R16 — Nouveau fichier / nouveau dossier : créés dans le dossier sélectionné (ou le parent du fichier sélectionné, ou la racine), nom saisi dans une feuille (décision 2026-08-27), puis le fichier est ouvert (fixe). Le nom peut contenir des `/` pour créer les dossiers intermédiaires.
 - R17 — Renommer : édition en ligne (`enter` sur l'élément ou menu). L'explorer appelle `Editor.fileRenamed(old, new)` pour que les onglets ouverts suivent.
 - R18 — Supprimer : vers la **corbeille** (`trashItem`), avec confirmation listant le nombre d'éléments pour un dossier non vide. L'explorer appelle `Editor.fileDeleted(path)`.
 - R19 — Toute opération est refusée si le chemin cible n'est pas sous la racine (`architecture.md`, sécurité) ou si le nom est vide, `.`/`..`, ou contient un caractère interdit. Une erreur d'IO (permission, existe déjà) s'affiche en bannière du panneau et ne modifie pas l'arbre.

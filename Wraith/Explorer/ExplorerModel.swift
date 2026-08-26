@@ -139,6 +139,17 @@ final class ExplorerModel {
         }
     }
 
+    /// explorer R19: an operation failed; shown in the panel, the tree untouched.
+    func report(_ error: any Error) {
+        self.error = error as? ExplorerError ?? .io("operation", underlying: error)
+    }
+
+    /// The node at `relativePath`, when its parent level is loaded.
+    func node(at relativePath: String) -> FileNode? {
+        let parent = relativePath.split(separator: "/").dropLast().joined(separator: "/")
+        return levels[parent]?.nodes.first { $0.relativePath == relativePath }
+    }
+
     /// explorer R9: a collapsed folder is read again at its next expansion.
     func forget(_ relativePath: String) {
         guard levels.removeValue(forKey: relativePath) != nil else { return }

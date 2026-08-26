@@ -17,9 +17,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
     let model: ExplorerModel
     let isFocused: Bool
     let onOpen: (FileNode, ExplorerOpenMode) -> Void
+    let operations: ExplorerActions
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(model: model, onOpen: onOpen)
+        Coordinator(model: model, onOpen: onOpen, operations: operations)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -44,6 +45,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.target = context.coordinator
         outline.action = #selector(Coordinator.clicked)
         outline.doubleAction = #selector(Coordinator.doubleClicked)
+        // explorer R20: the context menu, built for the clicked row.
+        let menu = NSMenu()
+        menu.delegate = context.coordinator
+        outline.menu = menu
         context.coordinator.outline = outline
 
         let scroll = NSScrollView()
@@ -83,19 +88,22 @@ struct ExplorerOutlineView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
+    final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
         weak var outline: NSOutlineView?
         private let model: ExplorerModel
         private let onOpen: (FileNode, ExplorerOpenMode) -> Void
+        private let operations: ExplorerActions
         private var items: [String: OutlineItem] = [:]
         private var reveal: Task<Void, Never>?
         private var moreItems: [String: OutlineItem] = [:]
         private var version = -1
         private var hidesExcluded: Bool
 
-        init(model: ExplorerModel, onOpen: @escaping (FileNode, ExplorerOpenMode) -> Void) {
+        init(model: ExplorerModel, onOpen: @escaping (FileNode, ExplorerOpenMode) -> Void, operations: ExplorerActions)
+        {
             self.model = model
             self.onOpen = onOpen
+            self.operations = operations
             hidesExcluded = model.hidesExcluded
         }
 
@@ -112,19 +120,77 @@ struct ExplorerOutlineView: NSViewRepresentable {
             onOpen(node, .pinned)
         }
 
-        /// explorer R21: `space` previews, `cmd+↓` opens pinned; anything else is the outline's.
+        /// explorer R21: `space` previews, `cmd+↓` opens pinned, `enter` renames, `cmd+delete`
+        /// deletes; anything else is the outline's.
         func handle(_ key: KeyboardOutlineView.Key) -> Bool {
-            guard let outline, outline.selectedRow >= 0, let node = file(atRow: outline.selectedRow) else {
-                return false
-            }
+            guard let outline, outline.selectedRow >= 0 else { return false }
             switch key {
             case .space:
+                guard let node = file(atRow: outline.selectedRow) else { return false }
                 onOpen(node, .preview)
             case .commandDown:
+                guard let node = file(atRow: outline.selectedRow) else { return false }
                 onOpen(node, .pinned)
+            case .enter:
+                guard node(atRow: outline.selectedRow) != nil else { return false }
+                outline.editColumn(0, row: outline.selectedRow, with: nil, select: true)
+            case .commandDelete:
+                guard let node = node(atRow: outline.selectedRow) else { return false }
+                operations.delete(node)
             }
             return true
         }
+
+        /// explorer R17: the cell's inline editor ended with a new name.
+        @objc func renamed(_ sender: NSTextField) {
+            guard let outline else { return }
+            let row = outline.row(for: sender)
+            guard row >= 0, let node = node(atRow: row) else { return }
+            let name = sender.stringValue.trimmingCharacters(in: .whitespaces)
+            sender.stringValue = node.name
+            guard !name.isEmpty else { return }
+            operations.rename(node, to: name)
+        }
+
+        private func node(atRow row: Int) -> FileNode? {
+            guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind
+            else { return nil }
+            return node
+        }
+
+        // MARK: - NSMenuDelegate (explorer R20)
+
+        func menuNeedsUpdate(_ menu: NSMenu) {
+            menu.removeAllItems()
+            let clicked = outline.flatMap { $0.clickedRow >= 0 ? node(atRow: $0.clickedRow) : nil }
+            menu.addItem(withTitle: "New File", action: #selector(menuNewFile), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "New Folder", action: #selector(menuNewFolder), keyEquivalent: "").target = self
+            guard clicked != nil else { return }
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Rename", action: #selector(menuRename), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Move to Trash", action: #selector(menuDelete), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Reveal in Finder", action: #selector(menuReveal), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Copy Path", action: #selector(menuCopyPath), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Copy Absolute Path", action: #selector(menuCopyAbsolutePath), keyEquivalent: "")
+                .target = self
+        }
+
+        private var clickedNode: FileNode? {
+            guard let outline, outline.clickedRow >= 0 else { return nil }
+            return node(atRow: outline.clickedRow)
+        }
+
+        @objc private func menuNewFile() { operations.newFile(near: clickedNode) }
+        @objc private func menuNewFolder() { operations.newFolder(near: clickedNode) }
+        @objc private func menuRename() {
+            guard let outline, outline.clickedRow >= 0 else { return }
+            outline.editColumn(0, row: outline.clickedRow, with: nil, select: true)
+        }
+        @objc private func menuDelete() { clickedNode.map { operations.delete($0) } }
+        @objc private func menuReveal() { clickedNode.map { operations.revealInFinder($0) } }
+        @objc private func menuCopyPath() { clickedNode.map { operations.copyPath($0, absolute: false) } }
+        @objc private func menuCopyAbsolutePath() { clickedNode.map { operations.copyPath($0, absolute: true) } }
 
         /// explorer R14: expands the folders down to `path` and selects it, scrolling only when
         /// it is not already visible.
@@ -245,11 +311,13 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 outlineView.makeView(withIdentifier: identifier, owner: nil) as? NSTableCellView ?? makeCell(identifier)
             switch item.kind {
             case .node(let node):
+                cell.textField?.isEditable = true
                 cell.textField?.stringValue = node.name
                 cell.textField?.textColor = node.isExcluded ? .tertiaryLabelColor : .labelColor
                 cell.imageView?.image = NSImage(systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
                 cell.imageView?.contentTintColor = node.isExcluded ? .tertiaryLabelColor : .secondaryLabelColor
             case .more(_, let count):
+                cell.textField?.isEditable = false
                 cell.textField?.stringValue = "… and \(count) more (click to load all)"
                 cell.textField?.textColor = .secondaryLabelColor
                 cell.imageView?.image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: nil)
@@ -306,6 +374,11 @@ struct ExplorerOutlineView: NSViewRepresentable {
             image.translatesAutoresizingMaskIntoConstraints = false
             let text = NSTextField(labelWithString: "")
             text.translatesAutoresizingMaskIntoConstraints = false
+            // explorer R17: the label doubles as the inline rename editor.
+            text.isBezeled = false
+            text.drawsBackground = false
+            text.target = self
+            text.action = #selector(renamed(_:))
             text.lineBreakMode = .byTruncatingMiddle
             text.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
             cell.addSubview(image)
@@ -344,6 +417,8 @@ final class KeyboardOutlineView: NSOutlineView {
     enum Key {
         case space
         case commandDown
+        case enter
+        case commandDelete
     }
 
     var onKey: (Key) -> Bool = { _ in false }
@@ -356,6 +431,10 @@ final class KeyboardOutlineView: NSOutlineView {
             key = .space
         } else if event.keyCode == 125, event.modifierFlags.contains(.command) {
             key = .commandDown
+        } else if event.keyCode == 36 || event.keyCode == 76 {
+            key = .enter
+        } else if event.keyCode == 51, event.modifierFlags.contains(.command) {
+            key = .commandDelete
         } else {
             key = nil
         }

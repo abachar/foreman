@@ -27,8 +27,8 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `↑↓` `←` `→` | — | Naviguer, replier, déplier | natif | 🟢 (natif `NSOutlineView`) |
 | `space` | — | Ouvrir en aperçu | natif | 🟢 |
 | `cmd+↓` | — | Ouvrir fixe | natif | 🟢 |
-| `enter` | — | Renommer | natif | ⚪ (1.15) |
-| `cmd+delete` | — | Supprimer (corbeille) | natif | ⚪ (1.15) |
+| `enter` | — | Renommer | natif | 🟢 |
+| `cmd+delete` | — | Supprimer (corbeille) | natif | 🟢 |
 
 ## Editor (`editor` R6–R8, R14, R17, R23)
 

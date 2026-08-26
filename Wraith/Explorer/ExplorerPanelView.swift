@@ -7,6 +7,7 @@ struct ExplorerPanelView: View {
     let onStateChange: (ExplorerState) -> Void
     let onOpen: (FileNode, ExplorerOpenMode) -> Void
     let pathOfTab: (TabID) -> String?
+    let operations: ExplorerActions
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +24,8 @@ struct ExplorerPanelView: View {
                     .background(.bar)
             }
             ExplorerOutlineView(
-                model: model, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID), onOpen: onOpen)
+                model: model, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID), onOpen: onOpen,
+                operations: operations)
         }
         .onChange(of: model.persisted) { _, state in
             onStateChange(state)
@@ -41,6 +43,20 @@ struct ExplorerPanelView: View {
                 .font(.headline)
                 .lineLimit(1)
             Spacer()
+            Button {
+                operations.newFile(near: nil)
+            } label: {
+                Image(systemName: "doc.badge.plus")
+            }
+            .buttonStyle(.borderless)
+            .help("New File")
+            Button {
+                operations.newFolder(near: nil)
+            } label: {
+                Image(systemName: "folder.badge.plus")
+            }
+            .buttonStyle(.borderless)
+            .help("New Folder")
             Menu {
                 // explorer R5: persisted, default visible.
                 Toggle("Hide Ignored Files", isOn: Bindable(model).hidesExcluded)
