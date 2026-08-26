@@ -16,6 +16,7 @@ Specs, studies and decisions live in [`docs/specs/`](docs/specs/), one folder pe
 git clone git@github.com:abachar/wraith.git
 cd wraith
 open Wraith.xcodeproj   # build & run with Xcode
+ln -s "$PWD/cli/wraith" /usr/local/bin/wraith   # then `wraith .` opens a folder in the built app
 ```
 
 ## Roadmap and Status
