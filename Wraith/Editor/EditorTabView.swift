@@ -39,6 +39,23 @@ struct EditorTabView: View {
 
     @ViewBuilder
     private func banners(for document: FileDocument) -> some View {
+        switch tab.diskState {
+        case .current:
+            EmptyView()
+        case .modified:
+            // editor R9: the file changed on disk while this tab has unsaved changes.
+            HStack {
+                Label("Modified on disk", systemImage: "arrow.triangle.2.circlepath")
+                Spacer()
+                Button("Keep My Changes") { tab.keepChanges() }
+                Button("Reload") { Task { await tab.reload() } }
+            }
+            .font(.callout)
+            .padding(6)
+            .background(.bar)
+        case .deleted:
+            banner("Deleted on disk — ⌘S recreates it", icon: "trash")
+        }
         if document.isReadOnly {
             // editor R16 and edge cases: over 2 MB or without write permission.
             banner(

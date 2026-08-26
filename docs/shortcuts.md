@@ -43,7 +43,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif, `layout` R22b), `panel
 | `opt+↑` / `opt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | 🟢 |
 | `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | 🟢 |
 | `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
-| `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier | tab(editor.file) | ⚪ (1.11, `NSTextFinder`) |
+| `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` (`editor.escape`) ferme la barre | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | ⚪ (1.12) |
 | `enter` / `cmd+enter` / `escape` | — | Palette : ouvrir / nouveau groupe / fermer | panel | ⚪ (1.13) |
 

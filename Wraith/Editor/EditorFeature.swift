@@ -13,6 +13,13 @@ final class EditorFeature {
     private let highlighter: Highlighter
     private let theme: ThemeService
     private var tabs: [TabID: EditorTab] = [:]
+    private var watch: Task<Void, Never>?
+    /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
+    private(set) var recentPaths: [String] = []
+
+    nonisolated struct State: Codable, Equatable, Sendable {
+        var recent: [String]
+    }
 
     init(layout: LayoutManager, workspace: Workspace, theme: ThemeService) {
         self.layout = layout
@@ -26,6 +33,63 @@ final class EditorFeature {
                 serialize: { [weak self] id in self?.serialize(id) },
                 confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true }))
         registerActions()
+        recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
+        watchDisk()
+    }
+
+    isolated deinit {
+        watch?.cancel()
+    }
+
+    // MARK: - Disk (editor R9; explorer R17, R18)
+
+    private func watchDisk() {
+        watch = Task { [weak self, fsWatch = workspace.fsWatch, root = workspace.root] in
+            for await batch in await fsWatch.changes(under: root) {
+                guard let self else { return }
+                let changed = Set(batch.map { $0.standardizedFileURL.path(percentEncoded: false) })
+                for tab in tabs.values where changed.contains(tab.url.standardizedFileURL.path(percentEncoded: false)) {
+                    await tab.fileChangedOnDisk()
+                }
+            }
+        }
+    }
+
+    /// explorer R17: open tabs follow the renamed file or folder.
+    func fileRenamed(from old: URL, to new: URL) {
+        let oldPath = old.standardizedFileURL.path(percentEncoded: false)
+        for (id, tab) in tabs {
+            let path = tab.url.standardizedFileURL.path(percentEncoded: false)
+            guard path == oldPath || path.hasPrefix(oldPath + "/") else { continue }
+            let suffix = path.dropFirst(oldPath.count)
+            let url = URL(filePath: new.standardizedFileURL.path(percentEncoded: false) + suffix)
+            tab.fileRenamed(to: url, path: Workspace.persistedPath(for: url, root: workspace.root))
+            if let owner = layout.model.owner(of: id) {
+                layout.update(id, title: url.lastPathComponent, isDirty: tab.isDirty, isPreview: !tab.isPinned)
+                retitle(group: owner)
+            }
+        }
+    }
+
+    /// explorer R18: the tab stays with a banner; `cmd+s` recreates the file (editor R9).
+    func fileDeleted(_ url: URL) {
+        let deleted = url.standardizedFileURL.path(percentEncoded: false)
+        for tab in tabs.values {
+            let path = tab.url.standardizedFileURL.path(percentEncoded: false)
+            if path == deleted || path.hasPrefix(deleted + "/") {
+                tab.fileDeleted()
+            }
+        }
+    }
+
+    /// editor R19: `path` becomes the most recent; the list is capped and persisted.
+    nonisolated static func pushRecent(_ path: String, into recent: [String]) -> [String] {
+        Array(([path] + recent.filter { $0 != path }).prefix(50))
+    }
+
+    private func noteRecent(_ path: String) {
+        recentPaths = Self.pushRecent(path, into: recentPaths)
+        workspace.setState("editor", to: State(recent: recentPaths))
     }
 
     // MARK: - Editing (editor R6, R8, R10, R23)
@@ -42,6 +106,13 @@ final class EditorFeature {
             ("editor.moveLine.down", "Move Line Down", "opt+down", { [weak self] in self?.moveLinesActive(up: false) }),
             ("editor.goToLine", "Go to Line…", "cmd+l", { [weak self] in self?.goToLineActive() }),
             ("editor.keepOpen", "Keep Open", "cmd+k", { [weak self] in self?.keepOpenActive() }),
+            ("editor.find", "Find", "cmd+f", { [weak self] in self?.findActive(.showFindInterface) }),
+            (
+                "editor.replace", "Find and Replace", "cmd+opt+f",
+                { [weak self] in self?.findActive(.showReplaceInterface) }
+            ),
+            // editor R7: `escape` closes the bar; layout R6 (focus center) still applies (R22b).
+            ("editor.escape", "Close Find Bar", "escape", { [weak self] in self?.escapeActive() }),
         ]
         for (id, title, shortcut, perform) in actions {
             layout.shortcuts.register(
@@ -103,6 +174,20 @@ final class EditorFeature {
     private func keepOpenActive() {
         guard let (id, tab) = active else { return }
         pin(id, tab)
+    }
+
+    /// editor R7: NSTextFinder's own bar, driven through `performFindPanelAction`.
+    private func findActive(_ action: NSTextFinder.Action) {
+        guard let (_, tab) = active, let textView = tab.textView else { return }
+        textView.window?.makeFirstResponder(textView)
+        let sender = NSMenuItem()
+        sender.tag = action.rawValue
+        textView.performFindPanelAction(sender)
+    }
+
+    private func escapeActive() {
+        findActive(.hideFindInterface)
+        layout.panels.focusCenter()
     }
 
     /// The dirty marker follows the tab (editor R1, R5); the first edit pins a preview (R2).
@@ -215,6 +300,7 @@ final class EditorFeature {
                 isPreview: preview)
         else { return }
         tabs[id] = tab
+        noteRecent(path)
         if let replaced {
             tabs[replaced.id] = nil
             Task { await layout.closeTab(replaced.id) }
@@ -247,7 +333,8 @@ final class EditorFeature {
             let url = Workspace.url(forPersistedPath: decoded.path, root: workspace.root)
             // editor R4: a file gone since is not restored (product, edge cases).
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
-            tab = EditorTab(path: decoded.path, url: url, isPinned: decoded.pinned)
+            tab = EditorTab(
+                path: decoded.path, url: url, isPinned: decoded.pinned, cursor: decoded.cursor, scroll: decoded.scroll)
             tabs[id] = tab
             if !decoded.pinned {
                 // The layout inserts the tab right after this call; the italic follows.

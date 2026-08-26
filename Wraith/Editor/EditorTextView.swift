@@ -1,5 +1,6 @@
 import AppKit
 import Neon
+import RangeState
 import SwiftUI
 
 /// The text itself: `NSTextView` on TextKit 2 with Neon attached (editor, technical options).
@@ -23,7 +24,9 @@ struct EditorTextView: NSViewRepresentable {
         textView.isEditable = !document.isReadOnly
         textView.isRichText = false
         textView.allowsUndo = true
-        textView.usesFindBar = false
+        // editor R7: the find and replace bar is NSTextFinder's (1.11).
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
@@ -36,11 +39,42 @@ struct EditorTextView: NSViewRepresentable {
         if document.isHighlightable, let language = tab.language {
             context.coordinator.highlighter = highlighter.attach(to: textView, language: language)
         }
+        // editor R4: cursor and scroll come back with the tab.
+        textView.setSelectedRange(NSRange(location: min(tab.cursor, (document.text as NSString).length), length: 0))
+        scroll.contentView.postsBoundsChangedNotifications = true
+        context.coordinator.scrollObserver = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification, object: scroll.contentView, queue: .main
+        ) { [tab, weak scroll] _ in
+            MainActor.assumeIsolated {
+                guard let scroll else { return }
+                tab.scroll = scroll.contentView.bounds.origin.y
+            }
+        }
+        context.coordinator.reloadVersion = tab.reloadVersion
+        DispatchQueue.main.async { [weak scroll] in
+            guard let scroll else { return }
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: tab.scroll))
+            scroll.reflectScrolledClipView(scroll.contentView)
+        }
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let line = tab.requestedLine, let textView = scroll.documentView as? NSTextView else { return }
+        guard let textView = scroll.documentView as? NSTextView else { return }
+        if context.coordinator.reloadVersion != tab.reloadVersion, let document = tab.document {
+            // editor R9: silent reload, cursor and scroll preserved.
+            context.coordinator.reloadVersion = tab.reloadVersion
+            let selection = textView.selectedRange()
+            let origin = scroll.contentView.bounds.origin
+            textView.string = document.text
+            textView.isEditable = !document.isReadOnly
+            textView.setSelectedRange(
+                NSRange(location: min(selection.location, (document.text as NSString).length), length: 0))
+            scroll.contentView.scroll(to: origin)
+            scroll.reflectScrolledClipView(scroll.contentView)
+            context.coordinator.highlighter?.invalidate(.all)
+        }
+        guard let line = tab.requestedLine else { return }
         tab.requestedLine = nil
         // editor R3: the cursor goes to the line and the line is shown.
         let location = TextEditing.location(ofLine: line, in: textView.string as NSString)
@@ -52,14 +86,27 @@ struct EditorTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         /// Kept alive for the life of the view: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
+        var scrollObserver: (any NSObjectProtocol)?
+        var reloadVersion = 0
         private let tab: EditorTab
 
         init(tab: EditorTab) {
             self.tab = tab
         }
 
+        isolated deinit {
+            if let scrollObserver {
+                NotificationCenter.default.removeObserver(scrollObserver)
+            }
+        }
+
         func textDidChange(_ notification: Notification) {
             tab.textDidChange()
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            tab.cursor = textView.selectedRange().location
         }
 
         /// editor R6: `tab` inserts the file's indent unit, `enter` keeps the line's indent.

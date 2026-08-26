@@ -25,7 +25,12 @@ nonisolated extension FileDocument {
         let temporary = folder.appending(path: ".\(url.lastPathComponent).wraith-tmp")
         do {
             try data.write(to: temporary)
-            _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
+            if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+                _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
+            } else {
+                // editor R9: the file was deleted on disk; saving recreates it.
+                try FileManager.default.moveItem(at: temporary, to: url)
+            }
         } catch {
             try? FileManager.default.removeItem(at: temporary)
             throw .unreadable("\(url.lastPathComponent): \(error.localizedDescription)")

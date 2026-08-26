@@ -16,17 +16,48 @@ final class EditorTab {
     nonisolated struct Payload: Codable, Equatable, Sendable {
         var path: String
         var pinned: Bool
+        var cursor = 0
+        var scroll = 0.0
+
+        init(path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0) {
+            self.path = path
+            self.pinned = pinned
+            self.cursor = cursor
+            self.scroll = scroll
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            path = try container.decode(String.self, forKey: .path)
+            pinned = try container.decode(Bool.self, forKey: .pinned)
+            cursor = try container.decodeIfPresent(Int.self, forKey: .cursor) ?? 0
+            scroll = try container.decodeIfPresent(Double.self, forKey: .scroll) ?? 0
+        }
     }
 
-    /// Relative to the root when inside it, absolute otherwise (config R10).
-    let path: String
-    let url: URL
+    /// editor R9: what happened to the file on disk since it was read.
+    enum DiskState: Equatable {
+        case current
+        /// The file changed while the tab was dirty: the user chooses.
+        case modified
+        case deleted
+    }
+
+    /// Relative to the root when inside it, absolute otherwise (config R10); follows a rename.
+    private(set) var path: String
+    private(set) var url: URL
     /// editor R2: an unpinned tab is the group's preview, replaced by the next one.
     var isPinned: Bool
     /// editor R1: unsaved changes; never persisted (R4).
     private(set) var isDirty = false
     /// editor R3: the 1-based line to reveal once the text is shown.
     var requestedLine: Int?
+    /// editor R4: persisted with the tab, restored into the view.
+    var cursor = 0
+    var scroll = 0.0
+    private(set) var diskState: DiskState = .current
+    /// Bumped when the text must be replaced in the view (editor R9, silent reload).
+    private(set) var reloadVersion = 0
     private(set) var content: Content = .loading
     /// editor R6: the unit `tab` inserts, detected at load.
     private(set) var indentUnit = "    "
@@ -38,7 +69,7 @@ final class EditorTab {
     }
 
     var payload: Payload {
-        Payload(path: path, pinned: isPinned)
+        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll)
     }
 
     var document: FileDocument? {
@@ -48,11 +79,59 @@ final class EditorTab {
         return nil
     }
 
-    init(path: String, url: URL, isPinned: Bool, line: Int? = nil) {
+    init(path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0) {
         self.path = path
         self.url = url
         self.isPinned = isPinned
         requestedLine = line
+        self.cursor = cursor
+        self.scroll = scroll
+    }
+
+    /// editor R9: what to do when the file changed on disk.
+    nonisolated static func diskAction(isDirty: Bool, exists: Bool, isStale: Bool) -> DiskState? {
+        guard exists else { return .deleted }
+        guard isStale else { return nil }
+        return isDirty ? .modified : .current
+    }
+
+    /// editor R9: called by the feature on every FSEvents batch touching the file.
+    func fileChangedOnDisk() async {
+        let exists = FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
+        let stale = document?.isStale(at: url) ?? false
+        guard let action = Self.diskAction(isDirty: isDirty, exists: exists, isStale: stale) else { return }
+        switch action {
+        case .current:
+            await reload()
+        case .modified, .deleted:
+            diskState = action
+        }
+    }
+
+    /// editor R9: *Reload* on the banner, or the silent reload; cursor and scroll are kept.
+    func reload() async {
+        guard let document = try? await FileDocument.read(url) else { return }
+        content = .text(document)
+        isDirty = false
+        diskState = .current
+        reloadVersion += 1
+    }
+
+    /// editor R9: *Keep my changes* on the banner.
+    func keepChanges() {
+        diskState = .current
+    }
+
+    /// explorer R17: the tab follows a rename.
+    func fileRenamed(to newURL: URL, path newPath: String) {
+        url = newURL
+        path = newPath
+        diskState = .current
+    }
+
+    /// explorer R18 and editor R9: the tab stays, `cmd+s` recreates the file.
+    func fileDeleted() {
+        diskState = .deleted
     }
 
     func load() async {
@@ -86,6 +165,7 @@ final class EditorTab {
         }
         content = .text(try await FileDocument.write(text, to: url, as: document))
         isDirty = false
+        diskState = .current
         return true
     }
 }
