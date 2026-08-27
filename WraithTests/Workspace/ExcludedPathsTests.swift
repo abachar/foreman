@@ -10,6 +10,8 @@ struct ExcludedPathsTests {
         #expect(ExcludedPaths.isExcluded("target"))
         #expect(ExcludedPaths.isExcluded("lib/.build/debug"))
         #expect(ExcludedPaths.isExcluded("a/.DS_Store"))
+        #expect(ExcludedPaths.isExcluded("DerivedData/Build/Products"))
+        #expect(!ExcludedPaths.isExcluded("DerivedDataTests.swift"))
     }
 
     @Test func excludesExactPathsAndTheirContent() {

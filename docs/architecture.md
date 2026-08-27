@@ -66,7 +66,7 @@ cli/wraith           # shell script: `open -a Wraith "$(pwd)"`
 - **Config by section**: each feature decodes its own section of `.wraith/config.json`; `Workspace` does not know the schemas.
 - **Namespaced, stable identifiers** (`git.status`, `agent.claude`): they appear in `state.json` and in shortcuts; changing one is a migration.
 - **Third-party types stay near their use.** A view or a persisted model never handles a `PostgresRow` or a tree-sitter `Node`; the feature converts to its own type where the UI or persistence needs it — and only there.
-- **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `.wraith/state.json`).
+- **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `DerivedData`, `.wraith/state.json`).
 
 ## Retained dependencies
 

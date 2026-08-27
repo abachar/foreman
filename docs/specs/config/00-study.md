@@ -34,7 +34,7 @@ Define where and how Wraith reads its configuration and persists its state, per 
     "shortcuts": { "git.status": "cmd+shift+g" }
   }
   ```
-  - `repos`: paths relative to the root; absent → scan for `.git/` (depth ≤ 2, ignoring `node_modules`, `target`, `.build`).
+  - `repos`: paths relative to the root; absent → scan for `.git/` (depth ≤ 2, ignoring `node_modules`, `target`, `.build`, `DerivedData`).
   - `commands`: `<repo or "."> → <name> → <shell command>`, run in the repo's folder.
   - `postgres`: **a single object** (one connection per workspace); the password is read from the Keychain (key `wraith.postgres.<host>:<port>/<database>/<user>`) unless the section carries a `password` (decision 2026-08-27). Detail in [postgres](../postgres/).
   - `agents`: `<id> → { title, command, icon, enabled }`; overrides a built-in agent or declares a new one. Detail in [agents](../agents/).

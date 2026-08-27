@@ -50,6 +50,16 @@ struct QuickOpenIndexTests {
         #expect(await index.search("new", limit: 5).paths == ["docs/new.md"])
     }
 
+    @Test func subsequencePrefilterIsCaseInsensitiveAndOrdered() {
+        let needle = QuickOpenIndex.lowered("WSV")
+        #expect(QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("Wraith/App/WorkspaceView.swift")))
+        #expect(QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("w-s-v")))
+        #expect(!QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("vsw")))
+        #expect(!QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("ws")))
+        #expect(QuickOpenIndex.isSubsequence([], of: QuickOpenIndex.lowered("anything")))
+        #expect(QuickOpenIndex.lowered("Élan") == Array("élan".utf8))
+    }
+
     @Test func skipsWhatIsNotAFileToOpen() {
         #expect(QuickOpenIndex.isSkipped(".git", rootIsHome: false))
         #expect(QuickOpenIndex.isSkipped("a/.wraith", rootIsHome: false))

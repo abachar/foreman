@@ -6,7 +6,7 @@ import Foundation
 /// `/`-separated.
 nonisolated enum ExcludedPaths {
     /// Folder names excluded wherever they appear.
-    private static let folderNames: Set<String> = ["node_modules", "target", ".build"]
+    private static let folderNames: Set<String> = ["node_modules", "target", ".build", "DerivedData"]
 
     /// Exact relative paths excluded.
     private static let exactPaths: Set<String> = [".git/objects", ".wraith/state.json", ".DS_Store"]
