@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import Wraith
@@ -37,6 +38,39 @@ struct ToolbarTests {
 
         #expect(layout.badge(of: "agent.claude") == .dot(.green))
         #expect(layout.badge(of: "run.main") == .none)
+    }
+
+    @Test func ordersLeadingCentreTrailingWithThePanelTogglesLast() {
+        let order = WorkspaceToolbar.order([
+            ("run.main", .trailing), ("layout.panel.explorer.tree", .leading), ("agent.claude", .center),
+            ("layout.panel.git.changes", .trailing), ("agent.pi", .center), ("layout.panel.postgres.schema", .trailing),
+        ])
+        #expect(
+            order == [
+                "layout.panel.explorer.tree", "NSToolbarFlexibleSpaceItem", "agent.claude", "agent.pi",
+                "NSToolbarFlexibleSpaceItem", "run.main", "layout.panel.git.changes", "layout.panel.postgres.schema",
+            ])
+    }
+
+    @Test func aLeftOrRightPanelDeclaresItsToggleAndABottomOneDoesNot() {
+        layout.register(
+            panel: PanelDescriptor(id: "explorer.tree", title: "Explorer", side: .left, icon: "folder") {
+                AnyView(EmptyView())
+            })
+        layout.register(
+            panel: PanelDescriptor(id: "editor.search", title: "Search", side: .bottom) { AnyView(EmptyView()) })
+        let toggle = layout.toolbarItem(LayoutManager.toggleID(of: "explorer.tree"))
+        #expect(toggle?.placement == .leading)
+        #expect(toggle?.icon == "folder")
+        #expect(layout.toolbarItem(LayoutManager.toggleID(of: "editor.search")) == nil)
+        #expect(LayoutManager.panelID(ofToggle: "layout.panel.explorer.tree") == "explorer.tree")
+        #expect(LayoutManager.panelID(ofToggle: "run.main") == nil)
+
+        #expect(!layout.panels.isVisible("explorer.tree"))
+        if case .action(let perform, _) = toggle?.kind {
+            perform()
+        }
+        #expect(layout.panels.isVisible("explorer.tree"))
     }
 
     @Test func toolbarToggleIsALayoutShortcut() {

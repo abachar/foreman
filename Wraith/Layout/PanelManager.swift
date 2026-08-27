@@ -40,6 +40,8 @@ struct PanelDescriptor {
     let id: PanelID
     let title: String
     let side: PanelSide
+    /// design R15: the toolbar toggle's icon (see `IconImage`).
+    let icon: String
     let defaultShortcut: String?
     let makeView: () -> AnyView
     let activate: () -> Void
@@ -49,6 +51,7 @@ struct PanelDescriptor {
         id: PanelID,
         title: String,
         side: PanelSide,
+        icon: String = "rectangle",
         defaultShortcut: String? = nil,
         makeView: @escaping () -> AnyView,
         activate: @escaping () -> Void = {},
@@ -57,6 +60,7 @@ struct PanelDescriptor {
         self.id = id
         self.title = title
         self.side = side
+        self.icon = icon
         self.defaultShortcut = defaultShortcut
         self.makeView = makeView
         self.activate = activate

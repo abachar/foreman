@@ -65,14 +65,15 @@ final class GitFeature {
         let theme = theme
         layout.register(
             panel: PanelDescriptor(
-                id: Self.panelID, title: "Changes", side: .right, defaultShortcut: "cmd+shift+g",
+                id: Self.panelID, title: "Changes", side: .right, icon: "arrow.triangle.branch",
+                defaultShortcut: "cmd+shift+g",
                 makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
                 activate: { [weak self] in self?.activate() },
                 deactivate: { [weak self] in self?.deactivate() }))
         let history = history
         layout.register(
             panel: PanelDescriptor(
-                id: Self.historyPanelID, title: "History", side: .right, defaultShortcut: "cmd+shift+h",
+                id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
                 makeView: { [unowned self] in
                     AnyView(GitHistoryPanelView(model: history, changes: model, feature: self))
                 },

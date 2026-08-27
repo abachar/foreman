@@ -25,7 +25,7 @@ enum ExplorerFeature {
         let actions = ExplorerActions(model: model, root: workspace.root, editor: editor, layout: layout)
         layout.register(
             panel: PanelDescriptor(
-                id: panelID, title: "Explorer", side: .left, defaultShortcut: "cmd+shift+e",
+                id: panelID, title: "Explorer", side: .left, icon: "folder", defaultShortcut: "cmd+shift+e",
                 makeView: {
                     AnyView(
                         ExplorerPanelView(

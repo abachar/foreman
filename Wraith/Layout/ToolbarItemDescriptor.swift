@@ -3,8 +3,11 @@ import Foundation
 
 /// An element of the window toolbar, declared by a feature (layout R30, R31).
 struct ToolbarItemDescriptor {
-    enum Placement {
+    /// layout R30 (amended 2026-08-27, design R15): the Explorer toggle leads, the agents are
+    /// centred, Run and the right panels' toggles trail.
+    nonisolated enum Placement: Equatable, Sendable {
         case leading
+        case center
         case trailing
     }
 

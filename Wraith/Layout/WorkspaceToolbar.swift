@@ -52,14 +52,26 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             else { continue }
             button.tokens = tokens
             button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+            // design R15: a toggle whose panel is visible is outlined.
+            button.isOutlined = LayoutManager.panelID(ofToggle: descriptor.id).map(layout.panels.isVisible) ?? false
             button.fit()
         }
     }
 
     private var identifiers: [NSToolbarItem.Identifier] {
-        let leading = layout.toolbarItems.filter { $0.placement == .leading }.map { NSToolbarItem.Identifier($0.id) }
-        let trailing = layout.toolbarItems.filter { $0.placement == .trailing }.map { NSToolbarItem.Identifier($0.id) }
-        return leading + [.flexibleSpace] + trailing
+        Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }).map { NSToolbarItem.Identifier($0) }
+    }
+
+    /// layout R30: leading, a space, centre, a space, trailing — the features' items first in
+    /// each placement, the layout's panel toggles after them (so Run precedes the right toggles).
+    nonisolated static func order(_ items: [(id: String, placement: ToolbarItemDescriptor.Placement)]) -> [String] {
+        func ids(_ placement: ToolbarItemDescriptor.Placement) -> [String] {
+            let own = items.filter { $0.placement == placement }.map(\.id)
+            return own.filter { LayoutManager.panelID(ofToggle: $0) == nil }
+                + own.filter { LayoutManager.panelID(ofToggle: $0) != nil }
+        }
+        return ids(.leading) + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.center)
+            + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.trailing)
     }
 
     // MARK: - NSToolbarDelegate
@@ -80,7 +92,8 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         let item = NSToolbarItem(itemIdentifier: identifier)
         let button = ToolbarButton()
         button.identifier = NSUserInterfaceItemIdentifier(descriptor.id)
-        button.title = descriptor.title
+        // A panel toggle is an icon alone (design R15, the mockups); the others carry their name.
+        button.title = LayoutManager.panelID(ofToggle: descriptor.id) == nil ? descriptor.title : ""
         button.tokens = theme.tokens
         button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
         button.target = self

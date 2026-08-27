@@ -123,7 +123,7 @@ final class AgentsFeature {
             guard let agent = agent(id) else { continue }
             layout.register(
                 toolbarItem: ToolbarItemDescriptor(
-                    id: Self.kind(of: id), title: agent.title, icon: icon(of: agent), placement: .leading,
+                    id: Self.kind(of: id), title: agent.title, icon: icon(of: agent), placement: .center,
                     kind: .action(
                         perform: { [weak self] in self?.buttonClicked(id) },
                         secondaryMenu: { [weak self] in self?.menu(for: id) ?? [] })))

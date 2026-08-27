@@ -50,6 +50,22 @@ final class LayoutManager {
                 [panels] in
                 panels.toggle(panel.id)
             })
+        // layout R30 (2026-08-27), design R15: a toggle in the toolbar for the left and right slots.
+        guard panel.side != .bottom else { return }
+        register(
+            toolbarItem: ToolbarItemDescriptor(
+                id: Self.toggleID(of: panel.id), title: panel.title, icon: panel.icon,
+                placement: panel.side == .left ? .leading : .trailing,
+                kind: .action(perform: { [panels] in panels.toggle(panel.id) }, secondaryMenu: nil)))
+    }
+
+    /// The toolbar item that toggles a panel; `nil` for an item that is not one.
+    nonisolated static func toggleID(of panel: PanelID) -> String {
+        "layout.panel.\(panel.rawValue)"
+    }
+
+    nonisolated static func panelID(ofToggle itemID: String) -> PanelID? {
+        itemID.hasPrefix("layout.panel.") ? PanelID(String(itemID.dropFirst("layout.panel.".count))) : nil
     }
 
     func register(tabKind descriptor: CenterTabDescriptor) {
