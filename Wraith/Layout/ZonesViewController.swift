@@ -6,7 +6,7 @@ import SwiftUI
 /// Panels are collapsible items with their minimum thickness; the center never goes under
 /// 300 x 150 pt (R19). On resize the panels shrink then hide in the order right, left, bottom and
 /// come back by themselves (R20), without touching the persisted sizes.
-final class ZonesViewController: NSSplitViewController {
+final class ZonesViewController: GutterSplitViewController {
     /// What the SwiftUI side asks for; applied on every update.
     struct Configuration {
         var visible: [PanelSide: PanelID]
@@ -26,8 +26,8 @@ final class ZonesViewController: NSSplitViewController {
     }
 
     /// design R20: both split views draw their divider as the gutter; set before the views load.
-    private let column: NSSplitViewController = {
-        let controller = NSSplitViewController()
+    private let column: GutterSplitViewController = {
+        let controller = GutterSplitViewController()
         controller.splitView = GutterSplitView()
         return controller
     }()
@@ -263,5 +263,15 @@ private final class ResizeReportingView: NSView {
         super.setFrameSize(newSize)
         guard previous != newSize, let superview = superview as? NSSplitView else { return }
         onResized?(superview.isVertical ? newSize.width : newSize.height)
+    }
+}
+
+/// design R2, edge cases: a hidden panel takes its gutter with it — the divider next to a
+/// collapsed item is hidden, and a hidden divider has no thickness.
+class GutterSplitViewController: NSSplitViewController {
+    override func splitView(_ splitView: NSSplitView, shouldHideDividerAt dividerIndex: Int) -> Bool {
+        let items = splitViewItems
+        guard dividerIndex < items.count - 1 else { return true }
+        return items[dividerIndex].isCollapsed || items[dividerIndex + 1].isCollapsed
     }
 }
