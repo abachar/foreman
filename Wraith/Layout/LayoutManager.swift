@@ -24,8 +24,8 @@ final class LayoutManager {
     /// layout R27: where the window was; `nil` until the window reports it.
     var windowFrame: CGRect?
 
-    /// layout R18: one persisted thickness per slot, whatever panel is shown.
-    private(set) var panelSizes = ZoneSizing.defaults
+    /// layout R18 (amended 2026-08-28): one persisted thickness per panel.
+    private(set) var panelSizes: [PanelID: CGFloat] = [:]
     /// The room the center zone currently has; geometry (R11, R12) depends on it.
     var centerSize = CGSize(width: 1100, height: 700)
 
@@ -210,9 +210,21 @@ final class LayoutManager {
         _ = model.moveActiveTab(direction, in: centerSize)
     }
 
+    /// The thickness each visible slot asks for: its panel's, or the slot's default (layout R18, R19).
+    var requestedSizes: [PanelSide: CGFloat] {
+        panels.visible.reduce(into: [:]) { sizes, entry in
+            sizes[entry.key] = panelSizes[entry.value] ?? ZoneSizing.defaults[entry.key]
+        }
+    }
+
     /// The user dragged a divider (layout R18); automatic adjustments never come through here.
     func setPanelSize(_ size: CGFloat, for side: PanelSide) {
-        panelSizes[side] = max(size, ZoneSizing.minimumPanel)
+        guard let id = panels.visible[side] else { return }
+        setPanelSize(size, of: id)
+    }
+
+    func setPanelSize(_ size: CGFloat, of id: PanelID) {
+        panelSizes[id] = max(size, ZoneSizing.minimumPanel)
     }
 
     // MARK: - Layout actions (layout R23)

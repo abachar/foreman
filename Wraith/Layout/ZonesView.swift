@@ -29,7 +29,7 @@ struct ZonesView: NSViewControllerRepresentable {
         let tokens = theme.tokens
         return ZonesViewController.Configuration(
             visible: layout.panels.visible,
-            sizes: layout.panelSizes,
+            sizes: layout.requestedSizes,
             focus: layout.panels.focus,
             // design R2: the center and each panel are islands.
             center: AnyView(IslandView(theme: theme) { CenterView(layout: layout, theme: theme) }),

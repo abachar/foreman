@@ -21,7 +21,8 @@ nonisolated struct LayoutState: Codable, Equatable, Sendable {
     var groups: [GroupState]
     var activeGroup: GroupID
     var panels: [PanelSide: PanelID]
-    var panelSizes: [PanelSide: CGFloat]
+    /// layout R18: one thickness per panel, keyed by its id.
+    var panelSizes: [PanelID: CGFloat]
     var windowFrame: CGRect?
     var isToolbarVisible: Bool
 }

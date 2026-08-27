@@ -63,7 +63,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 
 ### Resizing and sizes
 
-- R18 — Only panels are resizable, with the mouse, by their inner edge. The width of the side panels and the height of the bottom panel are persisted **per slot** (not per panel) in `state.json`.
+- R18 — Only panels are resizable, with the mouse, by their inner edge. The width of a side panel and the height of a bottom panel are persisted **per panel** in `state.json` (`panelSizes`, keyed by panel id; amended 2026-08-28, per slot until then — the old per-slot keys are simply dropped at restoration). A panel that was never resized takes its slot's default (R19).
 - R19 — Default sizes: `left` 260 pt, `right` 320 pt, `bottom` 240 pt. Minimum for a panel: 160 pt. The center zone always keeps at least 300 × 150 pt (400 × 200 until 2026-08-26).
 - R20 — Minimum window size: 800 × 500 pt. If space is still missing (a shrunk window with three panels open), the panels are **shrunk to their minimum** in the order `right`, `left`, `bottom`, then hidden in the same order; they come back on their own when the space returns. Their persisted size is not modified by this adjustment.
 - R21 — The tabs of a group receive the size of the group; content that needs to know its size (a terminal surface) receives it through a resize callback, debounced by the producer.

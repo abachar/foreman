@@ -53,7 +53,8 @@ struct LayoutStateTests {
         #expect(restored.model.tree.groups.count == 2)
         #expect(restored.model.active.active?.title == "three")
         #expect(restored.panels.visible == [.left: "git.status"])
-        #expect(restored.panelSizes[.left] == 300)
+        #expect(restored.panelSizes["git.status"] == 300)
+        #expect(restored.requestedSizes[.left] == 300)
         #expect(!restored.isToolbarVisible)
     }
 
@@ -69,6 +70,27 @@ struct LayoutStateTests {
 
         #expect(restored.model.tree.groups.count == 1)
         #expect(restored.model.active.tabs.map(\.title) == ["kept"])
+    }
+
+    @Test func eachPanelOfASlotKeepsItsOwnSize() throws {
+        let layout = manager(kinds: [])
+        layout.register(
+            panel: PanelDescriptor(
+                id: "postgres.schema", title: "Schema", side: .left, makeView: { AnyView(EmptyView()) }))
+        layout.panels.toggle("git.status")
+        layout.setPanelSize(300, for: .left)
+        layout.panels.toggle("postgres.schema")
+        // layout R18 (2026-08-28): the replacing panel starts at the slot's default, not at 300.
+        #expect(layout.requestedSizes[.left] == ZoneSizing.defaults[.left])
+        layout.setPanelSize(420, for: .left)
+        layout.panels.toggle("git.status")
+        #expect(layout.requestedSizes[.left] == 300)
+
+        let data = try JSONEncoder().encode(layout.snapshot())
+        let restored = manager(kinds: [])
+        restored.restore(try JSONDecoder().decode(LayoutState.self, from: data))
+        // The schema panel is unknown to this window: its size is dropped, git's stays.
+        #expect(restored.panelSizes == ["git.status": 300])
     }
 
     @Test func keepsTheLastGroupEvenWhenEveryTabIsIgnored() {
