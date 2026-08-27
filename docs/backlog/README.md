@@ -9,7 +9,7 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 | M2 — Terminal + Agents | [m2-terminal-agents.md](m2-terminal-agents.md) | terminal, agents, `Terminal/`, ThemeService | 🟢 (2026-08-27 ; VT validé sur Claude Code, OpenCode, Pi, Antigravity) |
 | M3 — Run | [m3-run.md](m3-run.md) | run, `Palette/` (`opt+enter`), badge `blue` | 🟢 (2026-08-27 ; `root` alias de `.`, `configChanges` par consommateur) |
 | M4 — Git | [m4-git.md](m4-git.md) | git, compléments explorer / editor | ⚪ |
-| M5 — Postgres | | postgres | |
+| M5 — Postgres | [m5-postgres.md](m5-postgres.md) | postgres, `Highlight/` (`sql`), `Workspace/` (`SecretStore`) | ⚪ |
 | M6 — Polish | | | |
 
 Chaque fichier contient : le périmètre, le tableau des tâches (règles couvertes, **lib / natif utilisé**, tests, taille, statut, PR), la définition de fini, les décisions à prendre pendant le milestone. Une tâche = une PR. Le statut se met à jour dans la PR qui termine la tâche.

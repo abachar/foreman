@@ -31,7 +31,7 @@ Une fenêtre = un dossier = un workspace. Au centre, des groupes d'onglets dans 
 | Agents | boutons de toolbar ; un onglet terminal par agent | `config.shortcuts["agents.<id>"]` |
 | Run | bouton ▶ Run + palette ; un onglet terminal par commande | `cmd+r` |
 | Git | panneau gauche : changes ; panneau bas : historique ; onglet central : diff | `cmd+shift+g` / `cmd+shift+h` |
-| Postgres | panneau droit : schéma ; panneau bas : requête + résultats | `cmd+shift+d` / `cmd+shift+q` |
+| Postgres | panneau droit : schéma ; panneau bas : requête + résultats | `cmd+shift+b` / `cmd+shift+q` |
 
 Table complète des raccourcis et leur état : [`shortcuts.md`](shortcuts.md).
 

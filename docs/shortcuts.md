@@ -82,14 +82,15 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
-| `cmd+shift+d` | `postgres.schema` | Panneau schéma — **conflit avec `layout.split.horizontal`** (`layout` R24 : sera délié avec erreur), voir `postgres/questions.md` | global | ⚪ (M5) |
+| `cmd+shift+b` | `postgres.schema` | Panneau schéma (défaut changé le 2026-08-27 : `cmd+shift+d` appartient à `layout.split.horizontal`) | global | ⚪ (M5) |
 | `cmd+shift+q` | `postgres.query` | Panneau requête | global | ⚪ (M5) |
 | `cmd+enter` / `cmd+.` | — | Exécuter / annuler | natif | ⚪ (M5) |
 | `cmd+c` | — | Copier la sélection de la grille (TSV) | natif | ⚪ (M5) |
+| *(aucun défaut)* | `postgres.history` | Panneau d'historique des requêtes (`cmd+opt+h` de `postgres` R20 écarté : c'est *Masquer les autres* de macOS) | global | ⚪ (M5) |
 
 ## Libres
 
-`cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`.
+`cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (gardé libre : palette de commandes ailleurs, décision postgres 2026-08-27).
 
 ## Points ouverts
 

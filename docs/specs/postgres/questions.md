@@ -1,3 +1,4 @@
 # Questions ouvertes
 
-- [ ] `cmd+shift+d` (panneau `postgres.schema`) est le raccourci de `layout.split.horizontal` : `layout` R24 le déliera avec une erreur. Choisir un autre défaut avant M5 (`cmd+shift+p` ? `cmd+shift+b` ?) et corriger `architecture.md` + `00-study.md` (relevé 2026-08-26, [`docs/shortcuts.md`](../../shortcuts.md)).
+- [x] `cmd+shift+d` (panneau `postgres.schema`) entrait en conflit avec `layout.split.horizontal` : défaut changé en `cmd+shift+b` (décision 2026-08-27) ; `architecture.md`, `00-study.md` et [`docs/shortcuts.md`](../../shortcuts.md) mis à jour.
+- [ ] Vérification manuelle contre un serveur réel (backlog M5, tâche 5.9) : versions de serveur testées et résultat de la liste de contrôle, à consigner ici.
