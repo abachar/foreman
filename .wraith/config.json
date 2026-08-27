@@ -1,11 +1,11 @@
 {
-    "commands": { 
-        "root": { 
-            "echo5": "echo hello && sleep 5", 
-            "echo7": "echo hello && sleep 7", 
-            "echo8": "echo hello && sleep 8", 
-            "fail": "exit 2" 
-        }
+  "commands": {
+    "root": {
+      "build": "xcodebuild build -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -derivedDataPath DerivedData",
+      "test": "xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -derivedDataPath DerivedData",
+      "lint": "swift format lint --strict --recursive Wraith WraithTests",
+      "format": "swift format --in-place --recursive Wraith WraithTests",
+      "run": "xcodebuild build -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -derivedDataPath DerivedData && open -a DerivedData/Build/Products/Debug/Wraith.app"
     }
+  }
 }
-    
