@@ -77,6 +77,11 @@ final class GitModel {
         var isManuallyCollapsed = false
         /// The last action's failure, until the next successful one (like explorer R19).
         var actionError: GitError?
+        /// git R12: persisted until the commit.
+        var message = ""
+        var isAmending = false
+        /// git, edge cases: a slow hook; the view shows the indicator and *Cancel*.
+        var isCommitting = false
 
         var id: String {
             repo.id
@@ -103,13 +108,19 @@ final class GitModel {
     /// `true` between the panel's activation and the end of repo discovery.
     private(set) var isDiscovering = false
     private var restoredCollapsed: Set<String> = []
+    private var restoredMessages: [String: String] = [:]
 
     var persisted: GitState {
-        GitState(collapsed: sections.filter(\.isManuallyCollapsed).map(\.id).sorted())
+        GitState(
+            collapsed: sections.filter(\.isManuallyCollapsed).map(\.id).sorted(),
+            messages: Dictionary(sections.filter { !$0.message.isEmpty }.map { ($0.id, $0.message) }) { first, _ in
+                first
+            })
     }
 
     func restore(_ state: GitState) {
         restoredCollapsed = Set(state.collapsed)
+        restoredMessages = state.messages
     }
 
     func setBanner(_ text: String?) {
@@ -125,7 +136,9 @@ final class GitModel {
     func setRepos(_ repos: [GitRepo]) {
         sections = repos.map { repo in
             sections.first { $0.repo == repo }
-                ?? Section(repo: repo, isManuallyCollapsed: restoredCollapsed.contains(repo.id))
+                ?? Section(
+                    repo: repo, isManuallyCollapsed: restoredCollapsed.contains(repo.id),
+                    message: restoredMessages[repo.id] ?? "")
         }
     }
 
@@ -160,6 +173,18 @@ final class GitModel {
 
     func toggleCollapsed(_ id: String) {
         update(id) { $0.isManuallyCollapsed.toggle() }
+    }
+
+    func setMessage(_ id: String, _ message: String) {
+        update(id) { $0.message = message }
+    }
+
+    func setAmending(_ id: String, _ value: Bool) {
+        update(id) { $0.isAmending = value }
+    }
+
+    func setCommitting(_ id: String, _ value: Bool) {
+        update(id) { $0.isCommitting = value }
     }
 
     // MARK: - Refresh (git R4)

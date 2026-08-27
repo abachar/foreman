@@ -30,6 +30,7 @@ final class GitFeature {
     private var clients: [String: GitCLI] = [:]
     private var gitDirectories: [String: URL] = [:]
     private var coalescer = RefreshCoalescer()
+    private var commitTasks: [String: Task<Void, Never>] = [:]
     private var isActive = false
     private var activation: Task<Void, Never>?
     private var watches: [Task<Void, Never>] = []
@@ -64,6 +65,9 @@ final class GitFeature {
 
     isolated deinit {
         activation?.cancel()
+        for task in commitTasks.values {
+            task.cancel()
+        }
         configWatch?.cancel()
         for watch in watches {
             watch.cancel()
@@ -284,6 +288,64 @@ final class GitFeature {
     func toggleCollapsed(_ id: String) {
         model.toggleCollapsed(id)
         workspace.setState("git", to: model.persisted)
+    }
+
+    // MARK: - Commit (git R10–R12)
+
+    /// git R12: kept per repo in `state.json` (the write is debounced by `Workspace`).
+    func setMessage(_ message: String, in id: String) {
+        model.setMessage(id, message)
+        workspace.setState("git", to: model.persisted)
+    }
+
+    /// git R10: *Amend* prefills an empty message from `HEAD`.
+    func setAmending(_ value: Bool, in id: String) {
+        model.setAmending(id, value)
+        guard value, let client = clients[id], let section = model.section(id), CommitMessage.isEmpty(section.message)
+        else { return }
+        Task { [weak self] in
+            guard let output = try? await client.run(GitCommand.headMessage) else { return }
+            self?.setMessage(output.text.trimmingCharacters(in: .whitespacesAndNewlines), in: id)
+        }
+    }
+
+    /// git R10, R11: `commit -F` through the user's hooks and signature; a failure keeps the
+    /// message and shows the output; success clears it.
+    func commit(in id: String) {
+        guard let client = clients[id], let section = model.section(id), commitTasks[id] == nil,
+            CommitMessage.canCommit(
+                message: section.message, stagedCount: section.sections.staged.count, amend: section.isAmending)
+        else { return }
+        let message = section.message
+        let amend = section.isAmending
+        model.setCommitting(id, true)
+        commitTasks[id] = Task { [weak self] in
+            defer {
+                self?.commitTasks[id] = nil
+                self?.model.setCommitting(id, false)
+                self?.refresh(id)
+            }
+            let file = FileManager.default.temporaryDirectory.appending(path: "wraith-commit-\(UUID().uuidString).txt")
+            defer { try? FileManager.default.removeItem(at: file) }
+            do throws(GitError) {
+                do {
+                    try Data(message.utf8).write(to: file, options: .atomic)
+                } catch {
+                    throw .commandFailed("The message could not be written: \(error.localizedDescription)")
+                }
+                _ = try await client.run(GitCommand.commit(messageFile: file, amend: amend), kind: .write)
+                self?.model.setActionError(id, nil)
+                self?.model.setAmending(id, false)
+                self?.setMessage("", in: id)
+            } catch {
+                self?.model.setActionError(id, error)
+            }
+        }
+    }
+
+    /// Edge cases: a slow hook is killed (`GitCLI` cancellation → `SIGTERM`).
+    func cancelCommit(in id: String) {
+        commitTasks[id]?.cancel()
     }
 
     /// Runs the commands in order, stops at the first failure (shown in the section), then a status.

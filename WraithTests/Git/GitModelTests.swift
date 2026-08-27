@@ -96,7 +96,7 @@ struct GitModelTests {
         await model.setRepos(repos)
         await model.toggleCollapsed(".")
         let data = try JSONEncoder().encode(await model.persisted)
-        #expect(String(decoding: data, as: UTF8.self) == #"{"collapsed":[".","libs\/core"]}"#)
+        #expect(String(decoding: data, as: UTF8.self) == #"{"collapsed":[".","libs\/core"],"messages":{}}"#)
         let restored = try JSONDecoder().decode(GitState.self, from: data)
         #expect(restored == GitState(collapsed: [".", "libs/core"]))
         await model.setRepos([repos[1]])

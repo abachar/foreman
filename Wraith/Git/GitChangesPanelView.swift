@@ -62,6 +62,7 @@ struct GitRepoSectionView: View {
                 group("Conflicts", entries: sections.conflicts, kind: .conflicts)
                 group("Staged", entries: sections.staged, kind: .staged)
                 group("Changes", entries: sections.changes, kind: .changes)
+                GitCommitView(section: section, feature: feature)
             }
         } header: {
             header
@@ -240,6 +241,65 @@ struct GitRepoSectionView: View {
         case .staged: return String(entry.index.rawValue)
         case .changes: return String(entry.worktree.rawValue)
         }
+    }
+}
+
+/// git R10–R12: the message, its counter, *Amend*, *Commit* and `cmd+enter` (a key of the field,
+/// decision 2026-08-27), *Cancel* while a hook runs.
+struct GitCommitView: View {
+    let section: GitModel.Section
+    let feature: GitFeature
+
+    private var canCommit: Bool {
+        CommitMessage.canCommit(
+            message: section.message, stagedCount: section.sections.staged.count, amend: section.isAmending)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TextEditor(
+                text: Binding(get: { section.message }, set: { feature.setMessage($0, in: section.id) })
+            )
+            .font(.body)
+            .frame(minHeight: 48, maxHeight: 120)
+            .overlay(alignment: .topLeading) {
+                if section.message.isEmpty {
+                    Text("Commit message")
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 5)
+                        .padding(.top, 1)
+                        .allowsHitTesting(false)
+                }
+            }
+            .onKeyPress(.return, phases: .down) { press in
+                guard press.modifiers.contains(.command), canCommit else { return .ignored }
+                feature.commit(in: section.id)
+                return .handled
+            }
+            HStack(spacing: 8) {
+                let subject = CommitMessage.subject(of: section.message).count
+                Text("\(subject)/\(CommitMessage.subjectLimit)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(subject > CommitMessage.subjectLimit ? .red : .secondary)
+                Toggle(
+                    "Amend",
+                    isOn: Binding(get: { section.isAmending }, set: { feature.setAmending($0, in: section.id) })
+                )
+                .toggleStyle(.checkbox)
+                Spacer()
+                if section.isCommitting {
+                    ProgressView()
+                        .controlSize(.small)
+                    Button("Cancel") { feature.cancelCommit(in: section.id) }
+                } else {
+                    Button("Commit") { feature.commit(in: section.id) }
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .disabled(!canCommit)
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(.top, 6)
     }
 }
 

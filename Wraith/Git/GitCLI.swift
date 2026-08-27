@@ -218,9 +218,16 @@ actor GitCLI {
             throw .cancelled
         }
         guard process.terminationStatus == 0 else {
-            throw GitError.classify(stderr: output.stderr)
+            // git R11: a hook's output may be on stdout; the user sees both.
+            throw GitError.classify(stderr: Self.failureText(stdout: output.text, stderr: output.stderr))
         }
         return output
+    }
+
+    /// stderr first, then whatever stdout says, each trimmed; the classification reads both.
+    nonisolated static func failureText(stdout: String, stderr: String) -> String {
+        [stderr, stdout].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 
     /// git R26: `SIGTERM`, then `SIGKILL` after the grace period if the process is still there.

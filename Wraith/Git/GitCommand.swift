@@ -30,6 +30,15 @@ nonisolated enum GitCommand {
         return commands
     }
 
+    /// git R10, R11: the index as it is, the message from a file; `--amend` and nothing else — never
+    /// `--no-verify`, never a `-c` overriding the user's config.
+    static func commit(messageFile: URL, amend: Bool) -> [String] {
+        ["commit", "-F", messageFile.path(percentEncoded: false)] + (amend ? ["--amend"] : [])
+    }
+
+    /// git R10: what *Amend* prefills the message with.
+    static let headMessage = ["log", "-1", "--format=%B"]
+
     /// git R9: *Abort* on the operation in progress.
     static func abort(_ operation: GitOperation) -> [String] {
         [subcommand(operation), "--abort"]
