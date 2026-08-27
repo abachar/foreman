@@ -39,6 +39,7 @@ final class EditorFeature {
         layout.register(
             tabKind: CenterTabDescriptor(
                 kind: Self.tabKind,
+                showsFileIcon: true,
                 makeView: { [weak self] id, payload in self?.restore(id, payload: payload) },
                 serialize: { [weak self] id in self?.serialize(id) },
                 confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true }))
@@ -91,12 +92,21 @@ final class EditorFeature {
                 FileManager.default.fileExists(
                     atPath: Workspace.url(forPersistedPath: $0, root: workspace.root).path(percentEncoded: false))
             }
-            return PaletteSource.Results(items: existing.map { PaletteItem(id: $0, title: AttributedString($0)) })
+            return PaletteSource.Results(
+                items: existing.map {
+                    PaletteItem(
+                        id: $0, title: AttributedString($0),
+                        icon: FileIcon.name(for: ($0 as NSString).lastPathComponent))
+                })
         }
         await index.build()
         let search = await index.search(query, limit: Palette.limit)
         return PaletteSource.Results(
-            items: search.paths.map { PaletteItem(id: $0, title: PaletteItem.highlighted($0, matching: query)) },
+            items: search.paths.map {
+                PaletteItem(
+                    id: $0, title: PaletteItem.highlighted($0, matching: query),
+                    icon: FileIcon.name(for: ($0 as NSString).lastPathComponent))
+            },
             notice: search.isIndexTruncated
                 ? "Index truncated at \(QuickOpenIndex.limit) files — open a subfolder for a full search" : nil)
     }
@@ -106,7 +116,11 @@ final class EditorFeature {
         layout.replaceHomeEntries(
             in: .recent,
             with: recentPaths.prefix(10).map { path in
-                HomeEntry(id: "editor.recent.\(path)", title: path, icon: "doc", section: .recent) { [weak self] in
+                HomeEntry(
+                    id: "editor.recent.\(path)", title: path,
+                    icon: FileIcon.name(for: (path as NSString).lastPathComponent),
+                    section: .recent
+                ) { [weak self] in
                     guard let self else { return }
                     open(Workspace.url(forPersistedPath: path, root: workspace.root), preview: false)
                 }

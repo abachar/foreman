@@ -67,7 +67,7 @@ struct HomeView: View {
                 Label {
                     Text(title)
                 } icon: {
-                    if let image = IconImage.resolve(icon) {
+                    if let image = FileIcon.image(named: icon) ?? IconImage.resolve(icon) {
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFit()

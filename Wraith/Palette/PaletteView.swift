@@ -63,16 +63,21 @@ struct PaletteView: View {
     }
 
     private func row(_ item: PaletteItem, isSelected: Bool, tokens: ThemeService.Tokens) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(item.title)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .foregroundStyle(isSelected ? tokens.accentText.color : tokens.textPrimary.color)
-            if let subtitle = item.subtitle {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? tokens.accentText.color.opacity(0.8) : tokens.textSecondary.color)
+        HStack(spacing: 8) {
+            if let icon = item.icon, let image = FileIcon.image(named: icon) {
+                Image(nsImage: image)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
                     .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(isSelected ? tokens.accentText.color : tokens.textPrimary.color)
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(isSelected ? tokens.accentText.color.opacity(0.8) : tokens.textSecondary.color)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(.horizontal, 8)

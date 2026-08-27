@@ -5,11 +5,14 @@ nonisolated struct PaletteItem: Identifiable, Equatable, Sendable {
     let id: String
     let title: AttributedString
     let subtitle: String?
+    /// design R23: a `FileIcon` asset name, shown before the title.
+    let icon: String?
 
-    init(id: String, title: AttributedString, subtitle: String? = nil) {
+    init(id: String, title: AttributedString, subtitle: String? = nil, icon: String? = nil) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
+        self.icon = icon
     }
 
     /// `text` with the characters of `query` (as a case-insensitive subsequence) in bold: display

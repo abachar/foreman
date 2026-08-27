@@ -94,7 +94,10 @@ struct TabBarView: View {
                 HStack(spacing: 0) {
                     ForEach(group.tabs) { tab in
                         TabButton(
-                            tab: tab, tokens: tokens, isActive: tab.id == group.activeTab,
+                            tab: tab, tokens: tokens,
+                            icon: layout.tabKinds[tab.kind]?.showsFileIcon == true
+                                ? FileIcon.image(named: FileIcon.name(for: tab.title)) : nil,
+                            isActive: tab.id == group.activeTab,
                             isActiveGroup: isActiveGroup,
                             activate: { layout.activate(tab.id, in: group.id) },
                             close: { Task { await layout.closeTab(tab.id) } }
@@ -118,6 +121,8 @@ struct TabBarView: View {
 private struct TabButton: View {
     let tab: Tab
     let tokens: ThemeService.Tokens
+    /// design R23: the file's type icon.
+    let icon: NSImage?
     let isActive: Bool
     let isActiveGroup: Bool
     let activate: () -> Void
@@ -129,6 +134,9 @@ private struct TabButton: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            if let icon {
+                Image(nsImage: icon)
+            }
             // terminal R7: the owner's mark; a running process is dirty (terminal R10) but the
             // dot says it already.
             if case .dot(let color) = tab.badge {

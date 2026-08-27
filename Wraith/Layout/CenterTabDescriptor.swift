@@ -18,10 +18,13 @@ struct CenterTabDescriptor {
     let onClose: (TabID) -> Void
     /// layout R25: a terminal surface takes every key that is not a `cmd+…` shortcut.
     let isTerminal: Bool
+    /// design R23: the tab's title is a file name, shown with its type icon.
+    let showsFileIcon: Bool
 
     init(
         kind: String,
         isTerminal: Bool = false,
+        showsFileIcon: Bool = false,
         makeView: @escaping (TabID, String) -> AnyView?,
         serialize: @escaping (TabID) -> String?,
         confirmClose: @escaping (TabID) async -> Bool = { _ in true },
@@ -29,6 +32,7 @@ struct CenterTabDescriptor {
     ) {
         self.kind = kind
         self.isTerminal = isTerminal
+        self.showsFileIcon = showsFileIcon
         self.makeView = makeView
         self.serialize = serialize
         self.confirmClose = confirmClose

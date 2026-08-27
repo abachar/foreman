@@ -335,10 +335,18 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 let tokens = theme.tokens
                 cell.textField?.textColor =
                     isGreyed ? tokens.textDisabled.nsColor : status.map(theme.color(for:)) ?? tokens.textPrimary.nsColor
-                cell.imageView?.image = NSImage(systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
-                cell.imageView?.contentTintColor =
-                    isGreyed
-                    ? tokens.textDisabled.nsColor : status.map(theme.color(for:)) ?? tokens.textSecondary.nsColor
+                // design R23: the type icon, colored; a symbol for what has no type.
+                if let image = Self.fileIcon(for: node, isExpanded: outlineView.isItemExpanded(item)) {
+                    cell.imageView?.image = image
+                    cell.imageView?.alphaValue = isGreyed ? 0.5 : 1
+                } else {
+                    cell.imageView?.image = NSImage(
+                        systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
+                    cell.imageView?.alphaValue = 1
+                    cell.imageView?.contentTintColor =
+                        isGreyed
+                        ? tokens.textDisabled.nsColor : status.map(theme.color(for:)) ?? tokens.textSecondary.nsColor
+                }
             case .more(_, let count):
                 cell.textField?.isEditable = false
                 cell.textField?.stringValue = "… and \(count) more (click to load all)"
@@ -377,6 +385,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
             guard let path = expandedPath(notification) else { return }
             model.setExpanded(path, true)
             restoreExpansion(under: path)
+            // design R23: the folder icon opens.
+            outline?.reloadItem(notification.userInfo?["NSObject"])
         }
 
         func outlineViewItemDidCollapse(_ notification: Notification) {
@@ -384,6 +394,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
             model.setExpanded(path, false)
             // explorer R9: a collapsed folder is read again at its next expansion.
             model.forget(path)
+            outline?.reloadItem(notification.userInfo?["NSObject"])
         }
 
         private func expandedPath(_ notification: Notification) -> String? {
@@ -417,6 +428,15 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
             return cell
+        }
+
+        private static func fileIcon(for node: FileNode, isExpanded: Bool) -> NSImage? {
+            guard !node.isUnreadable else { return nil }
+            switch node.kind {
+            case .file: return FileIcon.image(named: FileIcon.name(for: node.name))
+            case .directory: return FileIcon.image(named: FileIcon.folder(isExpanded: isExpanded))
+            case .symlink: return nil
+            }
         }
 
         private static func symbol(for node: FileNode) -> String {
