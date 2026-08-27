@@ -49,7 +49,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 
 ### History
 
-- R20 — Every query run (text, `user@host/database`, date, duration, row count / error) is appended to `.wraith/postgres-history.json` (max 500 entries, FIFO, never versioned: recommended in `.gitignore` alongside `state.json`). A history panel (a button, or `cmd+opt+h` with the panel scope): search, click → reload it into the editor, *Pin* (kept out of the FIFO). Nothing from the result is persisted.
+- R20 — Every query run (text, `user@host/database`, date, duration, row count / error) is appended to `.wraith/postgres-history.json` (max 500 entries, FIFO, never versioned: recommended in `.gitignore` alongside `state.json`). A history sheet (the clock button of a query tab, or the `postgres.history` action — no default shortcut, `cmd+opt+h` is macOS *Hide Others*, decision 2026-08-27): search, click → reload it into the editor, *Pin* (kept out of the FIFO). Nothing from the result is persisted.
 
 ## Edge cases
 

@@ -44,6 +44,7 @@ Define where and how Wraith reads its configuration and persists its state, per 
 - R5 — `Workspace` exposes the config to the features; each feature decodes its own section (`config.section("postgres")`), `Workspace` does not know the features' schemas (`architecture`: config by section).
 - R6 — `config.json` is watched (through the single FSEvents stream); on every valid change, `Workspace` publishes the new config on its `configChanges` stream (`AsyncStream`), which interested features subscribe to.
 - R7 — An invalid `config.json` (malformed JSON, unexpected type) does not prevent opening: the last valid config stays active and the error is shown (line + message).
+- R8b — `.wraith/postgres-history.json` (`postgres` R20) follows the same rules as `state.json`: written by Wraith only, atomically, versioned, `.bak` when unreadable; both belong in `.gitignore`.
 - R8 — `state.json` is written by Wraith only, debounced (~1 s after the last change) and on close. It is never watched.
 - R9 — `state.json` carries a schema version number; an unreadable state or one with an unknown version is ignored (start from the default state) and saved as `state.json.bak`.
 - R10 — Paths in `state.json` (terminal cwds, open files) are relative to the workspace root when they are inside it, absolute otherwise.

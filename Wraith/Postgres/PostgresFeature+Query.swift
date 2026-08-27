@@ -31,6 +31,12 @@ extension PostgresFeature {
             ) { [weak self] in
                 self?.toggleComment()
             })
+        // R20: no default shortcut (`cmd+opt+h` is macOS Hide Others), `config.shortcuts` can set one.
+        layout.shortcuts.register(
+            ShortcutAction(id: "postgres.history", title: "Query History", defaultShortcut: nil) { [weak self] in
+                guard let self, let tab = activeQueryTab ?? newQueryTab() else { return }
+                showHistory(for: tab)
+            })
         runQuery = { [weak self] sql in
             guard let self, let tab = newQueryTab(text: sql) else { return }
             run(tab)
@@ -56,6 +62,10 @@ extension PostgresFeature {
         guard let id = layout.openTab(kind: Self.queryTabKind, title: payload.title, payload: payload.encoded())
         else { return nil }
         return queryTabs[id]
+    }
+
+    func showHistory(for tab: PostgresQueryTab) {
+        history.presentedFor = history.presentedFor == tab.id ? nil : tab.id
     }
 
     var activeQueryTab: PostgresQueryTab? {
@@ -115,8 +125,10 @@ extension PostgresFeature {
                 if isTruncated {
                     try? await client.cancelRunning()
                 }
-                tab.finish(duration: clock.now - started, isTruncated: isTruncated)
+                let duration = clock.now - started
+                tab.finish(duration: duration, isTruncated: isTruncated)
                 self?.model.error = nil
+                self?.record(statement.sql, duration: duration, rowCount: count, error: nil)
             } catch {
                 let classified = PostgresError.classify(error)
                 var position: Int?
@@ -126,11 +138,22 @@ extension PostgresFeature {
                 let cursor = QueryExecution.cursorLocation(
                     position: position, sent: statement.range, textLength: (tab.text as NSString).length)
                 tab.fail(classified, cursor: classified.isServerError ? cursor : nil)
+                self?.record(statement.sql, duration: clock.now - started, rowCount: nil, error: classified.description)
                 if case .authenticationFailed = classified {
                     self?.invalidatePasswordIfAsked()
                 }
             }
         }
+    }
+
+    /// R20: the text, the connection, the outcome; never the result.
+    private func record(_ sql: String, duration: Duration, rowCount: Int?, error: String?) {
+        let milliseconds = Int(
+            duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000)
+        history.record(
+            QueryHistory.Entry(
+                text: sql, connection: config?.label ?? "", date: Date(), durationMilliseconds: milliseconds,
+                rowCount: rowCount, error: error))
     }
 
     /// R13: *Stop* / `cmd+.`: the task is cancelled and the server told; no answer within 5 s

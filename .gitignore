@@ -4,3 +4,4 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 .wraith/state.json
+.wraith/postgres-history.json

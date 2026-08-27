@@ -58,9 +58,26 @@ struct PostgresQueryView: View {
             .toggleStyle(.button)
             .buttonStyle(.borderless)
             .help("Allow writes (this session only)")
+            Button {
+                feature.showHistory(for: tab)
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .buttonStyle(.borderless)
+            .help("Query history")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        // R20: the sheet belongs to the tab it was opened for.
+        .sheet(
+            isPresented: Binding(
+                get: { feature.history.presentedFor == tab.id }, set: { if !$0 { feature.history.presentedFor = nil } })
+        ) {
+            PostgresHistoryView(model: feature.history, theme: theme) { entry in
+                feature.history.presentedFor = nil
+                tab.pendingReplacement = entry.text
+            }
+        }
     }
 
     @ViewBuilder

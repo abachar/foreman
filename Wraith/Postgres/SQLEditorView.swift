@@ -55,6 +55,12 @@ struct SQLEditorView: NSViewRepresentable {
         if textView.font != theme.editorFont {
             textView.font = theme.editorFont
         }
+        if let replacement = tab.pendingReplacement {
+            tab.pendingReplacement = nil
+            textView.insertText(
+                replacement, replacementRange: NSRange(location: 0, length: (textView.string as NSString).length))
+            textView.setSelectedRange(NSRange(location: 0, length: 0))
+        }
         if let insertion = tab.pendingInsertion {
             tab.pendingInsertion = nil
             textView.insertText(insertion, replacementRange: textView.selectedRange())

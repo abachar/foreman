@@ -16,6 +16,8 @@ final class PostgresFeature {
     static let rowLimit = 50_000
 
     let model = PostgresModel()
+    /// R20: one history per workspace, created with the feature.
+    let history: PostgresHistoryModel
     /// R6: the schema tree, created with the panel.
     private(set) lazy var schema = PostgresSchemaModel(feature: self)
     /// R8: set by the query panel (5.6); `nil` hides the actions that need it.
@@ -44,6 +46,7 @@ final class PostgresFeature {
         self.secrets = secrets
         self.layout = layout
         self.theme = theme
+        history = PostgresHistoryModel(root: workspace.root)
         apply(workspace.config)
         registerQueryTab()
         // R4: `activate` connects nothing; the tree's first expansion does.

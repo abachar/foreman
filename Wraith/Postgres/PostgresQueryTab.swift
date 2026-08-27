@@ -27,6 +27,8 @@ final class PostgresQueryTab: Identifiable {
     var requestedCursor: Int?
     /// R8: text the view must insert at the cursor, consumed by the view.
     var pendingInsertion: String?
+    /// R20: a history entry replacing the buffer, consumed by the view.
+    var pendingReplacement: String?
     var selection = NSRange(location: 0, length: 0)
     private(set) var isRunning = false
     private(set) var result: QueryResult?
