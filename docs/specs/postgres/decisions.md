@@ -2,6 +2,7 @@
 
 | Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
+| 2026-08-27 | R9: the SQL editor is colored by `SQLHighlighter`, a ~80-line scanner of the feature (keywords, types, strings, comments, numbers, `$n`), until `tree-sitter-sql` resolves | Plain text until then | The grammar is blocked upstream (editor decision 2026-08-27); an uncolored SQL editor was the author's first complaint; the scanner is replaced, not extended, the day the grammar lands |
 | 2026-08-27 | R20: `postgres.history` has no default shortcut; a clock button in every query tab opens the history sheet | `cmd+opt+h` | It is macOS *Hide Others*; `config.shortcuts["postgres.history"]` can set one |
 | 2026-08-27 | R16: cells decoded from the binary format — PostgresNIO's decoders for its types, ~60 lines here for `time`, `timetz`, `interval`, `money`, `inet`/`cidr`, `macaddr`, `oid` and arrays of any known element; unknown types shown as `<type> \x…` | Asking the text format; `::text` casts injected into the user's SQL | PostgresNIO hard-codes the binary result format (`PostgresFrontendMessageEncoder`), and the user's SQL is never rewritten (2026-08-26) |
 | 2026-08-27 | R17: `OK` without `N rows affected` | Reading the command tag | `PostgresRowSequence` does not expose it (`PSQLRowStream` keeps it internal); not worth a fork |

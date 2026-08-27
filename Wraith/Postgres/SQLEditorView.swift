@@ -17,13 +17,10 @@ struct SQLEditorView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSScrollView()
-        let textView = SQLTextView(frame: .zero)
-        textView.autoresizingMask = [.width]
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        // `scrollableTextView()` wires the container, the clip view and the sizing that a bare
+        // `NSTextView(frame:)` lacks (bug: the editor stayed narrow, 2026-08-27).
+        let scroll = SQLTextView.scrollableTextView()
+        guard let textView = scroll.documentView as? SQLTextView else { return scroll }
         textView.font = theme.editorFont
         textView.isRichText = false
         textView.allowsUndo = true
@@ -39,8 +36,8 @@ struct SQLEditorView: NSViewRepresentable {
         textView.onRun = onRun
         textView.onStop = onStop
         tab.textView = textView
-        scroll.documentView = textView
-        scroll.hasVerticalScroller = true
+        context.coordinator.theme = theme
+        context.coordinator.recolor(textView)
         scroll.verticalRulerView = LineNumberRulerView(textView: textView, font: theme.editorFont)
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
@@ -60,6 +57,7 @@ struct SQLEditorView: NSViewRepresentable {
             textView.insertText(
                 replacement, replacementRange: NSRange(location: 0, length: (textView.string as NSString).length))
             textView.setSelectedRange(NSRange(location: 0, length: 0))
+            context.coordinator.recolor(textView)
         }
         if let insertion = tab.pendingInsertion {
             tab.pendingInsertion = nil
@@ -77,6 +75,7 @@ struct SQLEditorView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
+        var theme: ThemeService?
         private let tab: PostgresQueryTab
 
         init(tab: PostgresQueryTab) {
@@ -86,6 +85,23 @@ struct SQLEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             tab.text = textView.string
+            recolor(textView)
+        }
+
+        /// postgres R9: the whole buffer is re-scanned on every edit; buffers are small.
+        func recolor(_ textView: NSTextView) {
+            guard let theme, let storage = textView.textStorage else { return }
+            let whole = NSRange(location: 0, length: storage.length)
+            storage.beginEditing()
+            storage.removeAttribute(.foregroundColor, range: whole)
+            storage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: whole)
+            for token in SQLHighlighter.tokens(in: storage.string) where NSMaxRange(token.range) <= storage.length {
+                storage.addAttribute(.foregroundColor, value: theme.color(for: token.role), range: token.range)
+            }
+            storage.endEditing()
+            textView.typingAttributes = [
+                .font: textView.font ?? theme.editorFont, .foregroundColor: NSColor.labelColor,
+            ]
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

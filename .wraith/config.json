@@ -10,7 +10,7 @@
   },
   "postgres": {
     "host": "localhost",
-    "database": "postgres",
+    "database": "ccoe_portal",
     "user": "postgres",
     "password": "postgres"
   }
