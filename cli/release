@@ -1,0 +1,27 @@
+#!/bin/sh
+# Builds a Release archive of Wraith and installs it into /Applications (product R10, M6 task 6.6):
+# a local release for a single machine - no signing, notarization, Homebrew or auto-update in v1.
+#
+# After the first launch macOS asks once (Gatekeeper, unsigned app); `wraith .` then opens the
+# installed app through `open -a Wraith` (cli/wraith).
+set -eu
+
+root="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
+archive="$root/DerivedData/Wraith.xcarchive"
+app="$archive/Products/Applications/Wraith.app"
+
+xcodebuild archive \
+    -project "$root/Wraith.xcodeproj" -scheme Wraith -configuration Release \
+    -destination 'platform=macOS' -archivePath "$archive" \
+    -derivedDataPath "$root/DerivedData" -skipPackagePluginValidation \
+    CODE_SIGNING_ALLOWED=NO -quiet
+
+if pgrep -x Wraith >/dev/null; then
+    printf 'release: quitting the running Wraith\n'
+    pkill -x Wraith
+    while pgrep -x Wraith >/dev/null; do sleep 0.5; done
+fi
+
+rm -rf /Applications/Wraith.app
+ditto "$app" /Applications/Wraith.app
+printf 'release: installed /Applications/Wraith.app (%s)\n' "$(defaults read /Applications/Wraith.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo dev)"

@@ -19,6 +19,15 @@ open Wraith.xcodeproj   # build & run with Xcode
 ln -s "$PWD/cli/wraith" /usr/local/bin/wraith   # then `wraith .` opens a folder in the built app
 ```
 
+## Installing locally
+
+```bash
+cli/release   # Release archive, then /Applications/Wraith.app (unsigned: macOS asks once at first launch)
+wraith .      # opens the current folder in the installed app
+```
+
+That is the whole distribution of v1 (`product` R10): no signing, notarization, Homebrew tap or auto-update — one user, one machine (decision 2026-08-27).
+
 ## Roadmap and Status
 
 | Milestone | Scope | Status |
