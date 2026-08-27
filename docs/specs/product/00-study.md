@@ -1,52 +1,52 @@
-# product — Étude
+# product — Study
 
-## Objectif
+## Goal
 
-Wraith est un environnement de développement macOS natif et **agentic** : une fenêtre = un dossier = un workspace (modèle IDE). Le cœur, ce sont les agents CLI (Claude Code, Antigravity, OpenCode…), chacun dans son onglet sur une surface terminal (SwiftTerm), lancés d'un clic depuis la barre d'outils ([agents](../agents/)). **Il n'y a pas de shell libre** : une surface terminal n'existe que pour héberger un agent ou une commande `run` — pas d'onglet pour taper `cd`, `ls`… Le reste (explorer, éditeur, git, Postgres, run) sont des features qui attachent des panneaux autour (`architecture`).
+Wraith is a native, **agentic** macOS development environment: one window = one folder = one workspace (IDE model). At its heart are the CLI agents (Claude Code, Antigravity, OpenCode…), each in its own tab on a terminal surface (SwiftTerm), one click away from the toolbar ([agents](../agents/)). **There is no free-form shell**: a terminal surface only exists to host an agent or a `run` command — no tab for typing `cd`, `ls`… Everything else (explorer, editor, git, Postgres, run) are features that attach panels around it (`architecture`).
 
-## Utilisateur cible
+## Target user
 
-- Un seul utilisateur : l'auteur. Pas de publication, pas d'onboarding, pas de compatibilité ascendante à garantir en v1.
-- Conséquence : on optimise pour la vitesse d'itération et le confort personnel, pas pour la généralité.
+- A single user: the author. No release, no onboarding, no backward compatibility to guarantee in v1.
+- Consequence: we optimise for iteration speed and personal comfort, not for generality.
 
 ## User stories
 
-- US1 — En tant qu'utilisateur, j'ouvre un dossier (`wraith .` ou via l'app) et j'obtiens une fenêtre-workspace dédiée à ce dossier.
-- US2 — Je peux ouvrir plusieurs workspaces en parallèle, chacun dans sa propre fenêtre, sans interférence.
-- US3 — Dans la zone centrale, je travaille avec des onglets (agents, fichiers, diffs, runs…) et je peux splitter horizontalement ou verticalement ; chaque split a sa propre barre d'onglets.
-- US4 — Je peux afficher/masquer des panneaux latéraux et bas au clavier, sans jamais perdre la zone centrale.
-- US5 — Quand je rouvre un workspace, je retrouve mes onglets, splits et panneaux tels que je les avais laissés.
-- US6 — D'un clic dans la barre d'outils, je lance (ou retrouve) mon agent CLI dans son onglet, et je lance les commandes de mon projet.
+- US1 — As a user, I open a folder (`wraith .` or through the app) and I get a window dedicated to that folder.
+- US2 — I can open several workspaces in parallel, each in its own window, without interference.
+- US3 — In the center zone I work with tabs (agents, files, diffs, runs…) and I can split horizontally or vertically; each split has its own tab bar.
+- US4 — I can show/hide the side and bottom panels from the keyboard, without ever losing the center zone.
+- US5 — When I reopen a workspace, I find my tabs, splits and panels as I left them.
+- US6 — With one click in the toolbar, I launch (or find again) my CLI agent in its tab, and I launch my project's commands.
 
-## Règles fonctionnelles
+## Functional rules
 
-- R1 — Une fenêtre correspond à exactement un dossier racine (le workspace). Ouvrir un dossier déjà ouvert active la fenêtre existante au lieu d'en créer une nouvelle.
-- R2 — Plusieurs fenêtres/workspaces peuvent coexister ; l'état (onglets, panneaux, config) est isolé par workspace.
-- R3 — La zone centrale est un arbre de splits (H/V) dont les feuilles sont des **groupes d'onglets**. Le groupe d'onglets est un composant unique, réutilisé pour chaque feuille.
-- R4 — Chaque groupe d'onglets accepte tous les types d'onglets (agent, run, éditeur, diff…). Il n'y a **pas de type par défaut** ni d'onglet shell libre : un groupe sans onglet affiche l'**écran d'accueil** (`layout` R33).
-- R5 — La zone centrale reste toujours visible ; les panneaux left/right/bottom s'ajoutent autour, un seul panneau visible par slot (détail dans [layout](../layout/)).
-- R6 — L'état du workspace est persisté à la fermeture et restauré à l'ouverture : arbre de splits, onglets (type + cwd/fichier), onglet actif par groupe, panneaux visibles, tailles des zones.
-- R7 — Les onglets agent/run restaurés sont **recréés** (nouvelle surface dans le même cwd, commande non relancée, `agents` R8 / `run` R13) ; le contenu du scrollback n'est pas restauré en v1.
-- R8 — Lancer Wraith sans dossier ouvre un workspace sur `$HOME`, comme un shell. Il n'existe pas de fenêtre sans dossier.
-- R9 — Chaque workspace possède un dossier `.wraith/` à sa racine pour la config locale et l'état persisté (détail dans [config](../config/)).
-- R10 — Exécution locale uniquement : pas de signature, notarisation, Homebrew, auto-update ni télémétrie en v1.
-- R11 — Chaque fenêtre a une **barre d'outils** native au-dessus des zones : à gauche les boutons des agents ([agents](../agents/)), à droite le bouton Run ([run](../run/)). Les features y déclarent leurs éléments ; le layout la possède (détail dans [layout](../layout/)).
+- R1 — A window corresponds to exactly one root folder (the workspace). Opening an already-open folder activates the existing window instead of creating a new one.
+- R2 — Several windows/workspaces can coexist; the state (tabs, panels, config) is isolated per workspace.
+- R3 — The center zone is a tree of splits (H/V) whose leaves are **tab groups**. The tab group is a single component, reused for every leaf.
+- R4 — Every tab group accepts every kind of tab (agent, run, editor, diff…). There is **no default kind** and no free-form shell tab: a group without tabs shows the **home screen** (`layout` R33).
+- R5 — The center zone always stays visible; the left/right/bottom panels are added around it, one visible panel per slot (detail in [layout](../layout/)).
+- R6 — The workspace state is persisted on close and restored on open: split tree, tabs (kind + cwd/file), active tab per group, visible panels, zone sizes.
+- R7 — Restored agent/run tabs are **recreated** (a new surface in the same cwd, the command not relaunched, `agents` R8 / `run` R13); the scrollback content is not restored in v1.
+- R8 — Launching Wraith without a folder opens a workspace on `$HOME`, like a shell. There is no window without a folder.
+- R9 — Every workspace has a `.wraith/` folder at its root for the local config and the persisted state (detail in [config](../config/)).
+- R10 — Local execution only: no signing, notarization, Homebrew, auto-update or telemetry in v1.
+- R11 — Every window has a native **toolbar** above the zones: agent buttons on the left ([agents](../agents/)), the Run button on the right ([run](../run/)). Features declare their items there; the layout owns it (detail in [layout](../layout/)).
 
-## Cas limites
+## Edge cases
 
-- Dossier supprimé/déplacé entre deux ouvertures : la fenêtre s'ouvre sur une erreur claire, l'état persisté est conservé (pas effacé).
-- `open -a Wraith <dossier>` peut livrer le dossier après la création de la fenêtre de lancement sur `$HOME` (R8) : cette fenêtre est alors remplacée (fermée sans rien persister), il n'y a qu'une fenêtre (R1).
-- Fichier d'un onglet éditeur disparu à la restauration : l'onglet est ignoré (ou ouvert vide en lecture seule — à trancher dans editor).
-- Fermeture du dernier groupe d'onglets d'un split : le split se replie ; il reste toujours au moins un groupe dans la zone centrale.
+- Folder deleted/moved between two openings: the window opens on a clear error, the persisted state is kept (not erased).
+- `open -a Wraith <folder>` may deliver the folder after the launch window on `$HOME` was created (R8): that window is then replaced (closed without persisting anything), so there is only one window (R1).
+- The file of an editor tab is gone at restoration: the tab is ignored (or opened empty and read-only — to be settled in editor).
+- Closing the last tab group of a split: the split collapses; there is always at least one group in the center zone.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Distribution (DMG signé, Homebrew tap, App Store) — cf. M6 du README, reporté.
-- Multi-utilisateurs, synchronisation d'état entre machines.
-- Fenêtre détachée / onglets flottants.
-- Restauration du scrollback des terminaux.
-- Extensions tierces ou chargées à l'exécution : les features sont compilées dans l'app (`architecture`).
+- Distribution (signed DMG, Homebrew tap, App Store) — see M6 in the README, deferred.
+- Multi-user, state synchronisation between machines.
+- Detached window / floating tabs.
+- Restoring the terminals' scrollback.
+- Third-party or runtime-loaded extensions: features are compiled into the app (`architecture`).
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).
