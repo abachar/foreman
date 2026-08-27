@@ -46,6 +46,78 @@ struct GitChangesPanelView: View {
                 .listStyle(.plain)
             }
         }
+        .sheet(
+            isPresented: Binding(
+                get: { feature.branchSheetRepo != nil }, set: { if !$0 { feature.branchSheetRepo = nil } })
+        ) {
+            if let repo = feature.branchSheetRepo {
+                GitBranchesSheet(repo: repo, feature: feature)
+            }
+        }
+    }
+}
+
+/// git R23: local and remote branches with a search field, and the branch actions.
+struct GitBranchesSheet: View {
+    let repo: String
+    let feature: GitFeature
+    @State private var query = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private var shown: [GitBranch] {
+        Self.filter(feature.branches, query: query)
+    }
+
+    nonisolated static func filter(_ branches: [GitBranch], query: String) -> [GitBranch] {
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        return needle.isEmpty ? branches : branches.filter { $0.name.lowercased().contains(needle) }
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            TextField("Search branches", text: $query)
+                .textFieldStyle(.roundedBorder)
+            List(shown) { branch in
+                HStack(spacing: 6) {
+                    Image(
+                        systemName: branch.isCurrent
+                            ? "checkmark" : (branch.isRemote ? "cloud" : "arrow.triangle.branch")
+                    )
+                    .frame(width: 14)
+                    .foregroundStyle(.secondary)
+                    Text(branch.name)
+                    if let upstream = branch.upstream {
+                        Text("\u{2192} \(upstream)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) { feature.checkout(branch, in: repo) }
+                .contextMenu {
+                    Button("Checkout") { feature.checkout(branch, in: repo) }
+                        .disabled(branch.isCurrent)
+                    if !branch.isRemote {
+                        Button("Rename\u{2026}") { feature.renameBranch(branch, in: repo) }
+                        Button("Set Upstream\u{2026}") { feature.setUpstream(of: branch, in: repo) }
+                        Button("Delete") { feature.deleteBranch(branch, in: repo) }
+                            .disabled(branch.isCurrent)
+                    }
+                }
+            }
+            HStack {
+                Button("New Branch from HEAD\u{2026}") { feature.newBranch(in: repo) }
+                Spacer()
+                Text("Double-click to check out")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Close") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(12)
+        .frame(width: 420, height: 380)
     }
 }
 
@@ -94,10 +166,38 @@ struct GitRepoSectionView: View {
                     }
                 }
                 Spacer()
-                if section.isLoading {
+                if section.isLoading || section.remoteOperation != nil {
                     ProgressView()
                         .controlSize(.mini)
                 }
+                remoteButtons
+            }
+            if let operation = section.remoteOperation {
+                Text("\(operation.rawValue)\u{2026}")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let auth = section.authRequired {
+                // git R22: the exact command to run elsewhere; no secret ever enters Wraith.
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Authentication required", systemImage: "key")
+                        .font(.callout.bold())
+                    Text(auth.command)
+                        .font(.system(.caption, design: .monospaced))
+                    Text(auth.cwd.path(percentEncoded: false))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Button("Copy the Command") { feature.copy(auth.copyText) }
+                        .controlSize(.small)
+                }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.bar)
+            }
+            if !section.stashes.isEmpty {
+                stashList
             }
             if let operation = section.status?.operation {
                 // git R9: the state and its two exits.
@@ -119,6 +219,81 @@ struct GitRepoSectionView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// git R21, R23, R24: fetch / pull / push and the menu.
+    private var remoteButtons: some View {
+        HStack(spacing: 2) {
+            Button {
+                feature.fetch(in: section.id)
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+            }
+            .help("Fetch (prune)")
+            Button {
+                feature.pull(in: section.id)
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+            .help("Pull")
+            Button {
+                feature.push(in: section.id)
+            } label: {
+                Image(systemName: "arrow.up.circle")
+            }
+            .help("Push")
+            Menu {
+                Button("Branches\u{2026}") { feature.showBranches(in: section.id) }
+                Button("New Branch from HEAD\u{2026}") { feature.newBranch(in: section.id) }
+                Divider()
+                Button("Stash\u{2026}") { feature.stash(includeUntracked: false, in: section.id) }
+                Button("Stash Including Untracked\u{2026}") { feature.stash(includeUntracked: true, in: section.id) }
+                if !section.stashes.isEmpty {
+                    Button(section.isStashListExpanded ? "Hide Stashes" : "Show Stashes (\(section.stashes.count))") {
+                        feature.toggleStashList(in: section.id)
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+        .buttonStyle(.borderless)
+        .disabled(section.remoteOperation != nil || feature.isInert)
+    }
+
+    /// git R24: collapsed by default; apply, pop, drop.
+    private var stashList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Button {
+                feature.toggleStashList(in: section.id)
+            } label: {
+                Label(
+                    "Stashes (\(section.stashes.count))",
+                    systemImage: section.isStashListExpanded ? "chevron.down" : "chevron.right"
+                )
+                .font(.caption)
+            }
+            .buttonStyle(.plain)
+            if section.isStashListExpanded {
+                ForEach(section.stashes) { stash in
+                    HStack(spacing: 6) {
+                        Text(stash.ref)
+                            .font(.system(.caption, design: .monospaced))
+                        Text(stash.message)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Spacer()
+                        Button("Apply") { feature.stash(.apply, stash, in: section.id) }
+                        Button("Pop") { feature.stash(.pop, stash, in: section.id) }
+                        Button("Drop") { feature.stash(.drop, stash, in: section.id) }
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.mini)
+                }
+            }
+        }
     }
 
     private func banner(_ text: String, icon: String) -> some View {

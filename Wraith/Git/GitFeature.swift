@@ -38,6 +38,10 @@ final class GitFeature {
     private var gitDirectories: [String: URL] = [:]
     private var coalescer = RefreshCoalescer()
     private var commitTasks: [String: Task<Void, Never>] = [:]
+    private var remoteOperations = RemoteOperations()
+    /// git R23: the repo whose branch sheet is open.
+    var branchSheetRepo: String?
+    private(set) var branches: [GitBranch] = []
     private var isActive = false
     private var activation: Task<Void, Never>?
     private var watches: [Task<Void, Never>] = []
@@ -248,6 +252,9 @@ final class GitFeature {
         do {
             let status = try await Self.loadStatus(client, repo: section.repo)
             model.setStatus(id, status)
+            if let output = try? await client.run(GitCommand.stashList) {
+                model.setStashes(id, RefParser.stashes(output.stdout))
+            }
             let change = GitStatusChange(repo: section.repo, statuses: status.fileStatuses)
             for continuation in statusSubscribers.values {
                 continuation.yield(change)
@@ -264,6 +271,142 @@ final class GitFeature {
         var status = StatusParser.parse(output.stdout)
         status.operation = GitRepo.gitDirectory(of: repo.url).flatMap { GitOperation.current(inGitDirectory: $0) }
         return status
+    }
+
+    /// git R28: nothing runs while git is missing or too old.
+    var isInert: Bool {
+        model.banner != nil
+    }
+
+    func toggleStashList(in id: String) {
+        model.toggleStashList(id)
+    }
+
+    // MARK: - Remote (git R21, R22)
+
+    func fetch(in id: String) {
+        remote(.fetch, GitCommand.fetch, in: id)
+    }
+
+    func pull(in id: String) {
+        remote(.pull, GitCommand.pull, in: id)
+    }
+
+    /// git R21: with no upstream, a confirmation naming the remote, then `push -u origin <branch>`.
+    func push(in id: String) {
+        guard let status = model.section(id)?.status, case .branch(let branch) = status.head else { return }
+        if status.upstream != nil {
+            remote(.push, GitCommand.push(branch: branch, hasUpstream: true), in: id)
+            return
+        }
+        confirm(
+            "Push \u{201c}\(branch)\u{201d} to origin?",
+            "The branch has no upstream yet; origin/\(branch) is created and tracked.", "Push"
+        ) {
+            [weak self] in self?.remote(.push, GitCommand.push(branch: branch, hasUpstream: false), in: id)
+        }
+    }
+
+    /// git R21, R22: one at a time per repo; an interaction git could not have → the banner.
+    private func remote(_ kind: RemoteOperations.Kind, _ arguments: [String], in id: String) {
+        guard let client = clients[id], let repo = model.section(id)?.repo, remoteOperations.start(kind, in: id)
+        else { return }
+        model.setRemoteOperation(id, kind)
+        Task { [weak self] in
+            defer {
+                self?.remoteOperations.finish(id)
+                self?.model.setRemoteOperation(id, nil)
+                self?.refresh(id)
+            }
+            do throws(GitError) {
+                _ = try await client.run(arguments, kind: .remote)
+                self?.model.setActionError(id, nil)
+                self?.model.setAuthRequired(id, nil)
+            } catch .needsInteraction {
+                self?.model.setAuthRequired(id, GitAuthRequired(arguments: arguments, cwd: repo.url))
+            } catch {
+                self?.model.setActionError(id, error)
+            }
+        }
+    }
+
+    // MARK: - Branches (git R23)
+
+    /// git R23: the sheet, with the list loaded fresh.
+    func showBranches(in id: String) {
+        guard let client = clients[id] else { return }
+        branches = []
+        branchSheetRepo = id
+        Task { [weak self] in
+            guard let output = try? await client.run(GitCommand.branches) else { return }
+            self?.branches = RefParser.branches(output.stdout)
+        }
+    }
+
+    func checkout(_ branch: GitBranch, in id: String) {
+        branchSheetRepo = nil
+        write([GitCommand.checkout(branch)], in: id)
+    }
+
+    func newBranch(in id: String) {
+        branchSheetRepo = nil
+        askText("New Branch from HEAD", placeholder: "branch-name") { [weak self] name in
+            self?.write([GitCommand.newBranch(name)], in: id)
+        }
+    }
+
+    func renameBranch(_ branch: GitBranch, in id: String) {
+        branchSheetRepo = nil
+        askText("Rename \u{201c}\(branch.name)\u{201d}", placeholder: branch.name, button: "Rename") {
+            [weak self] name in
+            self?.write([GitCommand.renameBranch(branch.name, to: name)], in: id)
+        }
+    }
+
+    /// git R23: `-d`; when git refuses (not merged), `-D` is offered with the name.
+    func deleteBranch(_ branch: GitBranch, in id: String) {
+        branchSheetRepo = nil
+        guard let client = clients[id] else { return }
+        Task { [weak self] in
+            do throws(GitError) {
+                _ = try await client.run(GitCommand.deleteBranch(branch.name, force: false), kind: .write)
+                self?.model.setActionError(id, nil)
+                self?.refresh(id)
+            } catch {
+                self?.confirm(
+                    "Force-delete \u{201c}\(branch.name)\u{201d}?", "git refused: \(error.description)", "Delete Anyway"
+                ) { self?.write([GitCommand.deleteBranch(branch.name, force: true)], in: id) }
+            }
+        }
+    }
+
+    func setUpstream(of branch: GitBranch, in id: String) {
+        branchSheetRepo = nil
+        askText("Upstream of \u{201c}\(branch.name)\u{201d}", placeholder: "origin/\(branch.name)", button: "Set") {
+            [weak self] upstream in self?.write([GitCommand.setUpstream(of: branch.name, to: upstream)], in: id)
+        }
+    }
+
+    // MARK: - Stash (git R24)
+
+    func stash(includeUntracked: Bool, in id: String) {
+        askText(
+            includeUntracked ? "Stash Including Untracked" : "Stash", placeholder: "message (optional)",
+            button: "Stash", allowsEmpty: true
+        ) {
+            [weak self] message in
+            self?.write([GitCommand.stashPush(message: message, includeUntracked: includeUntracked)], in: id)
+        }
+    }
+
+    func stash(_ action: GitCommand.StashAction, _ stash: GitStash, in id: String) {
+        guard action == .drop else {
+            write([GitCommand.stash(action, stash.ref)], in: id)
+            return
+        }
+        confirm("Drop \(stash.ref)?", stash.message, "Drop") { [weak self] in
+            self?.write([GitCommand.stash(.drop, stash.ref)], in: id)
+        }
     }
 
     // MARK: - History (git R18–R20)
@@ -395,19 +538,22 @@ final class GitFeature {
         }
     }
 
-    private func askText(_ title: String, placeholder: String, _ done: @escaping (String) -> Void) {
+    private func askText(
+        _ title: String, placeholder: String, button: String = "Create", allowsEmpty: Bool = false,
+        _ done: @escaping (String) -> Void
+    ) {
         guard let window = NSApp.keyWindow else { return }
         let alert = NSAlert()
         alert.messageText = title
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         field.placeholderString = placeholder
         alert.accessoryView = field
-        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: button)
         alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = field
         alert.beginSheetModal(for: window) { response in
             let text = field.stringValue.trimmingCharacters(in: .whitespaces)
-            guard response == .alertFirstButtonReturn, !text.isEmpty else { return }
+            guard response == .alertFirstButtonReturn, allowsEmpty || !text.isEmpty else { return }
             done(text)
         }
     }

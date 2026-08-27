@@ -82,6 +82,13 @@ final class GitModel {
         var isAmending = false
         /// git, edge cases: a slow hook; the view shows the indicator and *Cancel*.
         var isCommitting = false
+        /// git R21: the remote operation in progress, shown in the header.
+        var remoteOperation: RemoteOperations.Kind?
+        /// git R22: shown until the next successful remote operation.
+        var authRequired: GitAuthRequired?
+        /// git R24: `stash list`, refreshed with the status.
+        var stashes: [GitStash] = []
+        var isStashListExpanded = false
 
         var id: String {
             repo.id
@@ -185,6 +192,22 @@ final class GitModel {
 
     func setCommitting(_ id: String, _ value: Bool) {
         update(id) { $0.isCommitting = value }
+    }
+
+    func setRemoteOperation(_ id: String, _ kind: RemoteOperations.Kind?) {
+        update(id) { $0.remoteOperation = kind }
+    }
+
+    func setAuthRequired(_ id: String, _ value: GitAuthRequired?) {
+        update(id) { $0.authRequired = value }
+    }
+
+    func setStashes(_ id: String, _ stashes: [GitStash]) {
+        update(id) { $0.stashes = stashes }
+    }
+
+    func toggleStashList(_ id: String) {
+        update(id) { $0.isStashListExpanded.toggle() }
     }
 
     // MARK: - Refresh (git R4)

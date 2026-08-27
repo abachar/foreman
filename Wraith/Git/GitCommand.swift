@@ -65,6 +65,65 @@ nonisolated enum GitCommand {
         ["reset", mode == .soft ? "--soft" : "--mixed", sha]
     }
 
+    // MARK: - Remote, branches, stash (git R21, R23, R24)
+
+    static let fetch = ["fetch", "--prune"]
+    /// git R21: the user's `pull.rebase` decides.
+    static let pull = ["pull"]
+
+    /// git R21: `-u origin <branch>` only when the branch has no upstream yet.
+    static func push(branch: String, hasUpstream: Bool) -> [String] {
+        hasUpstream ? ["push"] : ["push", "-u", "origin", branch]
+    }
+
+    static let branches = ["for-each-ref", "--format=\(RefParser.branchFormat)", "refs/heads", "refs/remotes"]
+
+    /// git R23: a local branch is switched to; a remote one gets a tracking local branch.
+    static func checkout(_ branch: GitBranch) -> [String] {
+        branch.isRemote ? ["checkout", "--track", branch.name] : ["switch", branch.name]
+    }
+
+    static func newBranch(_ name: String) -> [String] {
+        ["switch", "-c", name]
+    }
+
+    static func renameBranch(_ name: String, to newName: String) -> [String] {
+        ["branch", "-m", name, newName]
+    }
+
+    /// git R23: `-d`, or `-D` once the user confirmed with the name.
+    static func deleteBranch(_ name: String, force: Bool) -> [String] {
+        ["branch", force ? "-D" : "-d", name]
+    }
+
+    static func setUpstream(of branch: String, to upstream: String) -> [String] {
+        ["branch", "--set-upstream-to=\(upstream)", branch]
+    }
+
+    static let stashList = ["stash", "list", "--format=\(RefParser.stashFormat)"]
+
+    /// git R24: an optional message, `-u` on request.
+    static func stashPush(message: String?, includeUntracked: Bool) -> [String] {
+        var arguments = ["stash", "push"]
+        if includeUntracked {
+            arguments.append("--include-untracked")
+        }
+        if let message, !message.isEmpty {
+            arguments += ["-m", message]
+        }
+        return arguments
+    }
+
+    enum StashAction: String, Sendable {
+        case apply
+        case pop
+        case drop
+    }
+
+    static func stash(_ action: StashAction, _ ref: String) -> [String] {
+        ["stash", action.rawValue, ref]
+    }
+
     /// git R9: *Abort* on the operation in progress.
     static func abort(_ operation: GitOperation) -> [String] {
         [subcommand(operation), "--abort"]
