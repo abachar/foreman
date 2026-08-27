@@ -41,8 +41,10 @@ final class ToolbarButton: NSButton {
     ///
     /// An icon alone is centred, an icon with a name sits at its left (design R15, the mockups).
     func fit() {
-        imagePosition = title.isEmpty ? .imageOnly : .imageLeading
-        let width = intrinsicContentSize.width + (title.isEmpty ? 12 : 20)
+        let isIconOnly = title.trimmingCharacters(in: .whitespaces).isEmpty
+        imagePosition = isIconOnly ? .imageOnly : .imageLeading
+        paint()
+        let width = intrinsicContentSize.width + (isIconOnly ? 12 : 20)
         if let widthConstraint {
             widthConstraint.constant = width
         } else {
@@ -81,9 +83,11 @@ final class ToolbarButton: NSButton {
         layer?.borderWidth = isOutlined ? 1 : 0
         layer?.borderColor = tokens.accent.nsColor.cgColor
         contentTintColor = tokens.textPrimary.nsColor
-        if let title = attributedTitle.string.isEmpty ? nil : attributedTitle.string, !title.isEmpty {
+        let name = attributedTitle.string.trimmingCharacters(in: .whitespaces)
+        if !name.isEmpty {
+            // NSButton has no image-to-title spacing: the space in the title is that gap.
             attributedTitle = NSAttributedString(
-                string: title,
+                string: image == nil ? name : " " + name,
                 attributes: [
                     .foregroundColor: tokens.textPrimary.nsColor, .font: font ?? NSFont.systemFont(ofSize: 13),
                 ])
