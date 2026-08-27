@@ -1,0 +1,8 @@
+{
+    "commands": { 
+        "root": { 
+            "echo": "echo hello && sleep 5", 
+            "fail": "exit 2" 
+        }
+    }
+}

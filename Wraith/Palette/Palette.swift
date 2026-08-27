@@ -54,11 +54,17 @@ final class Palette {
         panel.isMovable = false
         panel.becomesKeyOnlyIfNeeded = false
         panel.contentViewController = NSHostingController(rootView: PaletteView(palette: self))
-        let frame = window.frame
-        panel.setFrameOrigin(
-            NSPoint(x: frame.midX - 310, y: frame.maxY - 420 - 60))
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
+        // `onAppear` runs before the panel is key and the hosted field exists only after a layout
+        // pass: claim the field now, and again on the next turn of the run loop.
+        Self.focusField(of: panel)
+        // After the layout pass: the hosted content may have resized the panel.
+        panel.setFrameTopLeftPoint(NSPoint(x: window.frame.midX - 310, y: window.frame.maxY - 60))
+        DispatchQueue.main.async { [weak panel] in
+            guard let panel else { return }
+            Self.focusField(of: panel)
+        }
         self.panel = panel
         resignObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification, object: panel, queue: .main
@@ -66,6 +72,23 @@ final class Palette {
             MainActor.assumeIsolated { self?.dismiss() }
         }
         update(query: "")
+    }
+
+    private static func focusField(of panel: NSPanel) {
+        panel.contentView?.layoutSubtreeIfNeeded()
+        guard let field = textField(in: panel.contentView), panel.firstResponder !== field.currentEditor() else {
+            return
+        }
+        panel.makeFirstResponder(field)
+    }
+
+    private static func textField(in view: NSView?) -> NSTextField? {
+        guard let view else { return nil }
+        if let field = view as? NSTextField { return field }
+        for subview in view.subviews {
+            if let field = textField(in: subview) { return field }
+        }
+        return nil
     }
 
     func dismiss() {
