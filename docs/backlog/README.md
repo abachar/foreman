@@ -12,5 +12,6 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 | M5 — Postgres | [m5-postgres.md](m5-postgres.md) | postgres, `Highlight/` (`sql`), `Workspace/` (`SecretStore`) | ⚪ |
 | M6 — Polish | [m6-polish.md](m6-polish.md) | aucun en propre : points ouverts de M0–M5 | ⚪ |
 | M7 — Formatage | [m7-formatter.md](m7-formatter.md) | editor (`01-study-formatter.md`) | ⚪ |
+| M8 — Refonte visuelle | [m8-design.md](m8-design.md) | design (transverse), `ThemeService`, toutes les vues | ⚪ |
 
 Chaque fichier contient : le périmètre, le tableau des tâches (règles couvertes, **lib / natif utilisé**, tests, taille, statut, PR), la définition de fini, les décisions à prendre pendant le milestone. Une tâche = une PR. Le statut se met à jour dans la PR qui termine la tâche.
