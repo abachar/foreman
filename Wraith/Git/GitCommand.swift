@@ -39,6 +39,32 @@ nonisolated enum GitCommand {
     /// git R10: what *Amend* prefills the message with.
     static let headMessage = ["log", "-1", "--format=%B"]
 
+    /// git R19: the history menu; `--hard` is never produced.
+    enum ResetMode: Sendable {
+        case soft
+        case mixed
+    }
+
+    static func checkoutDetached(_ sha: String) -> [String] {
+        ["checkout", "--detach", sha]
+    }
+
+    static func createBranch(_ name: String, at sha: String) -> [String] {
+        ["switch", "-c", name, sha]
+    }
+
+    static func cherryPick(_ sha: String) -> [String] {
+        ["cherry-pick", sha]
+    }
+
+    static func revert(_ sha: String) -> [String] {
+        ["revert", "--no-edit", sha]
+    }
+
+    static func reset(to sha: String, mode: ResetMode) -> [String] {
+        ["reset", mode == .soft ? "--soft" : "--mixed", sha]
+    }
+
     /// git R9: *Abort* on the operation in progress.
     static func abort(_ operation: GitOperation) -> [String] {
         [subcommand(operation), "--abort"]

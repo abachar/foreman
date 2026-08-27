@@ -50,9 +50,10 @@ struct WorkspaceView: View {
                 let editor = EditorFeature(
                     layout: layout, workspace: workspace, theme: theme, palette: palette, highlighter: highlighter)
                 self.editor = editor
-                ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
+                let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
                 git = GitFeature(
-                    layout: layout, workspace: workspace, editor: editor, theme: theme, highlighter: highlighter)
+                    layout: layout, workspace: workspace, editor: editor, explorer: explorer, theme: theme,
+                    highlighter: highlighter)
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)

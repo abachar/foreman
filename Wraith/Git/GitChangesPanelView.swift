@@ -156,7 +156,8 @@ struct GitRepoSectionView: View {
                         feature.openDiff(
                             GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)),
                             preview: preview)
-                    })
+                    },
+                    history: { feature.showHistory(repo: section.id, path: entry.path) })
             }
         }
     }
@@ -335,6 +336,7 @@ struct GitChangeRowView: View {
     let actions: [Action]
     let open: () -> Void
     let select: (_ preview: Bool) -> Void
+    let history: () -> Void
     @State private var isHovering = false
 
     var body: some View {
@@ -378,6 +380,10 @@ struct GitChangeRowView: View {
         .onHover { isHovering = $0 }
         .onTapGesture(count: 2) { select(false) }
         .onTapGesture { select(true) }
+        .contextMenu {
+            Button("Open File") { open() }
+            Button("Git History") { history() }
+        }
     }
 
     private var name: String {

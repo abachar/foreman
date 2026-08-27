@@ -9,6 +9,7 @@ import os
 final class GitFeature {
     static let panelID: PanelID = "git.changes"
     static let diffTabKind = "git.diff"
+    static let historyPanelID: PanelID = "git.history"
 
     /// The `git` section of `.wraith/config.json` (git R26).
     nonisolated struct Settings: Decodable, Equatable, Sendable {
@@ -23,6 +24,7 @@ final class GitFeature {
     }
 
     let model = GitModel()
+    let history = GitHistoryModel()
     private let layout: LayoutManager
     private let workspace: Workspace
     private let editor: EditorFeature
@@ -44,8 +46,8 @@ final class GitFeature {
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "git")
 
     init(
-        layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService,
-        highlighter: Highlighter
+        layout: LayoutManager, workspace: Workspace, editor: EditorFeature, explorer: ExplorerFeature.Registration,
+        theme: ThemeService, highlighter: Highlighter
     ) {
         self.layout = layout
         self.workspace = workspace
@@ -63,6 +65,19 @@ final class GitFeature {
                 makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
                 activate: { [weak self] in self?.activate() },
                 deactivate: { [weak self] in self?.deactivate() }))
+        let history = history
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.historyPanelID, title: "History", side: .bottom, defaultShortcut: "cmd+shift+h",
+                makeView: { [unowned self] in
+                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self))
+                },
+                activate: { [weak self] in self?.activateHistory() },
+                deactivate: { [weak self] in self?.history.reload(with: nil) }))
+        explorer.actions.fileHistory = { [weak self] node in
+            guard let self, let repo = repoContaining(node.relativePath) else { return }
+            showHistory(repo: repo.id, path: Self.path(node.relativePath, in: repo, root: workspace.root))
+        }
         layout.register(
             tabKind: CenterTabDescriptor(
                 kind: Self.diffTabKind,
@@ -249,6 +264,170 @@ final class GitFeature {
         var status = StatusParser.parse(output.stdout)
         status.operation = GitRepo.gitDirectory(of: repo.url).flatMap { GitOperation.current(inGitDirectory: $0) }
         return status
+    }
+
+    // MARK: - History (git R18–R20)
+
+    /// git R18: the repo of the changes panel by default; the repos come from the same discovery.
+    private func activateHistory() {
+        Task { [weak self] in
+            guard let self else { return }
+            if model.sections.isEmpty {
+                await discoverAndRefresh()
+            }
+            if history.repoID == nil || model.section(history.repoID ?? "") == nil {
+                history.repoID = model.sections.first { !$0.sections.isEmpty }?.id ?? model.sections.first?.id
+            }
+            guard let id = history.repoID else { return }
+            history.reload(with: await client(for: id))
+        }
+    }
+
+    /// git R18, R20: shows the panel on `repo`, on one file when `path` is set.
+    func showHistory(repo: String, path: String?) {
+        history.repoID = repo
+        history.query.path = path
+        history.selection = []
+        if !layout.panels.isVisible(Self.historyPanelID) {
+            layout.panels.show(Self.historyPanelID)
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            history.reload(with: await client(for: repo))
+        }
+    }
+
+    func filterHistory(_ text: String) {
+        history.query.filter = text.trimmingCharacters(in: .whitespaces)
+        guard let repo = history.repoID else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            history.reload(with: await client(for: repo))
+        }
+    }
+
+    func loadMoreHistory() {
+        guard let repo = history.repoID else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            history.loadMore(with: await client(for: repo))
+        }
+    }
+
+    /// git R19: the commit's diff, a preview on a click, pinned on a double click.
+    func openCommitDiff(_ commit: GitCommit, preview: Bool) {
+        guard let repo = history.repoID else { return }
+        let source: GitDiffPayload.Source =
+            history.query.path.map { .commitFile(sha: commit.sha, subject: commit.subject, path: $0) }
+            ?? .commit(sha: commit.sha, subject: commit.subject)
+        openDiff(GitDiffPayload(repo: repo, source: source), preview: preview)
+    }
+
+    func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    /// git R19: confirmed; the reflog keeps everything.
+    func checkout(_ commit: GitCommit) {
+        confirm(
+            "Check out \(commit.shortSha)?", "HEAD becomes detached; the current branch is left as it is.", "Checkout"
+        ) {
+            [weak self] in self?.runInHistoryRepo([GitCommand.checkoutDetached(commit.sha)])
+        }
+    }
+
+    func createBranch(at commit: GitCommit) {
+        askText("New Branch at \(commit.shortSha)", placeholder: "branch-name") { [weak self] name in
+            self?.runInHistoryRepo([GitCommand.createBranch(name, at: commit.sha)])
+        }
+    }
+
+    func cherryPick(_ commit: GitCommit) {
+        confirm("Cherry-pick \(commit.shortSha)?", commit.subject, "Cherry-pick") { [weak self] in
+            self?.runInHistoryRepo([GitCommand.cherryPick(commit.sha)])
+        }
+    }
+
+    func revert(_ commit: GitCommit) {
+        confirm(
+            "Revert \(commit.shortSha)?", "A new commit undoing \u{201c}\(commit.subject)\u{201d} is created.", "Revert"
+        ) {
+            [weak self] in self?.runInHistoryRepo([GitCommand.revert(commit.sha)])
+        }
+    }
+
+    func reset(to commit: GitCommit, mode: GitCommand.ResetMode) {
+        confirm(
+            "Reset \(mode == .soft ? "soft" : "mixed") to \(commit.shortSha)?",
+            mode == .soft ? "The later commits become staged changes." : "The later commits become unstaged changes.",
+            "Reset"
+        ) { [weak self] in self?.runInHistoryRepo([GitCommand.reset(to: commit.sha, mode: mode)]) }
+    }
+
+    private func runInHistoryRepo(_ commands: [[String]]) {
+        guard let repo = history.repoID else { return }
+        Task { [weak self] in
+            guard let self, let client = await client(for: repo) else { return }
+            do throws(GitError) {
+                for arguments in commands {
+                    _ = try await client.run(arguments, kind: .write)
+                }
+                model.setActionError(repo, nil)
+            } catch {
+                model.setActionError(repo, error)
+            }
+            refresh(repo)
+            history.reload(with: client)
+        }
+    }
+
+    private func confirm(_ title: String, _ text: String, _ button: String, _ done: @escaping () -> Void) {
+        guard let window = NSApp.keyWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = text
+        alert.addButton(withTitle: button)
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { response in
+            guard response == .alertFirstButtonReturn else { return }
+            done()
+        }
+    }
+
+    private func askText(_ title: String, placeholder: String, _ done: @escaping (String) -> Void) {
+        guard let window = NSApp.keyWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = title
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.placeholderString = placeholder
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+        alert.beginSheetModal(for: window) { response in
+            let text = field.stringValue.trimmingCharacters(in: .whitespaces)
+            guard response == .alertFirstButtonReturn, !text.isEmpty else { return }
+            done(text)
+        }
+    }
+
+    /// The deepest repo whose folder contains `relativePath` (relative to the workspace root).
+    private func repoContaining(_ relativePath: String) -> GitRepo? {
+        model.sections.map(\.repo).filter {
+            $0.id == "." || relativePath == $0.id || relativePath.hasPrefix($0.id + "/")
+        }
+        .max { $0.id.count < $1.id.count }
+    }
+
+    /// `relativePath` (to the root) as git wants it: relative to the repo.
+    nonisolated static func path(_ relativePath: String, in repo: GitRepo, root: URL) -> String {
+        Workspace.persistedPath(for: root.appending(path: relativePath), root: repo.url)
+    }
+
+    private func client(for id: String) async -> GitCLI? {
+        guard let repo = model.section(id)?.repo else { return clients[id] }
+        return await client(for: repo)
     }
 
     // MARK: - Diff tabs (git R13, R14, R17; layout R28)

@@ -6,11 +6,19 @@ import SwiftUI
 enum ExplorerFeature {
     static let panelID: PanelID = "explorer.tree"
 
-    static func register(in layout: LayoutManager, workspace: Workspace, editor: EditorFeature) {
+    /// What other features reach: the model (explorer R15) and the actions (R20 menu entries).
+    struct Registration {
+        let model: ExplorerModel
+        let actions: ExplorerActions
+    }
+
+    @discardableResult
+    static func register(in layout: LayoutManager, workspace: Workspace, editor: EditorFeature) -> Registration {
         let model = ExplorerModel(root: workspace.root, fsWatch: workspace.fsWatch)
         if let state = try? workspace.state.section("explorer", as: ExplorerState.self) {
             model.restore(state)
         }
+        let actions = ExplorerActions(model: model, root: workspace.root, editor: editor, layout: layout)
         layout.register(
             panel: PanelDescriptor(
                 id: panelID, title: "Explorer", side: .left, defaultShortcut: "cmd+shift+e",
@@ -26,13 +34,13 @@ enum ExplorerFeature {
                                     newGroup: mode == .newGroup)
                             },
                             pathOfTab: { editor.path(of: $0) },
-                            operations: ExplorerActions(
-                                model: model, root: workspace.root, editor: editor, layout: layout)
+                            operations: actions
                         ))
                 },
                 // explorer R8: the first level is read when the panel is shown, off the main actor.
                 activate: { model.activate() },
                 deactivate: { model.deactivate() }))
+        return Registration(model: model, actions: actions)
     }
 }
 
@@ -44,6 +52,8 @@ final class ExplorerActions {
     private let root: URL
     private let editor: EditorFeature
     private let layout: LayoutManager
+    /// explorer R20, git R20: set by `Git/` once it exists; `nil` hides the entry.
+    var fileHistory: ((FileNode) -> Void)?
 
     init(model: ExplorerModel, root: URL, editor: EditorFeature, layout: LayoutManager) {
         self.model = model
@@ -128,6 +138,11 @@ final class ExplorerActions {
                 model.report(error)
             }
         }
+    }
+
+    /// git R20: the file's history in the `git.history` panel.
+    func showHistory(_ node: FileNode) {
+        fileHistory?(node)
     }
 
     func revealInFinder(_ node: FileNode) {

@@ -174,6 +174,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
             menu.addItem(withTitle: "Copy Path", action: #selector(menuCopyPath), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Copy Absolute Path", action: #selector(menuCopyAbsolutePath), keyEquivalent: "")
                 .target = self
+            if operations.fileHistory != nil, clicked?.kind == .file {
+                menu.addItem(.separator())
+                menu.addItem(withTitle: "Git History", action: #selector(menuHistory), keyEquivalent: "").target = self
+            }
         }
 
         private var clickedNode: FileNode? {
@@ -189,6 +193,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         }
         @objc private func menuDelete() { clickedNode.map { operations.delete($0) } }
         @objc private func menuReveal() { clickedNode.map { operations.revealInFinder($0) } }
+        @objc private func menuHistory() { clickedNode.map { operations.showHistory($0) } }
         @objc private func menuCopyPath() { clickedNode.map { operations.copyPath($0, absolute: false) } }
         @objc private func menuCopyAbsolutePath() { clickedNode.map { operations.copyPath($0, absolute: true) } }
 
