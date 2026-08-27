@@ -103,6 +103,92 @@ Below, the recommended command for each grammar Wraith actually has (`editor` R1
 | dockerfile | `Dockerfile*` | `dockfmt fmt` | — |
 | sql (M5) | `.sql` | `pg_format` | `sqlformat -` (`format-all`'s default), `sqlfluff fix --nocolor --dialect=postgres -` |
 
+#### Reference: the external formatters `format-all` knows, by language
+
+The full inventory, supplied by the author on 2026-08-27, kept here so that a user adding a grammar to `formatter` in `config.json` has the candidate names at hand. Every entry is an external command driven over `stdin`/`stdout` and therefore fits R26–R28 as is, **except** the ones marked `*`, which are Emacs-internal modes (`Emacs`, `auctex`, `ledger-mode`) and have no CLI: those languages have no formatter Wraith can call. Only the rows whose grammar Wraith highlights (the table above) get a recommended invocation; the rest are names, not verified command lines.
+
+| Language | Formatters |
+|---|---|
+| Angular | prettier |
+| Assembly | asmfmt |
+| ATS | atsfmt |
+| Awk | gawk |
+| AZSL | clang-format |
+| Bazel Starlark | buildifier |
+| Beancount | bean-format |
+| BibTeX | Emacs* |
+| C / C++ / Objective-C | clang-format, astyle |
+| C# | clang-format, astyle, csharpier |
+| Cabal | cabal-fmt |
+| Caddyfile | caddy fmt |
+| Clojure / ClojureScript | cljfmt, zprint |
+| CMake | cmake-format |
+| Crystal | crystal tool format |
+| CSS / Less / SCSS | prettier, prettierd, deno, oxfmt |
+| Cuda | clang-format |
+| D | dfmt |
+| Dart | dartfmt, dart format |
+| Dhall | dhall format |
+| Dockerfile | dockfmt |
+| Elixir | mix format |
+| Elm | elm-format |
+| Emacs Lisp | Emacs* |
+| Erb | erb-format |
+| Erlang | efmt |
+| F# | fantomas |
+| Fish shell | fish_indent |
+| Fortran (free form) | fprettify |
+| GDScript | gdscript-formatter |
+| GLSL | clang-format |
+| Gleam | gleam format |
+| Go | gofmt, goimports |
+| GraphQL | prettier, prettierd, oxfmt |
+| Haskell | brittany, fourmolu, hindent, ormolu, stylish-haskell |
+| HCL | hclfmt |
+| HLSL | clang-format |
+| HTML | tidy, deno, oxfmt |
+| XHTML / XML | tidy |
+| Hy | Emacs* |
+| Java | astyle, clang-format, google-java-format |
+| JavaScript / JSON / JSX | prettier, standard, prettierd, deno, oxfmt |
+| JSON5 | prettier, deno, oxfmt |
+| Jsonnet | jsonnetfmt |
+| Kotlin | ktlint |
+| LaTeX | latexindent, auctex* |
+| Ledger | ledger-mode* |
+| Lua | lua-fmt, stylua, prettier (plugin) |
+| Markdown | prettier, prettierd, deno, markdownfmt, mdformat, oxfmt |
+| Meson | muon fmt, meson format |
+| Nginx | nginxfmt |
+| Nix | nixpkgs-fmt, nixfmt, alejandra |
+| OCaml | ocp-indent, ocamlformat |
+| Perl | perltidy |
+| PHP | prettier (plugin) |
+| Protocol Buffers | clang-format |
+| PureScript | purty, purs-tidy |
+| Python | black, isort, ruff format, yapf |
+| R | styler |
+| Racket | raco fmt |
+| Reason | bsrefmt |
+| ReScript | rescript format |
+| Ruby | rubocop, rubyfmt, rufo, standardrb, stree (syntax_tree) |
+| Rust | rustfmt |
+| Scala | scalafmt |
+| Shell script | beautysh, shfmt |
+| Snakemake | snakefmt |
+| Solidity | prettier (plugin) |
+| SQL | pgformatter, sqlformat, sqlfluff |
+| Svelte | prettier (plugin) |
+| Swift | swiftformat |
+| Terraform | terraform fmt |
+| TOML | prettier (plugin), taplo fmt, oxfmt |
+| TypeScript / TSX | prettier, ts-standard, prettierd, deno, oxfmt |
+| V | v fmt |
+| Vue | prettier, prettierd, oxfmt |
+| Verilog | iStyle, Verible |
+| YAML | prettier, prettierd, deno, oxfmt |
+| Zig | zig fmt |
+
 Two things this table settles, which are R27's whole point:
 
 - **A formatter that infers its parser from the file name needs the name in its own command line**, because Wraith passes no path. `format-all` hits the same wall and solves it the same way — it appends `--stdin-filepath <file>` for prettier and oxfmt, `-assume-filename` for clang-format, `-filename` for shfmt, and falls back to `--parser <lang>` / `-ln <dialect>` when there is no file. In Wraith it is the user who writes that flag, once, in the config; the value is a placeholder name (`file.ts`), not the real path.
