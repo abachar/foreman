@@ -115,6 +115,11 @@ final class PanelManager {
     /// the panel (layout R3, R4, R6).
     func show(_ id: PanelID) {
         guard let descriptor = self[id], visible[descriptor.side] != id else { return }
+        // architecture, Performance: panel < 100 ms (M6 6.5); ends after SwiftUI's commit.
+        let interval = Perf.signposter.beginInterval("panel.show", id: Perf.signposter.makeSignpostID())
+        DispatchQueue.main.async {
+            Perf.signposter.endInterval("panel.show", interval)
+        }
         if let replaced = visible[descriptor.side] {
             self[replaced]?.deactivate()
         }

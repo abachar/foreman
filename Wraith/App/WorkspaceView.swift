@@ -113,6 +113,8 @@ struct WorkspaceView: View {
                     ZonesView(layout: layout) {
                         // layout R29: restored panels start their work after the first frame.
                         layout.panels.activateVisible()
+                        // architecture, Performance: workspace opened < 500 ms to the first frame (M6 6.5).
+                        appDelegate.firstFrame(of: folder)
                     } onWindow: { window in
                         hostWindow = window
                         closeIfSuperseded()

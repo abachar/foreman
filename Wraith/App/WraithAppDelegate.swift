@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import SwiftUI
+import os
 
 /// The AppKit entry points SwiftUI does not cover, and the window opener they need.
 ///
@@ -24,6 +25,8 @@ final class WraithAppDelegate: NSObject, NSApplicationDelegate {
     @ObservationIgnored private var pendingFolders: [URL] = []
     @ObservationIgnored private var hasTakenLaunchFolder = false
     @ObservationIgnored private var launchedOnHome: Date?
+    /// architecture, Performance: one `workspace.open` interval per requested window (M6 6.5).
+    @ObservationIgnored private var openIntervals: [URL: OSSignpostIntervalState] = [:]
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
@@ -42,17 +45,33 @@ final class WraithAppDelegate: NSObject, NSApplicationDelegate {
         guard !hasTakenLaunchFolder else { return homeFolder() }
         hasTakenLaunchFolder = true
         if let argument = WorkspaceFolder.argument(in: CommandLine.arguments) {
-            return WorkspaceFolder.resolve(
-                path: argument,
-                currentDirectory: .currentDirectory(),
-                home: .homeDirectory
-            )
+            return measured(
+                WorkspaceFolder.resolve(
+                    path: argument,
+                    currentDirectory: .currentDirectory(),
+                    home: .homeDirectory
+                ))
         }
         if !pendingFolders.isEmpty {
             return pendingFolders.removeFirst()
         }
         launchedOnHome = .now
-        return homeFolder()
+        return measured(homeFolder())
+    }
+
+    /// The window rooted at `folder` drew its first frame: closes its `workspace.open` interval.
+    func firstFrame(of folder: URL) {
+        guard let interval = openIntervals.removeValue(forKey: folder) else { return }
+        Perf.signposter.endInterval("workspace.open", interval)
+    }
+
+    private func measured(_ folder: URL) -> URL {
+        if let previous = openIntervals[folder] {
+            // The window already exists (product R1): the request is over as soon as it is activated.
+            Perf.signposter.endInterval("workspace.open", previous)
+        }
+        openIntervals[folder] = Perf.signposter.beginInterval("workspace.open", id: Perf.signposter.makeSignpostID())
+        return folder
     }
 
     /// `cmd+shift+n` (layout R23): the same panel as *File > Open…*.
@@ -87,10 +106,10 @@ final class WraithAppDelegate: NSObject, NSApplicationDelegate {
     /// second one, which is why the URL is canonical.
     private func open(folder: URL) {
         guard let openWindow else {
-            pendingFolders.append(folder)
+            pendingFolders.append(measured(folder))
             return
         }
-        openWindow(value: folder)
+        openWindow(value: measured(folder))
     }
 
     private func homeFolder() -> URL {
