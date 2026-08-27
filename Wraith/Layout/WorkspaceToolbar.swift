@@ -51,6 +51,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
                 let button = item.view as? ToolbarButton
             else { continue }
             button.tokens = tokens
+            button.font = theme.interfaceFont()
             button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
             // design R15: a toggle whose panel is visible is outlined.
             button.isOutlined = LayoutManager.panelID(ofToggle: descriptor.id).map(layout.panels.isVisible) ?? false
@@ -95,6 +96,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         // A panel toggle is an icon alone (design R15, the mockups); the others carry their name.
         button.title = LayoutManager.panelID(ofToggle: descriptor.id) == nil ? descriptor.title : ""
         button.tokens = theme.tokens
+        button.font = theme.interfaceFont()
         button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
         button.target = self
         button.action = #selector(performButton(_:))

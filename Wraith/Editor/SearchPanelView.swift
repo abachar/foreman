@@ -3,13 +3,15 @@ import SwiftUI
 /// The bottom panel `editor.search` (editor R20, R21).
 struct SearchPanelView: View {
     @Bindable var model: SearchModel
+    let theme: ThemeService
     /// A match was chosen: open the file at the line, pinned on `cmd`.
     let onOpen: (ContentSearch.Match, _ pinned: Bool) -> Void
 
     @FocusState private var isFieldFocused: Bool
 
-    init(model: SearchModel, onOpen: @escaping (ContentSearch.Match, _ pinned: Bool) -> Void) {
+    init(model: SearchModel, theme: ThemeService, onOpen: @escaping (ContentSearch.Match, _ pinned: Bool) -> Void) {
         self.model = model
+        self.theme = theme
         self.onOpen = onOpen
     }
 
@@ -64,7 +66,7 @@ struct SearchPanelView: View {
                 }
                 if model.isTruncated {
                     Text("Results truncated at \(ContentSearch.limit) matches")
-                        .font(.caption)
+                        .font(theme.font(.small))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -83,7 +85,7 @@ struct SearchPanelView: View {
     private func row(_ match: ContentSearch.Match) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("\(match.line)")
-                .font(.caption.monospacedDigit())
+                .font(theme.font(.small).monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 40, alignment: .trailing)
             Text(highlighted(match))

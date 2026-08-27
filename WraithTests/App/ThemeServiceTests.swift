@@ -20,6 +20,15 @@ struct ThemeServiceTests {
         #expect(try await settings(#"{ "terminal": "nope" }"#) == .defaults)
     }
 
+    @Test func codeFontDefaultsToJetBrainsMonoAndSurvivesAPartialSection() async throws {
+        defer { fixture.remove() }
+        #expect(ThemeService.Settings.defaults.fontName == "JetBrains Mono")
+        #expect(ThemeService.Settings.defaults.fontSize == 13)
+        let settings = try await settings(#"{ "terminal": { "fontSize": 14 } }"#)
+        #expect(settings.fontName == "JetBrains Mono")
+        #expect(settings.fontSize == 14)
+    }
+
     @Test func eachFieldFallsBackOnItsOwn() async throws {
         defer { fixture.remove() }
         let settings = try await settings(#"{ "terminal": { "font": "Menlo", "fontSize": 80, "theme": "neon" } }"#)

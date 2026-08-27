@@ -27,6 +27,7 @@ struct MarkdownPreviewView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .font(theme.font())
         .scrollPosition($position, anchor: .top)
         .foregroundStyle(theme.tokens.textPrimary.color)
         .tint(theme.tokens.accent.color)
@@ -65,12 +66,18 @@ private struct MarkdownBlockView: View {
     let theme: ThemeService
     let highlighter: Highlighter
 
+    /// design R6: headings scale the interface font, `medium` (1.6, 1.35, 1.15, then the title).
+    private func headingFont(_ level: Int) -> Font {
+        let scale: CGFloat = level == 1 ? 1.6 : level == 2 ? 1.35 : level == 3 ? 1.15 : 1.05
+        let base = theme.interfaceFont(.body, weight: .medium)
+        return Font(base.withSize((base.pointSize * scale).rounded()))
+    }
+
     var body: some View {
         switch block {
         case .heading(let level, let text):
             Text(text)
-                .font(level == 1 ? .largeTitle : level == 2 ? .title : level == 3 ? .title2 : .headline)
-                .bold()
+                .font(headingFont(level))
                 .padding(.top, level <= 2 ? 8 : 4)
         case .paragraph(let text):
             Text(text)

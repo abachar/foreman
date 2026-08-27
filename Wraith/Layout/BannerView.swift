@@ -22,7 +22,7 @@ struct BannerView: View {
             Image(systemName: icon)
                 .foregroundStyle(color(tokens))
         }
-        .font(.callout)
+        .font(theme.font())
         .lineLimit(3)
         .textSelection(.enabled)
         .padding(6)

@@ -97,7 +97,7 @@ struct TabBarView: View {
                 HStack(spacing: 0) {
                     ForEach(group.tabs) { tab in
                         TabButton(
-                            tab: tab, tokens: tokens,
+                            tab: tab, tokens: tokens, font: theme.font(), closeFont: theme.font(.small),
                             icon: layout.tabKinds[tab.kind]?.showsFileIcon == true
                                 ? FileIcon.image(named: FileIcon.name(for: tab.title)) : nil,
                             isActive: tab.id == group.activeTab,
@@ -124,6 +124,8 @@ struct TabBarView: View {
 private struct TabButton: View {
     let tab: Tab
     let tokens: ThemeService.Tokens
+    let font: Font
+    let closeFont: Font
     /// design R23: the file's type icon.
     let icon: NSImage?
     let isActive: Bool
@@ -149,12 +151,12 @@ private struct TabButton: View {
             }
             Text(tab.title + (tab.isDirty && tab.badge == .none ? " •" : ""))
                 .lineLimit(1)
-                .font(.callout)
+                .font(font)
                 .italic(tab.isPreview)
                 .foregroundStyle(isActive && isActiveGroup ? tokens.textPrimary.color : tokens.textSecondary.color)
             Button(action: close) {
                 Image(systemName: "xmark")
-                    .font(.caption2)
+                    .font(closeFont)
             }
             .buttonStyle(.plain)
             .foregroundStyle(tokens.textSecondary.color)

@@ -35,7 +35,7 @@ struct TerminalTabView: View {
                 service.theme.tokens.separator.color.frame(height: 1)
                 HStack {
                     Text("exited · \(exit.label)")
-                        .font(.callout)
+                        .font(service.theme.font())
                         .foregroundStyle(service.theme.tokens.textSecondary.color)
                     Spacer()
                     Button("Relaunch") {

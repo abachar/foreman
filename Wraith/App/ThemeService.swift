@@ -21,7 +21,8 @@ final class ThemeService {
         }
 
         static let sizeRange: ClosedRange<CGFloat> = 8...32
-        static let defaults = Settings(fontName: nil, fontSize: NSFont.systemFontSize, mode: .system)
+        /// JetBrains Mono at 13 (design decision 2026-08-28); the system monospaced font when absent.
+        static let defaults = Settings(fontName: "JetBrains Mono", fontSize: 13, mode: .system)
 
         /// `nil` is the system monospaced font.
         var fontName: String?
@@ -39,7 +40,9 @@ final class ThemeService {
         static func decode(from config: WorkspaceConfig) -> Settings {
             guard let section = try? config.section("terminal", as: Section.self) else { return defaults }
             var settings = defaults
-            settings.fontName = section.font.flatMap { $0.isEmpty ? nil : $0 }
+            if let font = section.font, !font.isEmpty {
+                settings.fontName = font
+            }
             if let size = section.fontSize {
                 settings.fontSize = min(max(size, sizeRange.lowerBound), sizeRange.upperBound)
             }

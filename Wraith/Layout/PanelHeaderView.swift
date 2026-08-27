@@ -12,7 +12,7 @@ struct PanelHeaderView<Trailing: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(title)
-                    .font(.headline)
+                    .font(theme.font(.title, weight: .medium))
                     .foregroundStyle(tokens.textPrimary.color)
                     .lineLimit(1)
                     .truncationMode(.middle)

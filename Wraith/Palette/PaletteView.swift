@@ -13,7 +13,7 @@ struct PaletteView: View {
         VStack(spacing: 0) {
             TextField(palette.source?.placeholder ?? "", text: $query)
                 .textFieldStyle(.plain)
-                .font(.title3)
+                .font(theme.font(.title))
                 .foregroundStyle(tokens.textPrimary.color)
                 .padding(10)
                 .background(tokens.surfaceSunken.color, in: RoundedRectangle(cornerRadius: 6))
@@ -39,17 +39,18 @@ struct PaletteView: View {
             }
             if let notice = palette.results.notice {
                 Text(notice)
-                    .font(.caption)
+                    .font(theme.font(.small))
                     .foregroundStyle(tokens.textSecondary.color)
                     .padding(6)
             }
             tokens.separator.color.frame(height: 1)
             Text(Self.help(hasSecondary: palette.source?.secondary != nil))
-                .font(.caption)
+                .font(theme.font(.small))
                 .foregroundStyle(tokens.textDisabled.color)
                 .padding(8)
         }
         .frame(width: 620, height: 420)
+        .font(theme.font())
         .background(tokens.surfaceOverlay.color)
         .onAppear { isFieldFocused = true }
         .onChange(of: query) { _, query in
@@ -74,7 +75,7 @@ struct PaletteView: View {
                     .foregroundStyle(isSelected ? tokens.accentText.color : tokens.textPrimary.color)
                 if let subtitle = item.subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(theme.font(.small))
                         .foregroundStyle(isSelected ? tokens.accentText.color.opacity(0.8) : tokens.textSecondary.color)
                         .lineLimit(1)
                 }

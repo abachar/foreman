@@ -14,3 +14,4 @@
 | 2026-08-25 | Wraith's `cmd+…` shortcuts take priority over the surface | The surface wins | Tabs and splits are Wraith's |
 | 2026-08-27 | Confirmed in use (M6 6.4): `bellStyle = .none` and R7's badge on an inactive tab, no visual bell | Going back to `.visual` | The badge is what the eye needs; a flashing surface under an agent is noise |
 | 2026-08-27 | Confirmed in use (M6 6.2): `cmd+c` copies the selection, `ctrl+c` reaches the process; no agent needed `cmd+c` | Passing `cmd+c` to the process when there is no selection | No agent among the four used depends on it; one rule is easier to remember |
+| 2026-08-28 | Default monospaced font: **JetBrains Mono 13** (the system monospaced font when absent) | The system monospaced font | The author's choice for the editor, the terminal, the diff and SQL (design R6) |

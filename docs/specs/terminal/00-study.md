@@ -45,7 +45,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 - R12 — Keyboard: `layout` R25 — everything that is not a Wraith `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`).
 - R13 — Mouse: selection, copy, scrolling, forwarding mouse events to the TUIs that ask for them — all delegated to SwiftTerm. Detected links are clickable (`cmd+click`).
-- R14 — Appearance: the monospaced font and the theme are defined by Wraith (`ThemeService`); the `terminal` section of `.wraith/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
+- R14 — Appearance: the monospaced font (**JetBrains Mono 13** by default since 2026-08-28, the system monospaced font when it is not installed) and the theme are defined by Wraith (`ThemeService`); the `terminal` section of `.wraith/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
 - R15 — Resizing: the surface receives its size in points from the layout (`layout` R21); SwiftTerm derives rows/columns from it and propagates the window size to the process.
 
 ### Service for the features (`Terminal/`)

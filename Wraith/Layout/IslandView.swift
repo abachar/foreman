@@ -11,6 +11,8 @@ struct IslandView<Content: View>: View {
             // The island is the whole zone, whatever its content asks for (bug: the search panel
             // left a band of ground under itself, 2026-08-27).
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // design R6: the interface font, inherited by everything on the island.
+            .font(theme.font())
             .background(tokens.surface.color)
             .clipShape(RoundedRectangle(cornerRadius: tokens.islandRadius))
     }

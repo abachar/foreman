@@ -39,7 +39,7 @@ struct GitChangesPanelView: View {
                 get: { feature.branchSheetRepo != nil }, set: { if !$0 { feature.branchSheetRepo = nil } })
         ) {
             if let repo = feature.branchSheetRepo {
-                GitBranchesSheet(repo: repo, feature: feature)
+                GitBranchesSheet(repo: repo, feature: feature, theme: theme)
             }
         }
     }
@@ -49,6 +49,7 @@ struct GitChangesPanelView: View {
 struct GitBranchesSheet: View {
     let repo: String
     let feature: GitFeature
+    let theme: ThemeService
     @State private var query = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -76,7 +77,7 @@ struct GitBranchesSheet: View {
                     Text(branch.name)
                     if let upstream = branch.upstream {
                         Text("\u{2192} \(upstream)")
-                            .font(.caption)
+                            .font(theme.font(.small))
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -98,7 +99,7 @@ struct GitBranchesSheet: View {
                 Button("New Branch from HEAD\u{2026}") { feature.newBranch(in: repo) }
                 Spacer()
                 Text("Double-click to check out")
-                    .font(.caption)
+                    .font(theme.font(.small))
                     .foregroundStyle(.secondary)
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.cancelAction)
@@ -141,7 +142,7 @@ struct GitRepoSectionView: View {
                 .buttonStyle(.plain)
                 .disabled(section.status.map { GitSections($0.entries).isEmpty } ?? true)
                 Text(section.repo.name)
-                    .font(.headline)
+                    .font(theme.font(.title, weight: .medium))
                     .lineLimit(1)
                 if let status = section.status {
                     Text(Self.headText(status))
@@ -149,7 +150,7 @@ struct GitRepoSectionView: View {
                         .lineLimit(1)
                     if status.ahead > 0 || status.behind > 0 {
                         Text(Self.aheadBehindText(ahead: status.ahead, behind: status.behind))
-                            .font(.caption)
+                            .font(theme.font(.small))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -162,18 +163,18 @@ struct GitRepoSectionView: View {
             }
             if let operation = section.remoteOperation {
                 Text("\(operation.rawValue)\u{2026}")
-                    .font(.caption)
+                    .font(theme.font(.small))
                     .foregroundStyle(.secondary)
             }
             if let auth = section.authRequired {
                 // git R22: the exact command to run elsewhere; no secret ever enters Wraith.
                 VStack(alignment: .leading, spacing: 2) {
                     Label("Authentication required", systemImage: "key")
-                        .font(.callout.bold())
+                        .font(theme.font(weight: .medium))
                     Text(auth.command)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(theme.codeFont(.small))
                     Text(auth.cwd.path(percentEncoded: false))
-                        .font(.caption)
+                        .font(theme.font(.small))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -191,7 +192,7 @@ struct GitRepoSectionView: View {
                 // git R9: the state and its two exits.
                 HStack(spacing: 6) {
                     Text(Self.operationText(operation))
-                        .font(.caption.bold())
+                        .font(theme.font(.small, weight: .medium))
                         .foregroundStyle(Color(nsColor: theme.color(for: .conflicted)))
                     Button("Abort") { feature.abort(operation, in: section.id) }
                     Button("Continue") { feature.continueOperation(operation, in: section.id) }
@@ -261,16 +262,16 @@ struct GitRepoSectionView: View {
                     "Stashes (\(section.stashes.count))",
                     systemImage: section.isStashListExpanded ? "chevron.down" : "chevron.right"
                 )
-                .font(.caption)
+                .font(theme.font(.small))
             }
             .buttonStyle(.plain)
             if section.isStashListExpanded {
                 ForEach(section.stashes) { stash in
                     HStack(spacing: 6) {
                         Text(stash.ref)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(theme.codeFont(.small))
                         Text(stash.message)
-                            .font(.caption)
+                            .font(theme.font(.small))
                             .lineLimit(1)
                         Spacer()
                         Button("Apply") { feature.stash(.apply, stash, in: section.id) }
@@ -286,7 +287,7 @@ struct GitRepoSectionView: View {
 
     private func banner(_ text: String, icon: String) -> some View {
         Label(text, systemImage: icon)
-            .font(.callout)
+            .font(theme.font())
             .foregroundStyle(theme.tokens.statusRed.color)
             .lineLimit(3)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -303,7 +304,7 @@ struct GitRepoSectionView: View {
         if !entries.isEmpty {
             HStack {
                 Text("\(title) (\(entries.count))")
-                    .font(.subheadline.bold())
+                    .font(theme.font(.small, weight: .medium))
                     .foregroundStyle(.secondary)
                 Spacer()
                 groupActions(entries, kind: kind)
@@ -311,7 +312,7 @@ struct GitRepoSectionView: View {
             .padding(.top, 4)
             ForEach(entries) { entry in
                 GitChangeRowView(
-                    entry: entry, letter: Self.letter(of: entry, kind: kind),
+                    entry: entry, letter: Self.letter(of: entry, kind: kind), theme: theme,
                     color: Color(nsColor: theme.color(for: entry.fileStatus)),
                     actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) },
                     select: { preview in
@@ -439,7 +440,7 @@ struct GitCommitView: View {
             TextEditor(
                 text: Binding(get: { section.message }, set: { feature.setMessage($0, in: section.id) })
             )
-            .font(.body)
+            .font(theme.font())
             .frame(minHeight: 48, maxHeight: 120)
             .overlay(alignment: .topLeading) {
                 if section.message.isEmpty {
@@ -458,7 +459,7 @@ struct GitCommitView: View {
             HStack(spacing: 8) {
                 let subject = CommitMessage.subject(of: section.message).count
                 Text("\(subject)/\(CommitMessage.subjectLimit)")
-                    .font(.caption.monospacedDigit())
+                    .font(theme.font(.small).monospacedDigit())
                     .foregroundStyle(
                         subject > CommitMessage.subjectLimit
                             ? theme.tokens.statusRed.color : theme.tokens.textSecondary.color)
@@ -498,6 +499,7 @@ struct GitChangeRowView: View {
 
     let entry: GitStatusEntry
     let letter: String
+    let theme: ThemeService
     let color: Color
     let actions: [Action]
     let open: () -> Void
@@ -508,7 +510,7 @@ struct GitChangeRowView: View {
     var body: some View {
         HStack(spacing: 6) {
             Text(letter)
-                .font(.system(.body, design: .monospaced).bold())
+                .font(theme.codeFont().weight(.medium))
                 .foregroundStyle(color)
                 .frame(width: 14)
             VStack(alignment: .leading, spacing: 0) {
@@ -517,7 +519,7 @@ struct GitChangeRowView: View {
                     .lineLimit(1)
                 if !folder.isEmpty {
                     Text(folder)
-                        .font(.caption)
+                        .font(theme.font(.small))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

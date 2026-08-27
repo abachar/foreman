@@ -42,12 +42,16 @@ struct SchemaOutlineView: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
         outline.backgroundColor = theme.tokens.surface.nsColor
+        outline.rowHeight = theme.listRowHeight
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        if let outline = context.coordinator.outline, outline.backgroundColor != theme.tokens.surface.nsColor {
+        if let outline = context.coordinator.outline,
+            outline.backgroundColor != theme.tokens.surface.nsColor || outline.rowHeight != theme.listRowHeight
+        {
             outline.backgroundColor = theme.tokens.surface.nsColor
+            outline.rowHeight = theme.listRowHeight
             outline.reloadData()
         }
         context.coordinator.sync(version: model.version, filter: model.filter)
@@ -209,7 +213,7 @@ struct SchemaOutlineView: NSViewRepresentable {
             let text = NSMutableAttributedString(
                 string: node.title,
                 attributes: [
-                    .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                    .font: theme.interfaceFont(),
                     .foregroundColor: theme.tokens.textPrimary.nsColor,
                 ])
             if let subtitle = node.subtitle {
@@ -217,7 +221,7 @@ struct SchemaOutlineView: NSViewRepresentable {
                     NSAttributedString(
                         string: "  " + subtitle,
                         attributes: [
-                            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize - 1),
+                            .font: theme.interfaceFont(.small),
                             .foregroundColor: theme.tokens.textSecondary.nsColor,
                         ]))
             }

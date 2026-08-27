@@ -86,16 +86,16 @@ struct GitDiffView: View {
                 .buttonStyle(.plain)
             }
             Text(Self.headerText(file))
-                .font(.headline)
+                .font(theme.font(.title, weight: .medium))
                 .lineLimit(1)
             if let old = file.oldMode, let new = file.newMode {
                 Text("mode \(old) \u{2192} \(new)")
-                    .font(.caption)
+                    .font(theme.font(.small))
                     .foregroundStyle(.secondary)
             }
             if isLarge {
                 Text("\(file.lineCount) lines")
-                    .font(.caption)
+                    .font(theme.font(.small))
                     .foregroundStyle(.secondary)
             }
             Spacer()

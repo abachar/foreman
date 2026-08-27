@@ -29,7 +29,7 @@ struct PostgresQueryView: View {
                 .fill(Color(nsColor: theme.color(for: connection.state)))
                 .frame(width: 8, height: 8)
             Text(connection.label ?? "Postgres")
-                .font(.headline)
+                .font(theme.font(.title, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer()
@@ -95,7 +95,7 @@ struct PostgresQueryView: View {
                             .foregroundStyle(theme.tokens.textSecondary.color)
                     }
                 }
-                .font(.callout)
+                .font(theme.font())
                 .textSelection(.enabled)
                 .padding(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -144,7 +144,7 @@ struct PostgresQueryView: View {
             Text(connection.label ?? "")
             Spacer()
         }
-        .font(.caption)
+        .font(theme.font(.small))
         .foregroundStyle(theme.tokens.textSecondary.color)
         .padding(.horizontal, 10)
         .padding(.vertical, 4)

@@ -40,7 +40,7 @@ struct QueryGridView: View {
     }
 
     private func header(_ column: QueryResult.Column) -> Text {
-        Text("\(column.name)  \(Text(column.type).foregroundStyle(.secondary).font(.caption))")
+        Text("\(column.name)  \(Text(column.type).foregroundStyle(.secondary).font(theme.font(.small)))")
     }
 
     /// Edge cases: the full content of every cell of the row.
@@ -52,7 +52,7 @@ struct QueryGridView: View {
                         let value = index < row.values.count ? row.values[index] : QueryValue.null
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(column.name)  \(column.type)")
-                                .font(.caption)
+                                .font(theme.font(.small))
                                 .foregroundStyle(.secondary)
                             Text(value.detailText)
                                 .font(Font(theme.editorFont))

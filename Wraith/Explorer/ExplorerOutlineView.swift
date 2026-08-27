@@ -57,13 +57,17 @@ struct ExplorerOutlineView: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
         outline.backgroundColor = theme.tokens.surface.nsColor
+        outline.rowHeight = theme.listRowHeight
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         // design R8: the tree sits on the island.
-        if let outline = context.coordinator.outline, outline.backgroundColor != theme.tokens.surface.nsColor {
+        if let outline = context.coordinator.outline,
+            outline.backgroundColor != theme.tokens.surface.nsColor || outline.rowHeight != theme.listRowHeight
+        {
             outline.backgroundColor = theme.tokens.surface.nsColor
+            outline.rowHeight = theme.listRowHeight
             outline.reloadData()
         }
         context.coordinator.sync(version: model.version, hidesExcluded: model.hidesExcluded)
@@ -338,6 +342,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
             switch item.kind {
             case .node(let node):
                 cell.textField?.isEditable = true
+                cell.textField?.font = theme.interfaceFont()
                 cell.textField?.stringValue = node.name
                 // explorer R4, R15: greyed when excluded or gitignored, colored by git status.
                 let isGreyed = node.isExcluded || model.isGitIgnored(node.relativePath)
@@ -424,7 +429,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
             text.target = self
             text.action = #selector(renamed(_:))
             text.lineBreakMode = .byTruncatingMiddle
-            text.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            text.font = theme.interfaceFont()
             cell.addSubview(image)
             cell.addSubview(text)
             cell.imageView = image

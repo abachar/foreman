@@ -68,14 +68,14 @@ struct GitHistoryPanelView: View {
         Table(model.commits, selection: Bindable(model).selection) {
             TableColumn("Commit") { commit in
                 Text(commit.shortSha)
-                    .font(.system(.body, design: .monospaced))
+                    .font(theme.codeFont())
             }
             .width(min: 60, ideal: 70, max: 90)
             TableColumn("Subject") { commit in
                 HStack(spacing: 4) {
                     ForEach(commit.refs, id: \.self) { ref in
                         Text(ref)
-                            .font(.caption)
+                            .font(theme.font(.small))
                             .padding(.horizontal, 4)
                             .background(.quaternary, in: Capsule())
                     }

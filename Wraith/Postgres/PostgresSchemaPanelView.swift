@@ -89,7 +89,7 @@ struct PostgresSchemaPanelView: View {
     private func ddlSheet(_ document: PostgresSchemaModel.DDLDocument) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(SchemaDDL.disclaimer, systemImage: "info.circle")
-                .font(.callout)
+                .font(theme.font())
                 .foregroundStyle(.secondary)
             ScrollView([.vertical, .horizontal]) {
                 Text(document.text)

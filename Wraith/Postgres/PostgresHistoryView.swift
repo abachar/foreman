@@ -65,7 +65,7 @@ struct PostgresHistoryView: View {
                         Text(rows == 1 ? "1 row" : "\(rows) rows")
                     }
                 }
-                .font(.caption)
+                .font(theme.font(.small))
                 .foregroundStyle(.secondary)
             }
         }

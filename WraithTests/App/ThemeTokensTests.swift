@@ -70,6 +70,26 @@ struct ThemeTokensTests {
         #expect(tokens.surface == ThemeService.Tokens.dark.surface)
     }
 
+    @Test func appliesTheInterfaceFontKeys() throws {
+        let overrides = try decodeOverrides(
+            ##"{ "interfaceFont": " Helvetica Neue ", "interfaceFontSize": 14, "codeFont": "x", "interfaceFontSize2": 1 }"##
+        )
+        #expect(overrides.fonts == ["interfaceFont": "Helvetica Neue"])
+        #expect(overrides.metrics == ["interfaceFontSize": 14])
+        #expect(overrides.warnings.count == 2)
+
+        let tokens = ThemeService.Tokens.dark.applying(overrides)
+        #expect(tokens.interfaceFontName == "Helvetica Neue")
+        #expect(tokens.interfaceFontSize == 14)
+        #expect(ThemeService.Tokens.dark.interfaceFontName == nil)
+        #expect(ThemeService.Tokens.dark.interfaceFontSize == 16)
+        // design R6: small = body - 3, title = body + 1.
+        #expect(ThemeService.pointSize(of: .small, body: 16) == 13)
+        #expect(ThemeService.pointSize(of: .body, body: 16) == 16)
+        #expect(ThemeService.pointSize(of: .title, body: 16) == 17)
+        #expect(ThemeService.pointSize(of: .small, body: 10) == 9)
+    }
+
     @Test func statusColorsFollowTheBadgeColor() {
         let tokens = ThemeService.Tokens.dark
         #expect(tokens.status(.green) == tokens.statusGreen)

@@ -57,9 +57,9 @@ final class EditorFeature {
         layout.register(
             panel: PanelDescriptor(
                 id: Self.searchPanelID, title: "Search", side: .bottom, defaultShortcut: "cmd+shift+f",
-                makeView: { [weak self] in
+                makeView: { [weak self, theme] in
                     AnyView(
-                        SearchPanelView(model: model) { match, pinned in
+                        SearchPanelView(model: model, theme: theme) { match, pinned in
                             guard let self else { return }
                             // editor R21: click opens a preview at the line, `cmd` pins it.
                             self.open(

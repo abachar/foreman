@@ -65,7 +65,7 @@ struct EditorTabView: View {
                 Button("Keep My Changes") { tab.keepChanges() }
                 Button("Reload") { Task { await tab.reload() } }
             }
-            .font(.callout)
+            .font(theme.font())
             .padding(6)
             // design R17: the same tinted band as `BannerView`, with its two actions.
             .background(theme.tokens.statusOrange.color.opacity(BannerView.tintOpacity))

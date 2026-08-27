@@ -29,7 +29,7 @@ struct HomeView: View {
         let layoutActions = layout.shortcuts.actions.filter { Self.layoutActionIDs.contains($0.id) }
         VStack(alignment: .leading, spacing: 8) {
             Text("Actions")
-                .font(.headline)
+                .font(theme.font(.title, weight: .medium))
                 .foregroundStyle(theme.tokens.textSecondary.color)
             ForEach(entries) { entry in
                 row(
@@ -50,7 +50,7 @@ struct HomeView: View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.headline)
+                    .font(theme.font(.title, weight: .medium))
                     .foregroundStyle(theme.tokens.textSecondary.color)
                 ForEach(entries) { entry in
                     row(
@@ -77,7 +77,7 @@ struct HomeView: View {
                 Spacer()
                 if let shortcut {
                     Text(shortcut.description)
-                        .font(.caption.monospaced())
+                        .font(theme.codeFont(.small))
                         .foregroundStyle(theme.tokens.textSecondary.color)
                 }
             }
