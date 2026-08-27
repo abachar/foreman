@@ -79,6 +79,46 @@ nonisolated struct FileDiff: Equatable, Sendable, Identifiable {
     }
 }
 
+/// git R13b: one row of the side-by-side view; a side is `nil` when nothing faces the other.
+nonisolated struct SideBySideRow: Equatable, Sendable {
+    let left: DiffLine?
+    let right: DiffLine?
+
+    /// Context on both sides; a run of removed lines faces the run of added lines that follows it,
+    /// index by index, the longer run overflowing alone.
+    static func rows(of hunk: Hunk) -> [SideBySideRow] {
+        var rows: [SideBySideRow] = []
+        var removed: [DiffLine] = []
+        var added: [DiffLine] = []
+        func flush() {
+            for index in 0..<max(removed.count, added.count) {
+                rows.append(
+                    SideBySideRow(
+                        left: index < removed.count ? removed[index] : nil,
+                        right: index < added.count ? added[index] : nil))
+            }
+            removed = []
+            added = []
+        }
+        for line in hunk.lines {
+            switch line.kind {
+            case .context:
+                flush()
+                rows.append(SideBySideRow(left: line, right: line))
+            case .removed:
+                if !added.isEmpty {
+                    flush()
+                }
+                removed.append(line)
+            case .added:
+                added.append(line)
+            }
+        }
+        flush()
+        return rows
+    }
+}
+
 /// What a `git.diff` tab shows (git R13, R14).
 nonisolated struct GitDiff: Equatable, Sendable {
     /// git R16: over this many lines, every file starts collapsed.

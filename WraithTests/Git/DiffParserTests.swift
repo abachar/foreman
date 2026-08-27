@@ -206,3 +206,31 @@ struct DiffParserTests {
                 == nil)
     }
 }
+
+/// git R13b: the side-by-side pairing.
+struct SideBySideTests {
+    private func line(_ kind: DiffLine.Kind, _ text: String) -> DiffLine {
+        DiffLine(kind: kind, text: text, oldNumber: kind == .added ? nil : 1, newNumber: kind == .removed ? nil : 1)
+    }
+
+    @Test func pairsRemovedRunsWithTheAddedRunThatFollows() {
+        let hunk = Hunk(
+            oldStart: 1, oldCount: 3, newStart: 1, newCount: 4, heading: "",
+            lines: [
+                line(.context, "a"), line(.removed, "b"), line(.removed, "c"), line(.added, "B"), line(.context, "d"),
+                line(.added, "e"), line(.added, "f"),
+            ])
+        let rows = SideBySideRow.rows(of: hunk)
+        #expect(rows.map { $0.left?.text } == ["a", "b", "c", "d", nil, nil])
+        #expect(rows.map { $0.right?.text } == ["a", "B", nil, "d", "e", "f"])
+    }
+
+    @Test func anAddedRunBeforeARemovedOneStartsANewPair() {
+        let hunk = Hunk(
+            oldStart: 1, oldCount: 1, newStart: 1, newCount: 1, heading: "",
+            lines: [line(.added, "x"), line(.removed, "y")])
+        let rows = SideBySideRow.rows(of: hunk)
+        #expect(rows.map { $0.left?.text } == [nil, "y"])
+        #expect(rows.map { $0.right?.text } == ["x", nil])
+    }
+}

@@ -27,6 +27,27 @@ struct GitDiffView: View {
     }
 
     private func content(_ diff: GitDiff) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                // git R13b: side by side by default, inline on demand.
+                Picker("Layout", selection: Bindable(model).isSideBySide) {
+                    Image(systemName: "rectangle.split.2x1").tag(true)
+                    Image(systemName: "list.bullet.rectangle").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help("Side by side / inline")
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            Divider()
+            files(diff)
+        }
+    }
+
+    private func files(_ diff: GitDiff) -> some View {
         ScrollView([.vertical, .horizontal]) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(diff.files) { file in
@@ -107,17 +128,39 @@ struct GitDiffView: View {
                 .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.quaternary.opacity(0.4))
-            HStack(alignment: .top, spacing: 0) {
-                gutter(hunk.oldNumbers)
-                gutter(hunk.newNumbers)
-                Text(hunk.text)
-                    .font(Font(theme.editorFont))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.leading, 8)
+            if model.isSideBySide {
+                HStack(alignment: .top, spacing: 0) {
+                    column(hunk.left)
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                    Divider()
+                    column(hunk.right)
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.vertical, 2)
+            } else {
+                HStack(alignment: .top, spacing: 0) {
+                    gutter(hunk.inline.numbers)
+                    gutter(hunk.inlineNewNumbers)
+                    code(hunk.inline.text)
+                }
+                .padding(.vertical, 2)
             }
-            .padding(.vertical, 2)
         }
+    }
+
+    private func column(_ column: RenderedColumn) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            gutter(column.numbers)
+            code(column.text)
+        }
+    }
+
+    private func code(_ text: AttributedString) -> some View {
+        Text(text)
+            .font(Font(theme.editorFont))
+            .textSelection(.enabled)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.leading, 8)
     }
 
     private func gutter(_ numbers: String) -> some View {

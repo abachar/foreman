@@ -3,15 +3,20 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// A hunk as the view draws it: one attributed string, one gutter per side (git R13).
+/// A column of text with its gutter, as the view draws it (git R13).
+nonisolated struct RenderedColumn: Sendable {
+    let numbers: String
+    let text: AttributedString
+}
+
+/// A hunk as the view draws it: inline, or side by side (git R13, R13b).
 nonisolated struct RenderedHunk: Sendable, Identifiable {
     let id: String
     let header: String
-    let oldNumbers: String
-    let newNumbers: String
-    let text: AttributedString
-    /// git R15: the hunk itself, for the per-hunk actions of task 4.7.
-    let hunk: Hunk
+    let inline: RenderedColumn
+    let inlineNewNumbers: String
+    let left: RenderedColumn
+    let right: RenderedColumn
 }
 
 /// What one `git.diff` tab shows (git R13, R14, R16, R17).
@@ -26,6 +31,8 @@ final class GitDiffModel {
     private(set) var isLoading = false
     /// git R16: the files opened by hand in a large diff.
     var expandedFiles: Set<String> = []
+    /// git R13b: side by side by default, inline on demand.
+    var isSideBySide = true
 
     private let client: () async -> GitCLI?
     private let repo: GitRepo
@@ -150,16 +157,14 @@ final class GitDiffModel {
         self.rendered = rendered
     }
 
-    /// The highlighted text sliced back per line, the `+`/`−` tint and the two gutters.
+    /// The highlighted text sliced back per line, the `+`/`−` tint, then both layouts.
     private static func render(_ file: FileDiff, highlighted: AttributedString?, theme: ThemeService) -> [RenderedHunk]
     {
         var cursor = highlighted?.startIndex
         var result: [RenderedHunk] = []
         for hunk in file.hunks {
-            var text = AttributedString()
-            var oldNumbers: [String] = []
-            var newNumbers: [String] = []
-            for (index, line) in hunk.lines.enumerated() {
+            var pieces: [AttributedString] = []
+            for line in hunk.lines {
                 var piece: AttributedString
                 if let highlighted, let start = cursor {
                     let end = highlighted.characters.index(start, offsetBy: line.text.count)
@@ -176,19 +181,62 @@ final class GitDiffModel {
                 if line.hasNoNewline {
                     piece.append(AttributedString(" \u{23CE}\u{0338}"))
                 }
-                if index > 0 {
-                    text.append(AttributedString("\n"))
-                }
-                text.append(piece)
-                oldNumbers.append(line.oldNumber.map(String.init) ?? "")
-                newNumbers.append(line.newNumber.map(String.init) ?? "")
+                pieces.append(piece)
             }
+            let inline = column(hunk.lines, pieces: pieces, number: \.oldNumber)
+            let rows = SideBySideRow.rows(of: hunk)
             result.append(
                 RenderedHunk(
-                    id: hunk.id, header: hunk.header, oldNumbers: oldNumbers.joined(separator: "\n"),
-                    newNumbers: newNumbers.joined(separator: "\n"), text: text, hunk: hunk))
+                    id: hunk.id, header: hunk.header, inline: inline,
+                    inlineNewNumbers: hunk.lines.map { $0.newNumber.map(String.init) ?? "" }.joined(separator: "\n"),
+                    left: sideColumn(rows.map(\.left), lines: hunk.lines, pieces: pieces, number: \.oldNumber),
+                    right: sideColumn(rows.map(\.right), lines: hunk.lines, pieces: pieces, number: \.newNumber)))
         }
         return result
+    }
+
+    private static func column(
+        _ lines: [DiffLine], pieces: [AttributedString], number: KeyPath<DiffLine, Int?>
+    )
+        -> RenderedColumn
+    {
+        var text = AttributedString()
+        for (index, piece) in pieces.enumerated() {
+            if index > 0 {
+                text.append(AttributedString("\n"))
+            }
+            text.append(piece)
+        }
+        return RenderedColumn(
+            numbers: lines.map { $0[keyPath: number].map(String.init) ?? "" }.joined(separator: "\n"), text: text)
+    }
+
+    /// One side of the side-by-side rows: the piece of each present line, an empty line otherwise.
+    private static func sideColumn(
+        _ side: [DiffLine?], lines: [DiffLine], pieces: [AttributedString], number: KeyPath<DiffLine, Int?>
+    ) -> RenderedColumn {
+        var text = AttributedString()
+        var numbers: [String] = []
+        var next = 0
+        for (index, line) in side.enumerated() {
+            if index > 0 {
+                text.append(AttributedString("\n"))
+            }
+            if let line {
+                // Lines are consumed in order on each side, so the next matching one is the piece.
+                while next < lines.count, lines[next] != line {
+                    next += 1
+                }
+                if next < lines.count {
+                    text.append(pieces[next])
+                    next += 1
+                }
+                numbers.append(line[keyPath: number].map(String.init) ?? "")
+            } else {
+                numbers.append("")
+            }
+        }
+        return RenderedColumn(numbers: numbers.joined(separator: "\n"), text: text)
     }
 }
 

@@ -42,8 +42,9 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 ### Diff
 
 - R13 — Center tab `git.diff` (a preview, `explorer` R12 by analogy; pinned on a double click): an **inline unified** diff, a header per file, numbered hunks, added/removed lines colored, old/new line numbers, **syntax highlighting** through the shared `Highlight/` folder (the grammar is derived from the extension, degradable to +/− colors alone). Read-only.
+- R13b — A **side-by-side** layout (old on the left, new on the right, a removed run facing the added run that follows it) is the default of the diff tab; a segmented control switches to inline. Both use the same highlighting and tint (author's request, 2026-08-27).
 - R14 — Sources: the worktree file against the index (`git diff -- <path>`), the index against HEAD (`git diff --cached`), a whole commit (`git show <sha>`), a file of a commit. Title: `path (working tree)`, `path (staged)`, `abc1234 subject`.
-- R15 — Per hunk: *Stage hunk* / *Unstage hunk* / *Discard hunk* (the patch applied through `git apply --cached` / `--reverse` on a temporary patch; discard is confirmed, R8). No line-by-line editing.
+- R15 — Per hunk: *Stage hunk* / *Unstage hunk* / *Discard hunk* (the patch applied through `git apply --cached` / `--reverse` on a temporary patch; discard is confirmed, R8). No line-by-line editing. **Deferred out of v1 on 2026-08-27** (author's choice: not needed); the rule stays for a later milestone.
 - R16 — Binary file: "binary, N KB → M KB". A diff over 5,000 lines: collapsed per file, expanded on demand. Renames detected (`-M`).
 - R17 — The diff of a worktree file refreshes with R4 (the file is edited again); a commit's diff is immutable.
 
@@ -82,7 +83,6 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 
 - A three-way merge tool, assisted conflict resolution.
 - A branch graph, a multi-branch log, blame, bisect, interactive rebase.
-- Side-by-side diff (a possible v2 toggle).
 - Managing remotes, tags, remote branches (deletion), LFS, submodules (init/update).
 - `reset --hard`, `push --force`: terminal only, deliberately.
 - GitHub/GitLab (PRs, issues).
