@@ -30,7 +30,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `enter` | — | Renommer | natif | 🟢 |
 | `cmd+delete` | — | Supprimer (corbeille) | natif | 🟢 |
 
-## Editor (`editor` R6–R8, R14, R17, R23)
+## Editor (`editor` R6–R8, R14, R17, R23, R24)
 
 | Raccourci | Id | Action | Portée | Statut |
 |---|---|---|---|---|
@@ -45,6 +45,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 | `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` ferme la barre (natif) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | 🟢 |
+| `cmd+shift+l` | `editor.format` | Formater le fichier actif (`01-study-formatter.md` R24) | tab(editor.file) | ⚪ (M7) |
 | `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette : ouvrir / nouveau groupe / fermer / naviguer | natif | 🟢 |
 
 ## Terminal (`terminal` R12) — surfaces `agent.*` / `run.*`
@@ -90,7 +91,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 
 ## Libres
 
-`cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (gardé libre : palette de commandes ailleurs, décision postgres 2026-08-27).
+`cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (gardé libre : palette de commandes ailleurs, décision postgres 2026-08-27), `cmd+opt+l` (libre mais laissé à la famille `cmd+opt+…` du layout, décision editor 2026-08-27).
 
 ## Points ouverts
 
