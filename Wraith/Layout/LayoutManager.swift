@@ -193,9 +193,10 @@ final class LayoutManager {
 
     // MARK: - Groups
 
+    /// layout R9: the active tab goes with the split; one tab alone has nothing to split.
     func split(_ orientation: SplitOrientation) {
-        // layout, edge cases: refused under 400 x 200 pt per group, with the system beep.
-        if !model.split(orientation, in: centerSize) {
+        // layout, edge cases: refused under the minimum size or with one tab, with the system beep.
+        if !model.splitMovingActiveTab(orientation, in: centerSize) {
             NSSound.beep()
         }
     }

@@ -48,7 +48,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 
 - R7 — The center zone is a binary tree: node = `split(orientation, first, second)`, leaf = `group(id)`. The tree always has at least one leaf.
 - R8 — A split shares the space **equally** between its two children. Splits are not resizable in v1.
-- R9 — Splitting the active group creates a sibling: `vertical` puts the new group on the right, `horizontal` below. The new group is **empty** (home screen, R33) and becomes active.
+- R9 — Splitting the active group (`cmd+d` / `cmd+shift+d`) creates a sibling: `vertical` puts the new group on the right, `horizontal` below. **The active tab moves into the new group**, which becomes active; the command is refused (beep) when the group holds fewer than two tabs (amended 2026-08-28; until then the new group was empty). Opening a tab "in a new group" (`explorer` R13, the palette's `cmd+enter`) still creates an empty sibling and opens the tab there.
 - R10 — Closing the last tab of a group closes the group; the parent split collapses (the sibling takes all the space). The last group of the tree never closes: closing its last tab leaves it empty, on the home screen (R33).
 - R11 — Moving between groups by direction (`←→↑↓`): the target is the neighbouring group whose rectangle overlaps the active group the most in that direction. No neighbour → no effect.
 - R12 — Moving the active tab to the neighbouring group in a direction: the tab leaves its group (R10 applies if the group empties) and becomes the active tab of the target group. No neighbour → no effect. No drag and drop in v1.

@@ -28,6 +28,34 @@ struct LayoutModelTests {
         #expect(model.tree.groups == [first, model.activeGroup])
     }
 
+    @Test func splitCommandMovesTheActiveTabIntoTheNewSibling() {
+        var model = LayoutModel()
+        let first = model.activeGroup
+        let a = Tab(kind: "demo.hello", title: "a")
+        let b = Tab(kind: "demo.hello", title: "b")
+        model.open(a)
+        model.open(b)
+
+        let didSplit = model.splitMovingActiveTab(.vertical, in: size)
+        #expect(didSplit)
+
+        // layout R9 (2026-08-28): `b` left with the split, `a` stays and is active there.
+        #expect(model.activeGroup != first)
+        #expect(model.active.tabs == [b])
+        #expect(model[group: first]?.tabs == [a])
+        #expect(model[group: first]?.active == a)
+    }
+
+    @Test func refusesTheSplitCommandWithFewerThanTwoTabs() {
+        var model = LayoutModel()
+        let didSplitEmpty = model.splitMovingActiveTab(.vertical, in: size)
+        #expect(!didSplitEmpty)
+        model.open(Tab(kind: "demo.hello", title: "a"))
+        let didSplitOne = model.splitMovingActiveTab(.vertical, in: size)
+        #expect(!didSplitOne)
+        #expect(model.tree.groups.count == 1)
+    }
+
     @Test func refusesASplitThatWouldBreakTheMinimumSize() {
         var model = LayoutModel()
 

@@ -42,13 +42,25 @@ nonisolated struct LayoutModel: Equatable, Sendable {
         return model
     }
 
-    /// layout R9: a new empty sibling, active. `false` when refused (edge cases: minimum size).
+    /// A new empty sibling, active (explorer R13, "open in a new group"). `false` when refused
+    /// (edge cases: minimum size).
     mutating func split(_ orientation: SplitOrientation, in size: CGSize) -> Bool {
         guard tree.canSplit(activeGroup, orientation, in: size) else { return false }
         let group = TabGroup()
         tree = tree.splitting(activeGroup, orientation, adding: group.id)
         groups[group.id] = group
         activeGroup = group.id
+        return true
+    }
+
+    /// layout R9 (amended 2026-08-28): `cmd+d` moves the active tab into the new sibling, which
+    /// becomes active; refused with fewer than two tabs, or under the minimum size (edge cases).
+    mutating func splitMovingActiveTab(_ orientation: SplitOrientation, in size: CGSize) -> Bool {
+        guard let group = groups[activeGroup], group.tabs.count >= 2, let tab = group.active else { return false }
+        let source = activeGroup
+        guard split(orientation, in: size) else { return false }
+        _ = groups[source]?.remove(tab.id)
+        groups[activeGroup]?.insert(tab)
         return true
     }
 
