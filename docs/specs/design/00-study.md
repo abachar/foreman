@@ -28,7 +28,7 @@ A **transverse** domain: it ships no feature. It defines the visual tokens and s
 
 ### Tokens
 
-- R8 — **Every** color, every radius, every gutter and every bar height in the chrome comes from a token exposed by `ThemeService`. No view names a system color (`.controlBackgroundColor`, `.labelColor`, `Color.accentColor`), a material, or a literal value. This is already the rule (`coding-rules`, UI: "colors, fonts, metrics: through `ThemeService`, never inline"); it is broken in thirteen places today, listed in the M8 backlog.
+- R8 — **Every** color, every radius, every gutter and every bar height in the chrome comes from a token exposed by `ThemeService`. No view names a system color (`.controlBackgroundColor`, `.labelColor`, `Color.accentColor`), a material, or a literal value. This is already the rule (`coding-rules`, UI: "colors, fonts, metrics: through `ThemeService`, never inline"); it is broken in fifteen places today, listed in the M8 backlog.
 - R9 — The tokens form four families, and nothing else:
   | Family | Tokens |
   |---|---|
@@ -56,7 +56,7 @@ A **transverse** domain: it ships no feature. It defines the visual tokens and s
 
 ## Edge cases
 
-- macOS appearance changed during a session: `ThemeService` already observes it (`terminal` R14); the token set switches and every surface repaints, including the open SwiftTerm surfaces.
+- macOS appearance changed during a session: the views already pass it to `ThemeService.isDark(systemIsDark:)` (`terminal` R14); the token set switches and every surface repaints, including the open SwiftTerm surfaces.
 - Very small window: the gutter and the radius stay constant; it is the islands that shrink, down to the minimums in `layout` R19.
 - Full screen: the gutter remains on all four edges; that is intended, it is what makes the island.
 - Hidden panel: its gutter disappears with it, and the neighbouring island expands; no empty band.

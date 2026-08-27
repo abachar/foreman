@@ -20,7 +20,9 @@ The **Library / native** column is mandatory (`AGENTS.md`). The **Tests** column
 ## What is waiting for another milestone
 
 - The visual redesign, theme tokens, a user theme file (the question left by `m2` 2.6): **M8** ([m8-design.md](m8-design.md)).
-- Formatting the active file and on save: **M7** ([m7-formatter.md](m7-formatter.md)).
+- Formatting the active file and on save: **M7** ([m7-formatter.md](m7-formatter.md)); the three `[ ]` boxes of `editor/questions.md` (timeout, no-change feedback, accepted exit status) are M7's, not M6's.
+- The five `[ ]` boxes of `design/questions.md` (toolbar route, `dark` values, radius and gutter, toolbar background, generated mockup) are **M8**'s, settled by its tasks 8.1–8.2.
+- `m2` 2.7, the Antigravity binary: **already settled** — `agy`, verified on the author's machine and recorded in `agents/questions.md` (2026-08-27). Nothing to do here.
 - Files ignored by git in the explorer and in quick open (`git/questions.md`): **M4**, task 4.10.
 - The manual verification of `postgres` against a real server: **M5**, task 5.9.
 
