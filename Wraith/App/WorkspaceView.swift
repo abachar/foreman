@@ -16,7 +16,7 @@ struct WorkspaceView: View {
     @State private var workspace: Workspace
     @State private var layout = LayoutManager()
     @State private var theme: ThemeService
-    @State private var palette = Palette()
+    @State private var palette: Palette
     @State private var highlighter: Highlighter
     @State private var editor: EditorFeature?
     @State private var terminal: TerminalService?
@@ -33,6 +33,7 @@ struct WorkspaceView: View {
         _workspace = State(initialValue: Workspace(root: folder))
         let theme = ThemeService()
         _theme = State(initialValue: theme)
+        _palette = State(initialValue: Palette(theme: theme))
         // architecture: shared services created once here; the editor and git both highlight.
         _highlighter = State(initialValue: Highlighter(theme: theme))
     }

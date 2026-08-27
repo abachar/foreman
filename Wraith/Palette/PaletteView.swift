@@ -1,30 +1,36 @@
 import SwiftUI
 
-/// The palette's content: a field, the rows, a notice (editor R17).
+/// The palette's content: a field, the rows, a notice, the help line (editor R17; design R18).
 struct PaletteView: View {
     let palette: Palette
+    let theme: ThemeService
 
     @State private var query = ""
     @FocusState private var isFieldFocused: Bool
 
     var body: some View {
+        let tokens = theme.tokens
         VStack(spacing: 0) {
             TextField(palette.source?.placeholder ?? "", text: $query)
                 .textFieldStyle(.plain)
                 .font(.title3)
-                .padding(12)
+                .foregroundStyle(tokens.textPrimary.color)
+                .padding(10)
+                .background(tokens.surfaceSunken.color, in: RoundedRectangle(cornerRadius: 6))
+                .padding(10)
                 .focused($isFieldFocused)
-            Divider()
             ScrollViewReader { proxy in
                 List {
                     ForEach(Array(palette.results.items.enumerated()), id: \.element.id) { index, item in
-                        row(item, isSelected: index == palette.selectedIndex)
+                        row(item, isSelected: index == palette.selectedIndex, tokens: tokens)
                             .id(item.id)
                             .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                             .onTapGesture { palette.select(index, newGroup: false) }
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .onChange(of: palette.selectedIndex) { _, index in
                     if palette.results.items.indices.contains(index) {
                         proxy.scrollTo(palette.results.items[index].id)
@@ -32,36 +38,47 @@ struct PaletteView: View {
                 }
             }
             if let notice = palette.results.notice {
-                Divider()
                 Text(notice)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(tokens.textSecondary.color)
                     .padding(6)
             }
+            tokens.separator.color.frame(height: 1)
+            Text(Self.help(hasSecondary: palette.source?.secondary != nil))
+                .font(.caption)
+                .foregroundStyle(tokens.textDisabled.color)
+                .padding(8)
         }
         .frame(width: 620, height: 420)
+        .background(tokens.surfaceOverlay.color)
         .onAppear { isFieldFocused = true }
         .onChange(of: query) { _, query in
             palette.update(query: query)
         }
     }
 
-    private func row(_ item: PaletteItem, isSelected: Bool) -> some View {
+    /// design R18: the keys, `opt+enter` only when the source has a secondary action (run R6).
+    nonisolated static func help(hasSecondary: Bool) -> String {
+        "↑↓ navigate · ⏎ open · ⌘⏎ new group" + (hasSecondary ? " · ⌥⏎ alternate" : "") + " · esc close"
+    }
+
+    private func row(_ item: PaletteItem, isSelected: Bool, tokens: ThemeService.Tokens) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(item.title)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .foregroundStyle(isSelected ? tokens.accentText.color : tokens.textPrimary.color)
             if let subtitle = item.subtitle {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? tokens.accentText.color.opacity(0.8) : tokens.textSecondary.color)
                     .lineLimit(1)
             }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? Color.accentColor.opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: 4))
+        .background(isSelected ? tokens.accent.color : .clear, in: RoundedRectangle(cornerRadius: 4))
         .contentShape(Rectangle())
     }
 }

@@ -16,7 +16,7 @@ struct EditorFeatureTests {
         let workspace = Workspace(root: root)
         let theme = ThemeService()
         let editor = EditorFeature(
-            layout: layout, workspace: workspace, theme: theme, palette: Palette(),
+            layout: layout, workspace: workspace, theme: theme, palette: Palette(theme: theme),
             highlighter: Highlighter(theme: theme))
 
         editor.open(root.appending(path: "a.txt"), preview: false)

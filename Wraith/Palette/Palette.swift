@@ -13,6 +13,7 @@ final class Palette {
     /// editor R17: at most this many rows.
     nonisolated static let limit = 50
 
+    let theme: ThemeService
     private(set) var query = ""
     private(set) var results = PaletteSource.Results(items: [])
     private(set) var selectedIndex = 0
@@ -23,6 +24,10 @@ final class Palette {
 
     var isPresented: Bool {
         panel != nil
+    }
+
+    init(theme: ThemeService) {
+        self.theme = theme
     }
 
     func present(_ source: PaletteSource, over window: NSWindow) {
@@ -53,7 +58,15 @@ final class Palette {
         panel.titlebarAppearsTransparent = true
         panel.isMovable = false
         panel.becomesKeyOnlyIfNeeded = false
-        panel.contentViewController = NSHostingController(rootView: PaletteView(palette: self))
+        // design R18: a floating island — opaque content, rounded, the one shadow of R1.
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        let hosting = NSHostingController(rootView: PaletteView(palette: self, theme: theme))
+        hosting.view.wantsLayer = true
+        hosting.view.layer?.cornerRadius = theme.tokens.islandRadius
+        hosting.view.layer?.masksToBounds = true
+        panel.contentViewController = hosting
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
         // `onAppear` runs before the panel is key and the hosted field exists only after a layout
