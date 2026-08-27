@@ -22,6 +22,9 @@ final class LineNumberRulerView: NSRulerView {
         super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
         clientView = textView
         ruleThickness = 44
+        // Views no longer clip by default (macOS 14): without this, the ground painted in
+        // `draw(_:)` spills over the tab bar and the text (bug: invisible editor, 2026-08-27).
+        clipsToBounds = true
         let center = NotificationCenter.default
         observers.append(
             center.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in
@@ -48,7 +51,7 @@ final class LineNumberRulerView: NSRulerView {
 
     override func draw(_ dirtyRect: NSRect) {
         backgroundColor.setFill()
-        dirtyRect.fill()
+        bounds.intersection(dirtyRect).fill()
         drawHashMarksAndLabels(in: dirtyRect)
     }
 
