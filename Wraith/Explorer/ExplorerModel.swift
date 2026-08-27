@@ -29,6 +29,14 @@ final class ExplorerModel {
     private(set) var version = 0
     private(set) var lastLoaded: String?
 
+    /// explorer R15: root-relative file path → status, from `Git.statusChanges`.
+    private(set) var gitStatuses: [String: GitFileStatus] = [:]
+    /// explorer R15: the status propagated onto the ancestor folders.
+    private(set) var folderStatuses: [String: GitFileStatus] = [:]
+    /// explorer R4: root-relative paths git ignores (files, or folders as `--ignored=matching` lists them).
+    private(set) var ignoredPaths: Set<String> = []
+    private var gitWatch: Task<Void, Never>?
+
     private let rootIsHome: Bool
     private let fsWatch: FSWatchService?
     private var activation: Task<Void, Never>?
@@ -39,6 +47,12 @@ final class ExplorerModel {
         self.root = root
         self.fsWatch = fsWatch
         rootIsHome = root.standardizedFileURL == FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+    }
+
+    isolated deinit {
+        activation?.cancel()
+        watch?.cancel()
+        gitWatch?.cancel()
     }
 
     var persisted: ExplorerState {
@@ -87,6 +101,88 @@ final class ExplorerModel {
         activation = nil
         watch?.cancel()
         watch = nil
+    }
+
+    // MARK: - Git (explorer R4, R15)
+
+    /// explorer R15: the tree follows every status; outside a repo nothing changes.
+    func watchGit(_ changes: AsyncStream<GitStatusChange>) {
+        gitWatch?.cancel()
+        gitWatch = Task { [weak self] in
+            for await change in changes {
+                self?.applyGitStatus(change)
+            }
+        }
+    }
+
+    /// One repo's table replaces what that repo said before; the others are kept.
+    func applyGitStatus(_ change: GitStatusChange) {
+        let prefix = change.repo.id == "." ? "" : change.repo.id + "/"
+        let repoPath = Workspace.persistedPath(for: change.repo.url, root: root)
+        guard !repoPath.hasPrefix("/") else { return }
+        gitStatuses = gitStatuses.filter { !Self.belongs($0.key, toRepoWithPrefix: prefix) }
+        ignoredPaths = ignoredPaths.filter { !Self.belongs($0, toRepoWithPrefix: prefix) }
+        for (path, status) in change.statuses {
+            let rootPath = prefix + (path.hasSuffix("/") ? String(path.dropLast()) : path)
+            if status == .ignored {
+                ignoredPaths.insert(rootPath)
+            } else {
+                gitStatuses[rootPath] = status
+            }
+        }
+        folderStatuses = Self.propagate(gitStatuses)
+        version += 1
+        lastLoaded = nil
+    }
+
+    private nonisolated static func belongs(_ path: String, toRepoWithPrefix prefix: String) -> Bool {
+        prefix.isEmpty || path.hasPrefix(prefix)
+    }
+
+    /// explorer R15: each ancestor folder carries the strongest status below it; ignored never
+    /// propagates.
+    nonisolated static func propagate(_ statuses: [String: GitFileStatus]) -> [String: GitFileStatus] {
+        var folders: [String: GitFileStatus] = [:]
+        for (path, status) in statuses where status != .ignored {
+            let components = path.split(separator: "/").dropLast()
+            for end in components.indices {
+                let folder = components[...end].joined(separator: "/")
+                if let current = folders[folder], rank(current) >= rank(status) { continue }
+                folders[folder] = status
+            }
+        }
+        return folders
+    }
+
+    private nonisolated static func rank(_ status: GitFileStatus) -> Int {
+        switch status {
+        case .conflicted: return 4
+        case .modified, .deleted, .renamed: return 3
+        case .added, .untracked: return 2
+        case .ignored: return 0
+        }
+    }
+
+    /// explorer R15: the status a row shows, `nil` outside a repo or for a clean entry.
+    func gitStatus(of node: FileNode) -> GitFileStatus? {
+        node.kind == .directory ? folderStatuses[node.relativePath] : gitStatuses[node.relativePath]
+    }
+
+    /// explorer R4: the entry or one of its ancestors is gitignored.
+    func isGitIgnored(_ relativePath: String) -> Bool {
+        Self.isIgnored(relativePath, in: ignoredPaths)
+    }
+
+    nonisolated static func isIgnored(_ relativePath: String, in ignored: Set<String>) -> Bool {
+        var path = Substring(relativePath)
+        while !path.isEmpty {
+            if ignored.contains(String(path)) {
+                return true
+            }
+            guard let slash = path.lastIndex(of: "/") else { return false }
+            path = path[..<slash]
+        }
+        return false
     }
 
     /// explorer R9: the loaded folders one batch of changed paths makes the explorer read again.

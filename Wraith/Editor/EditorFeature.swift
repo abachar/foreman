@@ -19,6 +19,7 @@ final class EditorFeature {
     private var watch: Task<Void, Never>?
     private let palette: Palette
     private let index: QuickOpenIndex
+    private var gitWatch: Task<Void, Never>?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
 
@@ -112,6 +113,7 @@ final class EditorFeature {
 
     isolated deinit {
         watch?.cancel()
+        gitWatch?.cancel()
     }
 
     // MARK: - Disk (editor R9; explorer R17, R18)
@@ -364,6 +366,23 @@ final class EditorFeature {
             return true
         default:
             return false
+        }
+    }
+
+    /// editor R18: the quick open follows git's ignored entries (one table per repo, merged).
+    func watchGit(_ changes: AsyncStream<GitStatusChange>) {
+        gitWatch?.cancel()
+        gitWatch = Task { [weak self, index] in
+            var perRepo: [String: Set<String>] = [:]
+            for await change in changes {
+                guard self != nil else { return }
+                let prefix = change.repo.id == "." ? "" : change.repo.id + "/"
+                perRepo[change.repo.id] = Set(
+                    change.statuses.filter { $0.value == .ignored }.keys.map {
+                        prefix + ($0.hasSuffix("/") ? String($0.dropLast()) : $0)
+                    })
+                await index.setIgnored(perRepo.values.reduce(into: []) { $0.formUnion($1) })
+            }
         }
     }
 

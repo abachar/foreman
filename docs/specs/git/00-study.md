@@ -24,7 +24,7 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 - R2 — Each repo is a **section** of the changes panel: a header (name, current branch or `detached HEAD @ abc1234`, `↑n ↓m` against the upstream, fetch/pull/push buttons, a menu), and a body = the list of changes. A section is automatically collapsed when there is no change; a manual collapse is persisted.
 - R3 — No work before the panel is activated (laziness, `architecture.md`). On activation: `status` on every repo in parallel; the panel shows each section as soon as its result arrives. No automatic `fetch`, ever (no unrequested network access, `architecture.md`).
 - R4 — Refreshing: through `FSWatchService`, on the repo's paths **and** on `.git/HEAD`, `.git/index`, `.git/refs/`, `.git/MERGE_HEAD`; one event → a `status` on the repo concerned, coalesced (one run at a time per repo, the next one waits). A hidden panel listens to nothing; reactivation = a full `status`.
-- R5 — The feature exposes `Git.statusChanges` (`AsyncStream<(repo, [path: GitFileStatus])>`), emitted after every `status` (consumed by `explorer` R15, `editor` R18). The status includes ignored files on demand (`--ignored` only for the visible tree; the detail comes with the breakdown).
+- R5 — The feature exposes `Git.statusChanges` (`AsyncStream<(repo, [path: GitFileStatus])>`), emitted after every `status` (consumed by `explorer` R15, `editor` R18). The status includes the ignored entries through `--ignored=matching` (decision 2026-08-27: measured free; a folder ignored as a whole is listed once, as `dir/`).
 
 ### Changes
 

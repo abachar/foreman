@@ -15,6 +15,8 @@ actor QuickOpenIndex {
     private let root: URL
     private let rootIsHome: Bool
     private var paths: Set<String> = []
+    /// editor R18: root-relative paths git ignores (a folder covers what is below it).
+    private var ignored: Set<String> = []
     private(set) var isTruncated = false
     private(set) var isBuilt = false
     private let matcher = FuzzyMatcher(config: .smithWaterman)
@@ -77,9 +79,20 @@ actor QuickOpenIndex {
         }
     }
 
-    /// editor R17: the best `limit` paths for `query`.
+    /// editor R18: replaces the ignored set; an un-ignored path is offered again at once.
+    func setIgnored(_ ignored: Set<String>) {
+        self.ignored = ignored
+    }
+
+    /// editor R18: `path` or one of its ancestors is gitignored.
+    nonisolated static func isIgnored(_ path: String, in ignored: Set<String>) -> Bool {
+        ExplorerModel.isIgnored(path, in: ignored)
+    }
+
+    /// editor R17, R18: the best `limit` paths for `query`, gitignored ones left out.
     func search(_ query: String, limit: Int) -> Search {
-        let matches = matcher.topMatches(paths, against: query, limit: limit)
+        let candidates = ignored.isEmpty ? paths : paths.filter { !Self.isIgnored($0, in: ignored) }
+        let matches = matcher.topMatches(candidates, against: query, limit: limit)
         return Search(paths: matches.map(\.candidate), isIndexTruncated: isTruncated)
     }
 

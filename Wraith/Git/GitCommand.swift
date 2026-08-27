@@ -3,7 +3,9 @@ import Foundation
 /// The argument lists handed to `GitCLI` (git R7, R9, R27; architecture, security: every path
 /// after `--`, nothing from a program's output before it).
 nonisolated enum GitCommand {
-    static let status = ["status", "--porcelain=v2", "-z", "--branch"]
+    /// git R5, decision 2026-08-27: `--ignored=matching` is free (16 ms with or without on the
+    /// author's repo), so the ignored entries ride along with every status.
+    static let status = ["status", "--porcelain=v2", "-z", "--branch", "--ignored=matching"]
 
     /// git R7: `add`, also for a deleted or a conflicted path (R9, *Mark as resolved*).
     static func stage(_ paths: [String]) -> [String] {

@@ -15,12 +15,13 @@ enum ExplorerOpenMode {
 
 struct ExplorerOutlineView: NSViewRepresentable {
     let model: ExplorerModel
+    let theme: ThemeService
     let isFocused: Bool
     let onOpen: (FileNode, ExplorerOpenMode) -> Void
     let operations: ExplorerActions
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(model: model, onOpen: onOpen, operations: operations)
+        Coordinator(model: model, theme: theme, onOpen: onOpen, operations: operations)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -93,15 +94,19 @@ struct ExplorerOutlineView: NSViewRepresentable {
         private let model: ExplorerModel
         private let onOpen: (FileNode, ExplorerOpenMode) -> Void
         private let operations: ExplorerActions
+        private let theme: ThemeService
         private var items: [String: OutlineItem] = [:]
         private var reveal: Task<Void, Never>?
         private var moreItems: [String: OutlineItem] = [:]
         private var version = -1
         private var hidesExcluded: Bool
 
-        init(model: ExplorerModel, onOpen: @escaping (FileNode, ExplorerOpenMode) -> Void, operations: ExplorerActions)
-        {
+        init(
+            model: ExplorerModel, theme: ThemeService, onOpen: @escaping (FileNode, ExplorerOpenMode) -> Void,
+            operations: ExplorerActions
+        ) {
             self.model = model
+            self.theme = theme
             self.onOpen = onOpen
             self.operations = operations
             hidesExcluded = model.hidesExcluded
@@ -318,9 +323,14 @@ struct ExplorerOutlineView: NSViewRepresentable {
             case .node(let node):
                 cell.textField?.isEditable = true
                 cell.textField?.stringValue = node.name
-                cell.textField?.textColor = node.isExcluded ? .tertiaryLabelColor : .labelColor
+                // explorer R4, R15: greyed when excluded or gitignored, colored by git status.
+                let isGreyed = node.isExcluded || model.isGitIgnored(node.relativePath)
+                let status = isGreyed ? nil : model.gitStatus(of: node)
+                cell.textField?.textColor =
+                    isGreyed ? .tertiaryLabelColor : status.map(theme.color(for:)) ?? .labelColor
                 cell.imageView?.image = NSImage(systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
-                cell.imageView?.contentTintColor = node.isExcluded ? .tertiaryLabelColor : .secondaryLabelColor
+                cell.imageView?.contentTintColor =
+                    isGreyed ? .tertiaryLabelColor : status.map(theme.color(for:)) ?? .secondaryLabelColor
             case .more(_, let count):
                 cell.textField?.isEditable = false
                 cell.textField?.stringValue = "… and \(count) more (click to load all)"

@@ -13,7 +13,11 @@ enum ExplorerFeature {
     }
 
     @discardableResult
-    static func register(in layout: LayoutManager, workspace: Workspace, editor: EditorFeature) -> Registration {
+    static func register(
+        in layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService
+    )
+        -> Registration
+    {
         let model = ExplorerModel(root: workspace.root, fsWatch: workspace.fsWatch)
         if let state = try? workspace.state.section("explorer", as: ExplorerState.self) {
             model.restore(state)
@@ -25,7 +29,7 @@ enum ExplorerFeature {
                 makeView: {
                     AnyView(
                         ExplorerPanelView(
-                            model: model, layout: layout,
+                            model: model, layout: layout, theme: theme,
                             onStateChange: { state in workspace.setState("explorer", to: state) },
                             // explorer R12, R13: preview, pinned, or a new group on the right.
                             onOpen: { node, mode in

@@ -36,7 +36,7 @@ struct GitCommandTests {
     }
 
     @Test func statusUsesTheMachineFormat() {
-        #expect(GitCommand.status == ["status", "--porcelain=v2", "-z", "--branch"])
+        #expect(GitCommand.status == ["status", "--porcelain=v2", "-z", "--branch", "--ignored=matching"])
     }
 }
 

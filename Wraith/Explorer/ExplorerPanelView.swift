@@ -4,6 +4,7 @@ import SwiftUI
 struct ExplorerPanelView: View {
     let model: ExplorerModel
     let layout: LayoutManager
+    let theme: ThemeService
     let onStateChange: (ExplorerState) -> Void
     let onOpen: (FileNode, ExplorerOpenMode) -> Void
     let pathOfTab: (TabID) -> String?
@@ -24,7 +25,8 @@ struct ExplorerPanelView: View {
                     .background(.bar)
             }
             ExplorerOutlineView(
-                model: model, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID), onOpen: onOpen,
+                model: model, theme: theme, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID),
+                onOpen: onOpen,
                 operations: operations)
         }
         .onChange(of: model.persisted) { _, state in

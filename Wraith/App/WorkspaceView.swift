@@ -50,10 +50,14 @@ struct WorkspaceView: View {
                 let editor = EditorFeature(
                     layout: layout, workspace: workspace, theme: theme, palette: palette, highlighter: highlighter)
                 self.editor = editor
-                let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
-                git = GitFeature(
+                let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor, theme: theme)
+                let git = GitFeature(
                     layout: layout, workspace: workspace, editor: editor, explorer: explorer, theme: theme,
                     highlighter: highlighter)
+                self.git = git
+                // architecture: no EventBus; the explorer and the editor subscribe to Git's stream.
+                explorer.model.watchGit(git.statusChanges())
+                editor.watchGit(git.statusChanges())
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)

@@ -1,3 +1,3 @@
 # Open questions
 
-- [ ] Ignored files for the explorer (`explorer` R4): a full `status --ignored` (expensive on large repos) or `check-ignore` on demand for the expanded folders? To be settled when M4 is broken down, after measuring.
+- [x] Ignored files for the explorer (`explorer` R4): settled 2026-08-27 — `status --ignored=matching` on every status (16 ms with or without it on the author's repo; `--ignored` alone 60 ms), see `decisions.md`.
