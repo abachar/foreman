@@ -16,7 +16,7 @@ struct HighlighterTests {
         let textView = try #require(scroll.documentView as? NSTextView)
         #expect(textView.textLayoutManager != nil)
 
-        let attached = try #require(highlighter.attach(to: textView, language: .swift))
+        let attached = try #require(await highlighter.attach(to: textView, language: .swift))
         textView.string = "let answer = 42 // why\n"
         attached.invalidate(.all)
         try await Task.sleep(for: .milliseconds(500))
@@ -33,9 +33,9 @@ struct HighlighterTests {
         #expect(storage.length == 23)
     }
 
-    @Test func unknownGrammarFallsBackToPlainText() throws {
+    @Test func unknownGrammarFallsBackToPlainText() async throws {
         let scroll = NSTextView.scrollableTextView()
         let textView = try #require(scroll.documentView as? NSTextView)
-        #expect(Highlighter(theme: ThemeService()).attach(to: textView, language: .json) != nil)
+        #expect(await Highlighter(theme: ThemeService()).attach(to: textView, language: .json) != nil)
     }
 }

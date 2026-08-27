@@ -14,7 +14,8 @@ import os
 @MainActor
 final class Highlighter {
     private let theme: ThemeService
-    private var configurations: [Language: LanguageConfiguration] = [:]
+    /// One build per language, shared by every view asking for it while it runs.
+    private var configurations: [Language: Task<LanguageConfiguration, Error>] = [:]
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "highlight")
 
     init(theme: ThemeService) {
@@ -23,9 +24,12 @@ final class Highlighter {
 
     /// The highlighter now driving `textView`, kept alive by the caller; `nil` means plain text
     /// (editor R13: a missing grammar or query is logged at `debug`, never shown).
-    func attach(to textView: NSTextView, language: Language) -> TextViewHighlighter? {
+    ///
+    /// Compiling a grammar's queries takes up to a second (Swift, measured 1.06 s on the main
+    /// thread, M6 6.5): it happens off the main actor, the view shows plain text meanwhile.
+    func attach(to textView: NSTextView, language: Language) async -> TextViewHighlighter? {
         do {
-            let configuration = try self.configuration(for: language)
+            let configuration = try await self.configuration(for: language)
             return try TextViewHighlighter(
                 textView: textView,
                 configuration: TextViewHighlighter.Configuration(
@@ -43,7 +47,7 @@ final class Highlighter {
     /// A static string colored once (markdown preview, editor R14); `nil` when the grammar is
     /// unavailable (R13).
     func highlight(_ code: String, language: Language) async -> AttributedString? {
-        guard let configuration = try? configuration(for: language) else { return nil }
+        guard let configuration = try? await configuration(for: language) else { return nil }
         guard
             var string = try? await TreeSitterClient.highlight(
                 string: code, attributeProvider: { [theme] token in theme.attributes(forCapture: token.name) },
@@ -58,12 +62,26 @@ final class Highlighter {
         return string
     }
 
-    private func configuration(for language: Language) throws -> LanguageConfiguration {
-        if let configuration = configurations[language] {
-            return configuration
+    private func configuration(for language: Language) async throws -> LanguageConfiguration {
+        if let task = configurations[language] {
+            return try await task.value
         }
-        let configuration = try language.makeConfiguration()
-        configurations[language] = configuration
-        return configuration
+        let task = Task { try await Self.build(language) }
+        configurations[language] = task
+        do {
+            return try await task.value
+        } catch {
+            // The next view asks again (a transient failure is not cached).
+            configurations[language] = nil
+            throw error
+        }
+    }
+
+    /// architecture, Performance: parsing `highlights.scm` is the slow part; never on the main actor.
+    @concurrent
+    private static func build(_ language: Language) async throws -> LanguageConfiguration {
+        let interval = Perf.signposter.beginInterval("highlight.configure", id: Perf.signposter.makeSignpostID())
+        defer { Perf.signposter.endInterval("highlight.configure", interval) }
+        return try language.makeConfiguration()
     }
 }

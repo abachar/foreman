@@ -41,7 +41,14 @@ struct EditorTextView: NSViewRepresentable {
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
         if document.isHighlightable, let language = tab.language {
-            context.coordinator.highlighter = highlighter.attach(to: textView, language: language)
+            // The grammar comes when it is ready (M6 6.5): plain text until then, no freeze.
+            context.coordinator.attaching = Task { [highlighter, weak textView, coordinator = context.coordinator] in
+                guard let textView, let attached = await highlighter.attach(to: textView, language: language),
+                    !Task.isCancelled
+                else { return }
+                coordinator.highlighter = attached
+                attached.invalidate(.all)
+            }
         }
         // editor R4: cursor and scroll come back with the tab. The position is captured before
         // the observer exists: the first layout of a rebuilt view reports `y = 0`, which must
@@ -105,6 +112,7 @@ struct EditorTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         /// Kept alive for the life of the view: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
+        var attaching: Task<Void, Never>?
         var scrollObserver: (any NSObjectProtocol)?
         /// editor R4: bounds changes count only once the saved position was restored.
         var isScrollRestored = false
@@ -116,6 +124,7 @@ struct EditorTextView: NSViewRepresentable {
         }
 
         isolated deinit {
+            attaching?.cancel()
             if let scrollObserver {
                 NotificationCenter.default.removeObserver(scrollObserver)
             }
