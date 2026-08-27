@@ -20,7 +20,7 @@ Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`)
 - R1 — Section `commands` (`config` R3) : `{ "<repo ou .>": { "<nom>": "<commande>" | { "run": "<commande>", "cwd": "<sous-dossier>", "env": { "K": "V" } } } }`. La forme courte est une chaîne ; la forme longue ajoute `cwd` (relatif au repo, défaut le repo) et `env`. Un `env` au niveau du repo (clé réservée `"$env"`) s'applique à toutes ses commandes.
 - R2 — Le `<repo>` doit être `.` ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`architecture.md`, sécurité).
 - R3 — Le nom d'une commande : `[a-z0-9][a-z0-9:_-]*`, unique par repo. Identifiant complet `repo:nom` (`.` devient `root`). Ces ids servent aux raccourcis (`config.shortcuts["run.backend:test"]`, R11).
-- R3b — Précédence `config` R4 : une commande peut venir de la config globale (typiquement sur `.`) ; le workspace la surcharge par `repo:nom`.
+- R3b — Une seule source : `.wraith/config.json` du workspace (`config` R4, décision config 2026-08-26 : pas de configuration globale). Deux workspaces ne partagent rien.
 - R4 — Rechargement à chaud sur `Workspace.configChanges` (`config` R6) : la palette et les raccourcis sont recalculés ; un onglet en cours n'est pas affecté.
 
 ### Palette et bouton
@@ -33,7 +33,7 @@ Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`)
 
 - R7 — Lancer `repo:nom` : si un onglet `run.<id>` existe → il est activé ; s'il est `running`, le process reçoit `SIGINT` (R9) et, après `exited`, `TerminalService.relaunch` ; s'il est `idle`/`exited`, `relaunch` direct. Sinon → `TerminalService.spawn(command:, cwd:, env:, kind: "run.<id>", title: "repo:nom")` (`terminal` R16) : le process démarre immédiatement, sans shell ni prompt.
 - R8 — La commande est passée **telle quelle** à `$SHELL -l -c` (`terminal` R1) ; les `env` sont injectés dans l'environnement du process (`terminal` R3), jamais préfixés dans la ligne de commande. Rien n'est recomposé (`architecture.md`, sécurité) : la commande est le texte de l'utilisateur.
-- R9 — Arrêt : `cmd+.` (portée : onglet `run`) envoie `SIGINT` au groupe de process (`terminal` R9) ; un second `cmd+.` dans les 2 s envoie `SIGTERM` ; jamais `SIGKILL` automatique. Relance (R7) = arrêt puis attente d'`exited` (10 s max, puis abandon avec bannière) avant `relaunch`.
+- R9 — Arrêt : `cmd+.` (portée `terminal`, sans effet hors d'un onglet `run.*`, décision 2026-08-27) envoie `SIGINT` au groupe de process (`terminal` R9) ; un second `cmd+.` dans les 2 s envoie `SIGTERM` ; jamais `SIGKILL` automatique. Relance (R7) = arrêt puis attente d'`exited` (10 s max, puis abandon avec bannière) avant `relaunch`.
 - R10 — État par onglet `run` : `idle` / `running` / `succeeded` / `failed(code)`, dérivé de `terminal` R6 (`exited(0)` → `succeeded`, sinon `failed`). Badge sur l'onglet : point bleu (running), vert (0), rouge (≠ 0) ; effacé à l'activation de l'onglet après la fin, ou à la relance.
 - R11 — Raccourci par commande : `config.shortcuts["run.<id>"]` (`config` R3) ; aucun défaut. Portée globale.
 - R12 — Fermeture d'un onglet `run` en `running` : confirmation (`terminal` R10). Fermeture de la fenêtre : idem, une confirmation par onglet.
@@ -57,8 +57,8 @@ Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`)
 ## Options techniques
 
 - **Dossier** : `Run/` (`architecture.md`). `RunFeature` déclare à `Layout` l'élément de toolbar `run.toolbar` et le kind d'onglet `run.<id>`.
-- **Palette partagée** : `Palette/` (dossier partagé) : `present(items:, onSelect:)` avec items `PaletteItem(id, title, subtitle, keywords)` ; fuzzy (lib SPM) et UI dans `Palette/`. Le quick open (`editor` R17) utilise la même.
-- **Signaux / état** : `TerminalService.signal(_:to:)`, `state(of:)`, événements `exited` (`terminal` R16) ; rien de spécifique à la feature.
+- **Palette partagée** : `Palette/` (dossier partagé, livré en M1) : `Palette.present(PaletteSource, over: NSWindow)` ; `PaletteSource(placeholder:, results: (String) async -> Results, select: (PaletteItem, newGroup: Bool) -> Void, secondary: ((PaletteItem) -> Void)?)` — `newGroup` = `cmd+enter` (nouvel onglet, R6), `secondary` = `opt+enter` (copier, R6 ; ajouté en M3) ; items `PaletteItem(id:, title: AttributedString, subtitle:)` ; fuzzy **FuzzyMatch** (`FuzzyMatcher.topMatches`), le même que le quick open (`editor` R17).
+- **Signaux / état** : `TerminalService.signal(_:to:)`, `state(of:)`, événements `exited` (`terminal` R16) ; `relaunch` refuse un onglet `running` : la relance R7 (arrêt, attente d'`exited`, `relaunch`) vit dans `Run/`. Badge d'onglet : `Run/` repose le sien (bleu/vert/rouge, R10) à chaque événement de ses onglets, après celui de `TerminalService` (`terminal` R7) ; `ToolbarBadge.BadgeColor` gagne `blue`.
 - **Tests** : parsing/validation de `commands` (R1–R3), construction de l'environnement (R8), machine d'états d'un onglet `run` (R7, R9, R10) pilotée par des événements terminal simulés.
 
 ## Décisions
