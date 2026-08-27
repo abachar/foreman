@@ -64,7 +64,8 @@ struct WorkspaceView: View {
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 // architecture: the Keychain store is created once here and injected (postgres R3).
-                postgres = PostgresFeature(workspace: workspace, secrets: KeychainSecretStore())
+                postgres = PostgresFeature(
+                    layout: layout, workspace: workspace, secrets: KeychainSecretStore(), theme: theme)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)

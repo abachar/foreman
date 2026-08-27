@@ -147,6 +147,29 @@ final class ThemeService {
         (added ? NSColor.systemGreen : NSColor.systemRed).withAlphaComponent(0.16)
     }
 
+    // MARK: - Postgres (postgres R5, R6)
+
+    /// R5: the header's dot.
+    func color(for state: PostgresClient.State) -> NSColor {
+        switch state {
+        case .disconnected: return .tertiaryLabelColor
+        case .connecting: return .systemOrange
+        case .connected: return .systemGreen
+        case .error: return .systemRed
+        }
+    }
+
+    /// R6: the icon tint of a schema row.
+    func schemaTint(for node: SchemaNode) -> NSColor {
+        switch node.kind {
+        case .database, .schema, .category, .section, .truncated: return .secondaryLabelColor
+        case .relation, .sequence, .type: return .systemBlue
+        case .function: return .systemPurple
+        case .column(let column): return column.isPrimaryKey ? .systemOrange : .secondaryLabelColor
+        case .detail: return .secondaryLabelColor
+        }
+    }
+
     // MARK: - Palettes (terminal R14)
 
     private static let lightPalette = TerminalPalette(

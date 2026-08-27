@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PostgresNIO
+import SwiftUI
 import os
 
 /// Entry point of the postgres feature (postgres R1–R5).
@@ -9,7 +10,14 @@ import os
 /// and the connection's lifecycle. Panels register in their own tasks.
 @MainActor
 final class PostgresFeature {
+    static let schemaPanelID: PanelID = "postgres.schema"
+
     let model = PostgresModel()
+    /// R6: the schema tree, created with the panel.
+    private(set) lazy var schema = PostgresSchemaModel(feature: self)
+    /// R8: set by the query panel (5.6); `nil` hides the actions that need it.
+    var runQuery: ((String) -> Void)?
+    var insertIntoEditor: ((String) -> Void)?
     private let workspace: Workspace
     private let secrets: any SecretStore
     private(set) var config: PostgresConfig?
@@ -21,10 +29,19 @@ final class PostgresFeature {
     private var configWatch: Task<Void, Never>?
     private let logger = os.Logger(subsystem: "dev.crafters.wraith", category: "postgres")
 
-    init(workspace: Workspace, secrets: any SecretStore) {
+    init(layout: LayoutManager, workspace: Workspace, secrets: any SecretStore, theme: ThemeService) {
         self.workspace = workspace
         self.secrets = secrets
         apply(workspace.config)
+        // R4: `activate` connects nothing; the tree's first expansion does.
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.schemaPanelID, title: "Schema", side: .right, defaultShortcut: "cmd+shift+b",
+                makeView: { [unowned self] in
+                    AnyView(PostgresSchemaPanelView(model: schema, connection: model, feature: self, theme: theme))
+                },
+                activate: { [weak self] in self?.panelActivated() },
+                deactivate: { [weak self] in self?.panelDeactivated() }))
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges() {
                 self?.apply(config)
@@ -57,6 +74,7 @@ final class PostgresFeature {
         mustAsk = false
         model.apply(outcome)
         replaceClient(with: decoded.map(makeClient))
+        schema.setDatabase(decoded?.database)
     }
 
     private func makeClient(_ config: PostgresConfig) -> PostgresClient {
@@ -194,6 +212,28 @@ final class PostgresFeature {
         } catch {
             logger.warning("keychain entry not removed: \(error.description, privacy: .public)")
         }
+    }
+
+    // MARK: - Schema actions (R8)
+
+    func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    func copyQualifiedName(_ node: SchemaNode) {
+        node.qualifiedName.map(copy)
+    }
+
+    func insertName(_ node: SchemaNode) {
+        guard let name = node.qualifiedName else { return }
+        insertIntoEditor?(name)
+    }
+
+    /// US7: `SELECT * FROM schema.table LIMIT 500` in the query panel.
+    func selectAll(_ node: SchemaNode) {
+        guard let sql = SchemaQueries.selectAll(node) else { return }
+        runQuery?(sql)
     }
 
     /// R11: the *Allow writes* toggle.
