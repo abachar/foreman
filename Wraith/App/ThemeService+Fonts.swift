@@ -33,10 +33,10 @@ extension ThemeService {
         max(tokens.rowHeight, (interfaceFont().pointSize * 1.5).rounded(.up))
     }
 
-    /// design R6: `small` three points under the body, `title` one over it.
+    /// design R6: `small` two points under the body, `title` one over it.
     nonisolated static func pointSize(of style: TextStyle, body: Double) -> CGFloat {
         switch style {
-        case .small: return max(9, body - 3)
+        case .small: return max(9, body - 2)
         case .body: return body
         case .title: return body + 1
         }

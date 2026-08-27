@@ -82,11 +82,11 @@ struct ThemeTokensTests {
         #expect(tokens.interfaceFontName == "Helvetica Neue")
         #expect(tokens.interfaceFontSize == 14)
         #expect(ThemeService.Tokens.dark.interfaceFontName == nil)
-        #expect(ThemeService.Tokens.dark.interfaceFontSize == 16)
-        // design R6: small = body - 3, title = body + 1.
-        #expect(ThemeService.pointSize(of: .small, body: 16) == 13)
-        #expect(ThemeService.pointSize(of: .body, body: 16) == 16)
-        #expect(ThemeService.pointSize(of: .title, body: 16) == 17)
+        #expect(ThemeService.Tokens.dark.interfaceFontSize == 13)
+        // design R6: small = body - 2, title = body + 1.
+        #expect(ThemeService.pointSize(of: .small, body: 13) == 11)
+        #expect(ThemeService.pointSize(of: .body, body: 13) == 13)
+        #expect(ThemeService.pointSize(of: .title, body: 13) == 14)
         #expect(ThemeService.pointSize(of: .small, body: 10) == 9)
     }
 
