@@ -94,6 +94,6 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 `cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
 
-## Open points
+## Verified on the author's machine (M6 task 6.2, 2026-08-27)
 
-- Several defaults clash with the author's macOS system shortcuts (noted 2026-08-26, list to be established); to be handled in M6 (polish) — until then, override through `config.shortcuts`.
+Every default above fires its action (checked by hand, macOS 26 / Darwin 27). The system's own `cmd+shift`/`cmd+opt` hotkeys in force (`com.apple.symbolichotkeys`: `cmd+shift+3`/`4`, `cmd+opt+d`, `cmd+opt+space`, `cmd+shift+/`, `cmd+opt+F5`) touch none of them, and no global-hotkey app runs. The note of 2026-08-26 about clashes came from the dev-build launched twice (a stale instance from another DerivedData ate the keys), not from macOS. Anything that clashes on another machine is overridden through `config.shortcuts` (`config` R4).
