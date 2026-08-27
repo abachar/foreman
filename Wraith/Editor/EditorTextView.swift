@@ -75,7 +75,9 @@ struct EditorTextView: NSViewRepresentable {
             if let layoutManager = textView.textLayoutManager {
                 layoutManager.ensureLayout(for: layoutManager.documentRange)
             }
-            scroll.contentView.scroll(to: NSPoint(x: 0, y: savedScroll))
+            // The clip view keeps its own x: with a vertical ruler AppKit lays it out under the
+            // ruler and offsets its bounds, and an x of 0 hid the first 44 pt of text (2026-08-28).
+            scroll.contentView.scroll(to: NSPoint(x: scroll.contentView.bounds.origin.x, y: savedScroll))
             scroll.reflectScrolledClipView(scroll.contentView)
         }
         return scroll
