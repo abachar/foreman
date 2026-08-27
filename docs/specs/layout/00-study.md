@@ -1,139 +1,139 @@
-# layout — Étude
+# layout — Study
 
-## Objectif
+## Goal
 
-Définir la structure d'une fenêtre-workspace : la barre d'outils, les zones, l'arbre de splits de la zone centrale, les groupes d'onglets, la machine à états des panneaux (`PanelManager`) et le registre de raccourcis (`ShortcutRegistry`). Ce domaine ne connaît aucun type d'onglet ni de panneau concret : il héberge ce que les features déclarent en s'enregistrant auprès de `Layout` au démarrage (`architecture`).
+Define the structure of a workspace window: the toolbar, the zones, the split tree of the center zone, the tab groups, the panel state machine (`PanelManager`) and the shortcut registry (`ShortcutRegistry`). This domain knows no concrete tab kind or panel: it hosts what the features declare when they register with `Layout` at startup (`architecture`).
 
-## Géométrie
+## Geometry
 
 ```
 │ [Claude] [OpenCode]      TOOLBAR              [▶ Run] │
 ┌──────────┬──────────────────────────────────┬──────────┐
 │          │ ┌────────────────┬─────────────┐ │          │
 │  LEFT    │ │ [t1] [t2]      │ [file.md]   │ │  RIGHT   │
-│  panel   │ │  groupe A      │  groupe B   │ │  panel   │
+│  panel   │ │  group A       │  group B    │ │  panel   │
 │          │ ├────────────────┴─────────────┤ │          │
-│          │ │ [t3]        groupe C         │ │          │
+│          │ │ [t3]         group C         │ │          │
 │          │ └──────────────────────────────┘ │          │
 │          ├──────────────────────────────────┤          │
 │          │           BOTTOM panel           │          │
 └──────────┴──────────────────────────────────┴──────────┘
 ```
 
-- La zone centrale (CENTER) est l'arbre de splits entier ; les trois slots de panneaux l'encadrent globalement, jamais par split.
-- LEFT et RIGHT occupent toute la hauteur ; BOTTOM occupe la largeur de CENTER uniquement.
-- La barre d'outils (TOOLBAR) est la barre native de la fenêtre, au-dessus des quatre zones ; elle ne fait pas partie du layout des zones.
+- The center zone (CENTER) is the whole split tree; the three panel slots frame it globally, never per split.
+- LEFT and RIGHT take the full height; BOTTOM takes the width of CENTER only.
+- The toolbar (TOOLBAR) is the window's native bar, above the four zones; it is not part of the zone layout.
 
 ## User stories
 
-- US1 — J'appuie sur le raccourci d'un panneau : il apparaît dans son slot ; j'appuie à nouveau : il disparaît. Le contenu central ne bouge pas de place ni d'état.
-- US2 — Deux features déclarent un panneau à gauche ; appeler le second remplace le premier sans le détruire (son état est conservé).
-- US3 — Je splitte le groupe actif (vertical ou horizontal) : un nouveau groupe vide apparaît avec l'écran d'accueil, et reçoit le focus ; j'y ouvre un fichier ou un agent.
-- US4 — Je navigue entre groupes et onglets entièrement au clavier.
-- US5 — Je redimensionne les panneaux à la souris et retrouve leurs tailles à la réouverture.
-- US6 — Une feature déclare un raccourci déjà pris : je le sais au démarrage, et je peux le surcharger dans `config.json`.
+- US1 — I press a panel's shortcut: it appears in its slot; I press it again: it disappears. The center content does not move or lose its state.
+- US2 — Two features declare a panel on the left; calling the second replaces the first without destroying it (its state is kept).
+- US3 — I split the active group (vertically or horizontally): a new empty group appears with the home screen, and takes the focus; I open a file or an agent in it.
+- US4 — I move between groups and tabs entirely from the keyboard.
+- US5 — I resize the panels with the mouse and find their sizes again when I reopen.
+- US6 — A feature declares a shortcut that is already taken: I know it at startup, and I can override it in `config.json`.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Zones et panneaux
+### Zones and panels
 
-- R1 — Une fenêtre a exactement quatre zones : `center` (toujours visible) et trois slots optionnels `left`, `right`, `bottom`, surmontées d'une barre d'outils (R30–R32).
-- R2 — Un slot affiche au plus un panneau à la fois. L'état de `PanelManager` est `[PanelSide: PanelID?]` (trois optionnels).
-- R3 — Toggle : le raccourci du panneau visible dans son slot le masque ; le raccourci d'un autre panneau du même slot le remplace ; le raccourci d'un panneau masqué l'affiche. Un même raccourci ne pilote jamais deux slots.
-- R4 — Les panneaux masqués conservent leur état d'UI (arbre déplié, sélection, scroll) mais ne consomment rien (`architecture` : paresse) : la feature reçoit `deactivate()` et arrête son travail ; `activate()` le relance.
-- R5 — Un panneau n'est construit (`makeView`) qu'à sa première activation ; sa vue est ensuite conservée en mémoire tant que la fenêtre vit.
-- R6 — Le focus clavier : afficher un panneau lui donne le focus ; le masquer rend le focus au groupe d'onglets actif. `escape` depuis un panneau rend le focus au centre sans masquer le panneau.
+- R1 — A window has exactly four zones: `center` (always visible) and three optional slots `left`, `right`, `bottom`, topped by a toolbar (R30–R32).
+- R2 — A slot shows at most one panel at a time. `PanelManager`'s state is `[PanelSide: PanelID?]` (three optionals).
+- R3 — Toggle: the shortcut of the panel visible in its slot hides it; the shortcut of another panel of the same slot replaces it; the shortcut of a hidden panel shows it. One shortcut never drives two slots.
+- R4 — Hidden panels keep their UI state (expanded tree, selection, scroll) but consume nothing (`architecture`: laziness): the feature receives `deactivate()` and stops its work; `activate()` starts it again.
+- R5 — A panel is only built (`makeView`) at its first activation; its view is then kept in memory for as long as the window lives.
+- R6 — Keyboard focus: showing a panel gives it the focus; hiding it gives the focus back to the active tab group. `escape` from a panel gives the focus back to the center without hiding the panel.
 
-### Zone centrale : splits et groupes
+### Center zone: splits and groups
 
-- R7 — La zone centrale est un arbre binaire : nœud = `split(orientation, first, second)`, feuille = `group(id)`. L'arbre a toujours au moins une feuille.
-- R8 — Un split partage l'espace **à parts égales** entre ses deux enfants. Les splits ne sont pas redimensionnables en v1.
-- R9 — Splitter le groupe actif crée un frère : `vertical` place le nouveau groupe à droite, `horizontal` en dessous. Le nouveau groupe est **vide** (écran d'accueil, R33) et devient actif.
-- R10 — Fermer le dernier onglet d'un groupe ferme le groupe ; le split parent se replie (le frère prend toute la place). Le dernier groupe de l'arbre ne se ferme jamais : fermer son dernier onglet le laisse vide, sur l'écran d'accueil (R33).
-- R11 — Navigation entre groupes par direction (`←→↑↓`) : la cible est le groupe voisin dont le rectangle chevauche le plus le groupe actif dans cette direction. Pas de voisin → aucun effet.
-- R12 — Déplacer l'onglet actif vers le groupe voisin dans une direction : l'onglet quitte son groupe (R10 s'applique si le groupe se vide) et devient l'onglet actif du groupe cible. Pas de voisin → aucun effet. Pas de drag & drop en v1.
+- R7 — The center zone is a binary tree: node = `split(orientation, first, second)`, leaf = `group(id)`. The tree always has at least one leaf.
+- R8 — A split shares the space **equally** between its two children. Splits are not resizable in v1.
+- R9 — Splitting the active group creates a sibling: `vertical` puts the new group on the right, `horizontal` below. The new group is **empty** (home screen, R33) and becomes active.
+- R10 — Closing the last tab of a group closes the group; the parent split collapses (the sibling takes all the space). The last group of the tree never closes: closing its last tab leaves it empty, on the home screen (R33).
+- R11 — Moving between groups by direction (`←→↑↓`): the target is the neighbouring group whose rectangle overlaps the active group the most in that direction. No neighbour → no effect.
+- R12 — Moving the active tab to the neighbouring group in a direction: the tab leaves its group (R10 applies if the group empties) and becomes the active tab of the target group. No neighbour → no effect. No drag and drop in v1.
 
-### Groupes d'onglets
+### Tab groups
 
-- R13 — Un groupe est une liste ordonnée d'onglets + un onglet actif. Chaque onglet a un `id` stable (UUID généré à la création, persisté), un `kind` (id namespacé déclaré par une feature : `editor.file`, `agent.claude`, `run.backend:test`, `git.diff`…), un titre, un état « modifié » (`isDirty`) et un état « aperçu » (`isPreview`, titre en italique, `editor` R2) fournis par son propriétaire.
-- R14 — Un nouvel onglet s'insère juste après l'onglet actif et devient actif. Fermer l'onglet actif active son voisin de gauche, ou le premier onglet s'il n'y en a pas.
-- R15 — Fermer un onglet `isDirty` demande confirmation (la formulation appartient à la feature propriétaire, le mécanisme au layout). Fermer un groupe ou une fenêtre enchaîne les confirmations une par une.
-- R16 — La barre d'onglets est un composant unique (R3 de `product`) : onglets défilables horizontalement si trop nombreux, onglet actif toujours visible, aucun onglet tronqué en dessous d'une largeur minimale.
-- R17 — Il existe exactement un **groupe actif** par fenêtre ; cliquer dans un groupe, y naviguer au clavier ou y ouvrir un onglet le rend actif. Toutes les commandes d'onglet (nouveau, fermer, `cmd+1..9`) s'appliquent au groupe actif.
+- R13 — A group is an ordered list of tabs + an active tab. Each tab has a stable `id` (a UUID generated at creation, persisted), a `kind` (a namespaced id declared by a feature: `editor.file`, `agent.claude`, `run.backend:test`, `git.diff`…), a title, a "modified" state (`isDirty`) and a "preview" state (`isPreview`, italic title, `editor` R2) provided by its owner.
+- R14 — A new tab is inserted just after the active tab and becomes active. Closing the active tab activates its left neighbour, or the first tab if there is none.
+- R15 — Closing an `isDirty` tab asks for confirmation (the wording belongs to the owning feature, the mechanism to the layout). Closing a group or a window chains the confirmations one by one.
+- R16 — The tab bar is a single component (`product` R3): tabs scroll horizontally when there are too many, the active tab is always visible, no tab is truncated below a minimum width.
+- R17 — There is exactly one **active group** per window; clicking in a group, moving into it from the keyboard or opening a tab in it makes it active. All tab commands (new, close, `cmd+1..9`) apply to the active group.
 
-### Redimensionnement et tailles
+### Resizing and sizes
 
-- R18 — Seuls les panneaux se redimensionnent, à la souris, par leur bord intérieur. Largeur des panneaux latéraux et hauteur du panneau bas sont persistées **par slot** (pas par panneau) dans `state.json`.
-- R19 — Tailles par défaut : `left` 260 pt, `right` 320 pt, `bottom` 240 pt. Minimum d'un panneau : 160 pt. La zone centrale garde toujours au moins 300 × 150 pt (400 × 200 jusqu'au 2026-08-26).
-- R20 — Taille minimale de la fenêtre : 800 × 500 pt. Si l'espace manque malgré tout (fenêtre réduite avec trois panneaux ouverts), les panneaux sont **rétrécis jusqu'à leur minimum** dans l'ordre `right`, `left`, `bottom`, puis masqués dans le même ordre ; ils réapparaissent d'eux-mêmes quand la place revient. Leur taille persistée n'est pas modifiée par cet ajustement.
-- R21 — Les onglets d'un groupe reçoivent la taille du groupe ; un contenu qui a besoin de connaître sa taille (surface terminal) la reçoit par un callback de redimensionnement, débouncé par le producteur.
+- R18 — Only panels are resizable, with the mouse, by their inner edge. The width of the side panels and the height of the bottom panel are persisted **per slot** (not per panel) in `state.json`.
+- R19 — Default sizes: `left` 260 pt, `right` 320 pt, `bottom` 240 pt. Minimum for a panel: 160 pt. The center zone always keeps at least 300 × 150 pt (400 × 200 until 2026-08-26).
+- R20 — Minimum window size: 800 × 500 pt. If space is still missing (a shrunk window with three panels open), the panels are **shrunk to their minimum** in the order `right`, `left`, `bottom`, then hidden in the same order; they come back on their own when the space returns. Their persisted size is not modified by this adjustment.
+- R21 — The tabs of a group receive the size of the group; content that needs to know its size (a terminal surface) receives it through a resize callback, debounced by the producer.
 
-### Raccourcis
+### Shortcuts
 
-- R22 — Un raccourci est déclaré, jamais capté ad hoc (`coding-rules`). Le `ShortcutRegistry` est la seule table `raccourci → action`, alimentée par : les actions du layout (ci-dessous), les panneaux et actions des features, puis les surcharges (`config` R4).
-- R22b — Chaque action a une **portée** : `global` (défaut), `tab(kind)` (active uniquement quand un onglet de ce kind a le focus dans le groupe actif), ou `panel` (active uniquement quand un panneau a le focus ; `escape`, décision 2026-08-27). Deux actions de portées disjointes peuvent partager un raccourci ; une action `tab(kind)` masque une action `global` de même raccourci quand elle est active. Les actions du layout sont globales.
-- R23 — Raccourcis par défaut du layout (notation `config`) :
+- R22 — A shortcut is declared, never captured ad hoc (`coding-rules`). The `ShortcutRegistry` is the single `shortcut → action` table, fed by: the layout's actions (below), the features' panels and actions, then the overrides (`config` R4).
+- R22b — Every action has a **scope**: `global` (default), `tab(kind)` (only active while a tab of that kind has the focus in the active group), or `panel` (only active while a panel has the focus; `escape`, decision 2026-08-27). Two actions with disjoint scopes may share a shortcut; a `tab(kind)` action masks a `global` action with the same shortcut while it is active. The layout's actions are global.
+- R23 — The layout's default shortcuts (`config` notation):
 
-  | Action | Raccourci |
+  | Action | Shortcut |
   |---|---|
-  | Fermer l'onglet actif | `cmd+w` |
-  | Aller à l'onglet N du groupe actif | `cmd+1` … `cmd+9` (`cmd+9` = dernier) |
-  | Onglet précédent / suivant | `cmd+shift+[` / `cmd+shift+]` |
-  | Split vertical / horizontal | `cmd+d` / `cmd+shift+d` |
-  | Focus groupe voisin | `cmd+opt+←` `→` `↑` `↓` |
-  | Déplacer l'onglet vers le groupe voisin | `cmd+opt+shift+←` `→` `↑` `↓` |
-  | Rendre le focus au centre | `escape` (depuis un panneau uniquement) |
-  | Nouvelle fenêtre (ouvrir un dossier) | `cmd+shift+n` |
-  | Masquer / afficher la barre d'outils | `cmd+opt+t` |
+  | Close the active tab | `cmd+w` |
+  | Go to tab N of the active group | `cmd+1` … `cmd+9` (`cmd+9` = last) |
+  | Previous / next tab | `cmd+shift+[` / `cmd+shift+]` |
+  | Vertical / horizontal split | `cmd+d` / `cmd+shift+d` |
+  | Focus the neighbouring group | `cmd+opt+←` `→` `↑` `↓` |
+  | Move the tab to the neighbouring group | `cmd+opt+shift+←` `→` `↑` `↓` |
+  | Give the focus back to the center | `escape` (from a panel only) |
+  | New window (open a folder) | `cmd+shift+n` |
+  | Hide / show the toolbar | `cmd+opt+t` |
 
-- R24 — Conflits : deux actions sur le même raccourci **après** application des surcharges → aucune des deux n'est liée, une erreur est affichée au démarrage avec les deux ids. Une feature ne peut pas redéfinir un raccourci du layout ; seul l'utilisateur le peut via `config.json`.
-- R25 — Priorité de capture : le registre reçoit l'événement clavier avant le contenu de l'onglet, **sauf** pour une surface terminal (agent, run) qui a le focus : elle reçoit tout ce qui n'est pas un raccourci `cmd+…` (les combinaisons `ctrl`/`opt` seules lui appartiennent). Un raccourci sans `cmd` ne peut donc être déclaré que pour un contexte hors terminal (`escape` en est le seul cas en v1).
-- R26 — Les raccourcis sont surchargeables à chaud (`config` R6) : un événement de `Workspace.configChanges` recalcule la table entière et réapplique R24.
+- R24 — Conflicts: two actions on the same shortcut **after** the overrides are applied → neither is bound, and an error is shown at startup with both ids. A feature cannot redefine a layout shortcut; only the user can, through `config.json`.
+- R25 — Capture priority: the registry receives the key event before the tab's content, **except** for a terminal surface (agent, run) that has the focus: it receives everything that is not a `cmd+…` shortcut (`ctrl`/`opt` combinations alone belong to it). A shortcut without `cmd` can therefore only be declared for a non-terminal context (`escape` is the only such case in v1).
+- R26 — Shortcuts can be overridden hot (`config` R6): an event from `Workspace.configChanges` rebuilds the whole table and reapplies R24.
 
-### Persistance (`state.json`, cf. `config`)
+### Persistence (`state.json`, see `config`)
 
-- R27 — Le layout est propriétaire de la section `layout` de `state.json` : arbre de splits, groupes (onglets ordonnés avec `id`, `kind`, payload opaque de la feature, onglet actif), groupe actif, panneau visible par slot, taille par slot, cadre de la fenêtre.
-- R28 — Le payload d'un onglet est une chaîne JSON opaque fournie par la feature propriétaire (`serialize`) et rendue telle quelle à la restauration (`restore`). Un `kind` inconnu à la restauration ou un `restore` qui échoue → l'onglet est ignoré (R10 s'applique). Le layout ne lit jamais le payload.
-- R29 — À la restauration, l'ordre est : reconstruire l'arbre et les groupes, restaurer les onglets, appliquer les panneaux visibles, puis donner le focus au groupe actif. Les panneaux restaurés visibles sont activés (R4) après la première frame, pas avant (`architecture` : rien au démarrage qui puisse attendre).
+- R27 — The layout owns the `layout` section of `state.json`: split tree, groups (ordered tabs with `id`, `kind`, the feature's opaque payload, the active tab), the active group, the visible panel per slot, the size per slot, the window frame.
+- R28 — A tab's payload is an opaque JSON string provided by the owning feature (`serialize`) and handed back as is at restoration (`restore`). An unknown `kind` at restoration, or a `restore` that fails → the tab is ignored (R10 applies). The layout never reads the payload.
+- R29 — At restoration, the order is: rebuild the tree and the groups, restore the tabs, apply the visible panels, then give the focus to the active group. Panels restored visible are activated (R4) after the first frame, not before (`architecture`: nothing at startup that could wait).
 
-### Barre d'outils
+### Toolbar
 
-- R30 — La fenêtre a une barre d'outils native (`NSToolbar`). Elle ne contient que des éléments déclarés par les features (`id`, titre, icône, placement, genre) : placement `leading` (agents) ou `trailing` (run) ; genre *action* (clic → callback) ou *menu* (clic → liste d'entrées fournies à la demande, avec sous-titres et badges). Ordre : ordre d'enregistrement des features, `leading` à gauche, `trailing` à droite. Le layout ne déclare aucun élément propre en v1.
-- R31 — Un élément peut porter un **badge** (`none` / `dot(color)`) mis à jour par la feature propriétaire (agent en cours, run échoué). Un élément dont l'`id` est déjà pris est refusé et loggé en `fault`. Le clic droit (ou clic long) sur un élément *action* ouvre son menu secondaire s'il en déclare un.
-- R32 — `cmd+opt+t` masque/affiche la barre d'outils (persisté dans `state.json`). Les actions des éléments restent accessibles par leurs raccourcis et par la palette.
+- R30 — The window has a native toolbar (`NSToolbar`). It contains only items declared by the features (`id`, title, icon, placement, kind): placement `leading` (agents) or `trailing` (run); kind *action* (click → callback) or *menu* (click → a list of entries provided on demand, with subtitles and badges). Order: the features' registration order, `leading` on the left, `trailing` on the right. The layout declares no item of its own in v1.
+- R31 — An item may carry a **badge** (`none` / `dot(color)`) updated by the owning feature (agent running, run failed). An item whose `id` is already taken is refused and logged as a `fault`. Right-clicking (or long-clicking) an *action* item opens its secondary menu when it declares one.
+- R32 — `cmd+opt+t` hides/shows the toolbar (persisted in `state.json`). The items' actions stay reachable through their shortcuts and through the palette.
 
-### Écran d'accueil
+### Home screen
 
-- R33 — Un groupe **sans onglet** affiche l'écran d'accueil, dans l'esprit de la zone vide d'IntelliJ : au centre, la liste des actions principales avec leur raccourci (ouvrir un fichier `cmd+p`, lancer une commande `cmd+r`, panneaux `cmd+shift+e/g/h/d/q`, split `cmd+d`), au-dessus les agents disponibles (boutons, `agents` R2) et en dessous les fichiers récents du workspace (`editor` R19). Les entrées sont fournies par les features via le `ShortcutRegistry` et un enregistrement d'entrée d'accueil (`id`, titre, icône, section, action ; mêmes règles que R30) ; le layout n'en connaît aucune en dur.
-- R34 — L'écran d'accueil n'est pas un onglet : il n'apparaît pas dans la barre, ne se ferme pas, ne se persiste pas. Ouvrir un onglet dans le groupe le remplace ; fermer le dernier onglet le ramène (R10). Il reçoit le focus clavier du groupe (les raccourcis globaux fonctionnent, `escape` sans effet).
+- R33 — A group **without tabs** shows the home screen, in the spirit of IntelliJ's empty zone: in the middle, the list of the main actions with their shortcut (open a file `cmd+p`, run a command `cmd+r`, panels `cmd+shift+e/g/h/d/q`, split `cmd+d`), above it the available agents (buttons, `agents` R2) and below it the workspace's recent files (`editor` R19). The entries are provided by the features through the `ShortcutRegistry` and a home-entry registration (`id`, title, icon, section, action; same rules as R30); the layout knows none of them inline.
+- R34 — The home screen is not a tab: it does not appear in the bar, does not close, is not persisted. Opening a tab in the group replaces it; closing the last tab brings it back (R10). It takes the group's keyboard focus (global shortcuts work, `escape` has no effect).
 
-## Cas limites
+## Edge cases
 
-- Cadre de fenêtre persisté hors des écrans actuels : la fenêtre est recentrée sur l'écran principal avec sa taille persistée (bornée à l'écran).
-- Deux features déclarent le même `PanelID` : le second est refusé et loggé en `fault` (invariant de programmation, les features sont compilées ensemble).
-- Un panneau change de slot entre deux versions (la feature a modifié son `side`) : l'état `[side: id]` ne le trouve plus dans l'ancien slot → considéré masqué.
-- `cmd+N` avec N > nombre d'onglets : aucun effet (sauf `cmd+9` = dernier).
-- Split quand la zone centrale ne peut plus garantir 300 × 150 pt par groupe après division : le split est refusé (bip système), rien ne change.
-- Fermeture de fenêtre pendant une confirmation R15 : annuler la confirmation annule la fermeture.
+- A persisted window frame outside the current screens: the window is recentred on the main screen with its persisted size (clamped to the screen).
+- Two features declare the same `PanelID`: the second is refused and logged as a `fault` (a programming invariant, the features are compiled together).
+- A panel changes slot between two versions (the feature changed its `side`): the `[side: id]` state no longer finds it in the old slot → considered hidden.
+- `cmd+N` with N > the number of tabs: no effect (except `cmd+9` = last).
+- A split when the center zone can no longer guarantee 300 × 150 pt per group after dividing: the split is refused (system beep), nothing changes.
+- The window closes during an R15 confirmation: cancelling the confirmation cancels the close.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Redimensionnement des splits (parts égales fixes).
-- Zoom / maximisation temporaire d'un groupe.
-- Drag & drop d'onglets (entre groupes ou pour réordonner) ; réordonner au clavier.
-- Onglets épinglés, aperçu au survol, fermeture par le bouton du milieu.
-- Plusieurs panneaux visibles dans un même slot (empilés ou en onglets).
-- Panneaux flottants ou détachés (`product`).
-- Splits à plus de deux enfants (l'arbre binaire couvre tous les agencements).
+- Resizing splits (fixed equal shares).
+- Zooming / temporarily maximising a group.
+- Tab drag and drop (between groups or to reorder); reordering from the keyboard.
+- Pinned tabs, hover preview, middle-click to close.
+- Several visible panels in the same slot (stacked or as tabs).
+- Floating or detached panels (`product`).
+- Splits with more than two children (the binary tree covers every arrangement).
 
-## Options techniques
+## Technical options
 
-- **Arbre de splits** : `enum LayoutNode: Codable` indirect (`split`/`group`) dans `Layout/`, manipulé par `LayoutManager` (`@MainActor @Observable`). Les opérations (split, close, neighbor, move) sont des fonctions pures sur l'arbre + la géométrie calculée, testées sans UI (c'est une machine à états).
-- **Rendu des panneaux** : `NSSplitView` (`NSSplitViewController` avec trois `NSSplitViewItem` repliables) pour left / center / right, et un second pour center / bottom ; tailles minimales et persistance par slot via les API natives (`holdingPriority`, `collapsed`). Les splits de la zone centrale (parts égales, non redimensionnables) restent en SwiftUI (`HStack`/`VStack`). Pas de layout manuel via `GeometryReader` (`architecture` : utiliser la plateforme).
-- **Raccourcis** : `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` au niveau fenêtre, avant SwiftUI ; le registre décide et consomme ou laisse passer (R25). Pas de `.keyboardShortcut` SwiftUI dispersés (R22).
-- **Barre d'outils** : `NSToolbar` avec son délégué dans `Layout/` ; la liste des éléments et leurs badges vivent dans `LayoutManager`. SwiftUI `.toolbar` rejeté (ordre et menus secondaires mal contrôlables, R30–R31).
-- **Enregistrement des features** : des `struct` internes à `Layout/` — `PanelDescriptor(id, title, side, defaultShortcut, makeView)`, `CenterTabDescriptor(kind, makeView(payload), serialize)`, un élément de toolbar (`id, title, icon, placement, kind`) et une entrée d'accueil (`id, title, icon, section, action`) — passées à `Layout` par chaque feature au démarrage (`GitFeature.register(in:)`). Activation/désactivation d'un panneau et fermeture d'un onglet sont des closures du descripteur, pas des événements diffusés.
+- **Split tree**: an indirect `enum LayoutNode: Codable` (`split`/`group`) in `Layout/`, manipulated by `LayoutManager` (`@MainActor @Observable`). The operations (split, close, neighbor, move) are pure functions over the tree + the computed geometry, tested without UI (it is a state machine).
+- **Panel rendering**: `NSSplitView` (an `NSSplitViewController` with three collapsible `NSSplitViewItem`s) for left / center / right, and a second one for center / bottom; minimum sizes and per-slot persistence through the native APIs (`holdingPriority`, `collapsed`). The center zone's splits (equal shares, not resizable) stay in SwiftUI (`HStack`/`VStack`). No manual layout through `GeometryReader` (`architecture`: use the platform).
+- **Shortcuts**: `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` at window level, ahead of SwiftUI; the registry decides and either consumes or passes the event on (R25). No SwiftUI `.keyboardShortcut` scattered around (R22).
+- **Toolbar**: `NSToolbar` with its delegate in `Layout/`; the item list and their badges live in `LayoutManager`. SwiftUI `.toolbar` rejected (order and secondary menus are hard to control, R30–R31).
+- **Feature registration**: `struct`s internal to `Layout/` — `PanelDescriptor(id, title, side, defaultShortcut, makeView)`, `CenterTabDescriptor(kind, makeView(payload), serialize)`, a toolbar item (`id, title, icon, placement, kind`) and a home entry (`id, title, icon, section, action`) — handed to `Layout` by each feature at startup (`GitFeature.register(in:)`). Activating/deactivating a panel and closing a tab are closures on the descriptor, not broadcast events.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).
