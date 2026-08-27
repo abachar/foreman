@@ -10,6 +10,6 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 | M3 — Run | [m3-run.md](m3-run.md) | run, `Palette/` (`opt+enter`), badge `blue` | 🟢 (2026-08-27 ; `root` alias de `.`, `configChanges` par consommateur) |
 | M4 — Git | [m4-git.md](m4-git.md) | git, compléments explorer / editor | ⚪ |
 | M5 — Postgres | [m5-postgres.md](m5-postgres.md) | postgres, `Highlight/` (`sql`), `Workspace/` (`SecretStore`) | ⚪ |
-| M6 — Polish | | | |
+| M6 — Polish | [m6-polish.md](m6-polish.md) | aucun en propre : points ouverts de M0–M5 | ⚪ |
 
 Chaque fichier contient : le périmètre, le tableau des tâches (règles couvertes, **lib / natif utilisé**, tests, taille, statut, PR), la définition de fini, les décisions à prendre pendant le milestone. Une tâche = une PR. Le statut se met à jour dans la PR qui termine la tâche.
