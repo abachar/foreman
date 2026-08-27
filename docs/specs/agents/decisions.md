@@ -1,10 +1,10 @@
-# agents — Décisions
+# agents — Decisions
 
-| Date | Décision | Alternatives rejetées | Raison |
+| Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
-| 2026-08-26 | Domaine `agents` distinct de `run` : boutons dédiés dans la barre d'outils | Agents déclarés comme commandes `run` | Un run est défini par l'utilisateur ; un agent est un outil connu de Wraith, avec bouton, icône et onglet réutilisé |
-| 2026-08-26 | Agents intégrés (Claude Code, Antigravity, OpenCode) détectés dans le PATH + `config.agents` pour ajouter/surcharger/masquer | Config uniquement ; liste fixe sans config | Zéro config dans le cas courant, extensible pour un agent maison ou des options |
-| 2026-08-26 | Un onglet par agent, réutilisé : le bouton active l'onglet existant, sinon le crée ; « Nouvelle session » via le menu | Nouvel onglet à chaque clic ; menu de choix du dossier avant chaque lancement | Évite les doublons ; le cas rare a son entrée de menu |
-| 2026-08-26 | L'agent vit sur une surface terminal (le seul usage du terminal avec `run`, `product` R4) ; état dérivé de la fin du process (`terminal` R6) ; aucune intégration profonde en v1 | Pont agent ↔ workspace (sélection, diff auto) | Livrer d'abord le lancement ; explorer/git se rafraîchissent déjà par FSEvents |
-| 2026-08-26 | Restauration sans relance de la commande | Relance automatique | Même règle que `run` R13 ; une relance implicite peut consommer des sessions/tokens |
-| 2026-08-27 | L'environnement du login shell est résolu **une fois par fenêtre** (`$SHELL -l -c '/usr/bin/env -0'`, hors main actor, `Workspace.loginEnvironment()`) ; la détection R2 parcourt le `PATH` obtenu sans lancer d'autre process | Un shell par agent ; lecture de `ProcessInfo` seulement (PATH de l'app, incomplet) | R2 demande le PATH du login shell sans polling ; un seul process au premier besoin, réutilisé à chaque `configChanges` |
+| 2026-08-26 | The `agents` domain is distinct from `run`: dedicated buttons in the toolbar | Agents declared as `run` commands | A run is defined by the user; an agent is a tool Wraith knows, with a button, an icon and a reused tab |
+| 2026-08-26 | Built-in agents (Claude Code, Antigravity, OpenCode) detected in the PATH + `config.agents` to add/override/hide | Config only; a fixed list without config | Zero config in the common case, extensible for a custom agent or for options |
+| 2026-08-26 | One tab per agent, reused: the button activates the existing tab, otherwise it creates it; "New session" through the menu | A new tab on every click; a folder chooser before every launch | Avoids duplicates; the rare case has its menu entry |
+| 2026-08-26 | The agent lives on a terminal surface (the only use of the terminal along with `run`, `product` R4); state derived from the end of the process (`terminal` R6); no deep integration in v1 | An agent ↔ workspace bridge (selection, automatic diff) | Ship the launching first; the explorer and git already refresh through FSEvents |
+| 2026-08-26 | Restoration without relaunching the command | Automatic relaunch | The same rule as `run` R13; an implicit relaunch can burn sessions/tokens |
+| 2026-08-27 | The login shell's environment is resolved **once per window** (`$SHELL -l -c '/usr/bin/env -0'`, off the main actor, `Workspace.loginEnvironment()`); R2's detection walks the resulting `PATH` without launching any other process | One shell per agent; reading `ProcessInfo` only (the app's PATH, incomplete) | R2 asks for the login shell's PATH without polling; a single process at first need, reused on every `configChanges` |

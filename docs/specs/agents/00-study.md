@@ -1,65 +1,65 @@
-# agents — Étude
+# agents — Study
 
-## Objectif
+## Goal
 
-Feature `agents` : lancer et retrouver les **agents CLI** (Claude Code, Antigravity CLI, OpenCode…) dans un onglet terminal dédié par agent, d'un clic sur un bouton de la barre d'outils (`layout` R30). Les agents intégrés sont connus de Wraith et affichés s'ils sont installés ; `config.agents` en ajoute ou en surcharge.
+Feature `agents`: launch and come back to the **CLI agents** (Claude Code, Antigravity CLI, OpenCode…) in a terminal tab dedicated to each agent, with one click on a toolbar button (`layout` R30). Built-in agents are known to Wraith and shown when they are installed; `config.agents` adds to them or overrides them.
 
-Ce n'est **pas** du `run` : une commande `run` est définie par l'utilisateur et vit dans la palette ; un agent est un outil connu de Wraith, avec son bouton, son icône et son onglet réutilisé.
+This is **not** `run`: a `run` command is defined by the user and lives in the palette; an agent is a tool Wraith knows, with its button, its icon and its reused tab.
 
 ## User stories
 
-- US1 — J'ouvre un workspace : les boutons des agents installés sur ma machine apparaissent dans la barre d'outils, rien à configurer.
-- US2 — Je clique « Claude » : un onglet `Claude` s'ouvre à la racine du workspace et lance `claude`. Je reclique : l'onglet existant est activé, aucun doublon.
-- US3 — Clic droit sur le bouton : « Nouvelle session » ou « Lancer dans `backend` » pour choisir le repo.
-- US4 — Je vois d'un coup d'œil si l'agent tourne ou attend (badge sur le bouton et l'onglet).
-- US5 — J'ajoute mon agent maison ou je change les options de `claude` dans `config.json` : le bouton suit sans redémarrer.
+- US1 — I open a workspace: the buttons of the agents installed on my machine appear in the toolbar, nothing to configure.
+- US2 — I click "Claude": a `Claude` tab opens at the workspace root and launches `claude`. I click again: the existing tab is activated, no duplicate.
+- US3 — Right-click on the button: "New session" or "Launch in `backend`" to choose the repo.
+- US4 — I can tell at a glance whether the agent is running or waiting (a badge on the button and on the tab).
+- US5 — I add my own agent or change `claude`'s options in `config.json`: the button follows without a restart.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Agents intégrés et détection
+### Built-in agents and detection
 
-- R1 — Agents intégrés (id, titre, binaire, commande par défaut) :
+- R1 — Built-in agents (id, title, binary, default command):
 
-  | id | Titre | Binaire | Commande |
+  | id | Title | Binary | Command |
   |---|---|---|---|
   | `claude` | Claude Code | `claude` | `claude` |
-  | `antigravity` | Antigravity | `agy` (vérifié 2026-08-27) | `agy` |
+  | `antigravity` | Antigravity | `agy` (verified 2026-08-27) | `agy` |
   | `opencode` | OpenCode | `opencode` | `opencode` |
   | `pi` | Pi | `pi` | `pi` |
 
-- R2 — Un agent intégré est **affiché** si son binaire est trouvé dans le `PATH` de l'environnement du login shell (le même que celui des terminaux, `terminal` R3, résolu une fois par `Workspace`). Non trouvé → bouton absent, sans message. La détection est refaite à chaque `Workspace.configChanges` et à l'ouverture de la fenêtre, jamais en polling.
-- R3 — `config.agents` (`config` R3) : `{ "<id>": { "title"?, "command"?, "icon"?, "enabled"? } }`. Un id intégré surcharge ses champs (ex. `"claude": { "command": "claude --continue" }`) ; un id inconnu déclare un agent personnalisé (`command` obligatoire, toujours affiché, pas de détection) ; `"enabled": false` masque un intégré. Précédence `config` R4. Id : `[a-z0-9][a-z0-9_-]*`. `icon` : nom SF Symbol, ou chemin d'un fichier SVG/PNG relatif à la racine du workspace (rendu monochrome comme un symbole ; hors racine → ignoré). Les intégrés ont leur logo SVG dans l'asset catalog (`agent-<id>`, 2026-08-27).
+- R2 — A built-in agent is **shown** when its binary is found in the `PATH` of the login shell's environment (the same one the terminals use, `terminal` R3, resolved once by `Workspace`). Not found → no button, no message. Detection is redone on every `Workspace.configChanges` and when the window opens, never by polling.
+- R3 — `config.agents` (`config` R3): `{ "<id>": { "title"?, "command"?, "icon"?, "enabled"? } }`. A built-in id overrides its fields (e.g. `"claude": { "command": "claude --continue" }`); an unknown id declares a custom agent (`command` mandatory, always shown, no detection); `"enabled": false` hides a built-in one. Precedence: `config` R4. Id: `[a-z0-9][a-z0-9_-]*`. `icon`: an SF Symbol name, or the path of an SVG/PNG file relative to the workspace root (rendered monochrome like a symbol; outside the root → ignored). The built-in ones have their SVG logo in the asset catalog (`agent-<id>`, 2026-08-27).
 
-### Lancement et onglet
+### Launching and the tab
 
-- R4 — Clic sur le bouton : s'il existe un onglet `agent.<id>` dans la fenêtre → il est activé (et son groupe reçoit le focus) ; sinon → `TerminalService.spawn(command:, cwd: racine, kind: "agent.<id>", title:)` dans le groupe actif (`terminal` R16) : le process démarre immédiatement, sans shell. **Un onglet par agent par fenêtre** en usage normal.
-- R5 — Menu du bouton (clic droit ou clic long) : *Nouvelle session* (force un nouvel onglet `agent.<id>`, non réutilisé ensuite : seul le premier onglet créé est celui du bouton), *Lancer dans …* pour chaque repo de `config.repos`/auto-détection (cwd = le repo). La commande est passée telle quelle (`architecture.md`, sécurité), sans `env` ni templating.
-- R6 — État = celui de l'onglet terminal (`terminal` R6) : `idle` / `running` / `exited(code)`. Badge : point sur le bouton et sur l'onglet quand `running` ; la bell d'un onglet agent inactif marque l'onglet (`terminal` R7) et le bouton. Agent quitté (`exited`) : la surface reste figée avec *Relancer* (`terminal` R8) ; cliquer le bouton de l'agent relance dans ce même onglet.
-- R7 — Fermeture : `terminal` R10–R11 (confirmation si l'agent tourne ; arrêt propre).
-- R8 — Restauration (`layout` R28) : onglet recréé en état `idle` au même cwd, titre conservé, surface vide avec *Relancer* ; la commande **n'est pas relancée** automatiquement (même choix que `run` R13). Voir question ouverte.
-- R9 — Raccourcis : `config.shortcuts["agents.<id>"]`, aucun défaut. Portée globale. `cmd+opt+t` masque la barre d'outils (`layout` R32), les raccourcis restent actifs.
+- R4 — Clicking the button: if an `agent.<id>` tab exists in the window → it is activated (and its group takes the focus); otherwise → `TerminalService.spawn(command:, cwd: root, kind: "agent.<id>", title:)` in the active group (`terminal` R16): the process starts immediately, without a shell. **One tab per agent per window** in normal use.
+- R5 — Button menu (right-click or long click): *New session* (forces a new `agent.<id>` tab, not reused afterwards: only the first tab created is the button's one), *Launch in …* for each repo in `config.repos`/auto-detection (cwd = the repo). The command is passed as is (`architecture.md`, security), with no `env` and no templating.
+- R6 — The state is the terminal tab's (`terminal` R6): `idle` / `running` / `exited(code)`. Badge: a dot on the button and on the tab while `running`; the bell of an inactive agent tab marks the tab (`terminal` R7) and the button. Agent exited (`exited`): the surface stays frozen with *Relaunch* (`terminal` R8); clicking the agent's button relaunches in that same tab.
+- R7 — Closing: `terminal` R10–R11 (a confirmation while the agent is running; a clean stop).
+- R8 — Restoration (`layout` R28): the tab is recreated in the `idle` state at the same cwd, the title kept, an empty surface with *Relaunch*; the command is **not** relaunched automatically (the same choice as `run` R13). See the open question.
+- R9 — Shortcuts: `config.shortcuts["agents.<id>"]`, no default. Global scope. `cmd+opt+t` hides the toolbar (`layout` R32); the shortcuts stay active.
 
-## Cas limites
+## Edge cases
 
-- Binaire présent mais commande qui échoue (version, login requis) : l'erreur s'affiche dans la surface, état `exited(code)`, pas de bannière.
-- Deux fenêtres : un onglet par agent **par fenêtre**, indépendants.
-- L'utilisateur quitte l'agent (`/exit`) : `exited(0)`, surface figée ; le bouton de l'agent relance dans le même onglet.
-- Agent qui lance des sous-process : ils sont dans le groupe de process du PTY et suivent l'onglet (`terminal` R9, R11).
-- `PATH` sans le binaire mais alias/fonction shell : non détecté ; déclarer l'agent dans `config.agents` (pas de détection pour un agent déclaré).
+- Binary present but the command fails (version, login required): the error appears in the surface, the state is `exited(code)`, no banner.
+- Two windows: one tab per agent **per window**, independent.
+- The user quits the agent (`/exit`): `exited(0)`, a frozen surface; the agent's button relaunches in the same tab.
+- An agent that launches sub-processes: they are in the PTY's process group and follow the tab (`terminal` R9, R11).
+- A `PATH` without the binary but with a shell alias/function: not detected; declare the agent in `config.agents` (no detection for a declared agent).
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Intégration profonde : envoyer un chemin/une sélection à l'agent, ouvrir automatiquement le diff des fichiers qu'il modifie, lire son état autrement que par le terminal. (Candidats v2 ; le diff git et l'explorer se rafraîchissent déjà par FSEvents.)
-- MCP, API, hooks, sessions nommées, historique des sessions.
-- Agents non-CLI (extensions, apps).
+- Deep integration: sending a path or a selection to the agent, automatically opening the diff of the files it modifies, reading its state other than through the terminal. (v2 candidates; the git diff and the explorer already refresh through FSEvents.)
+- MCP, APIs, hooks, named sessions, session history.
+- Non-CLI agents (extensions, apps).
 
-## Options techniques
+## Technical options
 
-- **Dossier** : `Agents/` (`architecture.md`). `AgentsFeature` déclare à `Layout` un élément de toolbar par agent (côté `leading`, `layout` R30) et un kind d'onglet `agent.<id>` dont le payload est `{ "id", "cwd" }` ; la vue de l'onglet est la surface terminal de `TerminalService` (l'onglet `run` fait pareil, `run` R7).
-- **Détection** : `Workspace` expose l'environnement du login shell (PATH) ; recherche de l'exécutable par simple parcours des entrées du PATH (`FileManager.isExecutableFile`), hors main actor. Aucun shell lancé pour détecter.
-- **Icônes** : `Layout/IconImage` résout un nom SF Symbol, un nom d'asset (`agent-<id>`, SVG template) ou un chemin absolu de fichier SVG/PNG (`NSImage(contentsOfFile:)`, `isTemplate`) ; `AgentsFeature` rend absolu un chemin relatif sous la racine.
-- **Tests** : parsing/fusion de `config.agents` avec les intégrés (R3), résolution du PATH sur un dossier temporaire (R2), machine d'états d'un bouton/onglet (R4, R6, R8) pilotée par des événements terminal simulés.
+- **Folder**: `Agents/` (`architecture.md`). `AgentsFeature` declares to `Layout` one toolbar item per agent (on the `leading` side, `layout` R30) and a tab kind `agent.<id>` whose payload is `{ "id", "cwd" }`; the tab's view is `TerminalService`'s terminal surface (the `run` tab does the same, `run` R7).
+- **Detection**: `Workspace` exposes the login shell's environment (PATH); the executable is looked up by simply walking the PATH entries (`FileManager.isExecutableFile`), off the main actor. No shell is launched to detect.
+- **Icons**: `Layout/IconImage` resolves an SF Symbol name, an asset name (`agent-<id>`, an SVG template) or an absolute path to an SVG/PNG file (`NSImage(contentsOfFile:)`, `isTemplate`); `AgentsFeature` makes a relative path under the root absolute.
+- **Tests**: parsing/merging `config.agents` with the built-ins (R3), PATH resolution over a temporary folder (R2), the button/tab state machine (R4, R6, R8) driven by simulated terminal events.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).
