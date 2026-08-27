@@ -48,7 +48,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         let tokens = theme.tokens
         for item in toolbar.items.flatMap({ ($0 as? NSToolbarItemGroup)?.subitems ?? [$0] }) {
             guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue),
-                let button = item.view as? ToolbarButton
+                let button = item.view as? ToolbarButton ?? item.view?.subviews.first as? ToolbarButton
             else { continue }
             button.tokens = tokens
             button.font = theme.interfaceFont()
@@ -61,6 +61,9 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     /// The trailing panel toggles travel as one group (design R15: a tight trio after Run).
     static let trailingTogglesID = "layout.panels.trailing"
+    /// The room between Run and the trio: twice the room inside the trio (author, 2026-08-28),
+    /// laid as a leading inset of the trio's first toggle.
+    private static let trailingGap: CGFloat = 8
 
     private var identifiers: [NSToolbarItem.Identifier] {
         var identifiers: [NSToolbarItem.Identifier] = []
@@ -109,14 +112,16 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     ) -> NSToolbarItem? {
         if identifier.rawValue == Self.trailingTogglesID {
             let group = NSToolbarItemGroup(itemIdentifier: identifier)
-            group.subitems = trailingToggleIDs.compactMap { makeItem(NSToolbarItem.Identifier($0)) }
+            group.subitems = trailingToggleIDs.enumerated().compactMap { index, id in
+                makeItem(NSToolbarItem.Identifier(id), leadingInset: index == 0 ? Self.trailingGap : 0)
+            }
             group.isBordered = false
             return group
         }
         return makeItem(identifier)
     }
 
-    private func makeItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
+    private func makeItem(_ identifier: NSToolbarItem.Identifier, leadingInset: CGFloat = 0) -> NSToolbarItem? {
         guard let descriptor = layout.toolbarItem(identifier.rawValue) else { return nil }
         let item = NSToolbarItem(itemIdentifier: identifier)
         let button = ToolbarButton()
@@ -130,11 +135,25 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         button.action = #selector(performButton(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.fit()
-        item.view = button
+        item.view = leadingInset > 0 ? Self.inset(button, leading: leadingInset) : button
         item.label = descriptor.title
         item.toolTip = descriptor.title
         item.isBordered = false
         return item
+    }
+
+    /// `button` in a container `leading` points wider, pinned to its right edge.
+    private static func inset(_ button: ToolbarButton, leading: CGFloat) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: leading),
+            button.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            button.topAnchor.constraint(equalTo: container.topAnchor),
+            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        return container
     }
 
     @objc private func performButton(_ sender: ToolbarButton) {
