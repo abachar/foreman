@@ -26,8 +26,6 @@ final class ToolbarButton: NSButton {
         imageHugsTitle = true
         imageScaling = .scaleProportionallyDown
         font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        wantsLayer = true
-        layer?.cornerRadius = Self.radius
         translatesAutoresizingMaskIntoConstraints = false
         heightAnchor.constraint(equalToConstant: Self.height).isActive = true
         paint()
@@ -78,11 +76,24 @@ final class ToolbarButton: NSButton {
         paint()
     }
 
+    /// The toolbar gives its items more height than `height`: the plate is drawn here, `height`
+    /// tall and centred, so a toggle stays a square whatever frame the item gets (author, 2026-08-28).
+    override func draw(_ dirtyRect: NSRect) {
+        let plate = NSRect(
+            x: 0, y: (bounds.height - Self.height) / 2, width: bounds.width, height: Self.height)
+        let path = NSBezierPath(roundedRect: plate, xRadius: Self.radius, yRadius: Self.radius)
+        (isHovered || isHighlighted ? tokens.surfaceSunken : tokens.surfaceRaised).nsColor.setFill()
+        path.fill()
+        if isOutlined {
+            tokens.accent.nsColor.setStroke()
+            NSBezierPath(roundedRect: plate.insetBy(dx: 0.5, dy: 0.5), xRadius: Self.radius, yRadius: Self.radius)
+                .stroke()
+        }
+        super.draw(dirtyRect)
+    }
+
     private func paint() {
-        let fill = isHovered || isHighlighted ? tokens.surfaceSunken : tokens.surfaceRaised
-        layer?.backgroundColor = fill.nsColor.cgColor
-        layer?.borderWidth = isOutlined ? 1 : 0
-        layer?.borderColor = tokens.accent.nsColor.cgColor
+        needsDisplay = true
         contentTintColor = tokens.textPrimary.nsColor
         let name = attributedTitle.string.trimmingCharacters(in: .whitespaces)
         if !name.isEmpty {
