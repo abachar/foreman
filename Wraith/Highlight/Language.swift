@@ -17,8 +17,8 @@ import TreeSitterYAML
 
 /// The grammars Wraith ships (editor R11), one SPM package each, and the file names they cover.
 ///
-/// `sql` (editor R11) is not here: its package manifest does not resolve under Xcode 27; it comes
-/// back with `postgres` (M5), see `editor/decisions.md` 2026-08-26.
+/// `sql` (editor R11) is not here: its package manifest does not resolve under Xcode 27 (M1, then
+/// again in M5 task 5.4), see `editor/decisions.md` 2026-08-27 and `editor/questions.md`.
 nonisolated enum Language: String, CaseIterable, Sendable {
     case java
     case kotlin
