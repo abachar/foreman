@@ -49,6 +49,8 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
 ## Definition of done (M7)
 
+**Verified by the author on 2026-08-27 in the running app**: `cmd+shift+l` with `swift format` and with `prettier` (installed after the "not found" banner showed first, as designed) — reformatting, cursor and scroll kept, single `cmd+z`, the tab marked `●`, the refusals and the error banner.
+
 - `.wraith/config.json` with `"formatter": { "ts": "npx --no-install prettier --stdin-filepath file.ts", "swift": "swift format" }`: `cmd+shift+l` on a badly indented `.ts` reformats it in under a second; the cursor stayed on its line; `cmd+z` undoes the whole formatting **in a single go**; the tab is marked `●`.
 - `cmd+shift+l` on an `.xml` with no entry: a message says so, nothing moves, no error.
 - Formatter removed from the `PATH`: the message names the missing binary, not the shell's complaint; a syntactically invalid file: the formatter's error output appears and the text does not move.
