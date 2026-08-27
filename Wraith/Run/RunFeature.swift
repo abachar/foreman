@@ -43,6 +43,18 @@ final class RunFeature {
 
     /// run R9: how long a stopped process may take to exit before the relaunch is given up.
     static let relaunchGrace: Duration = .seconds(10)
+    /// run R9: a second `cmd+.` within this window escalates to `SIGTERM`.
+    nonisolated static let stopEscalation: Duration = .seconds(2)
+    static let toolbarID = "run.toolbar"
+
+    /// run R6b: one line of the ▶ Run menu, before it becomes a `ToolbarMenuEntry`.
+    nonisolated struct MenuRow: Equatable, Sendable {
+        let id: String
+        let title: String
+        let subtitle: String
+        let badge: ToolbarBadge
+        let isEnabled: Bool
+    }
 
     private let layout: LayoutManager
     private let workspace: Workspace
@@ -57,6 +69,10 @@ final class RunFeature {
     private var registeredKinds: Set<String> = []
     /// run R9: tabs waiting for `exited` to relaunch, with the task that gives up after the grace.
     private var pendingRelaunches: [TabID: Task<Void, Never>] = [:]
+    /// run R9: when `cmd+.` last hit each tab.
+    private var lastStops: [TabID: ContinuousClock.Instant] = [:]
+    /// run R6b: the tab whose failure the button reports, until it is shown.
+    private var lastFailed: TabID?
     private var configWatch: Task<Void, Never>?
     private var eventsWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "run")
@@ -68,6 +84,8 @@ final class RunFeature {
         self.palette = palette
         apply(workspace.config)
         registerPalette()
+        registerToolbar()
+        registerStop()
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges {
                 guard let self else { return }
@@ -115,6 +133,9 @@ final class RunFeature {
         let kind = Self.kind(of: id)
         guard !registeredKinds.contains(kind) else { return }
         registeredKinds.insert(kind)
+        // run R11: no default; the shortcut outlives the command (decision 2026-08-27).
+        layout.shortcuts.register(
+            ShortcutAction(id: kind, title: id, defaultShortcut: nil) { [weak self] in self?.launch(id) })
         layout.register(
             tabKind: CenterTabDescriptor(
                 kind: kind, isTerminal: true,
@@ -252,6 +273,80 @@ final class RunFeature {
         }
     }
 
+    // MARK: - Toolbar (run R6b)
+
+    private func registerToolbar() {
+        layout.register(
+            toolbarItem: ToolbarItemDescriptor(
+                id: Self.toolbarID, title: "Run", icon: "play.fill", placement: .trailing,
+                kind: .menu(entries: { [weak self] in self?.menuEntries() ?? [] })))
+    }
+
+    /// run R6b: every command with its state; an example when nothing is configured.
+    nonisolated static func menuRows(_ commands: [RunCommand], badge: (String) -> ToolbarBadge) -> [MenuRow] {
+        guard !commands.isEmpty else {
+            return [
+                MenuRow(
+                    id: "run.example", title: "No commands configured",
+                    subtitle: #".wraith/config.json: { "commands": { ".": { "test": "make test" } } }"#, badge: .none,
+                    isEnabled: false)
+            ]
+        }
+        return commands.map { command in
+            MenuRow(
+                id: kind(of: command.id), title: command.title, subtitle: command.problem ?? command.command,
+                badge: command.problem == nil ? badge(command.id) : .none, isEnabled: command.problem == nil)
+        }
+    }
+
+    private func menuEntries() -> [ToolbarMenuEntry] {
+        Self.menuRows(commands) { id in
+            guard let tab = primaryTabs[id], let terminalTab = terminal.tab(tab) else { return .none }
+            return Self.badge(RunState(terminalTab.state), marked: terminalTab.isMarked)
+        }
+        .map { row in
+            ToolbarMenuEntry(id: row.id, title: row.title, subtitle: row.subtitle, badge: row.badge) { [weak self] in
+                guard row.isEnabled, let id = self?.commands.first(where: { Self.kind(of: $0.id) == row.id })?.id
+                else { return }
+                self?.launch(id)
+            }
+        }
+    }
+
+    /// run R6b: blue while anything runs, red while the last failure has not been looked at.
+    nonisolated static func toolbarBadge(anyRunning: Bool, hasUnseenFailure: Bool) -> ToolbarBadge {
+        anyRunning ? .dot(.blue) : (hasUnseenFailure ? .dot(.red) : .none)
+    }
+
+    private func syncToolbarBadge() {
+        let running = commandOfTab.keys.contains { terminal.tab($0)?.isRunning == true }
+        layout.setBadge(Self.toolbarBadge(anyRunning: running, hasUnseenFailure: lastFailed != nil), on: Self.toolbarID)
+    }
+
+    // MARK: - Stop (run R9)
+
+    private func registerStop() {
+        layout.shortcuts.register(
+            ShortcutAction(id: "run.stop", title: "Stop Command", scope: .terminal, defaultShortcut: "cmd+.") {
+                [weak self] in self?.stopActiveTab()
+            })
+    }
+
+    /// run R9: `SIGINT`, or `SIGTERM` when the previous stop was less than two seconds ago.
+    nonisolated static func stopSignal(lastStop: ContinuousClock.Instant?, now: ContinuousClock.Instant) -> Int32 {
+        guard let lastStop, now - lastStop < stopEscalation else { return SIGINT }
+        return SIGTERM
+    }
+
+    /// run R9: only a `run.*` tab; `cmd+.` on an agent does nothing (decision 2026-08-27).
+    private func stopActiveTab() {
+        guard let id = layout.model.active.active?.id, commandOfTab[id] != nil else { return }
+        let now = ContinuousClock.now
+        let signal = Self.stopSignal(lastStop: lastStops[id], now: now)
+        lastStops[id] = now
+        try? terminal.signal(signal, to: id)
+    }
+
     // MARK: - Tabs (run R12, R13, layout R28)
 
     private func view(_ id: TabID, payload: String, commandID: String) -> AnyView? {
@@ -286,10 +381,15 @@ final class RunFeature {
     private func closed(_ id: TabID) {
         terminal.closed(id)
         pendingRelaunches.removeValue(forKey: id)?.cancel()
+        lastStops[id] = nil
+        if lastFailed == id {
+            lastFailed = nil
+        }
         guard let commandID = commandOfTab.removeValue(forKey: id) else { return }
         if primaryTabs[commandID] == id {
             primaryTabs[commandID] = commandOfTab.first { $0.value == commandID }?.key
         }
+        syncToolbarBadge()
     }
 
     // MARK: - State and badges (run R10)
@@ -315,6 +415,15 @@ final class RunFeature {
             id = tab
         }
         guard commandOfTab[id] != nil, let tab = terminal.tab(id) else { return }
+        defer { syncToolbarBadge() }
+        switch event {
+        case .exited(_, let exit) where exit != .code(0):
+            lastFailed = id
+        case .activated where lastFailed == id:
+            lastFailed = nil
+        case .started, .exited, .bell, .activated, .closed:
+            break
+        }
         if case .exited = event, let pending = pendingRelaunches.removeValue(forKey: id) {
             pending.cancel()
             try? terminal.relaunch(id)

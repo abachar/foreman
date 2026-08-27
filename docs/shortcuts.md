@@ -68,7 +68,7 @@ Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a
 |---|---|---|---|---|
 | `cmd+r` | `run.palette` | Palette des commandes | global | 🟢 |
 | `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette : lancer / nouvel onglet / copier / fermer | natif | 🟢 |
-| `cmd+.` | `run.stop` | Arrêter le process (`SIGINT`, second appui < 2 s → `SIGTERM`) ; sans effet hors onglet `run.*` (décision 2026-08-27) | terminal | ⚪ (M3) |
+| `cmd+.` | `run.stop` | Arrêter le process (`SIGINT`, second appui < 2 s → `SIGTERM`) ; sans effet hors onglet `run.*` (décision 2026-08-27) | terminal | 🟢 |
 
 ## Git (`git`)
 

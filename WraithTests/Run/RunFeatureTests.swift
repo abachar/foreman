@@ -69,3 +69,36 @@ struct RunPaletteTests {
         #expect(items.first?.subtitle == "repo not found: frontend")
     }
 }
+
+/// The ▶ Run menu and badge (run R6b), the stop escalation (R9).
+struct RunToolbarTests {
+    private func command(_ repo: String, _ name: String, problem: String? = nil) -> RunCommand {
+        RunCommand(
+            id: RunCatalog.id(repo: repo, name: name), repo: repo, name: name, command: "make \(name)",
+            cwd: URL(filePath: "/ws"), env: [:], problem: problem)
+    }
+
+    @Test func menuListsCommandsWithTheirBadgeOrAnExample() {
+        let rows = RunFeature.menuRows([command(".", "test"), command("x", "y", problem: "repo not found: x")]) {
+            $0 == "root:test" ? .dot(.blue) : .none
+        }
+        #expect(rows.map(\.badge) == [.dot(.blue), .none])
+        #expect(rows.map(\.isEnabled) == [true, false])
+        #expect(rows[1].subtitle == "repo not found: x")
+        let empty = RunFeature.menuRows([]) { _ in .none }
+        #expect(empty.count == 1 && !empty[0].isEnabled && empty[0].subtitle.contains("commands"))
+    }
+
+    @Test func buttonBadgeIsBlueThenRedThenNone() {
+        #expect(RunFeature.toolbarBadge(anyRunning: true, hasUnseenFailure: true) == .dot(.blue))
+        #expect(RunFeature.toolbarBadge(anyRunning: false, hasUnseenFailure: true) == .dot(.red))
+        #expect(RunFeature.toolbarBadge(anyRunning: false, hasUnseenFailure: false) == .none)
+    }
+
+    @Test func secondStopWithinTwoSecondsEscalatesToTerm() {
+        let now = ContinuousClock.now
+        #expect(RunFeature.stopSignal(lastStop: nil, now: now) == SIGINT)
+        #expect(RunFeature.stopSignal(lastStop: now, now: now + .seconds(1)) == SIGTERM)
+        #expect(RunFeature.stopSignal(lastStop: now, now: now + .seconds(3)) == SIGINT)
+    }
+}
