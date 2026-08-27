@@ -11,6 +11,7 @@
   "postgres": {
     "host": "localhost",
     "database": "postgres",
-    "user": "postgres"
+    "user": "postgres",
+    "password": "postgres"
   }
 }

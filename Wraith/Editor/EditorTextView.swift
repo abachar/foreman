@@ -43,21 +43,29 @@ struct EditorTextView: NSViewRepresentable {
         if document.isHighlightable, let language = tab.language {
             context.coordinator.highlighter = highlighter.attach(to: textView, language: language)
         }
-        // editor R4: cursor and scroll come back with the tab.
+        // editor R4: cursor and scroll come back with the tab. The position is captured before
+        // the observer exists: the first layout of a rebuilt view reports `y = 0`, which must
+        // not overwrite it (bug: switching tabs lost the scroll, 2026-08-27).
         textView.setSelectedRange(NSRange(location: min(tab.cursor, (document.text as NSString).length), length: 0))
+        let savedScroll = tab.scroll
         scroll.contentView.postsBoundsChangedNotifications = true
         context.coordinator.scrollObserver = NotificationCenter.default.addObserver(
             forName: NSView.boundsDidChangeNotification, object: scroll.contentView, queue: .main
-        ) { [tab, weak scroll] _ in
+        ) { [tab, weak scroll, coordinator = context.coordinator] _ in
             MainActor.assumeIsolated {
-                guard let scroll else { return }
+                guard let scroll, coordinator.isScrollRestored else { return }
                 tab.scroll = scroll.contentView.bounds.origin.y
             }
         }
         context.coordinator.reloadVersion = tab.reloadVersion
-        DispatchQueue.main.async { [weak scroll] in
-            guard let scroll else { return }
-            scroll.contentView.scroll(to: NSPoint(x: 0, y: tab.scroll))
+        DispatchQueue.main.async { [weak scroll, coordinator = context.coordinator] in
+            defer { coordinator.isScrollRestored = true }
+            guard let scroll, let textView = scroll.documentView as? NSTextView else { return }
+            // TextKit 2 lays out lazily: without this the clip view clamps the target to 0.
+            if let layoutManager = textView.textLayoutManager {
+                layoutManager.ensureLayout(for: layoutManager.documentRange)
+            }
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: savedScroll))
             scroll.reflectScrolledClipView(scroll.contentView)
         }
         return scroll
@@ -98,6 +106,8 @@ struct EditorTextView: NSViewRepresentable {
         /// Kept alive for the life of the view: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
         var scrollObserver: (any NSObjectProtocol)?
+        /// editor R4: bounds changes count only once the saved position was restored.
+        var isScrollRestored = false
         var reloadVersion = 0
         private let tab: EditorTab
 
