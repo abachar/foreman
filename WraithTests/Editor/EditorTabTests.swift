@@ -7,7 +7,8 @@ import Testing
 @MainActor
 struct EditorTabTests {
     @Test func payloadRoundtripsAndToleratesOldOnes() throws {
-        let payload = EditorTab.Payload(path: "src/a.swift", pinned: true, cursor: 12, scroll: 340.5)
+        let payload = EditorTab.Payload(
+            path: "src/a.swift", pinned: true, cursor: 12, scroll: 340.5, mode: .preview, previewBlock: 7)
         let data = try JSONEncoder().encode(payload)
         #expect(try JSONDecoder().decode(EditorTab.Payload.self, from: data) == payload)
         let old = try JSONDecoder().decode(EditorTab.Payload.self, from: Data(#"{"path":"a","pinned":false}"#.utf8))

@@ -9,9 +9,13 @@ struct MarkdownPreviewView: View {
     let root: URL
     let theme: ThemeService
     let highlighter: Highlighter
+    /// editor R4: the block at the top, owned by the tab so it survives the view's rebuild.
+    @Binding var firstBlock: Int
     let onOpenFile: (URL) -> Void
 
     @State private var blocks: [MarkdownBlock] = []
+    @State private var position = ScrollPosition(idType: Int.self)
+    @State private var isRestored = false
 
     var body: some View {
         ScrollView {
@@ -22,6 +26,12 @@ struct MarkdownPreviewView: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollPosition($position, anchor: .top)
+        .onChange(of: position.viewID(type: Int.self)) { _, id in
+            // The first layout of a rebuilt view reports block 0: ignored until restored.
+            guard isRestored, let id else { return }
+            firstBlock = id
         }
         .textSelection(.enabled)
         .environment(
@@ -38,6 +48,11 @@ struct MarkdownPreviewView: View {
         )
         .task(id: text) {
             blocks = await MarkdownBlocks.make(text, file: file, root: root)
+            guard !isRestored else { return }
+            if firstBlock > 0, firstBlock < blocks.count {
+                position.scrollTo(id: firstBlock, anchor: .top)
+            }
+            isRestored = true
         }
     }
 }

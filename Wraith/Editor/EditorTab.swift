@@ -25,13 +25,18 @@ final class EditorTab {
         var cursor = 0
         var scroll = 0.0
         var mode = Mode.source
+        /// editor R4, R14: the first visible block of the markdown preview.
+        var previewBlock = 0
 
-        init(path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0, mode: Mode = .source) {
+        init(
+            path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0, mode: Mode = .source, previewBlock: Int = 0
+        ) {
             self.path = path
             self.pinned = pinned
             self.cursor = cursor
             self.scroll = scroll
             self.mode = mode
+            self.previewBlock = previewBlock
         }
 
         init(from decoder: Decoder) throws {
@@ -41,6 +46,7 @@ final class EditorTab {
             cursor = try container.decodeIfPresent(Int.self, forKey: .cursor) ?? 0
             scroll = try container.decodeIfPresent(Double.self, forKey: .scroll) ?? 0
             mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .source
+            previewBlock = try container.decodeIfPresent(Int.self, forKey: .previewBlock) ?? 0
         }
     }
 
@@ -66,6 +72,8 @@ final class EditorTab {
     var scroll = 0.0
     /// editor R14: persisted; only meaningful for markdown.
     var mode = Mode.source
+    /// editor R4, R14: the preview's first visible block, restored with the tab.
+    var previewBlock = 0
     private(set) var diskState: DiskState = .current
     /// Bumped when the text must be replaced in the view (editor R9, silent reload).
     private(set) var reloadVersion = 0
@@ -80,7 +88,7 @@ final class EditorTab {
     }
 
     var payload: Payload {
-        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode)
+        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock)
     }
 
     var document: FileDocument? {
@@ -92,7 +100,7 @@ final class EditorTab {
 
     init(
         path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0,
-        mode: Mode = .source
+        mode: Mode = .source, previewBlock: Int = 0
     ) {
         self.path = path
         self.url = url
@@ -101,6 +109,7 @@ final class EditorTab {
         self.cursor = cursor
         self.scroll = scroll
         self.mode = language == .markdown ? mode : .source
+        self.previewBlock = previewBlock
     }
 
     /// The text as it is now: the view's when it exists, the file's otherwise.

@@ -455,7 +455,7 @@ final class EditorFeature {
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
             tab = EditorTab(
                 path: decoded.path, url: url, isPinned: decoded.pinned, cursor: decoded.cursor, scroll: decoded.scroll,
-                mode: decoded.mode)
+                mode: decoded.mode, previewBlock: decoded.previewBlock)
             tabs[id] = tab
             if !decoded.pinned {
                 // The layout inserts the tab right after this call; the italic follows.

@@ -23,7 +23,7 @@ struct EditorTabView: View {
                 if tab.mode == .preview {
                     MarkdownPreviewView(
                         text: tab.currentText, file: tab.url, root: root, theme: theme, highlighter: highlighter,
-                        onOpenFile: onOpenFile)
+                        firstBlock: Bindable(tab).previewBlock, onOpenFile: onOpenFile)
                 } else {
                     EditorTextView(tab: tab, document: document, theme: theme, highlighter: highlighter)
                 }
