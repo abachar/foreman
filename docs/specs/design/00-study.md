@@ -1,113 +1,113 @@
-# design — Étude
+# design — Study
 
-## Objectif
+## Goal
 
-Donner à Wraith une identité visuelle **choisie**, au lieu du rendu système par défaut. Le rendu 100 % natif d'aujourd'hui — matériaux translucides (`.bar`), Liquid Glass de macOS 26, chrome système — n'est pas ce que l'auteur veut voir huit heures par jour. La cible est le style **« Islands »** d'IntelliJ en thème **Dark** : un fond uni sombre, des zones (éditeur, panneaux, terminal) posées dessus comme des îlots à coins arrondis séparés par des gouttières, une barre d'outils plate et opaque, des onglets plats, des barres fines, **un seul accent**, et **aucune transparence**.
+Give Wraith a **chosen** visual identity, instead of the system default. Today's fully native rendering — translucent materials (`.bar`), macOS 26's Liquid Glass, system chrome — is not what the author wants to look at eight hours a day. The target is IntelliJ's **"Islands"** style in the **Dark** theme: a flat dark ground, zones (editor, panels, terminal) laid on it like rounded-corner islands separated by gutters, a flat opaque toolbar, flat tabs, thin bars, **a single accent**, and **no transparency at all**.
 
-Domaine **transverse** : il ne livre aucune feature. Il définit les jetons visuels (*tokens*) et dit quelle surface porte lequel. Le code vit dans `Wraith/App/` (extension de `ThemeService`) et dans les vues existantes ; il n'y a pas de dossier `Design/`, pas de second service de thème.
+A **transverse** domain: it ships no feature. It defines the visual tokens and says which surface carries which. The code lives in `Wraith/App/` (an extension of `ThemeService`) and in the existing views; there is no `Design/` folder and no second theme service.
 
 ## User stories
 
-- US1 — J'ouvre Wraith : la fenêtre est un aplat sombre, l'éditeur, l'explorer et le terminal sont des blocs arrondis distincts, et rien ne laisse transparaître le bureau ni une fenêtre du dessous.
-- US2 — Je change une couleur dans `.wraith/config.json` : elle s'applique sans redémarrer, comme le reste de la config.
-- US3 — Le terminal a exactement le même noir que l'îlot qui le contient : je ne vois pas de rectangle plus clair ou plus foncé à l'intérieur du bloc.
-- US4 — Je regarde une fenêtre avec quatre onglets et trois panneaux : je vois d'un coup d'œil quel groupe est actif, parce que c'est la seule chose colorée à l'accent.
-- US5 — Je lis du texte gris sur fond sombre pendant une heure sans forcer.
+- US1 — I open Wraith: the window is a flat dark ground, the editor, the explorer and the terminal are distinct rounded blocks, and nothing lets the desktop or a window underneath show through.
+- US2 — I change a color in `.wraith/config.json`: it applies without a restart, like the rest of the config.
+- US3 — The terminal has exactly the same black as the island containing it: I do not see a lighter or darker rectangle inside the block.
+- US4 — I look at a window with four tabs and three panels: I can tell at a glance which group is active, because it is the only thing carrying the accent.
+- US5 — I read grey text on a dark ground for an hour without straining.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Principes visuels
+### Visual principles
 
-- R1 — **Aucune transparence et aucun matériau système dans le chrome de l'app.** Ni `.bar`, ni `.regularMaterial`/`.ultraThinMaterial`, ni `NSVisualEffectView`, ni vibrancy, ni Liquid Glass. Chaque surface est un aplat opaque tiré d'un token. Une ombre est autorisée seulement pour la palette, qui flotte au-dessus de la fenêtre.
-- R2 — **Îlots.** Le fond de la fenêtre est un aplat sombre uni. Le centre (groupes d'onglets), chaque panneau visible et la palette sont des rectangles à coins arrondis posés dessus, séparés du bord de la fenêtre et les uns des autres par une **gouttière constante**. C'est le fond de fenêtre visible dans la gouttière qui sépare les zones : **aucun trait de séparation** entre deux îlots. À l'intérieur d'un îlot, un séparateur fin est autorisé (barre d'onglets ↔ contenu, en-tête de panneau ↔ liste).
-- R3 — **Un seul accent.** Une couleur d'accent, et une seule, marque ce qui a le focus ou la sélection : bordure du groupe actif (`layout` R17), ligne sélectionnée de la palette et des listes, onglet actif, contrôle focalisé. Les seules autres couleurs de l'interface sont les quatre badges d'état déjà définis (`ToolbarBadge.BadgeColor` : vert, orange, rouge, bleu) et les couleurs de highlighting (`editor` R12).
-- R4 — **Barres fines et plates.** Barre d'outils, barre d'onglets, en-têtes de panneaux et lignes d'état ont une hauteur fixe, un fond opaque uni, **pas de dégradé, pas d'ombre, pas de bordure** hors du séparateur interne autorisé par R2.
-- R5 — **Onglets plats.** Un onglet est un rectangle sans forme ni coin arrondi : actif = fond de l'îlot + un liseré d'accent de 2 pt sur un seul bord, inactif = transparent sur la barre et texte en couleur secondaire. Aucun bouton de fermeture n'apparaît sur un onglet inactif tant que la souris n'est pas dessus.
-- R6 — **Typographie.** Deux familles, pas trois : la police système pour l'interface, `ThemeService.editorFont` (la mono de `terminal` R14) pour le code, le terminal, les diffs et le SQL. Trois tailles d'interface seulement (`small`, `body`, `title`) et deux graisses (`regular`, `medium`).
-- R7 — **Contraste mesuré.** Texte principal sur son fond : ratio ≥ 4,5:1 ; texte secondaire et icônes : ≥ 3:1 ; accent sur son fond : ≥ 3:1. Le ratio est calculé, pas estimé, et la fonction qui le calcule est testée.
+- R1 — **No transparency and no system material in the app's chrome.** No `.bar`, no `.regularMaterial`/`.ultraThinMaterial`, no `NSVisualEffectView`, no vibrancy, no Liquid Glass. Every surface is an opaque fill taken from a token. A shadow is only allowed for the palette, which floats above the window.
+- R2 — **Islands.** The window's ground is a flat, uniform dark fill. The center (tab groups), each visible panel and the palette are rounded-corner rectangles laid on it, separated from the window's edge and from each other by a **constant gutter**. It is the window ground visible in the gutter that separates the zones: **no separator line** between two islands. Inside an island, a thin separator is allowed (tab bar ↔ content, panel header ↔ list).
+- R3 — **A single accent.** One accent color, and only one, marks what has the focus or the selection: the active group's border (`layout` R17), the selected row of the palette and of the lists, the active tab, the focused control. The only other colors in the interface are the four state badges already defined (`ToolbarBadge.BadgeColor`: green, orange, red, blue) and the highlighting colors (`editor` R12).
+- R4 — **Thin, flat bars.** The toolbar, the tab bar, panel headers and status lines have a fixed height, a flat opaque background, **no gradient, no shadow, no border** other than the internal separator allowed by R2.
+- R5 — **Flat tabs.** A tab is a rectangle with no shape and no rounded corner: active = the island's background + a 2 pt accent rule on a single edge, inactive = transparent over the bar with secondary-colored text. No close button appears on an inactive tab until the mouse is over it.
+- R6 — **Typography.** Two families, not three: the system font for the interface, `ThemeService.editorFont` (the monospaced font from `terminal` R14) for code, terminal, diffs and SQL. Three interface sizes only (`small`, `body`, `title`) and two weights (`regular`, `medium`).
+- R7 — **Measured contrast.** Primary text against its background: a ratio ≥ 4.5:1; secondary text and icons: ≥ 3:1; the accent against its background: ≥ 3:1. The ratio is computed, not estimated, and the function that computes it is tested.
 
 ### Tokens
 
-- R8 — **Toutes** les couleurs, tous les rayons, toutes les gouttières et toutes les hauteurs de barre du chrome viennent de tokens exposés par `ThemeService`. Aucune vue ne nomme une couleur système (`.controlBackgroundColor`, `.labelColor`, `Color.accentColor`), un matériau, ni une valeur littérale. C'est déjà la règle (`coding-rules`, UI : « couleurs, polices, métriques : via `ThemeService`, jamais en dur ») ; elle est aujourd'hui violée en treize endroits, listés dans le backlog M8.
-- R9 — Les tokens forment quatre familles, et rien d'autre :
-  | Famille | Tokens |
+- R8 — **Every** color, every radius, every gutter and every bar height in the chrome comes from a token exposed by `ThemeService`. No view names a system color (`.controlBackgroundColor`, `.labelColor`, `Color.accentColor`), a material, or a literal value. This is already the rule (`coding-rules`, UI: "colors, fonts, metrics: through `ThemeService`, never inline"); it is broken in thirteen places today, listed in the M8 backlog.
+- R9 — The tokens form four families, and nothing else:
+  | Family | Tokens |
   |---|---|
-  | Fonds | `windowBackground` (l'aplat sous les îlots), `surface` (fond d'un îlot), `surfaceRaised` (barre d'outils, barre d'onglets, en-tête de panneau), `surfaceSunken` (champ de saisie, ligne de code surlignée) |
-  | Texte et traits | `textPrimary`, `textSecondary`, `textDisabled`, `separator`, `border` |
-  | Accent et états | `accent`, `accentText` (texte posé sur l'accent), `statusGreen`, `statusOrange`, `statusRed`, `statusBlue` |
-  | Métriques | `islandRadius`, `gutter`, `barHeight`, `rowHeight`, `contentInset` |
-- R10 — Deux jeux de tokens, `dark` et `light`, de structure identique, choisis par le mode de `terminal` R14 (`light` / `dark` / `system`). **Seul `dark` est dessiné et validé en v1** ; `light` est dérivé mécaniquement et n'est pas un objectif (voir hors périmètre). La palette ANSI 16 couleurs de `terminal` R14 fait désormais partie du jeu de tokens et doit s'accorder avec lui (R13).
-- R11 — Les tokens sont surchargeables par la section `theme` de `.wraith/config.json` : `{ "theme": { "accent": "#4C8DF6", "islandRadius": 10 } }`. Clé inconnue → avertissement, ignorée ; valeur mal formée (couleur hors `#rgb`/`#rrggbb`, métrique négative ou hors bornes) → avertissement, valeur par défaut conservée ; la section entière est optionnelle (`config` R2, R5) et rechargée à chaud (`config` R6). Aucun fichier de thème séparé (voir hors périmètre).
+  | Backgrounds | `windowBackground` (the ground under the islands), `surface` (an island's background), `surfaceRaised` (toolbar, tab bar, panel header), `surfaceSunken` (an input field, a highlighted code line) |
+  | Text and rules | `textPrimary`, `textSecondary`, `textDisabled`, `separator`, `border` |
+  | Accent and states | `accent`, `accentText` (text laid on the accent), `statusGreen`, `statusOrange`, `statusRed`, `statusBlue` |
+  | Metrics | `islandRadius`, `gutter`, `barHeight`, `rowHeight`, `contentInset` |
+- R10 — Two token sets, `dark` and `light`, with an identical structure, chosen by the mode from `terminal` R14 (`light` / `dark` / `system`). **Only `dark` is designed and validated in v1**; `light` is derived mechanically and is not a goal (see out of scope). The 16-color ANSI palette from `terminal` R14 is now part of the token set and must agree with it (R13).
+- R11 — Tokens can be overridden through the `theme` section of `.wraith/config.json`: `{ "theme": { "accent": "#4C8DF6", "islandRadius": 10 } }`. Unknown key → a warning, ignored; malformed value (a color outside `#rgb`/`#rrggbb`, a negative or out-of-range metric) → a warning, the default value kept; the whole section is optional (`config` R2, R5) and hot-reloaded (`config` R6). No separate theme file (see out of scope).
 
-### Ce qui reste natif
+### What stays native
 
-- R12 — Ces composants ne sont **pas remplacés**, seulement habillés (fond, couleurs, hauteur de ligne, style de séparateur) : `NSSplitViewController` / `NSSplitView` (les zones, `layout`), `NSOutlineView` (l'explorer), `NSTextView` sur TextKit 2 (éditeur, diff, éditeur SQL), la surface SwiftTerm, `NSAlert`, `NSMenu`, `NSSavePanel`, `NSTextFinder`, la barre de recherche native. `architecture.md` P3 tient : on n'en réimplémente aucun pour une question d'apparence.
-- R13 — La surface SwiftTerm reçoit `nativeBackgroundColor` = le token `surface` de l'îlot qui la contient, pour qu'il n'y ait aucune démarcation à l'intérieur du bloc (US3) ; sa palette ANSI et son `caretColor`/`selectedTextBackgroundColor` viennent des mêmes tokens (`installColors`, `terminal` R14).
+- R12 — These components are **not replaced**, only dressed (background, colors, row height, separator style): `NSSplitViewController` / `NSSplitView` (the zones, `layout`), `NSOutlineView` (the explorer), `NSTextView` on TextKit 2 (editor, diff, SQL editor), the SwiftTerm surface, `NSAlert`, `NSMenu`, `NSSavePanel`, `NSTextFinder`, the native find bar. `architecture.md` P3 holds: we reimplement none of them for a question of appearance.
+- R13 — The SwiftTerm surface gets `nativeBackgroundColor` = the `surface` token of the island containing it, so that there is no boundary inside the block (US3); its ANSI palette and its `caretColor`/`selectedTextBackgroundColor` come from the same tokens (`installColors`, `terminal` R14).
 
-### Ce qui change
+### What changes
 
-- R14 — **Fenêtre** : fond opaque au token `windowBackground` ; la barre de titre ne se distingue pas du reste (`titlebarAppearsTransparent`), les feux tricolores restent ceux du système et à leur place. Le titre textuel de la fenêtre est masqué : le nom du dossier est déjà dans l'interface.
-- R15 — **Barre d'outils** : fond `surfaceRaised` opaque, hauteur fixe (R4), boutons plats sans bordure ni fond au repos, fond `surfaceSunken` au survol et à l'appui, badges (`layout` R31) rendus avec les tokens d'état. Deux voies techniques (options ci-dessous), tranchées dans le backlog M8.
-- R16 — **Barre d'onglets** (`layout` R16) : `surfaceRaised`, onglets selon R5, marqueur `isDirty` et badge de point conservés, séparateur fin sous la barre uniquement.
-- R17 — **Panneaux** : chaque panneau visible est un îlot (R2) avec un en-tête `surfaceRaised` portant son titre et son menu ; les bannières d'erreur existantes (explorer R19, config R7, `git`, `postgres`) prennent le token d'état correspondant au lieu de `.background(.bar)` et de `.red`.
-- R18 — **Palette** (`Palette/`) : îlot flottant, `surface`, `islandRadius`, ombre portée (seule exception à R1), champ de saisie `surfaceSunken`, ligne sélectionnée à l'accent, sous-titres en `textSecondary`. Pas de barre de titre, pas de matériau.
-- R19 — **Écran d'accueil** (`layout` R33) : mêmes tokens, raccourcis affichés en `textSecondary`, aucune illustration ni dégradé.
-- R20 — **Séparateurs de zones** : les diviseurs de `NSSplitView` sont peints à la couleur `windowBackground` et à l'épaisseur `gutter`, ce qui produit la gouttière de R2 sans dessiner de trait.
+- R14 — **Window**: an opaque background at the `windowBackground` token; the title bar is indistinguishable from the rest (`titlebarAppearsTransparent`), the traffic lights stay the system's and in their place. The window's text title is hidden: the folder name is already in the interface.
+- R15 — **Toolbar**: an opaque `surfaceRaised` background, a fixed height (R4), flat buttons with no border and no fill at rest, a `surfaceSunken` fill on hover and press, badges (`layout` R31) rendered with the state tokens. Two technical routes (the options below), settled in the M8 backlog.
+- R16 — **Tab bar** (`layout` R16): `surfaceRaised`, tabs following R5, the `isDirty` marker and the dot badge kept, a thin separator under the bar only.
+- R17 — **Panels**: each visible panel is an island (R2) with a `surfaceRaised` header carrying its title and its menu; the existing error banners (explorer R19, config R7, `git`, `postgres`) take the matching state token instead of `.background(.bar)` and `.red`.
+- R18 — **Palette** (`Palette/`): a floating island, `surface`, `islandRadius`, a drop shadow (the only exception to R1), an input field on `surfaceSunken`, the selected row on the accent, subtitles in `textSecondary`. No title bar, no material.
+- R19 — **Home screen** (`layout` R33): the same tokens, shortcuts shown in `textSecondary`, no illustration and no gradient.
+- R20 — **Zone separators**: `NSSplitView`'s dividers are painted with the `windowBackground` color at the `gutter` thickness, which produces R2's gutter without drawing a line.
 
-## Cas limites
+## Edge cases
 
-- Changement d'apparence macOS en cours de session : `ThemeService` l'observe déjà (`terminal` R14) ; le jeu de tokens bascule et toutes les surfaces se repeignent, y compris les surfaces SwiftTerm ouvertes.
-- Fenêtre très petite : la gouttière et le rayon restent constants ; ce sont les îlots qui rétrécissent, jusqu'aux minimums de `layout` R19.
-- Plein écran : la gouttière subsiste sur les quatre bords ; c'est voulu, c'est ce qui fait l'îlot.
-- Panneau masqué : sa gouttière disparaît avec lui, l'îlot voisin s'étend ; aucune bande vide.
-- « Réduire la transparence » et « Augmenter le contraste » (Accessibilité) : il n'y a rien de translucide à réduire (R1) ; l'augmentation du contraste n'est pas gérée en v1 (hors périmètre).
-- Un token surchargé qui casse le contraste de R7 : l'avertissement est affiché une fois, la valeur de l'utilisateur est **quand même appliquée** — c'est sa fenêtre.
-- Impression, capture d'écran, mode « inverser les couleurs » : rien de particulier, tout est opaque.
+- macOS appearance changed during a session: `ThemeService` already observes it (`terminal` R14); the token set switches and every surface repaints, including the open SwiftTerm surfaces.
+- Very small window: the gutter and the radius stay constant; it is the islands that shrink, down to the minimums in `layout` R19.
+- Full screen: the gutter remains on all four edges; that is intended, it is what makes the island.
+- Hidden panel: its gutter disappears with it, and the neighbouring island expands; no empty band.
+- "Reduce transparency" and "Increase contrast" (Accessibility): there is nothing translucent to reduce (R1); increasing contrast is not handled in v1 (out of scope).
+- An overridden token that breaks R7's contrast: the warning is shown once, and the user's value is **still applied** — it is their window.
+- Printing, screenshots, "invert colors" mode: nothing special, everything is opaque.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- **Thème clair dessiné** : `light` existe mécaniquement (R10), il n'est ni travaillé ni validé.
-- Fichiers de thème utilisateur, thèmes partagés, sélecteur de thème dans l'interface : la section `theme` de la config suffit (même politique que le reste, `config`, hors périmètre : pas d'éditeur de préférences graphique).
-- Jeu d'icônes propre : SF Symbols et les SVG déjà présents restent (`IconImage`).
-- Animations, transitions, effets au survol autres qu'un changement de fond.
-- Remplacement des feux tricolores ou de la barre de titre par des contrôles maison.
-- Accent par panneau, couleur par repo, coloration des onglets par type.
-- Support d'« Augmenter le contraste » et des réglages d'accessibilité de couleur.
-- Redessin des composants natifs de R12.
+- **A designed light theme**: `light` exists mechanically (R10), but it is neither worked on nor validated.
+- User theme files, shared themes, a theme picker in the interface: the config's `theme` section is enough (the same policy as everything else, `config`, out of scope: no graphical preferences editor).
+- A custom icon set: SF Symbols and the SVGs already present stay (`IconImage`).
+- Animations, transitions, hover effects other than a background change.
+- Replacing the traffic lights or the title bar with home-made controls.
+- An accent per panel, a color per repo, coloring tabs by kind.
+- Supporting "Increase contrast" and the accessibility color settings.
+- Redrawing the native components of R12.
 
-## Options techniques
+## Technical options
 
-### `ThemeService` étendu, pas un second service
+### `ThemeService` extended, not a second service
 
-`ThemeService` (`Wraith/App/ThemeService.swift`) porte déjà : la section `terminal` décodée (`Settings`), la police (`editorFont`), le mode (`isDark(systemIsDark:)`), les deux palettes ANSI (`TerminalPalette`) et les couleurs de rôle du highlighting (`color(for: HighlightRole)`). Les tokens de R9 s'ajoutent au même type : une `struct Tokens` par jeu, deux constantes statiques, un décodage de la section `theme` calqué sur `Settings.decode(from:)`. Un `DesignSystem` séparé serait un second propriétaire des mêmes informations, ce que `architecture.md` interdit (services partagés, créés une fois dans `App`).
+`ThemeService` (`Wraith/App/ThemeService.swift`) already carries: the decoded `terminal` section (`Settings`), the font (`editorFont`), the mode (`isDark(systemIsDark:)`), the two ANSI palettes (`TerminalPalette`) and the highlighting role colors (`color(for: HighlightRole)`). R9's tokens are added to the same type: one `struct Tokens` per set, two static constants, and a decoding of the `theme` section modelled on `Settings.decode(from:)`. A separate `DesignSystem` would be a second owner of the same information, which `architecture.md` forbids (shared services, created once in `App`).
 
-### La barre d'outils : deux voies
+### The toolbar: two routes
 
-C'est le seul vrai choix technique, parce que `NSToolbar` ne rend pas la main sur son fond.
+This is the only real technical choice, because `NSToolbar` gives no control over its background.
 
-**Option A — garder `NSToolbar` et l'habiller.** Ce qu'AppKit permet réellement, avec des API de longue date :
+**Option A — keep `NSToolbar` and dress it.** What AppKit really allows, with long-standing APIs:
 
-- `NSWindow.titlebarAppearsTransparent = true` : la zone de titre ne peint plus son propre fond, c'est le fond de la fenêtre qui apparaît dessous.
-- `NSWindow.backgroundColor` : l'aplat opaque, donc le token `windowBackground` ou `surfaceRaised` selon le rendu voulu.
-- `NSWindow.titleVisibility = .hidden` : plus de titre textuel (R14).
-- `NSWindow.styleMask` avec `.fullSizeContentView` : le contenu passe sous la zone de titre, ce qui permet de contrôler l'espace au-dessus des îlots.
-- `NSWindow.toolbarStyle` : `.unified` (l'actuel), `.unifiedCompact` (barre plus fine, ce que veut R4), `.expanded`, `.preference`, `.automatic`.
-- `NSToolbarItem.isBordered = false` et un `view` custom par élément : boutons plats dessinés par nous.
+- `NSWindow.titlebarAppearsTransparent = true`: the title area no longer paints its own background, so the window's background shows through.
+- `NSWindow.backgroundColor`: the opaque fill, so the `windowBackground` or `surfaceRaised` token depending on the look we want.
+- `NSWindow.titleVisibility = .hidden`: no more text title (R14).
+- `NSWindow.styleMask` with `.fullSizeContentView`: the content goes under the title area, which lets us control the space above the islands.
+- `NSWindow.toolbarStyle`: `.unified` (the current one), `.unifiedCompact` (a thinner bar, which is what R4 wants), `.expanded`, `.preference`, `.automatic`.
+- `NSToolbarItem.isBordered = false` and a custom `view` per item: flat buttons drawn by us.
 
-Ce que l'option A ne donne pas : `NSToolbar` n'expose aucune propriété de couleur de fond, et la façon dont macOS 26 peint sa zone (matériau, séparateur sous la barre au défilement) n'est pas contractuelle. Le résultat est donc « très proche » et **à vérifier sur la machine** ; il peut changer à une mise à jour de macOS. Coût : faible, quelques lignes dans `WorkspaceToolbar.attach(to:)` et un `view` par élément.
+What option A does not give: `NSToolbar` exposes no background-color property, and the way macOS 26 paints its area (material, a separator under the bar when scrolling) is not contractual. The result is therefore "very close" and **must be checked on the machine**; it may change with a macOS update. Cost: low, a few lines in `WorkspaceToolbar.attach(to:)` and one `view` per item.
 
-**Option B — retirer `NSToolbar` et dessiner la barre.** `window.toolbar = nil`, `styleMask.insert(.fullSizeContentView)`, `titlebarAppearsTransparent = true`, `titleVisibility = .hidden`, et une vue SwiftUI en haut du contenu qui rend les `ToolbarItemDescriptor` déjà déclarés par les features (`layout` R30). Contrôle total du fond, de la hauteur, des états de survol.
+**Option B — remove `NSToolbar` and draw the bar.** `window.toolbar = nil`, `styleMask.insert(.fullSizeContentView)`, `titlebarAppearsTransparent = true`, `titleVisibility = .hidden`, and a SwiftUI view at the top of the content rendering the `ToolbarItemDescriptor`s the features already declare (`layout` R30). Full control over the background, the height and the hover states.
 
-Ce que l'option B coûte : la zone des feux tricolores reste en haut à gauche, donc la barre doit réserver un retrait à gauche (~78 pt, à mesurer, et il change en plein écran) ; le déplacement de la fenêtre par la barre est à rétablir (`NSWindow.isMovableByWindowBackground`, ou une vue qui appelle `performDrag(with:)`) ; le débordement d'éléments, les info-bulles standard et la personnalisation de `NSToolbar` disparaissent — sans conséquence ici, `layout` R30 les interdit déjà. `layout` R30 et `architecture.md` (qui disent « barre d'outils native `NSToolbar` ») devraient être amendés et datés. Coût : moyen, ~150 lignes plus les cas du plein écran.
+What option B costs: the traffic-light area stays at the top left, so the bar has to reserve a left inset (~78 pt, to be measured, and it changes in full screen); dragging the window by the bar has to be restored (`NSWindow.isMovableByWindowBackground`, or a view calling `performDrag(with:)`); item overflow, standard tooltips and `NSToolbar` customisation disappear — with no consequence here, `layout` R30 already forbids them. `layout` R30 and `architecture.md` (which both say "a native `NSToolbar` toolbar") would have to be amended and dated. Cost: medium, ~150 lines plus the full-screen cases.
 
-Les deux options sont mises côte à côte, avec leur coût, dans la section « À trancher » du backlog M8. **Aucune n'est tranchée ici** : le choix se fait après la maquette.
+Both options are put side by side, with their cost, in the M8 backlog's "To decide" section. **Neither is settled here**: the choice is made after the mockup.
 
-### Le reste
+### The rest
 
-- **Fonds d'îlots** : les vues de contenu prennent leur `surface` et un `clipShape(RoundedRectangle(cornerRadius: islandRadius))` ; c'est le conteneur de zone (`ZonesViewController`) qui pose la gouttière via l'épaisseur et la couleur des diviseurs de `NSSplitView` (`dividerStyle`, `NSSplitView.drawDivider(in:)` dans une sous-classe si la couleur ne suffit pas).
-- **Contraste** : le calcul WCAG (luminance relative, ratio) est une fonction pure d'une quinzaine de lignes, testée sur les paires connues ; aucune librairie.
-- **Tests** : décodage de la section `theme` (absente, partielle, clé inconnue, couleur mal formée, métrique hors bornes), parsing `#rgb`/`#rrggbb`, ratio de contraste de chaque paire imposée par R7 sur le jeu `dark`, cohérence du jeu de tokens (chaque token défini dans les deux jeux). Le rendu, lui, **se valide à l'œil** : chaque tâche du backlog dit quoi regarder.
+- **Island backgrounds**: the content views take their `surface` and a `clipShape(RoundedRectangle(cornerRadius: islandRadius))`; it is the zone container (`ZonesViewController`) that lays out the gutter, through the thickness and the color of `NSSplitView`'s dividers (`dividerStyle`, `NSSplitView.drawDivider(in:)` in a subclass if the color alone is not enough).
+- **Contrast**: the WCAG computation (relative luminance, ratio) is a pure function of about fifteen lines, tested over known pairs; no library.
+- **Tests**: decoding the `theme` section (absent, partial, unknown key, malformed color, out-of-range metric), parsing `#rgb`/`#rrggbb`, the contrast ratio of each pair required by R7 over the `dark` set, the coherence of the token set (every token defined in both sets). The rendering itself **is validated by eye**: each task in the backlog says what to look at.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).
