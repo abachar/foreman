@@ -1,103 +1,103 @@
 # Architecture
 
-> Comment Wraith est assemblé : principes, structure, dépendances retenues, règles d'architecture. Le *quoi* est dans [`specs/`](specs/), le style de code dans [`coding-rules.md`](coding-rules.md). Ce fichier change quand une décision d'architecture change ; chaque changement est daté dans le `decisions.md` du domaine concerné.
+> How Wraith is put together: principles, structure, retained dependencies, architecture rules. The *what* is in [`specs/`](specs/), the code style in [`coding-rules.md`](coding-rules.md). This file changes when an architecture decision changes; every change is dated in the `decisions.md` of the domain concerned.
 
-## Principes
+## Principles
 
-- **P1 — Le plus simple qui marche.** Un utilisateur, pas de compatibilité ascendante, pas de plugins tiers. On écrit le code du besoin d'aujourd'hui ; on abstrait quand il y a **deux** implémentations réelles, pas avant. Pas de protocole, d'adaptateur ni de double « au cas où ».
-- **P2 — Utiliser les librairies.** Si une librairie maintenue fait le travail, on l'utilise directement, telle qu'elle est conçue pour l'être. Réécrire ce qu'une lib fait est une faute, pas une prudence.
-- **P3 — Utiliser la plateforme.** AppKit/SwiftUI/Foundation d'abord (`NSToolbar`, `NSSplitView`, `NSOutlineView`, `NSTextView`, `FileManager`, `Process`). On n'en réimplémente pas un parce qu'il ne fait pas *exactement* ce qu'on imagine ; on adapte le besoin.
-- **P4 — Paresse par défaut.** Aucun travail (connexion, scan, lecture d'arbre) avant la première utilisation effective d'un panneau ou d'un onglet ; un panneau masqué ne consomme rien.
-- **P5 — Rien ne casse l'ouverture d'un workspace.** Config invalide, repo manquant, état illisible : dégradation annoncée dans l'UI, jamais de crash ni d'écran vide.
+- **P1 — The simplest thing that works.** One user, no backward compatibility, no third-party plugins. We write the code for today's need; we abstract when there are **two** real implementations, not before. No protocol, adapter or double "just in case".
+- **P2 — Use the libraries.** If a maintained library does the job, we use it directly, the way it is meant to be used. Rewriting what a library does is a mistake, not caution.
+- **P3 — Use the platform.** AppKit/SwiftUI/Foundation first (`NSToolbar`, `NSSplitView`, `NSOutlineView`, `NSTextView`, `FileManager`, `Process`). We do not reimplement one because it does not do *exactly* what we imagine; we adapt the need.
+- **P4 — Lazy by default.** No work (connection, scan, tree read) before a panel or a tab is actually used; a hidden panel costs nothing.
+- **P5 — Nothing breaks opening a workspace.** Invalid config, missing repo, unreadable state: degradation announced in the UI, never a crash or a blank screen.
 
-## Vue d'ensemble
+## Overview
 
-Une fenêtre = un dossier = un workspace. Au centre, des groupes d'onglets dans un arbre de splits ; autour, trois slots de panneaux (gauche, droite, bas), un panneau visible par slot ; au-dessus, une barre d'outils native. Il n'y a pas de shell libre : une surface terminal n'existe que pour héberger un agent ou une commande `run`.
+One window = one folder = one workspace. In the center, tab groups in a split tree; around it, three panel slots (left, right, bottom), one visible panel per slot; above, a native toolbar. There is no free-form shell: a terminal surface only exists to host an agent or a `run` command.
 
 ```
 │ [Claude] [OpenCode]      TOOLBAR              [▶ Run] │
 ┌──────────┬──────────────────────────────────┬──────────┐
 │  LEFT    │        CENTER (splits →          │  RIGHT   │
-│  panel   │        groupes d'onglets)        │  panel   │
+│  panel   │        tab groups)               │  panel   │
 │          ├──────────────────────────────────┤          │
 │          │           BOTTOM panel           │          │
 └──────────┴──────────────────────────────────┴──────────┘
 ```
 
-| Feature | Surfaces | Raccourci par défaut |
+| Feature | Surfaces | Default shortcut |
 |---|---|---|
-| Explorer | panneau gauche : arbre de fichiers | `cmd+shift+e` |
-| Editor | onglets centraux : fichier / markdown ; panneau bas : recherche contenu | `cmd+p` quick open, `cmd+shift+f` |
-| Agents | boutons de toolbar ; un onglet terminal par agent | `config.shortcuts["agents.<id>"]` |
-| Run | bouton ▶ Run + palette ; un onglet terminal par commande | `cmd+r` |
-| Git | panneau gauche : changes ; panneau bas : historique ; onglet central : diff | `cmd+shift+g` / `cmd+shift+h` |
-| Postgres | panneau droit : schéma ; panneau bas : requête + résultats | `cmd+shift+b` / `cmd+shift+q` |
+| Explorer | left panel: file tree | `cmd+shift+e` |
+| Editor | center tabs: file / markdown; bottom panel: content search | `cmd+p` quick open, `cmd+shift+f` |
+| Agents | toolbar buttons; one terminal tab per agent | `config.shortcuts["agents.<id>"]` |
+| Run | ▶ Run button + palette; one terminal tab per command | `cmd+r` |
+| Git | left panel: changes; bottom panel: history; center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
+| Postgres | right panel: schema; bottom panel: query + results | `cmd+shift+b` / `cmd+shift+q` |
 
-Table complète des raccourcis et leur état : [`shortcuts.md`](shortcuts.md).
+Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
 
 ## Structure
 
-Un projet Xcode (app macOS SwiftUI, sans App Sandbox : on lit tout le disque et on lance des process), une target app, une target de tests, un dossier par feature. Pas de framework interne, pas de targets « plugin », pas de chargement dynamique.
+One Xcode project (SwiftUI macOS app, without App Sandbox: we read the whole disk and launch processes), one app target, one test target, one folder per feature. No internal framework, no "plugin" targets, no dynamic loading.
 
 ```
 Wraith.xcodeproj
 Wraith/
-├── App/          # entrée, fenêtres, menus, ThemeService
+├── App/          # entry point, windows, menus, ThemeService
 ├── Workspace/    # config.json, state.json, FSWatch, Keychain
-├── Layout/       # splits, groupes d'onglets, PanelManager, ShortcutRegistry, toolbar, écran d'accueil
-├── Palette/      # palette fuzzy partagée (quick open, run)
-├── Highlight/    # tree-sitter → attributs, partagé (editor, diff, sql)
-├── Terminal/     # surface SwiftTerm + process, TerminalService
+├── Layout/       # splits, tab groups, PanelManager, ShortcutRegistry, toolbar, home screen
+├── Palette/      # shared fuzzy palette (quick open, run)
+├── Highlight/    # tree-sitter → attributes, shared (editor, diff, sql)
+├── Terminal/     # SwiftTerm surface + process, TerminalService
 ├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/
-WraithTests/         # même découpage
-cli/wraith           # script shell : `open -a Wraith "$(pwd)"`
+WraithTests/         # same split
+cli/wraith           # shell script: `open -a Wraith "$(pwd)"`
 ```
 
-- Sens des dépendances, par convention : `App` → features → dossiers partagés (`Layout`, `Palette`, `Highlight`, `Terminal`, `Workspace`). Une feature peut appeler une autre feature directement (`Git` appelle `Editor.open(path)`) ; on évite les cycles, c'est tout.
-- Une feature = un dossier avec un point d'entrée (`GitFeature.swift`) qui enregistre ses panneaux, onglets, éléments de toolbar et raccourcis auprès de `Layout` au démarrage.
-- Ajouter une feature : un dossier ici, une ligne dans [`specs/README.md`](specs/README.md).
+- Direction of dependencies, by convention: `App` → features → shared folders (`Layout`, `Palette`, `Highlight`, `Terminal`, `Workspace`). A feature may call another feature directly (`Git` calls `Editor.open(path)`); we avoid cycles, that's all.
+- A feature = one folder with an entry point (`GitFeature.swift`) that registers its panels, tabs, toolbar items and shortcuts with `Layout` at startup.
+- Adding a feature: one folder here, one line in [`specs/README.md`](specs/README.md).
 
-## Règles d'architecture
+## Architecture rules
 
-- **Les features ne pilotent pas le layout.** Une feature *déclare* (panneau, slot, raccourci, `makeView`) ; `PanelManager` décide de ce qui est visible.
-- **`makeView` est paresseux** et sans effet de bord ; le travail démarre à l'activation du panneau et s'arrête à sa désactivation (P4). Ce qu'`activate()` démarre, `deactivate()` l'arrête.
-- **Services partagés, créés une fois dans `App` et injectés** : `FSWatchService` (un flux FSEvents, multiplexé, debounce ~300 ms), `ThemeService`, `SecretStore`, `TerminalService`, `Palette`, `Highlight`. Pas de `static let shared`. Pas de polling disque.
-- **Pas d'`EventBus`.** Une notification entre features est une closure ou un `AsyncStream` exposé par le propriétaire de l'information (`Git` expose `statusChanges`, `Explorer` s'y abonne).
-- **Config par section** : chaque feature décode sa propre section de `.wraith/config.json` ; `Workspace` ne connaît pas les schémas.
-- **Identifiants namespacés et stables** (`git.status`, `agent.claude`) : ils apparaissent dans `state.json` et les raccourcis ; les changer est une migration.
-- **Types tiers près de leur usage.** Une vue ou un modèle persisté ne manipule pas un `PostgresRow` ou un `Node` tree-sitter ; la feature convertit en son propre type là où l'UI ou la persistance en a besoin — et seulement là.
-- **Formats persistés versionnés** ; version inconnue → ignoré + `.bak`. Liste d'exclusion disque unique (`.git/objects`, `node_modules`, `target`, `.build`, `.wraith/state.json`).
+- **Features do not drive the layout.** A feature *declares* (panel, slot, shortcut, `makeView`); `PanelManager` decides what is visible.
+- **`makeView` is lazy** and side-effect free; work starts when the panel is activated and stops when it is deactivated (P4). What `activate()` starts, `deactivate()` stops.
+- **Shared services, created once in `App` and injected**: `FSWatchService` (one FSEvents stream, multiplexed, ~300 ms debounce), `ThemeService`, `SecretStore`, `TerminalService`, `Palette`, `Highlight`. No `static let shared`. No disk polling.
+- **No `EventBus`.** A notification between features is a closure or an `AsyncStream` exposed by the owner of the information (`Git` exposes `statusChanges`, `Explorer` subscribes to it).
+- **Config by section**: each feature decodes its own section of `.wraith/config.json`; `Workspace` does not know the schemas.
+- **Namespaced, stable identifiers** (`git.status`, `agent.claude`): they appear in `state.json` and in shortcuts; changing one is a migration.
+- **Third-party types stay near their use.** A view or a persisted model never handles a `PostgresRow` or a tree-sitter `Node`; the feature converts to its own type where the UI or persistence needs it — and only there.
+- **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `.wraith/state.json`).
 
-## Dépendances retenues
+## Retained dependencies
 
-On importe là où on utilise. Versions `.upToNextMinor`, `Package.resolved` commité, mise à jour = commit dédié.
+We import where we use. Versions `.upToNextMinor`, `Package.resolved` committed, updating = a dedicated commit.
 
-| Besoin | Librairie | Note |
+| Need | Library | Note |
 |---|---|---|
-| Surface terminal + process | **SwiftTerm** | `LocalProcessTerminalView` : PTY, process, vue, exit code via `processTerminated` |
-| Git | binaire `git` via `Process` | formats machine (`--porcelain=v2 -z`, `--format`) ; honore hooks, signing, helpers |
-| Postgres | **PostgresNIO** | schéma via `pg_catalog` |
-| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, branche `main`, décision editor 2026-08-26), 14 grammaires SPM (`tree-sitter-*`) | editor, diff git ; sql en M5 |
+| Terminal surface + process | **SwiftTerm** | `LocalProcessTerminalView`: PTY, process, view, exit code through `processTerminated` |
+| Git | `git` binary through `Process` | machine formats (`--porcelain=v2 -z`, `--format`); honours hooks, signing, helpers |
+| Postgres | **PostgresNIO** | schema through `pg_catalog` |
+| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, `main` branch, editor decision 2026-08-26), 14 SPM grammars (`tree-sitter-*`) | editor, git diff; sql in M5 |
 | Markdown | **swift-markdown** | preview |
-| Fuzzy | **FuzzyMatch** (ordo-one) | Smith-Waterman façon fzf : bonus de frontières, ranges pour le surlignage (décision editor 2026-08-26) |
-| Recherche contenu | binaire `rg` (repli `grep`) | `cmd+shift+f` |
-| Secrets | Security.framework (Keychain) | mot de passe PG |
-| Surveillance disque | **AsyncFileMonitor** (CleanCocoa) sur FSEvents | un `FolderContentMonitor` par workspace, multicast ; `FSWatchService` n'ajoute que le filtrage par chemin et les lots débouncés |
+| Fuzzy | **FuzzyMatch** (ordo-one) | fzf-style Smith-Waterman: boundary bonuses, ranges for highlighting (editor decision 2026-08-26) |
+| Content search | `rg` binary (`grep` fallback) | `cmd+shift+f` |
+| Secrets | Security.framework (Keychain) | PG password |
+| Disk watching | **AsyncFileMonitor** (CleanCocoa) on FSEvents | one `FolderContentMonitor` per workspace, multicast; `FSWatchService` only adds path filtering and debounced batches |
 
-Critère d'ajout : la lib fait le travail, est maintenue, compatible Swift 6 → on l'utilise. « Je peux l'écrire moi-même » n'est un argument que sous 50 lignes triviales.
+Criterion for adding one: the library does the job, is maintained, is Swift 6 compatible → we use it. "I could write it myself" is only an argument under 50 trivial lines.
 
-Écartées : libghostty (build zig, API instable, rien de nécessaire au produit), libgit2/SwiftGit2 (contourne la config git de l'utilisateur).
+Rejected: libghostty (zig build, unstable API, nothing the product needs), libgit2/SwiftGit2 (bypasses the user's git config).
 
-## Sécurité
+## Security
 
-- Aucun secret dans le dépôt, `.wraith/`, logs ou erreurs. Keychain uniquement ; une clé `password` dans `config.json` est ignorée avec avertissement.
-- Pas de commande construite par interpolation avec des valeurs venant d'un autre fichier ou d'une sortie de programme. `Process` avec `arguments: [String]`. Les commandes `run`/`agents` sont le texte de l'utilisateur, passées telles quelles à `$SHELL -l -c`.
-- Tout chemin venant de la config, de l'état ou d'un événement est vérifié sous la racine du workspace avant écriture.
-- Aucun accès réseau non demandé : pas de télémétrie, pas de mise à jour, pas de ressource distante dans la preview markdown.
-- Le contenu affiché (fichiers, markdown, SQL, sortie terminal) est non fiable : aucune séquence n'y déclenche une action de l'app.
+- No secret in the repository, `.wraith/`, logs or errors. Keychain only; a `password` key in `config.json` is ignored with a warning.
+- No command built by interpolating values coming from another file or from a program's output. `Process` with `arguments: [String]`. `run`/`agents` commands are the user's text, passed as is to `$SHELL -l -c`.
+- Every path coming from the config, the state or an event is checked to be under the workspace root before writing.
+- No unrequested network access: no telemetry, no updates, no remote resource in the markdown preview.
+- Displayed content (files, markdown, SQL, terminal output) is untrusted: no sequence in it ever triggers an action in the app.
 
 ## Performance
 
-- Workspace ouvert < 500 ms jusqu'à la première frame ; panneau < 100 ms ; saisie sans travail synchrone.
-- Rien au démarrage qui puisse attendre ; disque lu par niveau ; rafales amorties chez le producteur (FSEvents, `state.json`, sortie process).
-- Mesurer avant d'optimiser : une optimisation non triviale cite un chiffre.
+- Workspace opened < 500 ms to the first frame; panel < 100 ms; typing with no synchronous work.
+- Nothing at startup that could wait; disk read level by level; bursts smoothed at the producer (FSEvents, `state.json`, process output).
+- Measure before optimising: a non-trivial optimisation quotes a number.
