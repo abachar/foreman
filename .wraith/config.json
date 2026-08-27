@@ -1,8 +1,9 @@
 {
     "commands": { 
         "root": { 
-            "echo": "echo hello && sleep 5", 
-            "echox2": "echo hello && sleep 10", 
+            "echo5": "echo hello && sleep 5", 
+            "echo7": "echo hello && sleep 7", 
+            "echo8": "echo hello && sleep 8", 
             "fail": "exit 2" 
         }
     }

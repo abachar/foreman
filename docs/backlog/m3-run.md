@@ -46,6 +46,8 @@ Taille : S < ½ jour d'agent, M ≈ 1 jour, L ≈ 2 jours. Statut : ⚪ à faire
 
 ## Définition de fini (M3)
 
+**Fait (2026-08-27)**, validé à l'usage par l'auteur. Corrections hors DoD découvertes en validation : focus du champ de la palette (`cmd+p` aussi), `"root"` accepté comme alias de `"."`, item de tête caché de `NSMenuToolbarItem`, `Workspace.configChanges()` par consommateur (un seul flux pour quatre abonnés : un rechargement n'atteignait qu'une feature).
+
 - `.wraith/config.json` avec `"commands": { "backend": { "test": "mvn test" }, ".": { "$env": { "FOO": "1" }, "echo": { "run": "echo $FOO && sleep 3", "cwd": "docs" } } }` : `cmd+r`, `bt`, `enter` → onglet `backend:test` dans `backend/`, process lancé immédiatement, point bleu ; fin → point vert (code 0) ou rouge (≠ 0), effacé en activant l'onglet ; `root:echo` tourne dans `docs/` avec `FOO=1`.
 - Relancer depuis la palette ou ▶ Run : même onglet, process en cours arrêté (`SIGINT`) puis relancé ; `cmd+enter` → second onglet indépendant ; `opt+enter` → commande dans le presse-papiers.
 - ▶ Run : menu par repo avec commandes, sous-titres et points d'état ; badge bouton bleu pendant un run, rouge après un échec ; sans `commands`, le menu montre l'exemple.
