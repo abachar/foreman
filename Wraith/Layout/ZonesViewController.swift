@@ -273,11 +273,21 @@ private final class SlotViewController: NSViewController {
 private final class ResizeReportingView: NSView {
     var onResized: ((CGFloat) -> Void)?
 
+    private var enclosingSplitView: NSSplitView? {
+        var view = superview
+        while let current = view, !(current is NSSplitView) {
+            view = current.superview
+        }
+        return view as? NSSplitView
+    }
+
     override func setFrameSize(_ newSize: NSSize) {
         let previous = frame.size
         super.setFrameSize(newSize)
-        guard previous != newSize, let superview = superview as? NSSplitView else { return }
-        onResized?(superview.isVertical ? newSize.width : newSize.height)
+        // AppKit wraps each item's view: the split view is an ancestor, not the direct superview
+        // (bug: no resize ever reached the manager, 2026-08-28).
+        guard previous != newSize, let splitView = enclosingSplitView else { return }
+        onResized?(splitView.isVertical ? newSize.width : newSize.height)
     }
 }
 
