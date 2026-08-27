@@ -87,6 +87,8 @@ struct LayoutStateTests {
         #expect(layout.requestedSizes[.left] == 300)
 
         let data = try JSONEncoder().encode(layout.snapshot())
+        // layout R18: an object keyed by panel id, readable by hand in state.json.
+        #expect(String(decoding: data, as: UTF8.self).contains(#""git.status":300"#))
         let restored = manager(kinds: [])
         restored.restore(try JSONDecoder().decode(LayoutState.self, from: data))
         // The schema panel is unknown to this window: its size is dropped, git's stays.

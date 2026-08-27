@@ -11,14 +11,16 @@ nonisolated enum PanelSide: String, Codable, Sendable, CaseIterable, CodingKeyRe
 }
 
 /// Namespaced, stable id of a panel (`git.status`, `explorer.tree`), used in shortcuts and state.
-nonisolated struct PanelID: Hashable, Codable, Sendable, ExpressibleByStringLiteral, RawRepresentable {
+nonisolated struct PanelID: Hashable, Codable, Sendable, ExpressibleByStringLiteral, RawRepresentable,
+    CodingKeyRepresentable
+{
     let rawValue: String
 
     init(_ rawValue: String) {
         self.rawValue = rawValue
     }
 
-    /// `RawRepresentable` so a `[PanelID: …]` encodes as a JSON object (layout R18).
+    /// `CodingKeyRepresentable` so a `[PanelID: …]` encodes as a JSON object, not a flat array (layout R18).
     init?(rawValue: String) {
         self.rawValue = rawValue
     }
