@@ -2,6 +2,7 @@
 
 | Date | Décision | Alternatives rejetées | Raison |
 |---|---|---|---|
+| 2026-08-27 | `"root"` accepté comme alias de `"."` dans `commands` | `.` seul | L'id s'écrit `root:nom`, l'auteur a écrit `root` d'instinct ; coût nul |
 | 2026-08-27 | R3b : une seule source de commandes, `.wraith/config.json` | Précédence global/workspace | Config globale supprimée (config, 2026-08-26) |
 | 2026-08-27 | `cmd+.` (`run.stop`) en portée `terminal`, no-op hors onglet `run.*` | Une action `tab(kind: "run.<id>")` par commande | Une action, une ligne de raccourci ; `ShortcutRegistry` n'a pas de désenregistrement |
 | 2026-08-27 | Relance d'un onglet `running` (R7) orchestrée dans `Run/` (`SIGINT`, attente d'`exited` 10 s, `relaunch`) ; `TerminalService` inchangé | `relaunch` qui arrête lui-même | M2 : `run` réutilise `TerminalService` tel quel ; l'attente est un besoin de `run` seul |

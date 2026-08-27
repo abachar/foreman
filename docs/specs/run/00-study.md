@@ -18,7 +18,7 @@ Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`)
 ### Config
 
 - R1 — Section `commands` (`config` R3) : `{ "<repo ou .>": { "<nom>": "<commande>" | { "run": "<commande>", "cwd": "<sous-dossier>", "env": { "K": "V" } } } }`. La forme courte est une chaîne ; la forme longue ajoute `cwd` (relatif au repo, défaut le repo) et `env`. Un `env` au niveau du repo (clé réservée `"$env"`) s'applique à toutes ses commandes.
-- R2 — Le `<repo>` doit être `.` ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`architecture.md`, sécurité).
+- R2 — Le `<repo>` doit être `.` (alias `root`, l'orthographe de l'id, accepté tant qu'aucun dossier `root/` n'existe — décision 2026-08-27) ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`architecture.md`, sécurité).
 - R3 — Le nom d'une commande : `[a-z0-9][a-z0-9:_-]*`, unique par repo. Identifiant complet `repo:nom` (`.` devient `root`). Ces ids servent aux raccourcis (`config.shortcuts["run.backend:test"]`, R11).
 - R3b — Une seule source : `.wraith/config.json` du workspace (`config` R4, décision config 2026-08-26 : pas de configuration globale). Deux workspaces ne partagent rien.
 - R4 — Rechargement à chaud sur `Workspace.configChanges` (`config` R6) : la palette et les raccourcis sont recalculés ; un onglet en cours n'est pas affecté.

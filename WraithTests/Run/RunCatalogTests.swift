@@ -49,6 +49,14 @@ struct RunCatalogTests {
         }
     }
 
+    @Test func acceptsRootAsTheWorkspaceRoot() throws {
+        try parse(#"{ "root": { "echo": "echo" } }"#) { parsed in
+            #expect(parsed.commands.map(\.id) == ["root:echo"])
+            #expect(parsed.commands.first?.problem == nil)
+            #expect(parsed.commands.first?.cwd == root.standardizedFileURL)
+        }
+    }
+
     @Test func greysTheCommandsOfAMissingRepo() throws {
         try parse(#"{ "frontend": { "dev": "npm run dev" } }"#) { parsed in
             #expect(parsed.warnings.isEmpty)

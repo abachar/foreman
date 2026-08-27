@@ -62,7 +62,9 @@ nonisolated enum RunCatalog {
         var commands: [RunCommand] = []
         let root = root.standardizedFileURL
         for (repo, values) in (section ?? [:]).sorted(by: { $0.key < $1.key }) {
-            guard let repoURL = url(forDeclared: repo, under: root) else {
+            // run R2: `root` is how the id spells `.`, so it is accepted unless a `root/` folder exists.
+            let declared = repo == "root" && !isDirectory(root.appending(path: "root")) ? "." : repo
+            guard let repoURL = url(forDeclared: declared, under: root) else {
                 warnings.append("commands.\(repo) ignored: a repo is \".\" or a path under the root.")
                 continue
             }
@@ -116,7 +118,7 @@ nonisolated enum RunCatalog {
     }
 
     /// run R3: `.` becomes `root`.
-    static func id(repo: String, name: String) -> String {
+    nonisolated static func id(repo: String, name: String) -> String {
         "\(repo == "." ? "root" : repo):\(name)"
     }
 
