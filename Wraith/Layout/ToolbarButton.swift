@@ -44,7 +44,8 @@ final class ToolbarButton: NSButton {
         let isIconOnly = title.trimmingCharacters(in: .whitespaces).isEmpty
         imagePosition = isIconOnly ? .imageOnly : .imageLeading
         paint()
-        let width = intrinsicContentSize.width + (isIconOnly ? 12 : 20)
+        // A toggle is a square (author, 2026-08-27); a named button fits its content.
+        let width = isIconOnly ? Self.height : intrinsicContentSize.width + 20
         if let widthConstraint {
             widthConstraint.constant = width
         } else {
