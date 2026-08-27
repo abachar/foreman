@@ -1,0 +1,7 @@
+# Questions ouvertes
+
+- [ ] **Barre d'outils : `NSToolbar` habillée ou vue SwiftUI ?** Les deux options et leur coût sont décrits dans [00-study.md](00-study.md) (*Options techniques*) et mises en regard dans [`../../backlog/m8-design.md`](../../backlog/m8-design.md). À trancher après la maquette (tâche 8.1), avec l'auteur : l'option B donne le rendu exact mais fait sortir Wraith de `NSToolbar`, ce que `layout` R30 et `architecture.md` affirment aujourd'hui.
+- [ ] **Valeurs exactes du jeu `dark`** (R9) : les tokens ne sont pas encore chiffrés. Ils sortent de la maquette (8.1) et sont figés en 8.2 ; d'ici là, aucune couleur n'est écrite dans une spec.
+- [ ] **Rayon et gouttière** : `islandRadius` et `gutter` en points. Proposition à confirmer à l'œil : rayon 8, gouttière 8, barres à 30 pt (la barre d'onglets actuelle fait déjà 30, `CenterView.swift`).
+- [ ] **Le fond de la barre d'outils** doit-il être `surfaceRaised` (la barre est un îlot de plus, collé en haut) ou `windowBackground` (la barre flotte sur l'aplat, comme dans IntelliJ) ? À voir sur la maquette.
+- [ ] **Maquette générée** : le prompt autonome pour Nano Banana est dans [mockup-prompt.md](mockup-prompt.md). L'image `mockup.png` **n'a pas pu être produite** dans l'environnement où la spec a été écrite (aucun outil de génération d'images disponible) ; elle est à générer par l'auteur et à déposer ici sous le nom `mockup.png`.

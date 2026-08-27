@@ -16,6 +16,7 @@ Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dép
 | 8 | [run](run/) | commandes du workspace → surface terminal, palette `cmd+r`, bouton ▶ Run | terminal, `Palette` | M3 |
 | 9 | [git](git/) | changes, diff, historique, remote, branches | explorer, editor (`Editor.open`), `Highlight` | M4 |
 | 10 | [postgres](postgres/) | connexion unique, schéma, requêtes, résultats | layout, `Highlight` | M5 |
+| 11 | [design](design/) | identité visuelle : tokens de `ThemeService`, îlots, barres plates, thème Dark (transverse, aucune feature) | layout, terminal (`ThemeService`) | M8 |
 
 `Palette` et `Highlight` sont des dossiers partagés (`architecture.md`), livrés tous deux avec `editor` (M1 : quick open et highlighting). Le terminal vient après l'éditeur : l'app doit déjà être utilisable (ouvrir, lire, éditer) avant d'héberger des process.
 
