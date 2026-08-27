@@ -8,7 +8,7 @@ Découpage et avancement de l'implémentation, un fichier par milestone. Les spe
 | M1 — Explorer + Editor | [m1-explorer-editor.md](m1-explorer-editor.md) | explorer, editor, Palette, Highlight | 🟢 (2026-08-27 ; sql en M5, gitignored en M4) |
 | M2 — Terminal + Agents | [m2-terminal-agents.md](m2-terminal-agents.md) | terminal, agents, `Terminal/`, ThemeService | 🟢 (2026-08-27 ; VT validé sur Claude Code, OpenCode, Pi, Antigravity) |
 | M3 — Run | [m3-run.md](m3-run.md) | run, `Palette/` (`opt+enter`), badge `blue` | 🟢 (2026-08-27 ; `root` alias de `.`, `configChanges` par consommateur) |
-| M4 — Git | | git | |
+| M4 — Git | [m4-git.md](m4-git.md) | git, compléments explorer / editor | ⚪ |
 | M5 — Postgres | | postgres | |
 | M6 — Polish | | | |
 

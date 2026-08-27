@@ -20,7 +20,7 @@ Panneau gauche `explorer.tree` : l'arbre de fichiers du workspace, paresseux, ra
 - R1 — La racine de l'arbre est la racine du workspace ; elle n'est pas affichée comme nœud, ses enfants sont le premier niveau.
 - R2 — Tri : dossiers d'abord, puis fichiers, chacun par nom insensible à la casse (ordre `localizedStandardCompare`, donc `file2 < file10`).
 - R3 — Tout est visible sauf `.git/` (et `.wraith/state.json`, `.DS_Store`). Les dotfiles sont affichés.
-- R4 — Les entrées **ignorées par git** (info reçue de `git`, R14) sont grisées. Les dossiers de la liste d'exclusion commune (`architecture.md` : `node_modules`, `target`, `.build`…) sont grisés même sans info git, et jamais dépliés automatiquement (R11).
+- R4 — Les entrées **ignorées par git** (info reçue de `git`, R15) sont grisées. Les dossiers de la liste d'exclusion commune (`architecture.md` : `node_modules`, `target`, `.build`…) sont grisés même sans info git, et jamais dépliés automatiquement (R11).
 - R5 — Un toggle « masquer les fichiers ignorés » (menu du panneau, persisté dans `state.json`) cache les entrées grisées. Défaut : visibles.
 - R6 — Liens symboliques : affichés avec une icône dédiée, dépliables si dossier, jamais suivis lors d'une opération récursive (suppression, rafraîchissement).
 

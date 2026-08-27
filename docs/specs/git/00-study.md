@@ -29,7 +29,7 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 ### Changes
 
 - R6 — Deux listes par repo : **Staged** et **Changes** (worktree + non suivis), plus **Conflicts** en tête quand il y en a. Chaque ligne : statut (`M A D R C U ?`), chemin relatif au repo (nom en gras, dossier en gris), boutons au survol : stage/unstage, discard, ouvrir le fichier.
-- R7 — Actions par fichier : stage (`git add -- <path>`), unstage (`git restore --staged -- <path>`), discard (`git restore -- <path>` ; non suivi → `git clean -f -- <path>`), ouvrir le fichier (`Editor.open(path)`), ouvrir le diff (R12). Actions par section : stage all / unstage all / discard all.
+- R7 — Actions par fichier : stage (`git add -- <path>`), unstage (`git restore --staged -- <path>`), discard (`git restore -- <path>` ; non suivi → `git clean -f -- <path>`), ouvrir le fichier (`Editor.open(url, preview:)` — l'API prend l'`URL` du fichier, pas le chemin relatif), ouvrir le diff (R12). Actions par section : stage all / unstage all / discard all.
 - R8 — **Discard demande toujours confirmation** (fichier ou tout), avec le nombre de fichiers et la mention « irréversible ». Aucune autre action n'est destructive au sens git (tout reste dans le reflog).
 - R9 — Conflits : la ligne propose *Marquer comme résolu* (`git add`) et ouvre le fichier avec ses marqueurs ; pas d'outil de merge en v1. Un état `MERGING`/`REBASING`/`CHERRY-PICKING` est affiché dans l'en-tête avec *Abort* et *Continue* (`git merge --abort`, `rebase --continue`, etc.).
 
@@ -63,7 +63,7 @@ Surfaces : panneau gauche `git.changes` (`cmd+shift+g`), panneau bas `git.histor
 
 ### Exécution des commandes git
 
-- R26 — Un seul type `GitCLI` (pas de protocole : une seule implémentation) : `Process` avec `arguments: [String]`, exécutable résolu une fois (`/usr/bin/env git` → chemin réel, ou `git.path` de la config globale), `cwd` = racine du repo, env minimal + `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` pour les lectures, stdout/stderr séparés, **timeout** (30 s lecture, 10 min opérations distantes), annulation = `SIGTERM` puis `SIGKILL`.
+- R26 — Un seul type `GitCLI` (pas de protocole : une seule implémentation) : `Process` avec `arguments: [String]`, exécutable résolu une fois par fenêtre (dans le `PATH` du login shell, `Workspace.loginEnvironment()` ; surchargeable par `git.path` de la section `git` de `.wraith/config.json` — il n'y a pas de config globale, décision config 2026-08-26), `cwd` = racine du repo, env minimal + `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` pour les lectures, stdout/stderr séparés, **timeout** (30 s lecture, 10 min opérations distantes), annulation = `SIGTERM` puis `SIGKILL`.
 - R27 — Formats machine uniquement : `status --porcelain=v2 -z --branch`, `log --format=<champs séparés par \x1f> -z`, `diff` avec `--no-color --no-ext-diff -M`, `for-each-ref --format`, `stash list --format`. Jamais de parsing d'une sortie destinée à l'humain ; aucune sortie utilisateur n'est réinjectée dans une commande sauf comme argument après `--`.
 - R28 — Erreurs traduites en `GitError` (`notARepo`, `commandFailed(stderr)`, `needsInteraction`, `timeout`, `conflict`, `gitNotFound`) ; `git` introuvable → la feature affiche une bannière unique et reste inerte (rien ne casse l'ouverture, `architecture.md`).
 - R29 — La feature **n'écrit jamais** dans `.git/` autrement que par le binaire, et ne modifie jamais la config git de l'utilisateur.
