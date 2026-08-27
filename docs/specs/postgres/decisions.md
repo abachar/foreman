@@ -2,6 +2,9 @@
 
 | Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
+| 2026-08-27 | R16: cells decoded from the binary format — PostgresNIO's decoders for its types, ~60 lines here for `time`, `timetz`, `interval`, `money`, `inet`/`cidr`, `macaddr`, `oid` and arrays of any known element; unknown types shown as `<type> \x…` | Asking the text format; `::text` casts injected into the user's SQL | PostgresNIO hard-codes the binary result format (`PostgresFrontendMessageEncoder`), and the user's SQL is never rewritten (2026-08-26) |
+| 2026-08-27 | R17: `OK` without `N rows affected` | Reading the command tag | `PostgresRowSequence` does not expose it (`PSQLRowStream` keeps it internal); not worth a fork |
+| 2026-08-27 | R16: the grid is a SwiftUI `Table` — row selection, `cmd+c` through `.copyable` as TSV (rows or everything), a double click opens the row's full values; no per-cell selection | A custom `NSTableView` | Native sorting, resizing and selection for free; the cell-level need is covered by the row sheet |
 | 2026-08-27 | R9: `postgres.query` is a **center tab** (`cmd+shift+q` = a new `Query N` tab, several at once), not the bottom panel | The bottom panel (2026-08-25) | Author's choice: more room, several queries side by side, the bottom slot stays with the search; same model as `git.diff` |
 | 2026-08-27 | R18: CSV/JSON export deferred out of v1 (noted as a future evolution) | Shipping it in 5.7 | Author's choice: not needed today; `cmd+c` as TSV covers the small cases |
 | 2026-08-27 | R1, R3: an optional plaintext `password` in the `postgres` section, taking precedence over the Keychain chain; a refused config password is shown, not invalidated or re-asked | Keychain only (2026-08-25) | Author's choice for local dev databases (`config` decision 2026-08-27); the chain is unchanged when the key is absent |

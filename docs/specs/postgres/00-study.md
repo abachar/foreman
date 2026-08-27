@@ -43,7 +43,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 ### Results
 
 - R16 — A read-only grid: headers (name, PG type), **client-side** sorting per column over the loaded page, adjustable column widths, cell/row selection, `cmd+c` copies as TSV (a cell, rows, or everything). Values: `NULL` visually distinguished, `bytea` as truncated hex, `json/jsonb` pretty-printed on a double click (a popover), dates in ISO 8601, arrays as `{…}` text.
-- R17 — Status bar: `N rows (page 1/…) · 42 ms · user@database`. A statement with no result set (`UPDATE`, `CREATE`) shows `OK · 3 rows affected`. One execution = one statement (R10), so a single result is shown.
+- R17 — Status bar: `N rows (page 1/…) · 42 ms · user@database`. A statement with no result set (`UPDATE`, `CREATE`) shows `OK` (the row count is not exposed by PostgresNIO's async API, decision 2026-08-27). One execution = one statement (R10), so a single result is shown.
 - R18 — *(deferred, decision 2026-08-27: not in v1)* Export: *CSV* (RFC 4180, headers, `NULL` empty) and *JSON* (an array of objects, native types where possible) of the **loaded** result or, as an option, of the whole query re-run and streamed to the file (capped at 1,000,000 rows). Destination through `NSSavePanel`.
 - R19 — An execution error: a banner with the message, the `SQLSTATE`, and the position → the cursor is placed on the error in the editor.
 
@@ -57,7 +57,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 - Connection dropped mid-query: an error, reconnection on the next action.
 - A database with thousands of tables: level-by-level loading + a filter; a level over 5,000 objects is truncated with a button.
 - A very wide column (1 MB of text): the cell is truncated at 1,000 characters, the full content on a double click.
-- Unknown types/extensions (PostGIS, etc.): rendered through their text representation.
+- Unknown types/extensions (PostGIS, etc.): shown as `<type> \x…` (PostgresNIO asks for the binary format on every column, decision 2026-08-27); cast to `::text` in the query to read them.
 - `~/.pgpass` with wrong permissions: ignored with a warning (`libpq`'s behaviour).
 - Two windows on the same database: two separate, independent connections.
 - A result containing `\t`/`\n`: the TSV copy escapes them, the CSV quotes them.

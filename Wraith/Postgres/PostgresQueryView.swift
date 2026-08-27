@@ -104,25 +104,14 @@ struct PostgresQueryView: View {
         }
     }
 
-    /// R16, the minimum of it until 5.7: text cells, `NULL` dimmed, native column resizing.
-    private func grid(_ result: PostgresQueryTab.Result) -> some View {
-        Table(result.rows) {
-            TableColumnForEach(Array(result.columns.enumerated()), id: \.offset) { index, name in
-                TableColumn(name) { row in
-                    let value = index < row.cells.count ? row.cells[index] : nil
-                    Text(value ?? QueryCell.nullText)
-                        .font(Font(theme.editorFont))
-                        .foregroundStyle(value == nil ? .tertiary : .primary)
-                        .lineLimit(1)
-                }
-            }
-        }
+    private func grid(_ result: QueryResult) -> some View {
+        QueryGridView(tab: tab, result: result, theme: theme, onCopy: { feature.copy($0) })
     }
 
     /// R17: `N rows · 42 ms · user@database`.
-    private func statusBar(_ result: PostgresQueryTab.Result) -> some View {
+    private func statusBar(_ result: QueryResult) -> some View {
         HStack(spacing: 6) {
-            Text(result.columns.isEmpty ? "OK" : "\(result.rows.count) rows")
+            Text(result.columns.isEmpty ? "OK" : result.countText)
             if result.isTruncated {
                 Label(
                     "truncated at \(PostgresFeature.rowLimit) rows, add a LIMIT",
@@ -131,9 +120,7 @@ struct PostgresQueryView: View {
                 .foregroundStyle(.orange)
             }
             Text("·")
-            Text(
-                "\(result.duration.components.seconds * 1000 + result.duration.components.attoseconds / 1_000_000_000_000_000) ms"
-            )
+            Text(result.durationText)
             Text("·")
             Text(connection.label ?? "")
             Spacer()

@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import Observation
 
-/// One `postgres.query` center tab (postgres R9, R10, R17, R19): its buffer, its last result.
+/// One `postgres.query` center tab (postgres R9, R10, R16, R17, R19): its buffer, its last result.
 @Observable
 @MainActor
 final class PostgresQueryTab: Identifiable {
@@ -19,19 +19,6 @@ final class PostgresQueryTab: Identifiable {
         }
     }
 
-    /// R17: what the status bar shows.
-    struct Result: Equatable {
-        var columns: [String]
-        var rows: [Row]
-        var duration: Duration
-        var isTruncated = false
-
-        struct Row: Identifiable, Equatable {
-            let id: Int
-            let cells: [String?]
-        }
-    }
-
     let id: TabID
     let title: String
     /// R9: persisted through the payload; the view mirrors it.
@@ -42,7 +29,13 @@ final class PostgresQueryTab: Identifiable {
     var pendingInsertion: String?
     var selection = NSRange(location: 0, length: 0)
     private(set) var isRunning = false
-    private(set) var result: Result?
+    private(set) var result: QueryResult?
+    /// R16: the loaded rows in the grid's order.
+    private(set) var sortedRows: [QueryResult.Row] = []
+    var sortOrder: [QueryColumnComparator] = [] {
+        didSet { resort() }
+    }
+    var gridSelection: Set<Int> = []
     private(set) var error: String?
     private(set) var hint: String?
     /// The text view, set by `SQLEditorView` for the commands.
@@ -62,15 +55,19 @@ final class PostgresQueryTab: Identifiable {
         isRunning = true
         error = nil
         hint = nil
-        result = Result(columns: [], rows: [], duration: .zero)
+        result = QueryResult(columns: [], rows: [], duration: .zero)
+        sortedRows = []
+        gridSelection = []
     }
 
-    func setColumns(_ columns: [String]) {
+    func setColumns(_ columns: [QueryResult.Column]) {
         result?.columns = columns
     }
 
-    func append(_ rows: [Result.Row]) {
+    func append(_ rows: [QueryResult.Row]) {
+        guard !rows.isEmpty else { return }
         result?.rows.append(contentsOf: rows)
+        resort()
     }
 
     func finish(duration: Duration, isTruncated: Bool) {
@@ -86,5 +83,21 @@ final class PostgresQueryTab: Identifiable {
         }
         requestedCursor = cursor
         isRunning = false
+    }
+
+    private func resort() {
+        guard let result else { return }
+        if let comparator = sortOrder.first {
+            sortedRows = QueryResult.sorted(result.rows, by: comparator.column, ascending: comparator.order == .forward)
+        } else {
+            sortedRows = result.rows
+        }
+    }
+
+    /// R16: the selected rows, or everything, as TSV.
+    var copyText: String {
+        guard let result else { return "" }
+        let rows = gridSelection.isEmpty ? sortedRows : sortedRows.filter { gridSelection.contains($0.id) }
+        return QueryResult.tsv(columns: result.columns, rows: rows)
     }
 }

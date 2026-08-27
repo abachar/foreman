@@ -14,7 +14,6 @@ final class PostgresFeature {
     static let queryTabKind = "postgres.query"
     /// R12: free-form SQL stops here.
     static let rowLimit = 50_000
-    static let pageSize = 500
 
     let model = PostgresModel()
     /// R6: the schema tree, created with the panel.

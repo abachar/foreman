@@ -92,16 +92,16 @@ extension PostgresFeature {
             }
             do {
                 let sequence = try await client.execute(PostgresQuery(unsafeSQL: statement.sql))
-                var page: [PostgresQueryTab.Result.Row] = []
+                var page: [QueryResult.Row] = []
                 var count = 0
                 var isTruncated = false
                 for try await row in sequence {
                     if count == 0 {
-                        tab.setColumns(row.map(\.columnName))
+                        tab.setColumns(QueryResult.columns(of: row))
                     }
-                    page.append(PostgresQueryTab.Result.Row(id: count, cells: row.map(QueryCell.text(of:))))
+                    page.append(QueryResult.Row(id: count, values: row.map(QueryValue.decode)))
                     count += 1
-                    if page.count == Self.pageSize {
+                    if page.count == QueryResult.pageSize {
                         tab.append(page)
                         page = []
                     }

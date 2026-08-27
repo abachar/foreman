@@ -87,7 +87,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+shift+q` | `postgres.query` | New query tab (center, decision 2026-08-27) | global | 🟢 (2026-08-27) |
 | `cmd+enter` / `cmd+.` | — | Execute / cancel | native (query tab) | 🟢 (2026-08-27) |
 | `cmd+/` | `postgres.comment` | Comment / uncomment (`--`) | tab(postgres.query) | 🟢 (2026-08-27) |
-| `cmd+c` | — | Copy the grid selection (TSV) | native | ⚪ (M5) |
+| `cmd+c` | — | Copy the grid selection, or everything, as TSV | native (`Table`) | 🟢 (2026-08-27) |
 | *(no default)* | `postgres.history` | Query history panel (`cmd+opt+h` from `postgres` R20 ruled out: it is macOS *Hide Others*) | global | ⚪ (M5) |
 
 ## Free
