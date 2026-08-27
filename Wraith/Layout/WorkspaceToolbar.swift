@@ -46,7 +46,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             }
         }
         let tokens = theme.tokens
-        for item in toolbar.items {
+        for item in toolbar.items.flatMap({ ($0 as? NSToolbarItemGroup)?.subitems ?? [$0] }) {
             guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue),
                 let button = item.view as? ToolbarButton
             else { continue }
@@ -59,8 +59,26 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         }
     }
 
+    /// The trailing panel toggles travel as one group (design R15: a tight trio after Run).
+    static let trailingTogglesID = "layout.panels.trailing"
+
     private var identifiers: [NSToolbarItem.Identifier] {
-        Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }).map { NSToolbarItem.Identifier($0) }
+        var identifiers: [NSToolbarItem.Identifier] = []
+        for id in Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }) {
+            if trailingToggleIDs.contains(id) {
+                if identifiers.last?.rawValue != Self.trailingTogglesID {
+                    identifiers.append(NSToolbarItem.Identifier(Self.trailingTogglesID))
+                }
+            } else {
+                identifiers.append(NSToolbarItem.Identifier(id))
+            }
+        }
+        return identifiers
+    }
+
+    private var trailingToggleIDs: [String] {
+        layout.toolbarItems.filter { $0.placement == .trailing && LayoutManager.panelID(ofToggle: $0.id) != nil }
+            .map(\.id)
     }
 
     /// layout R30: leading, a space, centre, a space, trailing — the features' items first in
@@ -89,6 +107,16 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         _ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar: Bool
     ) -> NSToolbarItem? {
+        if identifier.rawValue == Self.trailingTogglesID {
+            let group = NSToolbarItemGroup(itemIdentifier: identifier)
+            group.subitems = trailingToggleIDs.compactMap { makeItem(NSToolbarItem.Identifier($0)) }
+            group.isBordered = false
+            return group
+        }
+        return makeItem(identifier)
+    }
+
+    private func makeItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
         guard let descriptor = layout.toolbarItem(identifier.rawValue) else { return nil }
         let item = NSToolbarItem(itemIdentifier: identifier)
         let button = ToolbarButton()
