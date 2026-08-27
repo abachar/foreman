@@ -1,98 +1,98 @@
-# Raccourcis
+# Shortcuts
 
-> Table unique des raccourcis par défaut, toutes features confondues, et leur état d'implémentation. La règle source est dans la spec citée ; la tâche qui livre un raccourci met à jour sa ligne. Notation `config` (`cmd`, `shift`, `opt` = Option ⌥, `ctrl`, `+` ; `alt` accepté en alias). Tout raccourci est surchargeable via `config.shortcuts["<id>"]` (`config` R4).
+> Single table of the default shortcuts, across all features, and their implementation state. The source rule is in the spec cited; the task that ships a shortcut updates its row. `config` notation (`cmd`, `shift`, `opt` = Option ⌥, `ctrl`, `+`; `alt` accepted as an alias). Every shortcut can be overridden through `config.shortcuts["<id>"]` (`config` R4).
 
-Portée : `global`, `tab(kind)` (onglet de ce kind actif), `panel` (un panneau a le focus), `terminal` (l'onglet actif est une surface terminal et le centre a le clavier) — `layout` R22b — ; `natif` (composant natif, hors registre), `menu` (menu SwiftUI de l'app). Statut : 🟢 implémenté · ⚪ à faire.
+Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel has the focus), `terminal` (the active tab is a terminal surface and the center has the keyboard) — `layout` R22b —; `native` (native component, outside the registry), `menu` (the app's SwiftUI menu). Status: 🟢 implemented · ⚪ to do.
 
 ## Layout (`layout` R23)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+w` | `layout.tab.close` | Fermer l'onglet actif | global | 🟢 |
-| `cmd+1` … `cmd+9` | `layout.tab.N` | Onglet N (9 = dernier) | global | 🟢 |
-| `cmd+shift+[` / `cmd+shift+]` | `layout.tab.previous` / `.next` | Onglet précédent / suivant | global | 🟢 |
-| `cmd+d` / `cmd+shift+d` | `layout.split.vertical` / `.horizontal` | Split à droite / en bas | global | 🟢 |
-| `cmd+opt+←→↑↓` | `layout.focus.*` | Focus sur le groupe voisin | global | 🟢 |
-| `cmd+opt+shift+←→↑↓` | `layout.move.*` | Déplacer l'onglet actif vers le groupe voisin | global | 🟢 |
-| `escape` | `layout.focus.center` | Rendre le focus au centre | panel | 🟢 |
-| `cmd+shift+n` | `layout.window.new` | Nouvelle fenêtre (ouvrir un dossier) | global | 🟢 |
-| `cmd+opt+t` | `layout.toolbar.toggle` | Masquer / afficher la barre d'outils | global | 🟢 |
+| `cmd+w` | `layout.tab.close` | Close the active tab | global | 🟢 |
+| `cmd+1` … `cmd+9` | `layout.tab.N` | Tab N (9 = last) | global | 🟢 |
+| `cmd+shift+[` / `cmd+shift+]` | `layout.tab.previous` / `.next` | Previous / next tab | global | 🟢 |
+| `cmd+d` / `cmd+shift+d` | `layout.split.vertical` / `.horizontal` | Split right / below | global | 🟢 |
+| `cmd+opt+←→↑↓` | `layout.focus.*` | Focus the neighbouring group | global | 🟢 |
+| `cmd+opt+shift+←→↑↓` | `layout.move.*` | Move the active tab to the neighbouring group | global | 🟢 |
+| `escape` | `layout.focus.center` | Give the focus back to the center | panel | 🟢 |
+| `cmd+shift+n` | `layout.window.new` | New window (open a folder) | global | 🟢 |
+| `cmd+opt+t` | `layout.toolbar.toggle` | Hide / show the toolbar | global | 🟢 |
 | `cmd+o` | — | *File ▸ Open…* | menu | 🟢 |
 
 ## Explorer (`explorer` R21)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+e` | `explorer.tree` | Afficher / masquer l'arbre | global | 🟢 |
-| `↑↓` `←` `→` | — | Naviguer, replier, déplier | natif | 🟢 (natif `NSOutlineView`) |
-| `space` | — | Ouvrir en aperçu | natif | 🟢 |
-| `cmd+↓` | — | Ouvrir fixe | natif | 🟢 |
-| `enter` | — | Renommer | natif | 🟢 |
-| `cmd+delete` | — | Supprimer (corbeille) | natif | 🟢 |
+| `cmd+shift+e` | `explorer.tree` | Show / hide the tree | global | 🟢 |
+| `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
+| `space` | — | Open as a preview | native | 🟢 |
+| `cmd+↓` | — | Open pinned | native | 🟢 |
+| `enter` | — | Rename | native | 🟢 |
+| `cmd+delete` | — | Delete (trash) | native | 🟢 |
 
 ## Editor (`editor` R6–R8, R14, R17, R23, R24)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
 | `cmd+p` | `editor.quickOpen` | Quick open | global | 🟢 |
-| `cmd+shift+f` | `editor.search` | Recherche dans le contenu (panneau bas) | global | 🟢 |
-| `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Sauver / tout sauver | tab(editor.file) | 🟢 |
-| `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | 🟢 (natif `NSTextView`, menu Edit) |
-| `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indenter / désindenter | tab(editor.file) | 🟢 |
-| `cmd+/` | `editor.comment` | Commenter / décommenter | tab(editor.file) | 🟢 |
-| `opt+↑` / `opt+↓` | `editor.moveLine.*` | Déplacer la ligne | tab(editor.file) | 🟢 |
-| `cmd+l` | `editor.goToLine` | Aller à la ligne | tab(editor.file) | 🟢 |
-| `cmd+k` | `editor.keepOpen` | Fixer l'onglet aperçu (pas de chord, décision 2026-08-26) | tab(editor.file) | 🟢 |
-| `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Chercher / remplacer dans le fichier (`NSTextFinder`) ; `escape` ferme la barre (natif) | tab(editor.file) | 🟢 |
-| `cmd+shift+v` | `editor.togglePreview` | Source / preview markdown | tab(editor.file) | 🟢 |
-| `cmd+shift+l` | `editor.format` | Formater le fichier actif (`01-study-formatter.md` R24) | tab(editor.file) | ⚪ (M7) |
-| `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette : ouvrir / nouveau groupe / fermer / naviguer | natif | 🟢 |
+| `cmd+shift+f` | `editor.search` | Content search (bottom panel) | global | 🟢 |
+| `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Save / save all | tab(editor.file) | 🟢 |
+| `cmd+z` / `cmd+shift+z` | — | Undo / redo | tab(editor.file) | 🟢 (native `NSTextView`, Edit menu) |
+| `cmd+]` / `cmd+[` | `editor.indent` / `.outdent` | Indent / outdent | tab(editor.file) | 🟢 |
+| `cmd+/` | `editor.comment` | Comment / uncomment | tab(editor.file) | 🟢 |
+| `opt+↑` / `opt+↓` | `editor.moveLine.*` | Move the line | tab(editor.file) | 🟢 |
+| `cmd+l` | `editor.goToLine` | Go to line | tab(editor.file) | 🟢 |
+| `cmd+k` | `editor.keepOpen` | Pin the preview tab (no chord, decision 2026-08-26) | tab(editor.file) | 🟢 |
+| `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Find / replace in the file (`NSTextFinder`); `escape` closes the bar (native) | tab(editor.file) | 🟢 |
+| `cmd+shift+v` | `editor.togglePreview` | Markdown source / preview | tab(editor.file) | 🟢 |
+| `cmd+shift+l` | `editor.format` | Format the active file (`01-study-formatter.md` R24) | tab(editor.file) | ⚪ (M7) |
+| `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette: open / new group / close / navigate | native | 🟢 |
 
-## Terminal (`terminal` R12) — surfaces `agent.*` / `run.*`
+## Terminal (`terminal` R12) — `agent.*` / `run.*` surfaces
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+c` / `cmd+v` | — | Copier la sélection / coller | natif (SwiftTerm) | 🟢 |
-| `cmd+k` | `terminal.clear` | Effacer le scrollback | terminal | 🟢 |
-| `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Zoom de la police | terminal | 🟢 |
-| `ctrl+…`, `opt+…`, `esc`, flèches | — | Au process (`layout` R25) | natif | 🟢 |
+| `cmd+c` / `cmd+v` | — | Copy the selection / paste | native (SwiftTerm) | 🟢 |
+| `cmd+k` | `terminal.clear` | Clear the scrollback | terminal | 🟢 |
+| `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Font zoom | terminal | 🟢 |
+| `ctrl+…`, `opt+…`, `esc`, arrows | — | To the process (`layout` R25) | native | 🟢 |
 
 ## Agents (`agents` R9)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| *(aucun défaut)* | `agents.<id>` | Ouvrir / activer l'onglet de l'agent | global | 🟢 |
+| *(no default)* | `agents.<id>` | Open / activate the agent's tab | global | 🟢 |
 
 ## Run (`run` R5, R6, R9)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+r` | `run.palette` | Palette des commandes | global | 🟢 |
-| `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette : lancer / nouvel onglet / copier / fermer | natif | 🟢 |
-| `cmd+.` | `run.stop` | Arrêter le process (`SIGINT`, second appui < 2 s → `SIGTERM`) ; sans effet hors onglet `run.*` (décision 2026-08-27) | terminal | 🟢 |
+| `cmd+r` | `run.palette` | Command palette | global | 🟢 |
+| `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette: launch / new tab / copy / close | native | 🟢 |
+| `cmd+.` | `run.stop` | Stop the process (`SIGINT`, second press < 2 s → `SIGTERM`); no effect outside a `run.*` tab (decision 2026-08-27) | terminal | 🟢 |
 
 ## Git (`git`)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+g` | `git.changes` | Panneau changes | global | ⚪ (M4) |
-| `cmd+shift+h` | `git.history` | Panneau historique | global | ⚪ (M4) |
-| `cmd+enter` | — | Commit (champ de message) | natif | ⚪ (M4) |
+| `cmd+shift+g` | `git.changes` | Changes panel | global | ⚪ (M4) |
+| `cmd+shift+h` | `git.history` | History panel | global | ⚪ (M4) |
+| `cmd+enter` | — | Commit (message field) | native | ⚪ (M4) |
 
 ## Postgres (`postgres`)
 
-| Raccourci | Id | Action | Portée | Statut |
+| Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+b` | `postgres.schema` | Panneau schéma (défaut changé le 2026-08-27 : `cmd+shift+d` appartient à `layout.split.horizontal`) | global | ⚪ (M5) |
-| `cmd+shift+q` | `postgres.query` | Panneau requête | global | ⚪ (M5) |
-| `cmd+enter` / `cmd+.` | — | Exécuter / annuler | natif | ⚪ (M5) |
-| `cmd+c` | — | Copier la sélection de la grille (TSV) | natif | ⚪ (M5) |
-| *(aucun défaut)* | `postgres.history` | Panneau d'historique des requêtes (`cmd+opt+h` de `postgres` R20 écarté : c'est *Masquer les autres* de macOS) | global | ⚪ (M5) |
+| `cmd+shift+b` | `postgres.schema` | Schema panel (default changed on 2026-08-27: `cmd+shift+d` belongs to `layout.split.horizontal`) | global | ⚪ (M5) |
+| `cmd+shift+q` | `postgres.query` | Query panel | global | ⚪ (M5) |
+| `cmd+enter` / `cmd+.` | — | Execute / cancel | native | ⚪ (M5) |
+| `cmd+c` | — | Copy the grid selection (TSV) | native | ⚪ (M5) |
+| *(no default)* | `postgres.history` | Query history panel (`cmd+opt+h` from `postgres` R20 ruled out: it is macOS *Hide Others*) | global | ⚪ (M5) |
 
-## Libres
+## Free
 
-`cmd+t` (pas de shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (gardé libre : palette de commandes ailleurs, décision postgres 2026-08-27), `cmd+opt+l` (libre mais laissé à la famille `cmd+opt+…` du layout, décision editor 2026-08-27).
+`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
 
-## Points ouverts
+## Open points
 
-- Plusieurs défauts entrent en conflit avec des raccourcis système macOS de l'auteur (relevé 2026-08-26, liste à établir) ; à traiter en M6 (polish) — en attendant, surcharge par `config.shortcuts`.
+- Several defaults clash with the author's macOS system shortcuts (noted 2026-08-26, list to be established); to be handled in M6 (polish) — until then, override through `config.shortcuts`.
