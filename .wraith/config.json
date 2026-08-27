@@ -8,6 +8,13 @@
       "run": "xcodebuild build -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -derivedDataPath DerivedData && open -a DerivedData/Build/Products/Debug/Wraith.app"
     }
   },
+  "formatter": {
+    "timeout": 10,
+    "swift": "swift format",
+    "json": "npx --no-install prettier --stdin-filepath file.json",
+    "md": "npx --no-install prettier --stdin-filepath file.md",
+    "sh": "shfmt -ln bash"
+  },
   "postgres": {
     "host": "localhost",
     "database": "ccoe_portal",

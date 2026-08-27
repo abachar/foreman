@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwiftUI
+import os
 
 /// Entry point of the editor: the `editor.file` tab kind and `open` (editor R1–R3), called by
 /// the explorer, git, the palette and the search.
@@ -22,6 +23,7 @@ final class EditorFeature {
     private var gitWatch: Task<Void, Never>?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
+    private let logger = Logger(subsystem: "dev.crafters.wraith", category: "editor")
 
     nonisolated struct State: Codable, Equatable, Sendable {
         var recent: [String]
@@ -184,6 +186,7 @@ final class EditorFeature {
             ("editor.goToLine", "Go to Line…", "cmd+l", { [weak self] in self?.goToLineActive() }),
             ("editor.keepOpen", "Keep Open", "cmd+k", { [weak self] in self?.keepOpenActive() }),
             ("editor.find", "Find", "cmd+f", { [weak self] in self?.findActive(.showFindInterface) }),
+            ("editor.format", "Format File", "cmd+shift+l", { [weak self] in self?.formatActive() }),
             (
                 "editor.togglePreview", "Toggle Markdown Preview", "cmd+shift+v",
                 { [weak self] in self?.active?.tab.togglePreview() }
@@ -290,6 +293,117 @@ final class EditorFeature {
         }
         if layoutTab.isDirty != tab.isDirty || layoutTab.isPreview != !tab.isPinned {
             layout.update(id, title: layoutTab.title, isDirty: tab.isDirty, isPreview: !tab.isPinned)
+        }
+    }
+
+    // MARK: - Formatting (editor R24–R30, R32)
+
+    /// Read on every use, like `insertFinalNewline`: a config change needs no wiring.
+    private var formatterCatalog: FormatterCatalog {
+        do {
+            let catalog = try workspace.config.section("formatter", as: FormatterCatalog.self) ?? .empty
+            for warning in catalog.warnings {
+                logger.warning("\(warning, privacy: .public)")
+            }
+            return catalog
+        } catch {
+            logger.warning("formatter section ignored: \(error.localizedDescription, privacy: .public)")
+            return .empty
+        }
+    }
+
+    /// editor R25, R32: why the tab is not formatted, `nil` when it can be.
+    nonisolated static func formatRefusal(
+        isReadOnly: Bool, isPreview: Bool, key: String, command: String?, isBinaryAvailable: Bool
+    ) -> String? {
+        if isReadOnly {
+            return "Read-only or over 2 MB: not formatted"
+        }
+        if isPreview {
+            return "Markdown preview: switch to the source (⌘⇧V) to format"
+        }
+        guard let command else {
+            return "No formatter for `.\(key)` in .wraith/config.json"
+        }
+        guard isBinaryAvailable else {
+            return "`\(FormatterCatalog.binary(of: command))` not found in PATH"
+        }
+        return nil
+    }
+
+    /// editor R30: the banner's wording for what the run returned; `nil` when applied or unchanged.
+    nonisolated static func formatMessage(for result: FormatterLaunch.Result, timeout: Duration) -> String? {
+        switch result {
+        case .formatted, .unchanged:
+            return nil
+        case .failed(let status, let stderr):
+            return stderr.isEmpty ? "Formatter exited with status \(status)" : "Formatter (status \(status)): \(stderr)"
+        case .timedOut:
+            let seconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
+            return
+                "Formatter stopped after \(seconds.formatted()) s — raise formatter.timeout in .wraith/config.json"
+        }
+    }
+
+    /// `cmd+shift+l` (editor R24).
+    private func formatActive() {
+        guard let (_, tab) = active else { return }
+        // editor R30: a second trigger while one runs is ignored, never queued.
+        guard tab.beginFormatting() else {
+            NSSound.beep()
+            return
+        }
+        Task {
+            defer { tab.endFormatting() }
+            tab.message = await format(tab)
+        }
+    }
+
+    /// editor R25–R30, R32: runs the formatter of the tab's file and applies the result in the
+    /// view; returns what the banner should say, `nil` when applied or unchanged.
+    private func format(_ tab: EditorTab) async -> String? {
+        guard let textView = tab.textView, let document = tab.document else { return nil }
+        let catalog = formatterCatalog
+        let key = FormatterCatalog.key(for: tab.url)
+        let command = catalog.command(forKey: key)
+        let environment = await workspace.loginEnvironment()
+        if let refusal = Self.formatRefusal(
+            isReadOnly: document.isReadOnly, isPreview: tab.mode == .preview, key: key, command: command,
+            isBinaryAvailable: command.map { FormatterCatalog.isBinaryAvailable($0, inPath: environment["PATH"]) }
+                ?? false)
+        {
+            return refusal
+        }
+        guard let command else { return nil }
+        let text = textView.string
+        let result = await FormatterLaunch.run(
+            text, command: command, cwd: tab.url.deletingLastPathComponent(), environment: environment,
+            timeout: catalog.timeout)
+        if case .formatted(let formatted) = result, let textView = tab.textView, textView.string == text {
+            apply(formatted, to: textView)
+        }
+        return Self.formatMessage(for: result, timeout: catalog.timeout)
+    }
+
+    /// editor R29: one undoable replacement, the cursor back by line and column, the scroll kept.
+    private func apply(_ formatted: String, to textView: NSTextView) {
+        let old = textView.string as NSString
+        let position = TextEditing.position(at: textView.selectedRange().location, in: old)
+        let scroll = textView.enclosingScrollView
+        let origin = scroll?.contentView.bounds.origin
+        let whole = NSRange(location: 0, length: old.length)
+        guard textView.isEditable, textView.shouldChangeText(in: whole, replacementString: formatted) else { return }
+        textView.replaceCharacters(in: whole, with: formatted)
+        textView.didChangeText()
+        textView.setSelectedRange(
+            NSRange(location: TextEditing.location(of: position, in: textView.string as NSString), length: 0))
+        if let scroll, let origin {
+            // TextKit 2 lays out lazily: without this the clip view clamps the target (see EditorTextView).
+            if let layoutManager = textView.textLayoutManager {
+                layoutManager.ensureLayout(for: layoutManager.documentRange)
+            }
+            scroll.contentView.scroll(to: origin)
+            scroll.reflectScrolledClipView(scroll.contentView)
         }
     }
 

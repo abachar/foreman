@@ -82,6 +82,11 @@ final class EditorTab {
     private(set) var indentUnit = "    "
     /// The view showing the text, set by `EditorTextView`; the commands act on it.
     weak var textView: NSTextView?
+    /// editor R28, R30, R32: why the last formatting did nothing, shown in a banner until the
+    /// next keystroke.
+    var message: String?
+    /// editor R30: one execution at a time per tab.
+    private(set) var isFormatting = false
 
     var language: Language? {
         Language.forFile(url)
@@ -179,9 +184,21 @@ final class EditorTab {
         }
     }
 
-    /// The view reports every change (editor R1, R2).
+    /// The view reports every change (editor R1, R2); a formatter message does not outlive it.
     func textDidChange() {
         isDirty = true
+        message = nil
+    }
+
+    /// editor R30: `false` when a formatting is already running; `endFormatting` releases.
+    func beginFormatting() -> Bool {
+        guard !isFormatting else { return false }
+        isFormatting = true
+        return true
+    }
+
+    func endFormatting() {
+        isFormatting = false
     }
 
     /// editor R8, R10: writes the view's text; `false` when refused (read-only, stale file, IO).

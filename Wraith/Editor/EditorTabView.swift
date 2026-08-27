@@ -75,6 +75,10 @@ struct EditorTabView: View {
         if document.encoding == .latin1 {
             banner("Not UTF-8: read as Latin-1, will be saved as UTF-8", icon: "textformat.abc")
         }
+        if let message = tab.message {
+            // editor R28, R30, R32: the formatter's verdict, gone at the next keystroke.
+            banner(message, icon: "text.alignleft")
+        }
     }
 
     private func banner(_ text: String, icon: String) -> some View {

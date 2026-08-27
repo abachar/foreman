@@ -45,7 +45,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+k` | `editor.keepOpen` | Pin the preview tab (no chord, decision 2026-08-26) | tab(editor.file) | 🟢 |
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Find / replace in the file (`NSTextFinder`); `escape` closes the bar (native) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Markdown source / preview | tab(editor.file) | 🟢 |
-| `cmd+shift+l` | `editor.format` | Format the active file (`01-study-formatter.md` R24) | tab(editor.file) | ⚪ (M7) |
+| `cmd+shift+l` | `editor.format` | Format the active file (`01-study-formatter.md` R24) | tab(editor.file) | 🟢 |
 | `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette: open / new group / close / navigate | native | 🟢 |
 
 ## Terminal (`terminal` R12) — `agent.*` / `run.*` surfaces

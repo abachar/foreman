@@ -1,7 +1,7 @@
 import Foundation
 
 /// The `formatter` section of `.wraith/config.json` (editor R25): one shell command per file
-/// extension, plus the two reserved keys `onSave` (R31) and `timeout` (R30).
+/// extension, plus the reserved key `timeout` (R30).
 ///
 /// Read from `workspace.config` on every use, like `insertFinalNewline`: a change on disk takes
 /// effect without anything to wire (config R6).
@@ -11,7 +11,6 @@ nonisolated struct FormatterCatalog: Decodable, Equatable, Sendable {
     /// editor R30: seconds, clamped.
     static let timeoutRange: ClosedRange<Double> = 1...60
 
-    var onSave = false
     var timeout: Duration = .seconds(FormatterCatalog.defaultTimeout)
     /// Lowercased key (an extension, or a whole file name without one) → the user's command (R26).
     var commands: [String: String] = [:]
@@ -24,12 +23,6 @@ nonisolated struct FormatterCatalog: Decodable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: Key.self)
         for key in container.allKeys.sorted(by: { $0.stringValue < $1.stringValue }) {
             switch key.stringValue {
-            case "onSave":
-                guard let value = try? container.decode(Bool.self, forKey: key) else {
-                    warnings.append("formatter.onSave ignored: expected true or false.")
-                    continue
-                }
-                onSave = value
             case "timeout":
                 guard let value = try? container.decode(Double.self, forKey: key) else {
                     warnings.append("formatter.timeout ignored: expected a number of seconds.")

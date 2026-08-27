@@ -12,17 +12,14 @@ struct FormatterCatalogTests {
     @Test func aMissingSectionIsAnEmptyCatalog() throws {
         let catalog = try WorkspaceConfig.empty.section("formatter", as: FormatterCatalog.self) ?? .empty
         #expect(catalog == .empty)
-        #expect(catalog.onSave == false)
         #expect(catalog.timeout == .seconds(5))
         #expect(catalog.command(forKey: "ts") == nil)
     }
 
-    @Test func reservedKeysAreNeverExtensions() throws {
-        let catalog = try decode(#"{ "onSave": true, "timeout": 12, "ts": "prettier --stdin-filepath file.ts" }"#)
-        #expect(catalog.onSave)
+    @Test func theReservedKeyIsNeverAnExtension() throws {
+        let catalog = try decode(#"{ "timeout": 12, "ts": "prettier --stdin-filepath file.ts" }"#)
         #expect(catalog.timeout == .seconds(12))
         #expect(catalog.commands == ["ts": "prettier --stdin-filepath file.ts"])
-        #expect(catalog.command(forKey: "onSave") == nil)
         #expect(catalog.command(forKey: "timeout") == nil)
         #expect(catalog.warnings.isEmpty)
     }
@@ -41,11 +38,10 @@ struct FormatterCatalogTests {
     }
 
     @Test func dropsBadEntriesWithAWarningAndKeepsTheRest() throws {
-        let catalog = try decode(#"{ "py": "black -q -", "rs": 3, "go": "  ", "onSave": "yes", "timeout": "5" }"#)
+        let catalog = try decode(#"{ "py": "black -q -", "rs": 3, "go": "  ", "timeout": "5" }"#)
         #expect(catalog.commands == ["py": "black -q -"])
-        #expect(catalog.onSave == false)
         #expect(catalog.timeout == .seconds(5))
-        #expect(catalog.warnings.count == 4)
+        #expect(catalog.warnings.count == 3)
         #expect(catalog.warnings.contains { $0.hasPrefix("formatter.rs ignored") })
         #expect(catalog.warnings.contains { $0.hasPrefix("formatter.go ignored") })
     }

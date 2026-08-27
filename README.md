@@ -39,7 +39,7 @@ That is the whole distribution of v1 (`product` R10): no signing, notarization, 
 | M4 — Git | changes, side-by-side diff, history, branches, stash, remote | 🟢 |
 | M5 — Postgres | schema browser, query tabs, result grid, history | 🟢 |
 | M6 — Polish | open points of M0–M5, shortcuts survey, CI, measured budgets, local release | 🟢 |
-| M7 — Formatting | format the active file and on save (`editor`) | 🟡 |
+| M7 — Formatting | format the active file (`editor`; on save dropped) | 🟢 |
 | M8 — Visual redesign | theme tokens, every view (`design`) | ⚪ |
 
 The up-to-date table, task by task, is [`docs/backlog/README.md`](docs/backlog/README.md).

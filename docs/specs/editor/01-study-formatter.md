@@ -4,27 +4,26 @@
 
 ## Goal
 
-Format the active tab's file with the formatter the user already uses for that project, without leaving Wraith and without Wraith having an opinion on the style. Two triggers: an explicit action (`cmd+shift+l`) and, optionally, saving (`formatter.onSave`). This is an extension of the editor, **not a new domain**: no `Formatter/` folder, no new feature, no new panel.
+Format the active tab's file with the formatter the user already uses for that project, without leaving Wraith and without Wraith having an opinion on the style. One trigger: the explicit action (`cmd+shift+l`); formatting on save was dropped by the author on 2026-08-27 (decisions.md). This is an extension of the editor, **not a new domain**: no `Formatter/` folder, no new feature, no new panel.
 
 This study lifts the "formatting" line from 00-study.md's out-of-scope list; everything else on that line (LSP, completion, diagnostics, go-to-definition) stays there.
 
 ## User stories
 
 - US7 — I open a `.ts`, I type, `cmd+shift+l`: the file is reformatted by the project's `prettier`, my cursor stayed on the line I was on, and `cmd+z` undoes the whole formatting in one go.
-- US8 — I put `"formatter": { "onSave": true, "java": "…" }` in `.wraith/config.json`: `cmd+s` formats then saves.
-- US9 — The formatter is not installed, or refuses my file because it does not compile: I see its error output, my text has not moved, and my save happened anyway.
+- US8 — *(dropped 2026-08-27)* formatting on save: the author does not need it.
+- US9 — The formatter is not installed, or refuses my file because it does not compile: I see its error output in the tab's banner and my text has not moved.
 - US10 — I open a file whose extension has no declared formatter: `cmd+shift+l` tells me once and does nothing.
 
 ## Functional rules
 
 ### Triggering
 
-- R24 — Two entry points, and only two: the `editor.format` action (default `cmd+shift+l`, scoped to `tab(editor.file)` like the editor's other actions, R23) on the active tab; and saving when `formatter.onSave` is `true`. No formatting on typing, on paste, or over a selection (out of scope).
+- R24 — One entry point, and only one: the `editor.format` action (default `cmd+shift+l`, scoped to `tab(editor.file)` like the editor's other actions, R23) on the active tab. No formatting on save (dropped 2026-08-27, R31), on typing, on paste, or over a selection (out of scope).
 - R25 — The formatter is chosen by **file extension**, in the `formatter` section of `.wraith/config.json` (`config` R3, R5):
   ```json
   {
     "formatter": {
-      "onSave": false,
       "timeout": 5,
       "swift": "swiftformat --quiet",
       "java": "clang-format --assume-filename=file.java",
@@ -38,16 +37,16 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
     }
   }
   ```
-  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .wraith/config.json" once and does nothing; saving is neither blocked nor delayed. Keys are matched case-insensitively; a file without an extension (`Dockerfile`) is looked up by its full name. `onSave` and `timeout` (R30, seconds, 1…60, default 5) are the section's only reserved keys; they are never read as extensions. A badly typed value or an empty command drops that entry with a warning, never the whole section (config R7).
+  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .wraith/config.json" once and does nothing; saving is neither blocked nor delayed. Keys are matched case-insensitively; a file without an extension (`Dockerfile`) is looked up by its full name. `timeout` (R30, seconds, 1…60, default 5) is the section's only reserved key; it is never read as an extension. A badly typed value or an empty command drops that entry with a warning, never the whole section (config R7).
 - R26 — The command is **the user's text**, run as is by `$SHELL -l -c "<command>"` with the login shell's environment (`terminal` R3, `Workspace.loginEnvironment()`) and `cwd` = the file's folder. No interpolation: Wraith injects neither the path, nor the content, nor any variable into the command line (`architecture.md`, security; the same policy as `run` and `agents`).
 - R27 — The text **from the view** (not the file on disk) is written to `stdin`, the formatted text is read from `stdout`, the diagnostics from `stderr`. Wraith gives the formatter no path: a command that needs the file name to pick its parser receives it in its own line (`--stdin-filepath file.ts`), written by the user.
 
 ### Applying
 
 - R28 — The result is applied **only if** all three conditions hold: exit code `0`, non-empty `stdout`, and text different from the current one. Otherwise nothing moves and `stderr` (truncated) appears in the tab's banner. A formatter that writes its diagnostics to `stdout` with a non-zero code therefore cannot overwrite the file.
-- R29 — The replacement happens in the text view as **a single undo operation**: `cmd+z` gives back exactly the text from before the formatting. The cursor position is preserved by **line and column** (clamped to the new text), the scroll is preserved, and the tab becomes `isDirty` (formatting is a modification like any other — except in R31, where the save follows immediately).
-- R30 — Bound: 5 s. Beyond that the process is stopped (`SIGTERM` then `SIGKILL`), the text stays unchanged and the banner says so. One execution at a time per tab; a second trigger while one is running is ignored (a beep), never queued.
-- R31 — `formatter.onSave`: the formatting runs **before** `cmd+s`'s write (R8), on the view's text, and the write covers the formatted text. **A failure never blocks a save**: if the formatter fails, exceeds the bound or does not exist, the file is saved as it is and the banner explains. `cmd+opt+s` (save all) formats every modified tab the same way, in series.
+- R29 — The replacement happens in the text view as **a single undo operation**: `cmd+z` gives back exactly the text from before the formatting. The cursor position is preserved by **line and column** (clamped to the new text), the scroll is preserved, and the tab becomes `isDirty` (formatting is a modification like any other). A formatter that changed nothing gives no feedback at all: no banner, no beep (decision 2026-08-27).
+- R30 — Bound: `formatter.timeout` seconds, default 5, clamped to 1…60 (decision 2026-08-27). Beyond that the process is stopped (`SIGTERM` then `SIGKILL`), the text stays unchanged and the banner says so. One execution at a time per tab; a second trigger while one is running is ignored (a beep), never queued.
+- R31 — *(dropped 2026-08-27, number kept stable)* formatting on save. `cmd+s` writes the view's text as it is; the `formatter` section has no `onSave` key.
 - R32 — Refused with its reason on a read-only file or one above the read-only threshold (R16, 2 MB), and on a markdown tab in `preview` mode (R14): there is no editable text to replace.
 - R33 — The formatter receives no path and Wraith writes nothing for it: everything goes through `stdin`/`stdout`. If the user's command writes to disk itself, Wraith neither detects nor prevents it — it is their command, like a `run` (`run` R2).
 
@@ -209,7 +208,7 @@ No other formatting library is proposed here: they do not exist, and `AGENTS.md`
 
 - **Applying the text**: `NSTextView.shouldChangeText(in:replacementString:)` then `replaceCharacters(in:with:)` then `didChangeText()` — the native way to make a modification undoable in one go, with the `NSUndoManager` already enabled (`allowsUndo = true`, `EditorTextView.swift`). Nothing to write.
 - **Cursor position**: line and column recorded before, reapplied after with `TextEditing.location(ofLine:in:)` (`Wraith/Editor/TextEditing.swift`, already written for `cmd+l`), clamped to the new text.
-- **Tests**: decoding the `formatter` section (the `onSave` key is reserved, unknown extension, badly typed value), choosing the command by extension, deciding whether to apply (code, empty `stdout`, identical text), carrying the cursor position over (line/column, including a line that disappeared and a shortened file), building the invocation. No test launches a formatter (`coding-rules`: hermetic).
+- **Tests**: decoding the `formatter` section (the `timeout` key is reserved, unknown extension, badly typed value), choosing the command by extension, deciding whether to apply (code, empty `stdout`, identical text), carrying the cursor position over (line/column, including a line that disappeared and a shortened file), building the invocation. No test launches a formatter (`coding-rules`: hermetic).
 
 ## Decisions
 

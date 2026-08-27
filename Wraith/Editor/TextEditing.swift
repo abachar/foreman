@@ -132,6 +132,37 @@ nonisolated enum TextEditing {
         return min(location, text.length)
     }
 
+    /// A 1-based line and a UTF-16 column (editor R29).
+    struct Position: Equatable {
+        let line: Int
+        let column: Int
+    }
+
+    /// editor R29: where `location` sits, by line and column.
+    static func position(at location: Int, in text: NSString) -> Position {
+        let clamped = min(max(location, 0), text.length)
+        let line = text.lineRange(for: NSRange(location: clamped, length: 0))
+        var count = 1
+        var cursor = 0
+        while cursor < line.location {
+            cursor = NSMaxRange(text.lineRange(for: NSRange(location: cursor, length: 0)))
+            count += 1
+        }
+        return Position(line: count, column: clamped - line.location)
+    }
+
+    /// editor R29: `position` carried over to another text, clamped: a line past the end goes to
+    /// the last line, a column past the line to its end, an empty text to 0.
+    static func location(of position: Position, in text: NSString) -> Int {
+        let start = location(ofLine: position.line, in: text)
+        let line = text.lineRange(for: NSRange(location: start, length: 0))
+        var end = NSMaxRange(line)
+        if end > line.location, text.character(at: end - 1) == 0x0A {
+            end -= 1
+        }
+        return min(start + position.column, end)
+    }
+
     private static func splitLines(_ text: String) -> [String] {
         var lines: [String] = []
         var current = ""
