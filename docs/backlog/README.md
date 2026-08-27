@@ -1,17 +1,17 @@
 # Backlog
 
-Découpage et avancement de l'implémentation, un fichier par milestone. Les specs disent *quoi* ([`../specs/`](../specs/)), ce dossier dit *dans quel ordre et où on en est*.
+Breakdown and progress of the implementation, one file per milestone. The specs say *what* ([`../specs/`](../specs/)), this folder says *in what order and where we stand*.
 
-| Milestone | Fichier | Domaines | Statut |
+| Milestone | File | Domains | Status |
 |---|---|---|---|
-| M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟢 (2026-08-26 ; CI Xcode 27 non vérifiée) |
-| M1 — Explorer + Editor | [m1-explorer-editor.md](m1-explorer-editor.md) | explorer, editor, Palette, Highlight | 🟢 (2026-08-27 ; sql en M5, gitignored en M4) |
-| M2 — Terminal + Agents | [m2-terminal-agents.md](m2-terminal-agents.md) | terminal, agents, `Terminal/`, ThemeService | 🟢 (2026-08-27 ; VT validé sur Claude Code, OpenCode, Pi, Antigravity) |
-| M3 — Run | [m3-run.md](m3-run.md) | run, `Palette/` (`opt+enter`), badge `blue` | 🟢 (2026-08-27 ; `root` alias de `.`, `configChanges` par consommateur) |
-| M4 — Git | [m4-git.md](m4-git.md) | git, compléments explorer / editor | ⚪ |
+| M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟢 (2026-08-26; CI on Xcode 27 unverified) |
+| M1 — Explorer + Editor | [m1-explorer-editor.md](m1-explorer-editor.md) | explorer, editor, Palette, Highlight | 🟢 (2026-08-27; sql in M5, gitignored in M4) |
+| M2 — Terminal + Agents | [m2-terminal-agents.md](m2-terminal-agents.md) | terminal, agents, `Terminal/`, ThemeService | 🟢 (2026-08-27; VT validated on Claude Code, OpenCode, Pi, Antigravity) |
+| M3 — Run | [m3-run.md](m3-run.md) | run, `Palette/` (`opt+enter`), `blue` badge | 🟢 (2026-08-27; `root` alias for `.`, `configChanges` per consumer) |
+| M4 — Git | [m4-git.md](m4-git.md) | git, explorer / editor complements | ⚪ |
 | M5 — Postgres | [m5-postgres.md](m5-postgres.md) | postgres, `Highlight/` (`sql`), `Workspace/` (`SecretStore`) | ⚪ |
-| M6 — Polish | [m6-polish.md](m6-polish.md) | aucun en propre : points ouverts de M0–M5 | ⚪ |
-| M7 — Formatage | [m7-formatter.md](m7-formatter.md) | editor (`01-study-formatter.md`) | ⚪ |
-| M8 — Refonte visuelle | [m8-design.md](m8-design.md) | design (transverse), `ThemeService`, toutes les vues | ⚪ |
+| M6 — Polish | [m6-polish.md](m6-polish.md) | none of its own: open points from M0–M5 | ⚪ |
+| M7 — Formatting | [m7-formatter.md](m7-formatter.md) | editor (`01-study-formatter.md`) | ⚪ |
+| M8 — Visual redesign | [m8-design.md](m8-design.md) | design (transverse), `ThemeService`, every view | ⚪ |
 
-Chaque fichier contient : le périmètre, le tableau des tâches (règles couvertes, **lib / natif utilisé**, tests, taille, statut, PR), la définition de fini, les décisions à prendre pendant le milestone. Une tâche = une PR. Le statut se met à jour dans la PR qui termine la tâche.
+Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.
