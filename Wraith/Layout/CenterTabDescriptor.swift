@@ -46,6 +46,7 @@ struct HomeEntry: Identifiable {
 
     let id: String
     let title: String
+    /// See `IconImage`.
     let icon: String
     let section: Section
     let action: () -> Void

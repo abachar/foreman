@@ -23,11 +23,12 @@ Ce n'est **pas** du `run` : une commande `run` est définie par l'utilisateur et
   | id | Titre | Binaire | Commande |
   |---|---|---|---|
   | `claude` | Claude Code | `claude` | `claude` |
-  | `antigravity` | Antigravity | `antigravity` (à vérifier, voir questions) | `antigravity` |
+  | `antigravity` | Antigravity | `agy` (vérifié 2026-08-27) | `agy` |
   | `opencode` | OpenCode | `opencode` | `opencode` |
+  | `pi` | Pi | `pi` | `pi` |
 
 - R2 — Un agent intégré est **affiché** si son binaire est trouvé dans le `PATH` de l'environnement du login shell (le même que celui des terminaux, `terminal` R3, résolu une fois par `Workspace`). Non trouvé → bouton absent, sans message. La détection est refaite à chaque `Workspace.configChanges` et à l'ouverture de la fenêtre, jamais en polling.
-- R3 — `config.agents` (`config` R3) : `{ "<id>": { "title"?, "command"?, "icon"?, "enabled"? } }`. Un id intégré surcharge ses champs (ex. `"claude": { "command": "claude --continue" }`) ; un id inconnu déclare un agent personnalisé (`command` obligatoire, toujours affiché, pas de détection) ; `"enabled": false` masque un intégré. Précédence `config` R4. Id : `[a-z0-9][a-z0-9_-]*`.
+- R3 — `config.agents` (`config` R3) : `{ "<id>": { "title"?, "command"?, "icon"?, "enabled"? } }`. Un id intégré surcharge ses champs (ex. `"claude": { "command": "claude --continue" }`) ; un id inconnu déclare un agent personnalisé (`command` obligatoire, toujours affiché, pas de détection) ; `"enabled": false` masque un intégré. Précédence `config` R4. Id : `[a-z0-9][a-z0-9_-]*`. `icon` : nom SF Symbol, ou chemin d'un fichier SVG/PNG relatif à la racine du workspace (rendu monochrome comme un symbole ; hors racine → ignoré). Les intégrés ont leur logo SVG dans l'asset catalog (`agent-<id>`, 2026-08-27).
 
 ### Lancement et onglet
 
@@ -56,7 +57,7 @@ Ce n'est **pas** du `run` : une commande `run` est définie par l'utilisateur et
 
 - **Dossier** : `Agents/` (`architecture.md`). `AgentsFeature` déclare à `Layout` un élément de toolbar par agent (côté `leading`, `layout` R30) et un kind d'onglet `agent.<id>` dont le payload est `{ "id", "cwd" }` ; la vue de l'onglet est la surface terminal de `TerminalService` (l'onglet `run` fait pareil, `run` R7).
 - **Détection** : `Workspace` expose l'environnement du login shell (PATH) ; recherche de l'exécutable par simple parcours des entrées du PATH (`FileManager.isExecutableFile`), hors main actor. Aucun shell lancé pour détecter.
-- **Icônes** : SF Symbols (`icon` = nom de symbole) ; les intégrés ont un symbole par défaut.
+- **Icônes** : `Layout/IconImage` résout un nom SF Symbol, un nom d'asset (`agent-<id>`, SVG template) ou un chemin absolu de fichier SVG/PNG (`NSImage(contentsOfFile:)`, `isTemplate`) ; `AgentsFeature` rend absolu un chemin relatif sous la racine.
 - **Tests** : parsing/fusion de `config.agents` avec les intégrés (R3), résolution du PATH sur un dossier temporaire (R2), machine d'états d'un bouton/onglet (R4, R6, R8) pilotée par des événements terminal simulés.
 
 ## Décisions

@@ -17,7 +17,7 @@ struct ToolbarItemDescriptor {
 
     let id: String
     let title: String
-    /// SF Symbol name.
+    /// See `IconImage`.
     let icon: String
     let placement: Placement
     let kind: Kind

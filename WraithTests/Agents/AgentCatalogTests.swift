@@ -29,7 +29,7 @@ struct AgentCatalogTests {
             #"{ "zeta": { "command": "zeta chat" }, "aider": { "command": "aider", "title": "Aider" }, "opencode": { "enabled": false } }"#
         )
 
-        #expect(merged.agents.map(\.id) == ["claude", "antigravity", "aider", "zeta"])
+        #expect(merged.agents.map(\.id) == ["claude", "antigravity", "pi", "aider", "zeta"])
         #expect(
             merged.agents.last
                 == Agent(id: "zeta", title: "zeta", command: "zeta chat", icon: "terminal", isBuiltIn: false))
@@ -57,7 +57,7 @@ struct AgentCatalogTests {
         try Data().write(to: bin.appending(path: "opencode"))
 
         let path = "\(root.appending(path: "empty").path()):\(bin.path())"
-        let found = AgentCatalog.executables(among: ["claude", "opencode", "antigravity"], inPath: path)
+        let found = AgentCatalog.executables(among: ["claude", "opencode", "agy"], inPath: path)
 
         #expect(found == ["claude"])
         #expect(AgentCatalog.executables(among: ["claude"], inPath: nil).isEmpty)

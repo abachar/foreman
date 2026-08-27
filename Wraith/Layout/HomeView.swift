@@ -60,7 +60,16 @@ struct HomeView: View {
     private func row(title: String, icon: String, shortcut: Shortcut?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Label(title, systemImage: icon)
+                Label {
+                    Text(title)
+                } icon: {
+                    if let image = IconImage.resolve(icon) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                    }
+                }
                 Spacer()
                 if let shortcut {
                     Text(shortcut.description)

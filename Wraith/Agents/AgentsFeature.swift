@@ -123,7 +123,7 @@ final class AgentsFeature {
             guard let agent = agent(id) else { continue }
             layout.register(
                 toolbarItem: ToolbarItemDescriptor(
-                    id: Self.kind(of: id), title: agent.title, icon: agent.icon, placement: .leading,
+                    id: Self.kind(of: id), title: agent.title, icon: icon(of: agent), placement: .leading,
                     kind: .action(
                         perform: { [weak self] in self?.buttonClicked(id) },
                         secondaryMenu: { [weak self] in self?.menu(for: id) ?? [] })))
@@ -133,11 +133,21 @@ final class AgentsFeature {
             in: .agents,
             with: ids.compactMap { id in
                 agent(id).map { agent in
-                    HomeEntry(id: "agents.\(id)", title: agent.title, icon: agent.icon, section: .agents) {
+                    HomeEntry(id: "agents.\(id)", title: agent.title, icon: icon(of: agent), section: .agents) {
                         [weak self] in self?.buttonClicked(id)
                     }
                 }
             })
+    }
+
+    /// agents R3: a relative `icon` is a file of the workspace (SVG or PNG), never outside it.
+    private func icon(of agent: Agent) -> String {
+        guard agent.icon.contains("/") || agent.icon.hasSuffix(".svg") || agent.icon.hasSuffix(".png") else {
+            return agent.icon
+        }
+        let file = Workspace.url(forPersistedPath: agent.icon, root: workspace.root).standardizedFileURL
+        let path = file.path(percentEncoded: false)
+        return path.hasPrefix(workspace.root.standardizedFileURL.path(percentEncoded: false)) ? path : agent.icon
     }
 
     private func agent(_ id: String) -> Agent? {

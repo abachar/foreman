@@ -146,9 +146,9 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     // MARK: - Images
 
-    /// The symbol, with a colored dot in its corner when the item carries a badge (layout R31).
-    private static func image(_ symbol: String, badge: ToolbarBadge) -> NSImage? {
-        guard let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) else { return nil }
+    /// The icon, with a colored dot in its corner when the item carries a badge (layout R31).
+    private static func image(_ icon: String, badge: ToolbarBadge) -> NSImage? {
+        guard let base = IconImage.resolve(icon) else { return nil }
         guard case .dot(let color) = badge else { return base }
         let size = NSSize(width: base.size.width + 4, height: base.size.height + 4)
         let image = NSImage(size: size, flipped: false) { rect in

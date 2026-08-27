@@ -6,7 +6,7 @@ nonisolated struct Agent: Equatable, Sendable, Identifiable {
     let title: String
     /// The text passed as is to the login shell (terminal R1).
     let command: String
-    /// SF Symbol name.
+    /// agents R3: an SF Symbol, an asset name, or a workspace file resolved by `AgentsFeature`.
     let icon: String
     /// agents R2: a built-in agent is shown only when its binary is in the PATH; a declared one always.
     let isBuiltIn: Bool
@@ -29,12 +29,10 @@ nonisolated enum AgentCatalog {
 
     /// agents R1.
     static let builtIns: [Agent] = [
-        Agent(id: "claude", title: "Claude Code", command: "claude", icon: "sparkles", isBuiltIn: true),
-        Agent(
-            id: "antigravity", title: "Antigravity", command: "antigravity", icon: "arrow.up.circle", isBuiltIn: true),
-        Agent(
-            id: "opencode", title: "OpenCode", command: "opencode", icon: "chevron.left.forwardslash.chevron.right",
-            isBuiltIn: true),
+        Agent(id: "claude", title: "Claude Code", command: "claude", icon: "agent-claude", isBuiltIn: true),
+        Agent(id: "antigravity", title: "Antigravity", command: "agy", icon: "agent-antigravity", isBuiltIn: true),
+        Agent(id: "opencode", title: "OpenCode", command: "opencode", icon: "agent-opencode", isBuiltIn: true),
+        Agent(id: "pi", title: "Pi", command: "pi", icon: "agent-pi", isBuiltIn: true),
     ]
 
     static let defaultIcon = "terminal"

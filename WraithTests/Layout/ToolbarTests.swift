@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -45,5 +46,23 @@ struct ToolbarTests {
             .perform()
 
         #expect(!layout.isToolbarVisible)
+    }
+}
+
+/// Icons of toolbar items and home entries (layout R30, agents R3).
+@MainActor
+struct IconImageTests {
+    @Test func resolvesSymbolsAssetsAndFilesOnly() throws {
+        #expect(IconImage.resolve("sparkles") != nil)
+        #expect(IconImage.resolve("agent-pi") != nil)
+        #expect(IconImage.resolve("no-such-icon-42") == nil)
+        #expect(IconImage.resolve("relative/path.svg") == nil)
+
+        let file = FileManager.default.temporaryDirectory.appending(path: "IconImageTests-\(UUID().uuidString).svg")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8"/></svg>"#
+            .write(to: file, atomically: true, encoding: .utf8)
+        let image = try #require(IconImage.resolve(file.path(percentEncoded: false)))
+        #expect(image.isTemplate)
     }
 }
