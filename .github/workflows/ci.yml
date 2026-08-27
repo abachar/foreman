@@ -6,15 +6,27 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: swift format lint --strict --recursive Wraith WraithTests
+
   build-test:
     runs-on: macos-latest
+    # Xcode 27 (project format 110) is not on the GitHub runners yet (M6 task 6.3, checked
+    # 2026-08-27): the job stays declared and non-blocking. Turn `continue-on-error` off the
+    # day `maxim-lobanov/setup-xcode` finds a 27.x image on macos-latest.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode 27
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "27"
-      - name: Lint
-        run: swift format lint --strict --recursive Wraith WraithTests
+      - name: Metal toolchain (SwiftTerm's Metal renderer, AGENTS.md)
+        run: xcodebuild -downloadComponent MetalToolchain
       - name: Build and test
-        run: xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+        # -skipPackagePluginValidation: SwiftTerm's build-tool plugin cannot be approved on a CLI (AGENTS.md).
+        run: xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation
