@@ -25,21 +25,20 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
   {
     "formatter": {
       "onSave": false,
-      "swift": "swift format --configuration .swift-format",
-      "java": "google-java-format -",
-      "kt": "ktlint --log-level=none --format --stdin",
+      "timeout": 5,
+      "swift": "swiftformat --quiet",
+      "java": "clang-format --assume-filename=file.java",
       "ts": "npx --no-install prettier --stdin-filepath file.ts",
       "json": "npx --no-install prettier --stdin-filepath file.json",
-      "toml": "taplo fmt -",
-      "sh": "shfmt -ln bash",
-      "sql": "pg_format",
+      "md": "npx --no-install prettier --stdin-filepath file.md",
+      "yaml": "npx --no-install prettier --stdin-filepath file.yaml",
       "py": "black -q -",
-      "rs": "rustfmt --emit stdout",
-      "go": "gofmt"
+      "sql": "sqlformat -",
+      "Dockerfile": "dockfmt fmt"
     }
   }
   ```
-  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .wraith/config.json" once and does nothing; saving is neither blocked nor delayed. `onSave` is the section's only reserved key; it is never read as an extension.
+  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .wraith/config.json" once and does nothing; saving is neither blocked nor delayed. Keys are matched case-insensitively; a file without an extension (`Dockerfile`) is looked up by its full name. `onSave` and `timeout` (R30, seconds, 1…60, default 5) are the section's only reserved keys; they are never read as extensions. A badly typed value or an empty command drops that entry with a warning, never the whole section (config R7).
 - R26 — The command is **the user's text**, run as is by `$SHELL -l -c "<command>"` with the login shell's environment (`terminal` R3, `Workspace.loginEnvironment()`) and `cwd` = the file's folder. No interpolation: Wraith injects neither the path, nor the content, nor any variable into the command line (`architecture.md`, security; the same policy as `run` and `agents`).
 - R27 — The text **from the view** (not the file on disk) is written to `stdin`, the formatted text is read from `stdout`, the diagnostics from `stderr`. Wraith gives the formatter no path: a command that needs the file name to pick its parser receives it in its own line (`--stdin-filepath file.ts`), written by the user.
 
@@ -83,29 +82,31 @@ This is what Wraith already does for `run`, `agents` and `rg`: `$SHELL -l -c "<c
 
 **The contract is not ours, and it is not a guess.** `format-all-the-code` (`github.com/lassik/emacs-format-all-the-code`, maintained since 2017) does exactly this for around eighty languages, and its helper `format-all--buffer-easy` documents the contract in one sentence: *"Runs the external program EXECUTABLE. The program shall read unformatted code from stdin, write its formatted equivalent to stdout, write errors/warnings to stderr, and exit zero/non-zero on success/failure."* Read on the upstream repository on 2026-08-27: **102 formatter definitions**, and every one of them but a handful goes through that helper. That is R26–R28, word for word, validated across a far larger set of languages than Wraith highlights.
 
-Below, the recommended command for each grammar Wraith actually has (`editor` R11, plus `sql` in M5), with the invocation taken from `format-all.el` rather than from memory. `<recommended>` is the entry the example in R25 uses; the alternatives are the other formatters `format-all` defines for the same language.
+**Targeted first (author's decision, 2026-08-27)**: six formatters cover what the author's projects need, and the R25 example and the manual checks of M7 use them — **prettier** (CSS, GraphQL, JavaScript, JSON, JSON5, JSX, Less, Markdown, PHP, SCSS, Solidity, Svelte, TOML, TSX, TypeScript, Vue, YAML, Angular, Flow), **black** (Python), **clang-format** (C, C++, Cuda, GLSL, Java, Objective-C, Protocol Buffers), **dockfmt** (Dockerfile), **sqlformat** (SQL), **swiftformat** (Swift). Nothing in the code knows this list: the section accepts any command, so the other formatters of the inventory below work the same way when the author reaches for them.
+
+Below, the recommended command for each grammar Wraith actually has (`editor` R11, plus `sql` in M5), with the invocation taken from `format-all.el` rather than from memory. `<recommended>` is one of the six targeted formatters when they cover the language; the alternatives are the other formatters `format-all` defines for the same language, kept for later.
 
 | Wraith grammar | Extensions | Recommended command | Alternatives |
 |---|---|---|---|
-| java | `.java` | `google-java-format -` | `clang-format --assume-filename=file.java`, `astyle` |
-| kotlin | `.kt`, `.kts` | `ktlint --log-level=none --format --stdin` | — |
+| java | `.java` | `clang-format --assume-filename=file.java` | `google-java-format -`, `astyle` |
+| kotlin | `.kt`, `.kts` | `ktlint --log-level=none --format --stdin` (later: not one of the six) | — |
 | typescript | `.ts`, `.mts`, `.cts` | `prettier --stdin-filepath file.ts` | `deno fmt --ext ts -`, `oxfmt --stdin-filepath stdin.ts`, `ts-standard` |
 | tsx | `.tsx` | `prettier --stdin-filepath file.tsx` | `deno fmt --ext tsx -`, `oxfmt --stdin-filepath stdin.tsx` |
 | javascript | `.js`, `.mjs`, `.cjs`, `.jsx` | `prettier --stdin-filepath file.js` | `deno fmt --ext js -`, `oxfmt --stdin-filepath stdin.js`, `standard` |
 | json | `.json`, `.jsonc` | `prettier --stdin-filepath file.json` | `deno fmt --ext json -`, `oxfmt --stdin-filepath stdin.json` |
 | yaml | `.yaml`, `.yml` | `prettier --stdin-filepath file.yaml` | `deno fmt --ext yaml -`, `oxfmt --stdin-filepath stdin.yaml` |
-| toml | `.toml` | `taplo fmt -` | `prettier` (with `prettier-plugin-toml`), `oxfmt --stdin-filepath stdin.toml` |
+| toml | `.toml` | `prettier --stdin-filepath file.toml` (with `prettier-plugin-toml`) | `taplo fmt -`, `oxfmt --stdin-filepath stdin.toml` |
 | markdown | `.md`, `.markdown` | `prettier --stdin-filepath file.md` | `deno fmt --ext md -`, `mdformat -`, `markdownfmt` |
-| bash | `.sh`, `.bash`, `.zsh`, `.zshrc`… | `shfmt -ln bash` | `beautysh -` |
-| swift | `.swift` | `swift format` | `swiftformat --quiet` (nicklockwood's, the one `format-all` defaults to) |
+| bash | `.sh`, `.bash`, `.zsh`, `.zshrc`… | `shfmt -ln bash` (later: not one of the six) | `beautysh -` |
+| swift | `.swift` | `swiftformat --quiet` (nicklockwood's, the one `format-all` defaults to) | `swift format` (Apple's, ships with Xcode) |
 | html | `.html`, `.htm` | `prettier --stdin-filepath file.html` | `tidy -q --tidy-mark no -indent` (**exits 1 on warnings**, see the edge cases), `deno fmt --ext html -` |
 | css | `.css` | `prettier --stdin-filepath file.css` | `deno fmt --ext css -`, `oxfmt --stdin-filepath stdin.css` |
 | dockerfile | `Dockerfile*` | `dockfmt fmt` | — |
-| sql (M5) | `.sql` | `pg_format` | `sqlformat -` (`format-all`'s default), `sqlfluff fix --nocolor --dialect=postgres -` |
+| sql (M5) | `.sql` | `sqlformat -` (`format-all`'s default) | `pg_format`, `sqlfluff fix --nocolor --dialect=postgres -` |
 
 #### Reference: the external formatters `format-all` knows, by language
 
-The full inventory, supplied by the author on 2026-08-27, kept here so that a user adding a grammar to `formatter` in `config.json` has the candidate names at hand. Every entry is an external command driven over `stdin`/`stdout` and therefore fits R26–R28 as is, **except** the ones marked `*`, which are Emacs-internal modes (`Emacs`, `auctex`, `ledger-mode`) and have no CLI: those languages have no formatter Wraith can call. Only the rows whose grammar Wraith highlights (the table above) get a recommended invocation; the rest are names, not verified command lines.
+The full inventory, supplied by the author on 2026-08-27, kept here **for the future**: a user adding a grammar to `formatter` in `config.json` has the candidate names at hand, beyond the six targeted first. Every entry is an external command driven over `stdin`/`stdout` and therefore fits R26–R28 as is, **except** the ones marked `*`, which are Emacs-internal modes (`Emacs`, `auctex`, `ledger-mode`) and have no CLI: those languages have no formatter Wraith can call. Only the rows whose grammar Wraith highlights (the table above) get a recommended invocation; the rest are names, not verified command lines.
 
 | Language | Formatters |
 |---|---|
