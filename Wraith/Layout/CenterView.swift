@@ -76,7 +76,10 @@ struct TabGroupView: View {
     @ViewBuilder
     private func content(of group: TabGroup) -> some View {
         if let tab = group.active, let view = layout.view(for: tab) {
-            view
+            // Two tabs of the same kind have the same view structure: without an identity SwiftUI
+            // keeps the previous tab's native views (an `NSTextView` kept showing the last file
+            // opened, 2026-08-28). The id makes a switch a rebuild, as it is meant to be.
+            view.id(tab.id)
         } else {
             HomeView(layout: layout, theme: theme)
         }
