@@ -4,6 +4,7 @@ import SwiftUI
 /// per leaf (product R3).
 struct CenterView: View {
     let layout: LayoutManager
+    let theme: ThemeService
 
     var body: some View {
         node(layout.model.tree)
@@ -19,17 +20,18 @@ struct CenterView: View {
         case .group(let id):
             return AnyView(TabGroupView(layout: layout, groupID: id))
         case .split(.vertical, let first, let second):
+            // design R21: a 1 pt line inside the island, no inner gutter.
             return AnyView(
                 HStack(spacing: 0) {
                     self.node(first)
-                    Divider()
+                    theme.tokens.separator.color.frame(width: 1)
                     self.node(second)
                 })
         case .split(.horizontal, let first, let second):
             return AnyView(
                 VStack(spacing: 0) {
                     self.node(first)
-                    Divider()
+                    theme.tokens.separator.color.frame(height: 1)
                     self.node(second)
                 })
         }

@@ -43,7 +43,6 @@ struct WorkspaceView: View {
                 minWidth: ZoneSizing.minimumWindow.width, maxWidth: .infinity,
                 minHeight: ZoneSizing.minimumWindow.height, maxHeight: .infinity
             )
-            .navigationTitle(folder.lastPathComponent)
             .task(id: folder) {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
@@ -91,6 +90,7 @@ struct WorkspaceView: View {
     @ViewBuilder
     private var content: some View {
         if isFolderReachable {
+            let tokens = theme.tokens
             VStack(spacing: 0) {
                 // config R7: the last valid config stays active, the error is shown with its line.
                 if let error = workspace.configError {
@@ -110,7 +110,7 @@ struct WorkspaceView: View {
                         .background(.bar)
                 }
                 if isStateLoaded {
-                    ZonesView(layout: layout) {
+                    ZonesView(layout: layout, theme: theme) {
                         // layout R29: restored panels start their work after the first frame.
                         layout.panels.activateVisible()
                         // architecture, Performance: workspace opened < 500 ms to the first frame (M6 6.5).
@@ -123,8 +123,11 @@ struct WorkspaceView: View {
                     .onChange(of: layout.snapshot()) { _, snapshot in
                         workspace.setState("layout", to: snapshot)
                     }
+                    // design R2: the gutter on the window's four edges.
+                    .padding(tokens.gutter)
                 }
             }
+            .background(tokens.windowBackground.color)
         } else {
             ContentUnavailableView(
                 "Folder Not Found",

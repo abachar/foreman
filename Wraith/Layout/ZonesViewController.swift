@@ -20,9 +20,17 @@ final class ZonesViewController: NSSplitViewController {
         var onWindow: (NSWindow) -> Void
         /// The user moved or resized the window (layout R27).
         var onWindowFrame: (CGRect) -> Void
+        /// design R2, R14, R20: the gutter between the zones and the ground it shows.
+        var gutter: CGFloat
+        var windowBackground: NSColor
     }
 
-    private let column = NSSplitViewController()
+    /// design R20: both split views draw their divider as the gutter; set before the views load.
+    private let column: NSSplitViewController = {
+        let controller = NSSplitViewController()
+        controller.splitView = GutterSplitView()
+        return controller
+    }()
     private let slots: [PanelSide: SlotViewController] = [
         .left: SlotViewController(), .right: SlotViewController(), .bottom: SlotViewController(),
     ]
@@ -32,18 +40,13 @@ final class ZonesViewController: NSSplitViewController {
     private var hasShownFirstFrame = false
     private var frameObservations: [Task<Void, Never>] = []
 
-    isolated deinit {
-        for observation in frameObservations {
-            observation.cancel()
-        }
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    /// A controller given its own split view must hold its items before the view loads: an empty
+    /// one asserts in `viewDidLoad` (checked on macOS 26, 2026-08-27), so everything is built here.
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        splitView = GutterSplitView()
         splitView.isVertical = true
-        splitView.dividerStyle = .thin
         column.splitView.isVertical = false
-        column.splitView.dividerStyle = .thin
 
         let centerItem = NSSplitViewItem(viewController: center)
         centerItem.minimumThickness = ZoneSizing.minimumCenter.height
@@ -55,6 +58,16 @@ final class ZonesViewController: NSSplitViewController {
         columnItem.minimumThickness = ZoneSizing.minimumCenter.width
         addSplitViewItem(columnItem)
         addSplitViewItem(panelItem(.right))
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    isolated deinit {
+        for observation in frameObservations {
+            observation.cancel()
+        }
     }
 
     override func viewDidLayout() {
@@ -86,6 +99,18 @@ final class ZonesViewController: NSSplitViewController {
 
     func apply(_ configuration: Configuration) {
         self.configuration = configuration
+        for gutterView in [splitView, column.splitView].compactMap({ $0 as? GutterSplitView }) {
+            if gutterView.gutter != configuration.gutter {
+                gutterView.gutter = configuration.gutter
+            }
+            if gutterView.gutterColor != configuration.windowBackground {
+                gutterView.gutterColor = configuration.windowBackground
+            }
+        }
+        // design R14: the title area paints the same ground as the gutters.
+        if let window = view.window, window.backgroundColor != configuration.windowBackground {
+            window.backgroundColor = configuration.windowBackground
+        }
         center.rootView = configuration.center
         for (side, slot) in slots {
             slot.show(configuration.visible[side].flatMap { id in configuration.panelView(id).map { (id, $0) } })
