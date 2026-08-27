@@ -54,14 +54,21 @@ struct EditorTabView: View {
         case .modified:
             // editor R9: the file changed on disk while this tab has unsaved changes.
             HStack {
-                Label("Modified on disk", systemImage: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(theme.tokens.statusOrange.color)
+                Label {
+                    Text("Modified on disk")
+                        .foregroundStyle(theme.tokens.textPrimary.color)
+                } icon: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(theme.tokens.statusOrange.color)
+                }
                 Spacer()
                 Button("Keep My Changes") { tab.keepChanges() }
                 Button("Reload") { Task { await tab.reload() } }
             }
             .font(.callout)
             .padding(6)
+            // design R17: the same tinted band as `BannerView`, with its two actions.
+            .background(theme.tokens.statusOrange.color.opacity(BannerView.tintOpacity))
             .background(theme.tokens.surfaceRaised.color)
         case .deleted:
             banner("Deleted on disk — ⌘S recreates it", icon: "trash")

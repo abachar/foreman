@@ -15,15 +15,24 @@ struct BannerView: View {
 
     var body: some View {
         let tokens = theme.tokens
-        Label(text, systemImage: icon)
-            .font(.callout)
-            .foregroundStyle(color(tokens))
-            .lineLimit(3)
-            .textSelection(.enabled)
-            .padding(6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(tokens.surfaceRaised.color)
+        Label {
+            Text(text)
+                .foregroundStyle(tokens.textPrimary.color)
+        } icon: {
+            Image(systemName: icon)
+                .foregroundStyle(color(tokens))
+        }
+        .font(.callout)
+        .lineLimit(3)
+        .textSelection(.enabled)
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The state token tints the band (mockup 08, first visual review 2026-08-27); `info` stays flat.
+        .background(color(tokens).opacity(tone == .info ? 0 : Self.tintOpacity))
+        .background(tokens.surfaceRaised.color)
     }
+
+    static let tintOpacity = 0.18
 
     private func color(_ tokens: ThemeService.Tokens) -> Color {
         switch tone {
