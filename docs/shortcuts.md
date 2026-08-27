@@ -75,7 +75,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+g` | `git.changes` | Changes panel | global | ⚪ (M4) |
+| `cmd+shift+g` | `git.changes` | Changes panel | global | 🟢 (2026-08-27) |
 | `cmd+shift+h` | `git.history` | History panel | global | ⚪ (M4) |
 | `cmd+enter` | — | Commit (message field) | native | ⚪ (M4) |
 

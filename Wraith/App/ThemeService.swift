@@ -128,6 +128,20 @@ final class ThemeService {
         }
     }
 
+    // MARK: - Git (git R6, explorer R15)
+
+    /// The color of a status letter and of an explorer badge.
+    func color(for status: GitFileStatus) -> NSColor {
+        switch status {
+        case .modified: return .systemOrange
+        case .added, .untracked: return .systemGreen
+        case .deleted: return .systemRed
+        case .renamed: return .systemBlue
+        case .conflicted: return .systemRed
+        case .ignored: return .tertiaryLabelColor
+        }
+    }
+
     // MARK: - Palettes (terminal R14)
 
     private static let lightPalette = TerminalPalette(

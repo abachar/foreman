@@ -21,6 +21,7 @@ struct WorkspaceView: View {
     @State private var terminal: TerminalService?
     @State private var agents: AgentsFeature?
     @State private var run: RunFeature?
+    @State private var git: GitFeature?
     @State private var isStateLoaded = false
     @State private var hostWindow: NSWindow?
 
@@ -44,6 +45,7 @@ struct WorkspaceView: View {
                 let editor = EditorFeature(layout: layout, workspace: workspace, theme: theme, palette: palette)
                 self.editor = editor
                 ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
+                git = GitFeature(layout: layout, workspace: workspace, editor: editor, theme: theme)
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
