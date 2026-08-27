@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The bottom panel `git.history` (git R18–R20): a repo picker, a filter, the linear log.
+/// The right panel `git.history` (git R18–R20): a repo picker, a filter, the linear log.
 struct GitHistoryPanelView: View {
     let model: GitHistoryModel
     let changes: GitModel

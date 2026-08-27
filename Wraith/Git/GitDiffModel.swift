@@ -9,14 +9,27 @@ nonisolated struct RenderedColumn: Sendable {
     let text: AttributedString
 }
 
+/// git R13b: one side of a row; `nil` when nothing faces the other side.
+nonisolated struct RenderedCell: Sendable {
+    let number: String
+    let text: AttributedString
+    let kind: DiffLine.Kind
+}
+
+/// git R13b: one row of the side-by-side view.
+nonisolated struct RenderedRow: Sendable, Identifiable {
+    let id: Int
+    let left: RenderedCell?
+    let right: RenderedCell?
+}
+
 /// A hunk as the view draws it: inline, or side by side (git R13, R13b).
 nonisolated struct RenderedHunk: Sendable, Identifiable {
     let id: String
     let header: String
     let inline: RenderedColumn
     let inlineNewNumbers: String
-    let left: RenderedColumn
-    let right: RenderedColumn
+    let rows: [RenderedRow]
 }
 
 /// What one `git.diff` tab shows (git R13, R14, R16, R17).
@@ -184,13 +197,27 @@ final class GitDiffModel {
                 pieces.append(piece)
             }
             let inline = column(hunk.lines, pieces: pieces, number: \.oldNumber)
-            let rows = SideBySideRow.rows(of: hunk)
+            let pieceOf = Dictionary(zip(hunk.lines.indices, pieces)) { first, _ in first }
+            let indexOf = Dictionary(hunk.lines.enumerated().map { ($0.element, $0.offset) }) { first, _ in first }
+            let rows = SideBySideRow.rows(of: hunk).enumerated().map { offset, row in
+                RenderedRow(
+                    id: offset,
+                    left: row.left.flatMap { line in
+                        indexOf[line].flatMap { pieceOf[$0] }.map {
+                            RenderedCell(number: line.oldNumber.map(String.init) ?? "", text: $0, kind: line.kind)
+                        }
+                    },
+                    right: row.right.flatMap { line in
+                        indexOf[line].flatMap { pieceOf[$0] }.map {
+                            RenderedCell(number: line.newNumber.map(String.init) ?? "", text: $0, kind: line.kind)
+                        }
+                    })
+            }
             result.append(
                 RenderedHunk(
                     id: hunk.id, header: hunk.header, inline: inline,
                     inlineNewNumbers: hunk.lines.map { $0.newNumber.map(String.init) ?? "" }.joined(separator: "\n"),
-                    left: sideColumn(rows.map(\.left), lines: hunk.lines, pieces: pieces, number: \.oldNumber),
-                    right: sideColumn(rows.map(\.right), lines: hunk.lines, pieces: pieces, number: \.newNumber)))
+                    rows: rows))
         }
         return result
     }
@@ -209,34 +236,6 @@ final class GitDiffModel {
         }
         return RenderedColumn(
             numbers: lines.map { $0[keyPath: number].map(String.init) ?? "" }.joined(separator: "\n"), text: text)
-    }
-
-    /// One side of the side-by-side rows: the piece of each present line, an empty line otherwise.
-    private static func sideColumn(
-        _ side: [DiffLine?], lines: [DiffLine], pieces: [AttributedString], number: KeyPath<DiffLine, Int?>
-    ) -> RenderedColumn {
-        var text = AttributedString()
-        var numbers: [String] = []
-        var next = 0
-        for (index, line) in side.enumerated() {
-            if index > 0 {
-                text.append(AttributedString("\n"))
-            }
-            if let line {
-                // Lines are consumed in order on each side, so the next matching one is the piece.
-                while next < lines.count, lines[next] != line {
-                    next += 1
-                }
-                if next < lines.count {
-                    text.append(pieces[next])
-                    next += 1
-                }
-                numbers.append(line[keyPath: number].map(String.init) ?? "")
-            } else {
-                numbers.append("")
-            }
-        }
-        return RenderedColumn(numbers: numbers.joined(separator: "\n"), text: text)
     }
 }
 

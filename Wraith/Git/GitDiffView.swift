@@ -48,7 +48,7 @@ struct GitDiffView: View {
     }
 
     private func files(_ diff: GitDiff) -> some View {
-        ScrollView([.vertical, .horizontal]) {
+        ScrollView(model.isSideBySide ? .vertical : [.vertical, .horizontal]) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(diff.files) { file in
                     fileHeader(file, isLarge: diff.isLarge)
@@ -129,12 +129,16 @@ struct GitDiffView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.quaternary.opacity(0.4))
             if model.isSideBySide {
-                HStack(alignment: .top, spacing: 0) {
-                    column(hunk.left)
-                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                    Divider()
-                    column(hunk.right)
-                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                // git R13b: one row per pair, both cells the height of the taller one, lines wrap.
+                LazyVStack(spacing: 0) {
+                    ForEach(hunk.rows) { row in
+                        HStack(alignment: .top, spacing: 0) {
+                            cell(row.left)
+                            Divider()
+                            cell(row.right)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.vertical, 2)
             } else {
@@ -148,10 +152,28 @@ struct GitDiffView: View {
         }
     }
 
-    private func column(_ column: RenderedColumn) -> some View {
+    private func cell(_ cell: RenderedCell?) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            gutter(column.numbers)
-            code(column.text)
+            Text(cell?.number ?? "")
+                .font(Font(theme.editorFont))
+                .foregroundStyle(.tertiary)
+                .frame(width: 44, alignment: .trailing)
+                .padding(.trailing, 4)
+            Text(cell?.text ?? AttributedString(" "))
+                .font(Font(theme.editorFont))
+                .textSelection(.enabled)
+                .padding(.leading, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cellBackground(cell?.kind))
+    }
+
+    private func cellBackground(_ kind: DiffLine.Kind?) -> Color {
+        switch kind {
+        case .added: return Color(nsColor: theme.diffLineBackground(added: true))
+        case .removed: return Color(nsColor: theme.diffLineBackground(added: false))
+        case .context, nil: return .clear
         }
     }
 

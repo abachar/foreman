@@ -72,7 +72,7 @@ final class GitFeature {
         let history = history
         layout.register(
             panel: PanelDescriptor(
-                id: Self.historyPanelID, title: "History", side: .bottom, defaultShortcut: "cmd+shift+h",
+                id: Self.historyPanelID, title: "History", side: .right, defaultShortcut: "cmd+shift+h",
                 makeView: { [unowned self] in
                     AnyView(GitHistoryPanelView(model: history, changes: model, feature: self))
                 },

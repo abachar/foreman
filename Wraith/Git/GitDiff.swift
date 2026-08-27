@@ -1,7 +1,7 @@
 import Foundation
 
 /// One line of a hunk (git R13).
-nonisolated struct DiffLine: Equatable, Sendable {
+nonisolated struct DiffLine: Hashable, Sendable {
     enum Kind: Equatable, Sendable {
         case context
         case added

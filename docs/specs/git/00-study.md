@@ -4,7 +4,7 @@
 
 Feature `git` (folder `Git/`): an overview of the changes across every repo in the workspace, stage/unstage/discard, commit, inline diff, linear history, and the everyday operations (fetch/pull/push, branches, stash) — all of it by calling the user's `git` binary, so that their config (hooks, signing, credential helpers; aliases excluded) is honoured.
 
-Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, not instead of it) (`cmd+shift+g`), bottom panel `git.history` (`cmd+shift+h`), center tab `git.diff`.
+Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, not instead of it) (`cmd+shift+g`), right panel `git.history` (`cmd+shift+h`, the same slot as the changes: one replaces the other, decision 2026-08-27), center tab `git.diff`.
 
 ## User stories
 
@@ -50,7 +50,7 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 
 ### History
 
-- R18 — Bottom panel `git.history`: a repo picker (the one from the active section of the changes panel by default), a **linear log** of the current branch (`git log --first-parent`), pagination by 200 commits ("load more"), columns: short sha, subject, author, relative date, ref badges (branches, tags, `HEAD`). A text filter on subject/author (`--grep`/`--author`).
+- R18 — Right panel `git.history` (same slot as `git.changes`): a repo picker (the one from the active section of the changes panel by default), a **linear log** of the current branch (`git log --first-parent`), pagination by 200 commits ("load more"), columns: short sha, subject, author, relative date, ref badges (branches, tags, `HEAD`). A text filter on subject/author (`--grep`/`--author`).
 - R19 — Click: the commit's diff (R14) as a preview. Menu: copy the sha, *Checkout* (detached HEAD, confirmed), *Create a branch here*, *Cherry-pick* (confirmed), *Revert* (confirmed, creates a commit), *Reset soft/mixed* (confirmed; `--hard` is **absent** from the UI, terminal only).
 - R20 — A file's history: from a file's menu (explorer or changes) → the same panel, filtered (`git log --follow -- <path>`).
 
