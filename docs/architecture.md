@@ -31,7 +31,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 | Agents | toolbar buttons; one terminal tab per agent | `config.shortcuts["agents.<id>"]` |
 | Run | ▶ Run button + palette; one terminal tab per command | `cmd+r` |
 | Git | right panel: changes, history (one at a time); center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
-| Postgres | right panel: schema; bottom panel: query + results | `cmd+shift+b` / `cmd+shift+q` |
+| Postgres | right panel: schema; center tabs: query + results | `cmd+shift+b` / `cmd+shift+q` |
 
 Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
 

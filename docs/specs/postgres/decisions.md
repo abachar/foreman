@@ -2,6 +2,8 @@
 
 | Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
+| 2026-08-27 | R9: `postgres.query` is a **center tab** (`cmd+shift+q` = a new `Query N` tab, several at once), not the bottom panel | The bottom panel (2026-08-25) | Author's choice: more room, several queries side by side, the bottom slot stays with the search; same model as `git.diff` |
+| 2026-08-27 | R18: CSV/JSON export deferred out of v1 (noted as a future evolution) | Shipping it in 5.7 | Author's choice: not needed today; `cmd+c` as TSV covers the small cases |
 | 2026-08-27 | R1, R3: an optional plaintext `password` in the `postgres` section, taking precedence over the Keychain chain; a refused config password is shown, not invalidated or re-asked | Keychain only (2026-08-25) | Author's choice for local dev databases (`config` decision 2026-08-27); the chain is unchanged when the key is absent |
 | 2026-08-27 | R1, R12: a single config source, the workspace's `.wraith/config.json` (`postgres` section, `statementTimeout` included); the global/workspace merge disappears from the spec and from the tests | Keeping the global/workspace precedence wording | The config decision of 2026-08-26 removed the global file; a rule citing it would describe a merge that no longer exists |
 | 2026-08-27 | `postgres.schema` defaults to **`cmd+shift+b`**; `cmd+shift+d` stays `layout.split.horizontal` | `cmd+shift+p`; keeping `cmd+shift+d` | A feature cannot take a layout shortcut (`layout` R24, checked in `ShortcutRegistry.rebuild`: `reservedByLayout`, the action is not bound); `b` reads as *base*, sits next to `cmd+shift+q`, and is free both in `shortcuts.md` and under macOS; `cmd+shift+p` stays free, it is the command palette elsewhere |

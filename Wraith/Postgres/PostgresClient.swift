@@ -140,6 +140,28 @@ actor PostgresClient {
         }
     }
 
+    // MARK: - Cancellation (R13)
+
+    /// `SELECT pg_cancel_backend(pid)` over a second, short-lived connection: the only public
+    /// way to stop the running statement on the server (decision 2026-08-27).
+    func cancelRunning() async throws(PostgresError) {
+        guard let pid = backendPID else { return }
+        do {
+            let secret = try await password()
+            var configuration = PostgresConnection.Configuration(
+                host: config.host, port: config.port, username: config.user, password: secret,
+                database: config.database,
+                tls: try PostgresConfig.tls(for: config.sslMode) { try NIOSSLContext(configuration: .clientDefault) })
+            configuration.options.connectTimeout = .seconds(Int64(Self.connectTimeout.components.seconds))
+            let helper = try await PostgresConnection.connect(
+                configuration: configuration, id: Int.random(in: 1...Int.max), logger: nioLogger)
+            defer { Task { try? await helper.close() } }
+            try await helper.query("SELECT pg_cancel_backend(\(pid))", logger: nioLogger)
+        } catch {
+            throw PostgresError.classify(error)
+        }
+    }
+
     // MARK: - Queries (R7, R12, R15)
 
     /// Runs `query` on the connection, streaming its rows; the caller consumes the sequence.

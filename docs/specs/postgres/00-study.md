@@ -2,7 +2,7 @@
 
 ## Goal
 
-Feature `postgres` (folder `Postgres/`): explore a database's schema and run read queries without leaving the workspace. Right panel `postgres.schema` (`cmd+shift+b`), bottom panel `postgres.query` (SQL editor + result grid, `cmd+shift+q`). Client: PostgresNIO, lazy connection, secrets in the Keychain.
+Feature `postgres` (folder `Postgres/`): explore a database's schema and run read queries without leaving the workspace. Right panel `postgres.schema` (`cmd+shift+b`), center tabs `postgres.query` (SQL editor + result grid, `cmd+shift+q` opens a new one — decision 2026-08-27). Client: PostgresNIO, lazy connection, secrets in the Keychain.
 
 ## User stories
 
@@ -10,7 +10,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 - US2 — I expand a table: columns (type, null, default), indexes, constraints, foreign keys.
 - US3 — `cmd+shift+q`, I write a query, `cmd+enter`: the first 500 rows in a grid, the execution time, the row count.
 - US4 — I select two lines of SQL out of five: only the selection runs; without a selection, the whole buffer goes.
-- US5 — I export the result as CSV or JSON.
+- US5 — *(deferred)* I export the result as CSV or JSON.
 - US6 — I find my last queries again in the history.
 - US7 — Double-clicking a table: `SELECT * FROM schema.table LIMIT 500` runs.
 
@@ -21,7 +21,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 - R1 — Config (`config` R3, the `postgres` section): **a single object** = one connection per workspace; fields `host` (default `localhost`), `port` (5432), `database`, `user`, `sslmode` (`disable` | `prefer` | `require`, default `prefer`), `options` (`[String: String]`, e.g. `application_name`), `password` (optional, plaintext, local dev — `config` R11, decision 2026-08-27). A single source: the workspace's `.wraith/config.json` (`config` R4, config decision 2026-08-26: there is no global config).
 - R2 — No picker: the header of both panels shows `user@host/database` and the state (R5). No `postgres` section configured → a panel with a message and a config example. Changing database = editing `config.json` (hot-reloaded, `config` R6: the previous connection is closed).
 - R3 — Password: `config.password` when set (used as is, a refusal is shown and not retried); otherwise looked up in the Keychain (`config` R3), otherwise in `~/.pgpass` (standard format and permissions, only when the file is `0600`), otherwise asked for (an input sheet, with a *Save to the Keychain* option checked by default). A refused authentication invalidates the Keychain entry and asks again. The password is only held in memory for the lifetime of the connection.
-- R4 — **Lazy** connection: established at the first action that needs it (expanding the schema, running a query), not when the panel is activated. One connection per window; closed when **both** panels are deactivated or after 10 min of inactivity; reopened on demand. Connection timeout 10 s.
+- R4 — **Lazy** connection: established at the first action that needs it (expanding the schema, running a query), not when the panel is activated. One connection per window; closed when the schema panel is hidden and no query tab is running, or after 10 min of inactivity; reopened on demand. Connection timeout 10 s.
 - R5 — The connection state is visible (a dot: disconnected / connecting / connected / error); an error is shown in a banner with the server's message (the feature's `PostgresError`, wrapping the NIO error).
 
 ### Schema
@@ -32,8 +32,8 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 
 ### SQL editor and execution
 
-- R9 — The `postgres.query` panel is split vertically: the SQL editor on top (resizable), the results below. The editor is a monospaced text area of the feature's own, colored through the shared `Highlight/` folder (the `sql` grammar), with undo, indentation, and `cmd+/` for `--` comments. Its content is persisted in `state.json`.
-- R10 — Execution (`cmd+enter`, a key of the panel): the **selection** if there is one, otherwise the **whole buffer**, sent as is as **a single statement** (no client-side splitting). PostgresNIO only exposes the extended protocol, which does not accept several statements in one message (decision 2026-08-27): a buffer holding several of them gets the server error `42601`, explained by a banner inviting the user to select the statement to run. No "statement under the cursor" (see the decisions).
+- R9 — A `postgres.query` **center tab** (`cmd+shift+q` opens a new `Query N` tab, `cmd+w` closes it; decision 2026-08-27, replaces the bottom panel) is split vertically: the SQL editor on top (resizable), the results below. The editor is a monospaced text area of the feature's own, colored through the shared `Highlight/` folder (the `sql` grammar), with undo, indentation, and `cmd+/` for `--` comments. Each tab's content is persisted with the layout in `state.json` (`layout` R28).
+- R10 — Execution (`cmd+enter`, a key of the tab): the **selection** if there is one, otherwise the **whole buffer**, sent as is as **a single statement** (no client-side splitting). PostgresNIO only exposes the extended protocol, which does not accept several statements in one message (decision 2026-08-27): a buffer holding several of them gets the server error `42601`, explained by a banner inviting the user to select the statement to run. No "statement under the cursor" (see the decisions).
 - R11 — **Autocommit**, with a read-only session by default: the connection runs `SET default_transaction_read_only = on`; an *Allow writes* toggle (per session, not persisted, a red dot) lifts it. A `read-only transaction` error is explained by a banner pointing at the toggle.
 - R12 — Every query is bounded: `statement_timeout` 30 s (adjustable with `statementTimeout` in the `postgres` section of `.wraith/config.json`). SQL **generated by Wraith** (R8) carries a `LIMIT 500`. **Free-form** SQL is read as a **stream** (rows consumed as they come, never all in memory) and stops at **50,000 rows**: the query is then cancelled (R13) and the grid shows a "result truncated at 50,000 rows, add a `LIMIT`" warning. The grid shows the rows in pages of 500 as they arrive. No cursor/portal.
 - R13 — Cancellation: the *Stop* button / `cmd+.` cancels the task **and** sends `SELECT pg_cancel_backend(<pid>)` over a second short-lived connection (the pid is read at connection time by `SELECT pg_backend_pid()`), then closes the connection if the server does not answer within 5 s. `Task.cancel` alone only discards the rows client-side — PostgresNIO does not expose the protocol's cancel request (decision 2026-08-27).
@@ -44,7 +44,7 @@ Feature `postgres` (folder `Postgres/`): explore a database's schema and run rea
 
 - R16 — A read-only grid: headers (name, PG type), **client-side** sorting per column over the loaded page, adjustable column widths, cell/row selection, `cmd+c` copies as TSV (a cell, rows, or everything). Values: `NULL` visually distinguished, `bytea` as truncated hex, `json/jsonb` pretty-printed on a double click (a popover), dates in ISO 8601, arrays as `{…}` text.
 - R17 — Status bar: `N rows (page 1/…) · 42 ms · user@database`. A statement with no result set (`UPDATE`, `CREATE`) shows `OK · 3 rows affected`. One execution = one statement (R10), so a single result is shown.
-- R18 — Export: *CSV* (RFC 4180, headers, `NULL` empty) and *JSON* (an array of objects, native types where possible) of the **loaded** result or, as an option, of the whole query re-run and streamed to the file (capped at 1,000,000 rows). Destination through `NSSavePanel`.
+- R18 — *(deferred, decision 2026-08-27: not in v1)* Export: *CSV* (RFC 4180, headers, `NULL` empty) and *JSON* (an array of objects, native types where possible) of the **loaded** result or, as an option, of the whole query re-run and streamed to the file (capped at 1,000,000 rows). Destination through `NSSavePanel`.
 - R19 — An execution error: a banner with the message, the `SQLSTATE`, and the position → the cursor is placed on the error in the editor.
 
 ### History

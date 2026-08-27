@@ -11,6 +11,10 @@ import os
 @MainActor
 final class PostgresFeature {
     static let schemaPanelID: PanelID = "postgres.schema"
+    static let queryTabKind = "postgres.query"
+    /// R12: free-form SQL stops here.
+    static let rowLimit = 50_000
+    static let pageSize = 500
 
     let model = PostgresModel()
     /// R6: the schema tree, created with the panel.
@@ -18,6 +22,13 @@ final class PostgresFeature {
     /// R8: set by the query panel (5.6); `nil` hides the actions that need it.
     var runQuery: ((String) -> Void)?
     var insertIntoEditor: ((String) -> Void)?
+    var queryTabs: [TabID: PostgresQueryTab] = [:]
+    var queryCount = 0
+    /// R14: one execution per window.
+    var execution = QueryExecution.State.idle
+    var executionTask: Task<Void, Never>?
+    let layout: LayoutManager
+    let theme: ThemeService
     private let workspace: Workspace
     private let secrets: any SecretStore
     private(set) var config: PostgresConfig?
@@ -32,7 +43,10 @@ final class PostgresFeature {
     init(layout: LayoutManager, workspace: Workspace, secrets: any SecretStore, theme: ThemeService) {
         self.workspace = workspace
         self.secrets = secrets
+        self.layout = layout
+        self.theme = theme
         apply(workspace.config)
+        registerQueryTab()
         // R4: `activate` connects nothing; the tree's first expansion does.
         layout.register(
             panel: PanelDescriptor(
@@ -52,6 +66,7 @@ final class PostgresFeature {
     isolated deinit {
         configWatch?.cancel()
         stateWatch?.cancel()
+        executionTask?.cancel()
         if let client {
             Task { await client.close() }
         }
@@ -208,6 +223,12 @@ final class PostgresFeature {
             model.error = error.description
             throw error
         }
+    }
+
+    /// R3 for the query path: a refused config password is not invalidated.
+    func invalidatePasswordIfAsked() {
+        guard let config, config.password == nil else { return }
+        invalidatePassword(config)
     }
 
     private func invalidatePassword(_ config: PostgresConfig) {
