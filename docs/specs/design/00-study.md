@@ -32,10 +32,11 @@ A **transverse** domain: it ships no feature. It defines the visual tokens and s
 - R9 — The tokens form four families, and nothing else:
   | Family | Tokens |
   |---|---|
-  | Backgrounds | `windowBackground` (the ground under the islands), `surface` (an island's background), `surfaceRaised` (toolbar, tab bar, panel header), `surfaceSunken` (an input field, a highlighted code line) |
+  | Backgrounds | `windowBackground` (the ground under the islands), `surface` (an island's background), `surfaceRaised` (tab bar, panel header, toolbar buttons), `surfaceSunken` (an input field, the current line), `surfaceOverlay` (the palette; added 2026-08-27) |
   | Text and rules | `textPrimary`, `textSecondary`, `textDisabled`, `separator`, `border` |
   | Accent and states | `accent`, `accentText` (text laid on the accent), `statusGreen`, `statusOrange`, `statusRed`, `statusBlue` |
   | Metrics | `islandRadius`, `gutter`, `barHeight`, `rowHeight`, `contentInset` |
+  | Syntax (2026-08-27) | one color per `HighlightRole` (editor R12), so the editor follows Wraith's theme and not the macOS appearance |
 - R10 — Two token sets, `dark` and `light`, with an identical structure, chosen by the mode from `terminal` R14 (`light` / `dark` / `system`). **Only `dark` is designed and validated in v1**; `light` is derived mechanically and is not a goal (see out of scope). The 16-color ANSI palette from `terminal` R14 is now part of the token set and must agree with it (R13).
 - R11 — Tokens can be overridden through the `theme` section of `.wraith/config.json`: `{ "theme": { "accent": "#4C8DF6", "islandRadius": 10 } }`. Unknown key → a warning, ignored; malformed value (a color outside `#rgb`/`#rrggbb`, a negative or out-of-range metric) → a warning, the default value kept; the whole section is optional (`config` R2, R5) and hot-reloaded (`config` R6). No separate theme file (see out of scope).
 
