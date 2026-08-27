@@ -23,6 +23,7 @@ final class ToolbarButton: NSButton {
         isBordered = false
         bezelStyle = .regularSquare
         imagePosition = .imageLeading
+        imageHugsTitle = true
         imageScaling = .scaleProportionallyDown
         font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         wantsLayer = true
@@ -37,8 +38,11 @@ final class ToolbarButton: NSButton {
     }
 
     /// Sizes to the content plus horizontal room; called after the image or title changed.
+    ///
+    /// An icon alone is centred, an icon with a name sits at its left (design R15, the mockups).
     func fit() {
-        let width = intrinsicContentSize.width + 16
+        imagePosition = title.isEmpty ? .imageOnly : .imageLeading
+        let width = intrinsicContentSize.width + (title.isEmpty ? 12 : 20)
         if let widthConstraint {
             widthConstraint.constant = width
         } else {
