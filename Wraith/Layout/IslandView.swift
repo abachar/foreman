@@ -10,7 +10,8 @@ struct IslandView<Content: View>: View {
         content()
             // The island is the whole zone, whatever its content asks for (bug: the search panel
             // left a band of ground under itself, 2026-08-27).
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // design R2, R17: the content starts at the top of the island; an empty state fills the rest.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             // design R6: the interface font, inherited by everything on the island.
             .font(theme.font())
             .background(tokens.surface.color)

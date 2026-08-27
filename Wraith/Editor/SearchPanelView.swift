@@ -49,12 +49,15 @@ struct SearchPanelView: View {
     private var content: some View {
         if let error = model.error {
             ContentUnavailableView(error, systemImage: "exclamationmark.triangle")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.groups.isEmpty {
             ContentUnavailableView(
                 model.options.query.isEmpty
                     ? "Type a query and press Return" : model.isRunning ? "Searching…" : "No results",
                 systemImage: "magnifyingglass",
-                description: toolNote)
+                description: toolNote
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
                 ForEach(model.groups) { group in

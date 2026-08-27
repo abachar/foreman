@@ -14,11 +14,5 @@
     "json": "npx --no-install prettier --stdin-filepath file.json",
     "md": "npx --no-install prettier --stdin-filepath file.md",
     "sh": "shfmt -ln bash"
-  },
-  "postgres": {
-    "host": "localhost",
-    "database": "ccoe_portal",
-    "user": "postgres",
-    "password": "postgres"
   }
 }

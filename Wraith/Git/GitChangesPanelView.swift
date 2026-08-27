@@ -22,6 +22,7 @@ struct GitChangesPanelView: View {
                         "No Repository", systemImage: "arrow.triangle.branch",
                         description: Text("No .git found up to two levels under the root, and no repos in config.json.")
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     Spacer()
                 }

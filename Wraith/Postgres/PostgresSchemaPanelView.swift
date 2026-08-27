@@ -20,6 +20,7 @@ struct PostgresSchemaPanelView: View {
                     Text(message)
                         .textSelection(.enabled)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 SchemaOutlineView(model: model, feature: feature, theme: theme, font: theme.interfaceFont())
             }

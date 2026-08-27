@@ -16,11 +16,13 @@ struct GitHistoryPanelView: View {
             }
             if model.repoID == nil {
                 ContentUnavailableView("No Repository", systemImage: "clock.arrow.circlepath")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.commits.isEmpty, model.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.commits.isEmpty {
                 ContentUnavailableView("No Commits", systemImage: "clock.arrow.circlepath")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 table
             }
