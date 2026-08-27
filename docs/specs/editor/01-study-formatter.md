@@ -26,11 +26,16 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
     "formatter": {
       "onSave": false,
       "swift": "swift format --configuration .swift-format",
+      "java": "google-java-format -",
+      "kt": "ktlint --log-level=none --format --stdin",
       "ts": "npx --no-install prettier --stdin-filepath file.ts",
+      "json": "npx --no-install prettier --stdin-filepath file.json",
+      "toml": "taplo fmt -",
+      "sh": "shfmt -ln bash",
+      "sql": "pg_format",
       "py": "black -q -",
       "rs": "rustfmt --emit stdout",
-      "go": "gofmt",
-      "java": "clang-format --assume-filename=file.java"
+      "go": "gofmt"
     }
   }
   ```
@@ -49,6 +54,7 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
 
 ## Edge cases
 
+- **A formatter that exits non-zero on a warning**: `tidy` returns 1 when it merely warns, even though its output on `stdout` is valid. Under R28 (exit code `0` required) nothing is applied and the warnings appear in the banner. `format-all` handles this by accepting `(0 1)` for `tidy` alone; Wraith does not, in v1 — the remedy is to use `prettier` for HTML, which is the recommended entry anyway. See the open question in `questions.md`.
 - Binary missing from the `PATH`: the command returns `command not found` on `stderr` and a non-zero code; on top of that, the first word of the command is looked up in the resolved `PATH` (like `agents` R2) so we can say "`prettier` not found in PATH" rather than repeating the shell's complaint.
 - Syntactically invalid file: the formatters (prettier, black, rustfmt) exit with an error; R28 applies and the text does not move.
 - A formatter that is slow on the first call (a JVM, an `npx` resolving a package): R30's 5 s bound may cut it off; the banner then offers to raise the bound (`formatter.timeout`, in seconds) or to install the binary locally.
@@ -73,18 +79,36 @@ The point to settle is a single one: **an embedded library or an external binary
 
 ### The user's binaries, launched by `Process`
 
-This is what Wraith already does for `run`, `agents` and `rg`: `$SHELL -l -c "<command>"` with the login shell's environment resolved once per window (`Workspace.loginEnvironment()`), `stdin`/`stdout`/`stderr` as `Pipe`s, running off the main actor. The common formatters all read `stdin` and write to `stdout`:
+This is what Wraith already does for `run`, `agents` and `rg`: `$SHELL -l -c "<command>"` with the login shell's environment resolved once per window (`Workspace.loginEnvironment()`), `stdin`/`stdout`/`stderr` as `Pipe`s, running off the main actor.
 
-| Language | Command | stdin → stdout mode |
-|---|---|---|
-| Swift | `swift format` | `swift format` without a file reads `stdin` |
-| TypeScript / JS / CSS / JSON / Markdown / YAML | `prettier` | `prettier --stdin-filepath <name>` |
-| Python | `black` | `black -q -` |
-| Rust | `rustfmt` | `rustfmt --emit stdout` |
-| Go | `gofmt` | `gofmt` without arguments reads `stdin` |
-| C / C++ / Java / ObjC | `clang-format` | `clang-format --assume-filename=<name>` |
+**The contract is not ours, and it is not a guess.** `format-all-the-code` (`github.com/lassik/emacs-format-all-the-code`, maintained since 2017) does exactly this for around eighty languages, and its helper `format-all--buffer-easy` documents the contract in one sentence: *"Runs the external program EXECUTABLE. The program shall read unformatted code from stdin, write its formatted equivalent to stdout, write errors/warnings to stderr, and exit zero/non-zero on success/failure."* Read on the upstream repository on 2026-08-27: **102 formatter definitions**, and every one of them but a handful goes through that helper. That is R26–R28, word for word, validated across a far larger set of languages than Wraith highlights.
 
-Cost: ~80 lines (launching, `Pipe`s, the time bound, the decision to apply), plus decoding the section. No dependency added. Binary detection: `AgentCatalog.executables(among:inPath:)` (`Wraith/Agents/AgentCatalog.swift`) is already written, `static` and pure — it is called directly rather than copied.
+Below, the recommended command for each grammar Wraith actually has (`editor` R11, plus `sql` in M5), with the invocation taken from `format-all.el` rather than from memory. `<recommended>` is the entry the example in R25 uses; the alternatives are the other formatters `format-all` defines for the same language.
+
+| Wraith grammar | Extensions | Recommended command | Alternatives |
+|---|---|---|---|
+| java | `.java` | `google-java-format -` | `clang-format --assume-filename=file.java`, `astyle` |
+| kotlin | `.kt`, `.kts` | `ktlint --log-level=none --format --stdin` | — |
+| typescript | `.ts`, `.mts`, `.cts` | `prettier --stdin-filepath file.ts` | `deno fmt --ext ts -`, `oxfmt --stdin-filepath stdin.ts`, `ts-standard` |
+| tsx | `.tsx` | `prettier --stdin-filepath file.tsx` | `deno fmt --ext tsx -`, `oxfmt --stdin-filepath stdin.tsx` |
+| javascript | `.js`, `.mjs`, `.cjs`, `.jsx` | `prettier --stdin-filepath file.js` | `deno fmt --ext js -`, `oxfmt --stdin-filepath stdin.js`, `standard` |
+| json | `.json`, `.jsonc` | `prettier --stdin-filepath file.json` | `deno fmt --ext json -`, `oxfmt --stdin-filepath stdin.json` |
+| yaml | `.yaml`, `.yml` | `prettier --stdin-filepath file.yaml` | `deno fmt --ext yaml -`, `oxfmt --stdin-filepath stdin.yaml` |
+| toml | `.toml` | `taplo fmt -` | `prettier` (with `prettier-plugin-toml`), `oxfmt --stdin-filepath stdin.toml` |
+| markdown | `.md`, `.markdown` | `prettier --stdin-filepath file.md` | `deno fmt --ext md -`, `mdformat -`, `markdownfmt` |
+| bash | `.sh`, `.bash`, `.zsh`, `.zshrc`… | `shfmt -ln bash` | `beautysh -` |
+| swift | `.swift` | `swift format` | `swiftformat --quiet` (nicklockwood's, the one `format-all` defaults to) |
+| html | `.html`, `.htm` | `prettier --stdin-filepath file.html` | `tidy -q --tidy-mark no -indent` (**exits 1 on warnings**, see the edge cases), `deno fmt --ext html -` |
+| css | `.css` | `prettier --stdin-filepath file.css` | `deno fmt --ext css -`, `oxfmt --stdin-filepath stdin.css` |
+| dockerfile | `Dockerfile*` | `dockfmt fmt` | — |
+| sql (M5) | `.sql` | `pg_format` | `sqlformat -` (`format-all`'s default), `sqlfluff fix --nocolor --dialect=postgres -` |
+
+Two things this table settles, which are R27's whole point:
+
+- **A formatter that infers its parser from the file name needs the name in its own command line**, because Wraith passes no path. `format-all` hits the same wall and solves it the same way — it appends `--stdin-filepath <file>` for prettier and oxfmt, `-assume-filename` for clang-format, `-filename` for shfmt, and falls back to `--parser <lang>` / `-ln <dialect>` when there is no file. In Wraith it is the user who writes that flag, once, in the config; the value is a placeholder name (`file.ts`), not the real path.
+- **Some formatters take a subcommand, not a flag** (`taplo fmt -`, `deno fmt --ext md -`, `dockfmt fmt`, `sqlfluff fix … -`). That falls out for free: the config holds a shell command line, not a binary name.
+
+Cost: ~80 lines (launching, `Pipe`s, the time bound, the decision to apply), plus decoding the section. No dependency added. Binary detection: `AgentCatalog.executables(among:inPath:)` (`Wraith/Agents/AgentCatalog.swift`) is already written, `static` and pure — it is called directly rather than copied; note that it looks up the **first word** of the command, so `npx --no-install prettier …` is detected as `npx`, which is correct.
 
 ### An embedded SPM library
 
