@@ -15,8 +15,9 @@ struct WorkspaceView: View {
     @State private var isFolderReachable = true
     @State private var workspace: Workspace
     @State private var layout = LayoutManager()
-    @State private var theme = ThemeService()
+    @State private var theme: ThemeService
     @State private var palette = Palette()
+    @State private var highlighter: Highlighter
     @State private var editor: EditorFeature?
     @State private var terminal: TerminalService?
     @State private var agents: AgentsFeature?
@@ -29,6 +30,10 @@ struct WorkspaceView: View {
         self.folder = folder
         self.appDelegate = appDelegate
         _workspace = State(initialValue: Workspace(root: folder))
+        let theme = ThemeService()
+        _theme = State(initialValue: theme)
+        // architecture: shared services created once here; the editor and git both highlight.
+        _highlighter = State(initialValue: Highlighter(theme: theme))
     }
 
     var body: some View {
@@ -42,10 +47,12 @@ struct WorkspaceView: View {
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
-                let editor = EditorFeature(layout: layout, workspace: workspace, theme: theme, palette: palette)
+                let editor = EditorFeature(
+                    layout: layout, workspace: workspace, theme: theme, palette: palette, highlighter: highlighter)
                 self.editor = editor
                 ExplorerFeature.register(in: layout, workspace: workspace, editor: editor)
-                git = GitFeature(layout: layout, workspace: workspace, editor: editor, theme: theme)
+                git = GitFeature(
+                    layout: layout, workspace: workspace, editor: editor, theme: theme, highlighter: highlighter)
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)

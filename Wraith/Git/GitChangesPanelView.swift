@@ -150,7 +150,13 @@ struct GitRepoSectionView: View {
                 GitChangeRowView(
                     entry: entry, letter: Self.letter(of: entry, kind: kind),
                     color: Color(nsColor: theme.color(for: entry.fileStatus)),
-                    actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) })
+                    actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) },
+                    select: { preview in
+                        // git R13, US3: a click previews the diff, a double click pins it.
+                        feature.openDiff(
+                            GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)),
+                            preview: preview)
+                    })
             }
         }
     }
@@ -231,6 +237,14 @@ struct GitRepoSectionView: View {
         switch error {
         case .timeout: return "status took more than 30 s; remove this repo from \"repos\" in .wraith/config.json."
         default: return error.description
+        }
+    }
+
+    /// git R14: the staged group shows the index against HEAD, the others the worktree.
+    private static func diffSource(_ entry: GitStatusEntry, kind: GroupKind) -> GitDiffPayload.Source {
+        switch kind {
+        case .staged: return .staged(path: entry.path)
+        case .changes, .conflicts: return .workingTree(path: entry.path)
         }
     }
 
@@ -320,6 +334,7 @@ struct GitChangeRowView: View {
     let color: Color
     let actions: [Action]
     let open: () -> Void
+    let select: (_ preview: Bool) -> Void
     @State private var isHovering = false
 
     var body: some View {
@@ -361,7 +376,8 @@ struct GitChangeRowView: View {
         }
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
-        .onTapGesture(count: 2) { open() }
+        .onTapGesture(count: 2) { select(false) }
+        .onTapGesture { select(true) }
     }
 
     private var name: String {

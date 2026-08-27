@@ -8,6 +8,7 @@ import os
 @MainActor
 final class GitFeature {
     static let panelID: PanelID = "git.changes"
+    static let diffTabKind = "git.diff"
 
     /// The `git` section of `.wraith/config.json` (git R26).
     nonisolated struct Settings: Decodable, Equatable, Sendable {
@@ -26,6 +27,10 @@ final class GitFeature {
     private let workspace: Workspace
     private let editor: EditorFeature
     private let theme: ThemeService
+    private let highlighter: Highlighter
+    private var diffModels: [TabID: GitDiffModel] = [:]
+    private var pinnedDiffs: Set<TabID> = []
+    private var isOpeningPreview = false
     private var toolchain: Task<Toolchain?, Never>?
     private var clients: [String: GitCLI] = [:]
     private var gitDirectories: [String: URL] = [:]
@@ -38,11 +43,15 @@ final class GitFeature {
     private var statusSubscribers: [UUID: AsyncStream<GitStatusChange>.Continuation] = [:]
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "git")
 
-    init(layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService) {
+    init(
+        layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService,
+        highlighter: Highlighter
+    ) {
         self.layout = layout
         self.workspace = workspace
         self.editor = editor
         self.theme = theme
+        self.highlighter = highlighter
         if let state = try? workspace.state.section("git", as: GitState.self) {
             model.restore(state)
         }
@@ -54,6 +63,15 @@ final class GitFeature {
                 makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
                 activate: { [weak self] in self?.activate() },
                 deactivate: { [weak self] in self?.deactivate() }))
+        layout.register(
+            tabKind: CenterTabDescriptor(
+                kind: Self.diffTabKind,
+                makeView: { [weak self] id, payload in self?.diffView(id, payload: payload) },
+                serialize: { [weak self] id in self?.diffModels[id]?.payload.encoded() },
+                onClose: { [weak self] id in
+                    self?.diffModels[id] = nil
+                    self?.pinnedDiffs.remove(id)
+                }))
         configWatch = Task { [weak self, workspace] in
             for await _ in workspace.configChanges() {
                 guard let self, isActive else { continue }
@@ -231,6 +249,70 @@ final class GitFeature {
         var status = StatusParser.parse(output.stdout)
         status.operation = GitRepo.gitDirectory(of: repo.url).flatMap { GitOperation.current(inGitDirectory: $0) }
         return status
+    }
+
+    // MARK: - Diff tabs (git R13, R14, R17; layout R28)
+
+    /// git R13: a preview replaced by the next one in its group, pinned on a double click
+    /// (explorer R12 by analogy); the same diff already open is activated instead.
+    func openDiff(_ payload: GitDiffPayload, preview: Bool) {
+        let group = layout.model.activeGroup
+        if let existing = layout.model.active.tabs.first(where: { diffModels[$0.id]?.payload == payload }) {
+            if !preview {
+                pinDiff(existing.id)
+            }
+            layout.activate(existing.id, in: group)
+            return
+        }
+        let replaced =
+            preview
+            ? layout.model.active.tabs.first { diffModels[$0.id] != nil && !pinnedDiffs.contains($0.id) } : nil
+        isOpeningPreview = preview
+        defer { isOpeningPreview = false }
+        guard
+            layout.openTab(kind: Self.diffTabKind, title: payload.title, payload: payload.encoded(), isPreview: preview)
+                != nil
+        else { return }
+        if let replaced {
+            Task { await layout.closeTab(replaced.id) }
+        }
+    }
+
+    func pinDiff(_ id: TabID) {
+        guard let model = diffModels[id], !pinnedDiffs.contains(id) else { return }
+        pinnedDiffs.insert(id)
+        layout.update(id, title: model.payload.title, isDirty: false, isPreview: false)
+    }
+
+    /// The tab's view, or `nil` when the payload cannot be restored (layout R28).
+    ///
+    /// A restored tab is pinned; the client comes lazily, once the toolchain is resolved.
+    private func diffView(_ id: TabID, payload: String) -> AnyView? {
+        guard let decoded = GitDiffPayload.decode(payload) else { return nil }
+        let repo =
+            model.section(decoded.repo)?.repo
+            ?? GitRepo(
+                id: decoded.repo,
+                url: Workspace.url(forPersistedPath: decoded.repo == "." ? "" : decoded.repo, root: workspace.root))
+        let diffModel = GitDiffModel(
+            payload: decoded, client: { [weak self] in await self?.client(for: repo) }, repo: repo,
+            highlighter: highlighter, theme: theme, statusChanges: decoded.source.isImmutable ? nil : statusChanges())
+        diffModels[id] = diffModel
+        if !isOpeningPreview {
+            pinnedDiffs.insert(id)
+        }
+        return AnyView(GitDiffView(model: diffModel, theme: theme))
+    }
+
+    /// The repo's `GitCLI`, created on demand for a tab restored before the panel ran (git R26).
+    private func client(for repo: GitRepo) async -> GitCLI? {
+        if let client = clients[repo.id] {
+            return client
+        }
+        guard let toolchain = await resolveToolchain() else { return nil }
+        let client = GitCLI(executable: toolchain.executable, repo: repo.url, loginEnvironment: toolchain.environment)
+        clients[repo.id] = client
+        return client
     }
 
     // MARK: - Actions (git R7–R9)

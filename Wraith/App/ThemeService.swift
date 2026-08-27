@@ -142,6 +142,11 @@ final class ThemeService {
         }
     }
 
+    /// git R13: the tint behind an added or a removed diff line.
+    func diffLineBackground(added: Bool) -> NSColor {
+        (added ? NSColor.systemGreen : NSColor.systemRed).withAlphaComponent(0.16)
+    }
+
     // MARK: - Palettes (terminal R14)
 
     private static let lightPalette = TerminalPalette(

@@ -26,12 +26,12 @@ final class EditorFeature {
         var recent: [String]
     }
 
-    init(layout: LayoutManager, workspace: Workspace, theme: ThemeService, palette: Palette) {
+    init(layout: LayoutManager, workspace: Workspace, theme: ThemeService, palette: Palette, highlighter: Highlighter) {
         self.layout = layout
         self.workspace = workspace
         self.theme = theme
         self.palette = palette
-        highlighter = Highlighter(theme: theme)
+        self.highlighter = highlighter
         index = QuickOpenIndex(root: workspace.root)
         layout.register(
             tabKind: CenterTabDescriptor(
