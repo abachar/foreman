@@ -62,7 +62,8 @@ struct ZonesView: NSViewControllerRepresentable {
             },
             onWindowFrame: { layout.windowFrame = $0 },
             gutter: tokens.gutter,
-            windowBackground: tokens.windowBackground.nsColor
+            windowBackground: tokens.windowBackground.nsColor,
+            islandRadius: tokens.islandRadius
         )
     }
 }

@@ -23,6 +23,9 @@ final class ZonesViewController: GutterSplitViewController {
         /// design R2, R14, R20: the gutter between the zones and the ground it shows.
         var gutter: CGFloat
         var windowBackground: NSColor
+        /// design R2: the hosting views are rounded at the layer, so the AppKit views they host
+        /// (outline, text view, terminal) are cut too — SwiftUI's `clipShape` does not reach them.
+        var islandRadius: CGFloat
     }
 
     /// design R20: both split views draw their divider as the gutter; set before the views load.
@@ -122,11 +125,23 @@ final class ZonesViewController: GutterSplitViewController {
             }
         }
         center.rootView = configuration.center
+        Self.round(center.view, radius: configuration.islandRadius)
         for (side, slot) in slots {
             slot.show(configuration.visible[side].flatMap { id in configuration.panelView(id).map { (id, $0) } })
+            if let hosted = slot.hosted {
+                Self.round(hosted.view, radius: configuration.islandRadius)
+            }
         }
         applyRoom()
         applyFocus(configuration.focus)
+    }
+
+    /// design R2: an island's corners, cut at the layer.
+    private static func round(_ view: NSView, radius: CGFloat) {
+        view.wantsLayer = true
+        guard let layer = view.layer, layer.cornerRadius != radius || !layer.masksToBounds else { return }
+        layer.cornerRadius = radius
+        layer.masksToBounds = true
     }
 
     // MARK: - Room
