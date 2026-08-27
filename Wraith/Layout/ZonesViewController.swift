@@ -205,7 +205,10 @@ final class ZonesViewController: GutterSplitViewController {
 
     /// layout R18: only a drag by the user is persisted, never an adjustment to the room.
     private func userResized(_ side: PanelSide, to thickness: CGFloat) {
+        // A size that does not come from the mouse on a divider is AppKit's own layout (an item
+        // un-collapsing, the window growing): it is shown, never persisted (bug: 2026-08-28).
         guard !isApplying, let configuration, configuration.visible[side] != nil, !(view.inLiveResize),
+            NSApp.currentEvent?.type == .leftMouseDragged,
             let item = item(for: side), !item.isCollapsed, thickness >= ZoneSizing.minimumPanel
         else { return }
         configuration.onPanelResized(side, thickness)
