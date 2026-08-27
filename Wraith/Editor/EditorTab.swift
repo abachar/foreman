@@ -82,6 +82,10 @@ final class EditorTab {
     private(set) var indentUnit = "    "
     /// The view showing the text, set by `EditorTextView`; the commands act on it.
     weak var textView: NSTextView?
+    /// The native text view and its Neon highlighter, kept for the life of the tab: a tab switch
+    /// re-inserts them instead of rebuilding and re-parsing the file (editor R4: undo, cursor and
+    /// scroll come back with the tab).
+    var textCoordinator: EditorTextView.Coordinator?
     /// editor R28, R30, R32: why the last formatting did nothing, shown in a banner until the
     /// next keystroke.
     var message: String?

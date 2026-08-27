@@ -14,11 +14,21 @@ struct EditorTextView: NSViewRepresentable {
     let highlighter: Highlighter
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(tab: tab)
+        if let existing = tab.textCoordinator {
+            return existing
+        }
+        let coordinator = Coordinator(tab: tab)
+        tab.textCoordinator = coordinator
+        return coordinator
     }
 
     func makeNSView(context: Context) -> NSScrollView {
+        // SwiftUI rebuilds this view on every tab switch; the native one is built once per tab.
+        if let scroll = context.coordinator.scroll {
+            return scroll
+        }
         let scroll = CurrentLineTextView.scrollableTextView()
+        context.coordinator.scroll = scroll
         guard let textView = scroll.documentView as? CurrentLineTextView else { return scroll }
         textView.font = theme.editorFont
         textView.isEditable = !document.isReadOnly
@@ -130,7 +140,9 @@ struct EditorTextView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
-        /// Kept alive for the life of the view: Neon only holds the text view weakly.
+        /// The native view, owned here so it outlives the SwiftUI view that shows it.
+        var scroll: NSScrollView?
+        /// Kept alive for the life of the tab: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
         var attaching: Task<Void, Never>?
         var scrollObserver: (any NSObjectProtocol)?
