@@ -10,7 +10,7 @@ Un dossier par domaine, **dans l'ordre d'implémentation** (chaque ligne ne dép
 | 2 | [config](config/) | `.wraith/config.json`, `state.json`, Keychain, rechargement à chaud | product | M0 |
 | 3 | [layout](layout/) | zones, splits, groupes d'onglets, PanelManager, ShortcutRegistry, barre d'outils, écran d'accueil | config | M0 |
 | 4 | [explorer](explorer/) | arbre de fichiers, FSEvents, CRUD, badges git | layout | M1 |
-| 5 | [editor](editor/) | viewer/éditeur, `Highlight`, markdown, quick open, recherche | explorer, `Palette`, `Highlight` | M1 |
+| 5 | [editor](editor/) | viewer/éditeur, `Highlight`, markdown, quick open, recherche ; formatage (`01-study-formatter.md`) | explorer, `Palette`, `Highlight` | M1, M7 |
 | 6 | [terminal](terminal/) | PTY possédé par Wraith + surface SwiftTerm, `TerminalService` (un onglet = un process, pas de shell) | layout | M2 |
 | 7 | [agents](agents/) | agents CLI (Claude Code, Antigravity, OpenCode) : boutons de la barre d'outils, onglet par agent | terminal | M2 |
 | 8 | [run](run/) | commandes du workspace → surface terminal, palette `cmd+r`, bouton ▶ Run | terminal, `Palette` | M3 |

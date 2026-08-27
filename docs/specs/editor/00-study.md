@@ -27,7 +27,7 @@ Onglet central `editor.file` : lire et éditer les fichiers texte du workspace a
 
 - R6 — Fonctions v1 : gouttière avec numéros de ligne (décision 2026-08-27), saisie, sélection, undo/redo (`cmd+z`/`cmd+shift+z`), couper/copier/coller, indentation en conservant l'indent de la ligne précédente, `tab` insère selon le fichier (espaces/tabs détectés sur les 100 premières lignes, défaut 4 espaces), `cmd+]`/`cmd+[` indente/désindente la sélection, `cmd+/` commente/décommente la ligne (préfixe fourni par la grammaire), `cmd+d` non (réservé split, `layout`), déplacer une ligne `opt+↑/↓`, aller à la ligne `cmd+l`.
 - R7 — Recherche dans le fichier : `cmd+f` (barre en haut de l'onglet, insensible à la casse par défaut, `enter`/`shift+enter` suivant/précédent, occurrences surlignées), `cmd+opt+f` remplacer (un / tous). `escape` ferme la barre.
-- R8 — Sauvegarde : `cmd+s` explicite uniquement, **pas d'autosave**. Écriture atomique (`coding-rules`) en conservant encodage et fins de ligne ; nouvelle ligne finale ajoutée si absente (option désactivable dans la config globale, `editor.insertFinalNewline`). `cmd+opt+s` sauve tous les onglets modifiés.
+- R8 — Sauvegarde : `cmd+s` explicite uniquement, **pas d'autosave**. Écriture atomique (`coding-rules`) en conservant encodage et fins de ligne ; nouvelle ligne finale ajoutée si absente (option désactivable par `insertFinalNewline` dans la section `editor` de `.wraith/config.json` — il n'y a pas de config globale, décision config 2026-08-26). `cmd+opt+s` sauve tous les onglets modifiés.
 - R9 — Fichier modifié sur disque (via `FSWatchService`) : si l'onglet n'est pas `isDirty` → rechargement silencieux avec curseur et scroll préservés ; si `isDirty` → bannière « modifié sur disque » avec *Garder mes changements* / *Recharger*. Fichier supprimé sur disque : bannière « supprimé » ; l'onglet reste, `cmd+s` le recrée. Fichier renommé (`Editor.fileRenamed`, `explorer` R17) : l'onglet suit.
 - R10 — Conflit à la sauvegarde (fichier modifié sur disque depuis la dernière lecture, et l'utilisateur n'a pas tranché la bannière R9) : la sauvegarde est refusée avec *Écraser* / *Annuler*.
 
@@ -70,7 +70,7 @@ Onglet central `editor.file` : lire et éditer les fichiers texte du workspace a
 
 ## Hors périmètre v1
 
-- LSP, complétion, diagnostics, go-to-definition, formatage.
+- LSP, complétion, diagnostics, go-to-definition. (Le **formatage** est sorti de cette liste le 2026-08-27 : voir [01-study-formatter.md](01-study-formatter.md).)
 - Multi-curseurs, sélection par colonnes, minimap, code folding, bracket matching avancé.
 - Remplacement multi-fichiers.
 - Preview markdown côte à côte synchronisée.
