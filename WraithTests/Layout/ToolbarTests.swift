@@ -64,5 +64,7 @@ struct IconImageTests {
             .write(to: file, atomically: true, encoding: .utf8)
         let image = try #require(IconImage.resolve(file.path(percentEncoded: false)))
         #expect(image.isTemplate)
+        #expect(image.size == NSSize(width: IconImage.pointSize, height: IconImage.pointSize))
+        #expect(IconImage.resolve("agent-pi")?.size.width == IconImage.pointSize)
     }
 }
