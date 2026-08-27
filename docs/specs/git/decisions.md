@@ -16,4 +16,4 @@
 | 2026-08-27 | One `GitCLI` instance per repo; the binary's path and version resolved once per window and handed to every instance | One instance per window | A repo's writes serialise against each other, two repos never wait for one another; resolving the binary per repo would repeat the same work |
 | 2026-08-27 | The changes panel is a SwiftUI `List` with sections, not an `NSOutlineView` | Copying the explorer's outline view | The hierarchy is fixed (repo → category → file) with nothing lazy to load per level; to be revisited if a repo with thousands of modified files drags |
 | 2026-08-27 | `cmd+enter` (commit) is a key of the message field, not a `ShortcutAction` | A `panel`-scoped `ShortcutAction` | A panel-scoped action would fire from any focused panel; the field is native and captures it like the palette does (`shortcuts.md`: `native`) |
-
+| 2026-08-27 | `git.changes` lives in the **right** slot | The left slot, as specified on 2026-08-25 | Seen in use: the author wants the explorer and the changes side by side; the left slot is the explorer's. The right slot is shared with `postgres.schema` (M5), one visible at a time (`layout` R2) |

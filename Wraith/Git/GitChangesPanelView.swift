@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The left panel `git.changes` (git R2, R6): a banner, then one section per repo.
+/// The right panel `git.changes` (git R2, R6): a banner, then one section per repo.
 struct GitChangesPanelView: View {
     let model: GitModel
     let feature: GitFeature

@@ -4,7 +4,7 @@
 
 Feature `git` (folder `Git/`): an overview of the changes across every repo in the workspace, stage/unstage/discard, commit, inline diff, linear history, and the everyday operations (fetch/pull/push, branches, stash) — all of it by calling the user's `git` binary, so that their config (hooks, signing, credential helpers; aliases excluded) is honoured.
 
-Surfaces: left panel `git.changes` (`cmd+shift+g`), bottom panel `git.history` (`cmd+shift+h`), center tab `git.diff`.
+Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, not instead of it) (`cmd+shift+g`), bottom panel `git.history` (`cmd+shift+h`), center tab `git.diff`.
 
 ## User stories
 

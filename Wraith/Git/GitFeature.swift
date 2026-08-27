@@ -49,7 +49,7 @@ final class GitFeature {
         let theme = theme
         layout.register(
             panel: PanelDescriptor(
-                id: Self.panelID, title: "Changes", side: .left, defaultShortcut: "cmd+shift+g",
+                id: Self.panelID, title: "Changes", side: .right, defaultShortcut: "cmd+shift+g",
                 makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
                 activate: { [weak self] in self?.activate() },
                 deactivate: { [weak self] in self?.deactivate() }))

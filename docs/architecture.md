@@ -30,7 +30,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 | Editor | center tabs: file / markdown; bottom panel: content search | `cmd+p` quick open, `cmd+shift+f` |
 | Agents | toolbar buttons; one terminal tab per agent | `config.shortcuts["agents.<id>"]` |
 | Run | ▶ Run button + palette; one terminal tab per command | `cmd+r` |
-| Git | left panel: changes; bottom panel: history; center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
+| Git | right panel: changes; bottom panel: history; center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
 | Postgres | right panel: schema; bottom panel: query + results | `cmd+shift+b` / `cmd+shift+q` |
 
 Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
