@@ -17,7 +17,7 @@ The **Library / native** column is mandatory (`AGENTS.md`). The **Tests** column
 
 There is **no interface token at all**: no background, no radius, no gutter, no bar height, no accent. That is exactly what M8 adds — inside that type, not in a second service (design decision 2026-08-27).
 
-**The thirteen places where a color or a material is written inline**, found by reading the code (`coding-rules`, UI: "colors, fonts, metrics: through `ThemeService`, never inline" — the rule exists and is not kept):
+**The fifteen places where a color or a material is written inline**, found by reading the code (`coding-rules`, UI: "colors, fonts, metrics: through `ThemeService`, never inline" — the rule exists and is not kept):
 
 | File | Line | What is written inline |
 |---|---|---|
@@ -33,7 +33,7 @@ There is **no interface token at all**: no background, no radius, no gutter, no 
 | `Wraith/Palette/PaletteView.swift` | 64 | `Color.accentColor.opacity(0.25)` on the selected row |
 | `Wraith/Terminal/TerminalTabView.swift` | 50, 61 | `.background(.bar)` on the status banners |
 
-`.bar` is a **translucent material**: exactly what `design` R1 forbids. It appears **seven times**.
+`.bar` is a **translucent material**: exactly what `design` R1 forbids. It appears **eight times** (`WorkspaceView` ×2, `CenterView`, `ExplorerPanelView`, `EditorTabView` ×2, `TerminalTabView` ×2; `CenterView`'s is handled in 8.5, the seven others in 8.7).
 
 **Window and toolbar**:
 
@@ -88,7 +88,7 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
 ## To decide during M8 (decisions expected)
 
-- 8.1: **the toolbar — a dressed `NSToolbar` (A) or a SwiftUI view (B)**? It is the milestone's only real technical choice, and it waits for the mockup.
+- 8.1: **the toolbar — a dressed `NSToolbar` (A) or a SwiftUI view (B)**? **Settled (2026-08-27, `design/decisions.md`): option A**, chosen by the author for the control it keeps over a native component. The comparison stays below as the record; B is the documented fallback if A leaves a material or separator that cannot be turned off.
 
   | | Option A — a dressed `NSToolbar` | Option B — a SwiftUI bar |
   |---|---|---|
@@ -98,7 +98,7 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
   | What it forces us to change in the specs | Nothing | `layout` R30 and `architecture.md` say "a native `NSToolbar` toolbar": to be amended and dated |
   | Risk | The appearance drifts with the next macOS version | A window case handled badly (full screen, a second display, dragging) |
 
-  **Proposal: start with A**, measure it on the machine with the mockup next to it, and move to B **only if** A leaves a visible material or separator that cannot be turned off. That is the "when hesitating between two solutions, take the shorter one" rule (`AGENTS.md`): A costs a few lines, B takes Wraith out of a native component that `architecture.md` P3 recommends. But the criterion is still the author's eye: if A does not give the mockup's look, B is legitimate and its spec is amended.
+  **Recorded proposal (accepted): start with A**, measure it on the machine with the mockup next to it, and move to B **only if** A leaves a visible material or separator that cannot be turned off. That is the "when hesitating between two solutions, take the shorter one" rule (`AGENTS.md`): A costs a few lines, B takes Wraith out of a native component that `architecture.md` P3 recommends. But the criterion is still the author's eye: if A does not give the mockup's look, B is legitimate and its spec is amended.
 - 8.1: **the `dark` set's values** — to be read off the validated mockup, not invented beforehand. No color is written into a spec until 8.1 is done.
 - 8.1: **radius, gutter, bar height** — a proposal to confirm by eye: `islandRadius` 8, `gutter` 8, `barHeight` 30 (the tab bar is already 30 pt, `CenterView.swift`).
 - 8.1: **the toolbar's background** — `surfaceRaised` (the bar is one more island, stuck to the top) or `windowBackground` (the bar floats on the ground, as in IntelliJ)? To be seen on the mockup; the second is closer to the model.
