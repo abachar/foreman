@@ -1,82 +1,82 @@
-# terminal — Étude
+# terminal — Study
 
-## Objectif
+## Goal
 
-Fournir la **surface terminal** qui héberge les onglets des features `agents` et `run` : un pseudo-terminal (PTY), un **process** lancé dedans (l'agent ou la commande), une émulation VT + rendu par SwiftTerm, un cycle de vie (running → exited), des événements (sortie du process, bell, titre) et le type `TerminalService` (dossier partagé `Terminal/`) utilisé par les features.
+Provide the **terminal surface** that hosts the tabs of the `agents` and `run` features: a pseudo-terminal (PTY), a **process** launched inside it (the agent or the command), VT emulation and rendering by SwiftTerm, a lifecycle (running → exited), events (process output, bell, title) and the `TerminalService` type (shared `Terminal/` folder) used by the features.
 
-**Ce n'est pas un type d'onglet utilisateur** (`product` R4) et **ce n'est pas un shell** : aucun `cmd+t`, aucun « nouveau terminal », aucun prompt. Un onglet terminal = un process ; quand il se termine, la surface se fige avec son code de sortie. L'utilisateur interagit avec le process (les agents sont des TUI plein écran : saisie, couleurs, souris, redimensionnement), jamais avec un shell.
+**This is not a user-facing tab kind** (`product` R4) and **it is not a shell**: no `cmd+t`, no "new terminal", no prompt. One terminal tab = one process; when it ends, the surface freezes with its exit code. The user interacts with the process (agents are full-screen TUIs: typing, colors, mouse, resizing), never with a shell.
 
-## Pourquoi SwiftTerm et pas libghostty
+## Why SwiftTerm and not libghostty
 
-Le besoin a changé : on n'émule pas un terminal pour l'utilisateur, on affiche des TUI (Ink, Bubbletea…) et la sortie de builds. SwiftTerm (pur Swift, SPM, PTY intégré, VT/xterm complet, 24 bits, souris, utilisé par des TUI lourds) couvre ça sans build zig, sans C vendorisé, sans API instable. libghostty (rendu Metal, shell integration, config Ghostty) n'apporte rien au produit et coûtait le milestone le plus risqué. Décision : **SwiftTerm seul**, utilisé comme il est conçu (`LocalProcessTerminalView` : PTY + process + vue), aucun repli prévu (`architecture.md`, « utiliser les librairies »).
+The need changed: we are not emulating a terminal for the user, we are showing TUIs (Ink, Bubbletea…) and build output. SwiftTerm (pure Swift, SPM, built-in PTY, full VT/xterm, 24-bit, mouse, used by heavy TUIs) covers that with no zig build, no vendored C, no unstable API. libghostty (Metal rendering, shell integration, Ghostty config) brings nothing to the product and was the riskiest milestone. Decision: **SwiftTerm alone**, used as it is designed (`LocalProcessTerminalView`: PTY + process + view), with no fallback planned (`architecture.md`, "use the libraries").
 
 ## User stories
 
-- US1 — Je clique un agent ou lance un run : la surface apparaît en < 100 ms et le process démarre avec mon environnement habituel (PATH, variables du login shell).
-- US2 — L'agent (TUI plein écran) fonctionne comme dans Terminal : saisie, couleurs, souris, redimensionnement, copier/coller.
-- US3 — Un onglet inactif me montre que le process a sonné ou s'est terminé (et comment : code de sortie).
-- US4 — Je ferme un onglet dont le process tourne : confirmation ; le process est arrêté proprement.
-- US5 — Une feature peut lancer une commande dans un dossier, connaître son état (running / exit code) et lui envoyer un signal.
-- US6 — À la réouverture du workspace, mes onglets agent/run sont recréés au même cwd, prêts à être relancés (`product` R7).
+- US1 — I click an agent or launch a run: the surface appears in < 100 ms and the process starts with my usual environment (PATH, login shell variables).
+- US2 — The agent (a full-screen TUI) works as it does in Terminal: typing, colors, mouse, resizing, copy/paste.
+- US3 — An inactive tab shows me that the process rang the bell or ended (and how: the exit code).
+- US4 — I close a tab whose process is running: a confirmation appears; the process is stopped cleanly.
+- US5 — A feature can launch a command in a folder, know its state (running / exit code) and send it a signal.
+- US6 — When the workspace reopens, my agent/run tabs are recreated at the same cwd, ready to be relaunched (`product` R7).
 
-## Règles fonctionnelles
+## Functional rules
 
-### Process et environnement
+### Process and environment
 
-- R1 — Un onglet terminal exécute **une commande** fournie par la feature propriétaire, via `$SHELL -l -c "<commande>"` (`$SHELL` de l'utilisateur, sinon `/bin/zsh`) : le login shell charge l'environnement de l'utilisateur (PATH, profils) puis exécute la commande ; il n'y a **pas de prompt**, le shell se termine avec la commande. La commande est le texte fourni tel quel (`architecture.md`, sécurité), jamais recomposée par Wraith.
-- R2 — cwd : fourni par la feature (`agents` : racine ou repo ; `run` : dossier du repo/`cwd`), obligatoirement sous la racine ou absolu explicite. Le cwd est celui du lancement ; il est persisté (`config` R10) et sert à la restauration.
-- R3 — Environnement : celui du login shell, enrichi de `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=wraith`, `WRAITH_WORKSPACE=<racine>`, plus l'`env` fourni par la feature (`run` R8). Aucune variable de `config.json` n'est injectée d'office.
-- R4 — Pas de shell integration (OSC 7/133) : inutile, Wraith lance le process. L'état vient de la fin du process (R6), le cwd est connu (R2).
+- R1 — A terminal tab runs **one command** provided by the owning feature, through `$SHELL -l -c "<command>"` (the user's `$SHELL`, otherwise `/bin/zsh`): the login shell loads the user's environment (PATH, profiles) then runs the command; there is **no prompt**, the shell ends with the command. The command is the text provided as is (`architecture.md`, security), never recomposed by Wraith.
+- R2 — cwd: provided by the feature (`agents`: the root or a repo; `run`: the repo folder / `cwd`), necessarily under the root or an explicit absolute path. The cwd is the one used at launch; it is persisted (`config` R10) and used for restoration.
+- R3 — Environment: the login shell's, enriched with `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=wraith`, `WRAITH_WORKSPACE=<root>`, plus the `env` provided by the feature (`run` R8). No variable from `config.json` is injected by default.
+- R4 — No shell integration (OSC 7/133): useless, Wraith launches the process. The state comes from the end of the process (R6), the cwd is known (R2).
 
-### État, titre et signaux
+### State, title and signals
 
-- R5 — Titre d'onglet : **fixe**, fourni par la feature (`Claude`, `backend:test`). Un titre poussé par le process (OSC 0/2) est exposé en sous-titre/tooltip, jamais à la place.
-- R6 — État d'un onglet : `idle` (créé ou restauré, pas encore lancé) → `running` (process vivant, pid connu) → `exited(code)` (code de sortie ou signal, remonté par SwiftTerm à la fin du process). Exposé par `TerminalService` et publié en événements ; c'est la seule source de l'état pour `agents` R6 et `run` R10.
-- R7 — Un onglet **inactif** est marqué (badge) quand : la bell sonne, ou son process se termine. Le marqueur disparaît à l'activation de l'onglet. Pas de notification système en v1.
-- R8 — Process terminé : la surface reste affichée, figée, avec une ligne d'état en bas (`terminé · code 0` / `code 1` / `signal SIGINT`) et un bouton *Relancer* (même commande, même cwd, nouvelle PTY dans le même onglet). L'onglet ne se ferme jamais seul.
-- R9 — Signaux : `signal(SIGINT|SIGTERM, to: tab)` envoyé au **groupe de process** du PTY. `SIGKILL` n'est jamais automatique.
+- R5 — Tab title: **fixed**, provided by the feature (`Claude`, `backend:test`). A title pushed by the process (OSC 0/2) is exposed as a subtitle/tooltip, never in its place.
+- R6 — A tab's state: `idle` (created or restored, not launched yet) → `running` (a live process, pid known) → `exited(code)` (an exit code or a signal, reported by SwiftTerm when the process ends). Exposed by `TerminalService` and published as events; it is the only source of state for `agents` R6 and `run` R10.
+- R7 — An **inactive** tab is marked (a badge) when: the bell rings, or its process ends. The marker disappears when the tab is activated. No system notification in v1.
+- R8 — Process ended: the surface stays visible, frozen, with a status line at the bottom (`finished · code 0` / `code 1` / `signal SIGINT`) and a *Relaunch* button (same command, same cwd, a new PTY in the same tab). The tab never closes on its own.
+- R9 — Signals: `signal(SIGINT|SIGTERM, to: tab)` sent to the PTY's **process group**. `SIGKILL` is never automatic.
 
-### Fermeture
+### Closing
 
-- R10 — Fermeture demandée (`cmd+w`, groupe, fenêtre) : si `running` → confirmation (`layout` R15, l'onglet est « dirty » à ce titre) ; sinon fermeture immédiate.
-- R11 — Fermer envoie `SIGHUP` au groupe de process, libère la vue (qui ferme le PTY), attend la fin du process (5 s max puis `SIGKILL` **uniquement dans ce cas de fermeture forcée**) ; aucun descripteur ni zombie ne survit à l'onglet.
+- R10 — A close request (`cmd+w`, group, window): if `running` → a confirmation (`layout` R15, the tab counts as "dirty" for that purpose); otherwise it closes immediately.
+- R11 — Closing sends `SIGHUP` to the process group, releases the view (which closes the PTY), waits for the process to end (5 s max then `SIGKILL` **only in this forced-close case**); no descriptor and no zombie survives the tab.
 
-### Saisie, souris, apparence
+### Input, mouse, appearance
 
-- R12 — Clavier : `layout` R25 — tout ce qui n'est pas un raccourci `cmd+…` de Wraith va au process (dont `ctrl+c`, `ctrl+d`, flèches, `esc`). `cmd+c`/`cmd+v` copient/collent (sélection SwiftTerm), `cmd+k` efface le scrollback, `cmd+=`/`cmd+-` zoom police (portée `tab(terminal)`).
-- R13 — Souris : sélection, copie, scroll, transmission des événements souris aux TUI qui la demandent — délégués à SwiftTerm. Liens détectés cliquables (`cmd+clic`).
-- R14 — Apparence : police monospace et thème définis par Wraith (`ThemeService`) ; la section `terminal` de `.wraith/config.json` (`font`, `fontSize`, `theme`) les surcharge (config locale uniquement, décision config 2026-08-26). Scrollback : 10 000 lignes.
-- R15 — Redimensionnement : la surface reçoit sa taille en points depuis le layout (`layout` R21) ; SwiftTerm en déduit lignes/colonnes et propage la taille de fenêtre au process.
+- R12 — Keyboard: `layout` R25 — everything that is not a Wraith `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`).
+- R13 — Mouse: selection, copy, scrolling, forwarding mouse events to the TUIs that ask for them — all delegated to SwiftTerm. Detected links are clickable (`cmd+click`).
+- R14 — Appearance: the monospaced font and the theme are defined by Wraith (`ThemeService`); the `terminal` section of `.wraith/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
+- R15 — Resizing: the surface receives its size in points from the layout (`layout` R21); SwiftTerm derives rows/columns from it and propagates the window size to the process.
 
-### Service pour les features (`Terminal/`)
+### Service for the features (`Terminal/`)
 
-- R16 — `TerminalService` (type concret du dossier partagé `Terminal/`, injecté aux features) : `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (crée l'onglet et lance), `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (saisie brute, rarement utile), `state(of:) -> TerminalState`, `pid(of:)`, et un flux `events` (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `activated(tab)` — marqueur R7 effacé —, `closed(tab)`) en `AsyncStream`, un par consommateur (2026-08-27). Le `kind` est celui de la feature appelante (`agent.<id>`, `run.<id>`) ; il n'existe pas de kind `terminal`.
-- R17 — Une feature ne peut agir que sur les onglets de la fenêtre courante ; un `TabID` inconnu ou fermé → `TerminalError.noSuchTab`.
-- R18 — Plusieurs surfaces coexistent sans limite ; chacune a son PTY et son process. Une surface `exited` ou inactive ne consomme pas de CPU (`architecture.md`, performance).
+- R16 — `TerminalService` (a concrete type in the shared `Terminal/` folder, injected into the features): `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (creates the tab and launches), `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (raw input, rarely useful), `state(of:) -> TerminalState`, `pid(of:)`, and an `events` stream (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `activated(tab)` — R7's marker cleared —, `closed(tab)`) as an `AsyncStream`, one per consumer (2026-08-27). The `kind` is the calling feature's (`agent.<id>`, `run.<id>`); there is no `terminal` kind.
+- R17 — A feature can only act on the tabs of the current window; an unknown or closed `TabID` → `TerminalError.noSuchTab`.
+- R18 — Several surfaces coexist without limit; each one has its own PTY and process. An `exited` or inactive surface consumes no CPU (`architecture.md`, performance).
 
-## Cas limites
+## Edge cases
 
-- `$SHELL` introuvable ou non exécutable : repli `/bin/zsh`, message dans la surface.
-- Commande introuvable (`command not found`) : le shell sort avec 127 → `exited(127)`, visible dans la surface ; pas de bannière Wraith.
-- cwd persisté disparu à la restauration : onglet `idle` avec bannière « dossier introuvable », *Relancer* désactivé jusqu'à correction.
-- Process qui ignore `SIGINT`/`SIGTERM` : R11 (fermeture forcée uniquement) ; sinon il tourne, l'utilisateur voit `running`.
-- Sortie massive (build verbeux) : SwiftTerm lit et rend par lots ; scrollback borné (R14).
-- Process qui lance des sous-process (serveur, `npm start`) : ils sont dans le groupe de process du PTY et reçoivent les signaux R9/R11.
+- `$SHELL` missing or not executable: fall back to `/bin/zsh`, with a message in the surface.
+- Command not found (`command not found`): the shell exits with 127 → `exited(127)`, visible in the surface; no Wraith banner.
+- The persisted cwd is gone at restoration: an `idle` tab with a "folder not found" banner, *Relaunch* disabled until it is fixed.
+- A process that ignores `SIGINT`/`SIGTERM`: R11 (forced close only); otherwise it keeps running and the user sees `running`.
+- Massive output (a verbose build): SwiftTerm reads and renders in batches; the scrollback is bounded (R14).
+- A process that launches sub-processes (a server, `npm start`): they are in the PTY's process group and receive the R9/R11 signals.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- **Shell interactif** (`cmd+t`, « nouveau terminal », « terminal ici », prompt) : délibérément absent (`product` R4).
-- libghostty, rendu Metal, config Ghostty, shell integration (OSC 7/133).
-- Restauration du scrollback (`product`), sessions persistantes façon tmux.
-- Notifications système, profils par workspace.
+- An **interactive shell** (`cmd+t`, "new terminal", "terminal here", a prompt): deliberately absent (`product` R4).
+- libghostty, Metal rendering, Ghostty config, shell integration (OSC 7/133).
+- Restoring the scrollback (`product`), tmux-style persistent sessions.
+- System notifications, per-workspace profiles.
 
-## Options techniques
+## Technical options
 
-- **Dépendance** : `SwiftTerm` (SPM, `.upToNextMinor`), importé dans `Terminal/`. On utilise `LocalProcessTerminalView` **telle qu'elle est conçue** : elle ouvre le PTY, lance le process (`startProcess(executable: $SHELL, args: ["-l", "-c", command], environment:, currentDirectory: cwd)` (vérifié sur SwiftTerm 1.20.0, 2026-08-27)), rend la sortie, transmet la saisie, propage le redimensionnement, et signale la fin via `LocalProcessTerminalViewDelegate.processTerminated(source:exitCode:)`. Aucun PTY ni `forkpty` maison.
-- **Vue** : `LocalProcessTerminalView` (AppKit) dans un `NSViewRepresentable` ; un `TerminalTab` (`@MainActor @Observable`) par onglet porte l'état R6, le pid (`process.shellPid`), le titre et le badge. Signaux (R9, R11) : `killpg(pid, SIGINT|SIGTERM|SIGHUP)` sur le groupe du process, puis `SIGKILL` après 5 s en fermeture forcée uniquement. *Relancer* (R8) = nouvelle vue/nouveau process dans le même onglet.
-- **Événements** : les callbacks du délégué SwiftTerm (`processTerminated`, `setTerminalTitle`, bell) sont convertis en `AsyncStream<TerminalEvent>` par `TerminalService`.
-- **Tests** : logique d'état (R6 : transitions idle → running → exited), badge (R7), confirmation à la fermeture (R10) et relance (R8) sur `TerminalTab` piloté par des événements simulés ; pas de test de SwiftTerm lui-même.
+- **Dependency**: `SwiftTerm` (SPM, `.upToNextMinor`), imported in `Terminal/`. We use `LocalProcessTerminalView` **as it is designed**: it opens the PTY, launches the process (`startProcess(executable: $SHELL, args: ["-l", "-c", command], environment:, currentDirectory: cwd)` (checked on SwiftTerm 1.20.0, 2026-08-27)), renders the output, forwards the input, propagates resizing, and reports the end through `LocalProcessTerminalViewDelegate.processTerminated(source:exitCode:)`. No home-made PTY and no `forkpty`.
+- **View**: `LocalProcessTerminalView` (AppKit) inside an `NSViewRepresentable`; a `TerminalTab` (`@MainActor @Observable`) per tab carries the R6 state, the pid (`process.shellPid`), the title and the badge. Signals (R9, R11): `killpg(pid, SIGINT|SIGTERM|SIGHUP)` on the process group, then `SIGKILL` after 5 s on a forced close only. *Relaunch* (R8) = a new view/new process in the same tab.
+- **Events**: the SwiftTerm delegate's callbacks (`processTerminated`, `setTerminalTitle`, bell) are converted into an `AsyncStream<TerminalEvent>` by `TerminalService`.
+- **Tests**: state logic (R6: idle → running → exited transitions), badge (R7), close confirmation (R10) and relaunch (R8) on a `TerminalTab` driven by simulated events; no test of SwiftTerm itself.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).

@@ -1,5 +1,5 @@
-# Questions ouvertes
+# Open questions
 
-- [x] Version de SwiftTerm : `v1.20.0` (décision 2026-08-27).
-- [x] Couverture VT de SwiftTerm 1.20 : validée à l'usage (2026-08-27) sur Claude Code, OpenCode, Pi, Antigravity. Non gérés par SwiftTerm, sans effet visible pour l'instant : `DECSET 2027` (grapheme clustering), `DECSET 2031` (notification de thème), `OSC 66` (kitty text sizing), `OSC 99`, `CSI ? 5 W`. À surveiller.
-- [ ] Copier/coller : `cmd+c` copie la sélection, mais un agent peut vouloir `cmd+c` ? Non : `ctrl+c` va au process, `cmd+c` reste à Wraith (`layout` R25). À confirmer à l'usage.
+- [x] SwiftTerm version: `v1.20.0` (decision 2026-08-27).
+- [x] VT coverage of SwiftTerm 1.20: validated in use (2026-08-27) on Claude Code, OpenCode, Pi, Antigravity. Not handled by SwiftTerm, with no visible effect so far: `DECSET 2027` (grapheme clustering), `DECSET 2031` (theme notification), `OSC 66` (kitty text sizing), `OSC 99`, `CSI ? 5 W`. To keep an eye on.
+- [ ] Copy/paste: `cmd+c` copies the selection, but might an agent want `cmd+c`? No: `ctrl+c` goes to the process, `cmd+c` stays with Wraith (`layout` R25). To be confirmed in use.
