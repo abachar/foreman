@@ -190,6 +190,16 @@ struct SchemaOutlineView: NSViewRepresentable {
 
         // MARK: - NSOutlineViewDelegate
 
+        /// design R3: the selection on the accent.
+        func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+            let row =
+                outlineView.makeView(withIdentifier: TokenRowView.identifier, owner: nil) as? TokenRowView
+                ?? TokenRowView()
+            row.identifier = TokenRowView.identifier
+            row.tokens = theme.tokens
+            return row
+        }
+
         func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
             guard let node = node(of: item) else { return nil }
             let identifier = NSUserInterfaceItemIdentifier("cell")
