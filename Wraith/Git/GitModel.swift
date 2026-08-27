@@ -206,13 +206,12 @@ final class GitModel {
         _ changes: [URL], repos: [GitRepo], gitDirectories: [String: URL], root: URL
     ) -> Set<String> {
         var result: Set<String> = []
-        let repoPaths = repos.map { ($0.id, $0.url.path(percentEncoded: false)) }
+        let repoPaths = repos.map { ($0.id, folderPath($0.url)) }
         for url in changes {
-            let path = url.path(percentEncoded: false)
+            let path = folderPath(url)
             guard !ExcludedPaths.isExcluded(Workspace.persistedPath(for: url, root: root)) else { continue }
-            if let (id, directory) = gitDirectories.first(where: { isUnder(path, $0.value.path(percentEncoded: false)) }
-            ) {
-                let directoryPath = directory.path(percentEncoded: false)
+            if let (id, directory) = gitDirectories.first(where: { isUnder(path, folderPath($0.value)) }) {
+                let directoryPath = folderPath(directory)
                 if isRelevant(inGitDirectory: String(path.dropFirst(directoryPath.count + 1))) {
                     result.insert(id)
                 }
@@ -230,6 +229,15 @@ final class GitModel {
             }
         }
         return result
+    }
+
+    /// `URL.path()` ends an existing directory with `/`; prefixes compare without it.
+    private nonisolated static func folderPath(_ url: URL) -> String {
+        var path = url.path(percentEncoded: false)
+        while path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+        }
+        return path
     }
 
     private nonisolated static func isUnder(_ path: String, _ folder: String) -> Bool {

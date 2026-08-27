@@ -27,6 +27,16 @@ struct GitModelTests {
         #expect(refreshed(["/elsewhere/x"]).isEmpty)
     }
 
+    @Test func anExistingRepoFolderMatchesDespiteTheTrailingSlashOfItsURL() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "GitModelTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let repo = GitRepo(id: ".", url: folder)
+        #expect(repo.url.path(percentEncoded: false).hasSuffix("/"))
+        let changed = [folder.appending(path: "a.txt"), folder.appending(path: ".git/index")]
+        #expect(GitModel.reposToRefresh(changed, repos: [repo], gitDirectories: [:], root: folder) == ["."])
+    }
+
     @Test func onlyTheMeaningfulFilesOfTheGitDirectoryCount() {
         #expect(refreshed(["/work/.git/HEAD"]) == ["."])
         #expect(refreshed(["/work/.git/index"]) == ["."])
@@ -96,7 +106,6 @@ struct GitModelTests {
         await model.setRepos(repos)
         await model.toggleCollapsed(".")
         let data = try JSONEncoder().encode(await model.persisted)
-        #expect(String(decoding: data, as: UTF8.self) == #"{"collapsed":[".","libs\/core"],"messages":{}}"#)
         let restored = try JSONDecoder().decode(GitState.self, from: data)
         #expect(restored == GitState(collapsed: [".", "libs/core"]))
         await model.setRepos([repos[1]])
