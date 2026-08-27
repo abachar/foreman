@@ -1,66 +1,66 @@
-# run — Étude
+# run — Study
 
-## Objectif
+## Goal
 
-Feature `run` : lancer les commandes déclarées dans `config.json` (`commands`) sur une surface terminal du workspace, depuis une palette (`cmd+r`) ou le bouton **▶ Run** de la barre d'outils, avec un onglet terminal réutilisé par commande et un indicateur d'état. Pas de panneau. Aucune détection automatique, aucune composition : la config est la seule source. Les agents CLI ne sont pas des commandes `run` : voir [agents](../agents/).
+Feature `run`: launch the commands declared in `config.json` (`commands`) on a workspace terminal surface, from a palette (`cmd+r`) or the **▶ Run** toolbar button, with one terminal tab reused per command and a state indicator. No panel. No automatic detection, no composition: the config is the only source. CLI agents are not `run` commands: see [agents](../agents/).
 
 ## User stories
 
-- US1 — `cmd+r`, je tape `bt`, `backend › test` remonte, `enter` : un onglet `backend:test` s'ouvre dans le dossier du repo et lance `mvn test`.
-- US1b — Je clique ▶ dans la barre d'outils : la liste des commandes par repo s'affiche avec leur état ; un clic lance.
-- US2 — Je relance la même commande : le même onglet est réutilisé (le process en cours est arrêté d'abord).
-- US3 — Un onglet de commande inactif me montre si ça tourne, si ça a réussi ou échoué.
-- US4 — `cmd+.` dans l'onglet d'une commande arrête le process proprement.
-- US5 — Je modifie `config.json` : la palette reflète la nouvelle liste immédiatement.
+- US1 — `cmd+r`, I type `bt`, `backend › test` comes up, `enter`: a `backend:test` tab opens in the repo's folder and launches `mvn test`.
+- US1b — I click ▶ in the toolbar: the list of commands per repo appears with their state; a click launches one.
+- US2 — I relaunch the same command: the same tab is reused (the running process is stopped first).
+- US3 — An inactive command tab shows me whether it is running, whether it succeeded or failed.
+- US4 — `cmd+.` in a command's tab stops the process cleanly.
+- US5 — I edit `config.json`: the palette reflects the new list immediately.
 
-## Règles fonctionnelles
+## Functional rules
 
 ### Config
 
-- R1 — Section `commands` (`config` R3) : `{ "<repo ou .>": { "<nom>": "<commande>" | { "run": "<commande>", "cwd": "<sous-dossier>", "env": { "K": "V" } } } }`. La forme courte est une chaîne ; la forme longue ajoute `cwd` (relatif au repo, défaut le repo) et `env`. Un `env` au niveau du repo (clé réservée `"$env"`) s'applique à toutes ses commandes.
-- R2 — Le `<repo>` doit être `.` (alias `root`, l'orthographe de l'id, accepté tant qu'aucun dossier `root/` n'existe — décision 2026-08-27) ou un chemin relatif à la racine, existant sur disque (pas nécessairement un repo git). Absent : la commande est listée grisée avec la raison. `cwd` doit rester sous la racine (`architecture.md`, sécurité).
-- R3 — Le nom d'une commande : `[a-z0-9][a-z0-9:_-]*`, unique par repo. Identifiant complet `repo:nom` (`.` devient `root`). Ces ids servent aux raccourcis (`config.shortcuts["run.backend:test"]`, R11).
-- R3b — Une seule source : `.wraith/config.json` du workspace (`config` R4, décision config 2026-08-26 : pas de configuration globale). Deux workspaces ne partagent rien.
-- R4 — Rechargement à chaud sur `Workspace.configChanges` (`config` R6) : la palette et les raccourcis sont recalculés ; un onglet en cours n'est pas affecté.
+- R1 — The `commands` section (`config` R3): `{ "<repo or .>": { "<name>": "<command>" | { "run": "<command>", "cwd": "<subfolder>", "env": { "K": "V" } } } }`. The short form is a string; the long form adds `cwd` (relative to the repo, defaulting to the repo) and `env`. An `env` at the repo level (the reserved key `"$env"`) applies to all of its commands.
+- R2 — The `<repo>` must be `.` (alias `root`, the spelling of the id, accepted as long as no `root/` folder exists — decision 2026-08-27) or a path relative to the root that exists on disk (not necessarily a git repo). Missing: the command is listed greyed out with the reason. `cwd` must stay under the root (`architecture.md`, security).
+- R3 — A command's name: `[a-z0-9][a-z0-9:_-]*`, unique per repo. Full identifier `repo:name` (`.` becomes `root`). These ids are used by the shortcuts (`config.shortcuts["run.backend:test"]`, R11).
+- R3b — A single source: the workspace's `.wraith/config.json` (`config` R4, config decision 2026-08-26: no global configuration). Two workspaces share nothing.
+- R4 — Hot reload on `Workspace.configChanges` (`config` R6): the palette and the shortcuts are recomputed; a running tab is not affected.
 
-### Palette et bouton
+### Palette and button
 
-- R5 — `cmd+r` ouvre une palette (`Palette`, dossier partagé, la même que le quick open). Entrées `repo › nom` avec la commande en sous-titre ; fuzzy sur `repo nom` ; ordre par défaut : dernières lancées en premier, puis alphabétique.
-- R6 — `enter` lance (R7) ; `cmd+enter` lance dans un **nouvel** onglet (sans réutilisation) ; `opt+enter` copie la commande dans le presse-papiers. `escape` ferme.
-- R6b — Bouton **▶ Run** (`run.toolbar`, élément de toolbar déclaré à `Layout`, côté `trailing`, de type menu, `layout` R30) : le menu liste les commandes groupées par repo, avec la commande en sous-titre et le badge d'état (R10) de l'onglet correspondant ; un clic lance (R7). Le bouton porte un badge bleu si au moins une commande tourne, rouge si la dernière terminée a échoué (effacé à l'activation de l'onglet). Sans aucune commande configurée, le menu affiche un exemple de config. Ni `commands` ni bouton ne sont touchés par les agents.
+- R5 — `cmd+r` opens a palette (`Palette`, the shared folder, the same one as quick open). Entries `repo › name` with the command as the subtitle; fuzzy over `repo name`; default order: most recently launched first, then alphabetical.
+- R6 — `enter` launches (R7); `cmd+enter` launches in a **new** tab (without reuse); `opt+enter` copies the command to the clipboard. `escape` closes.
+- R6b — The **▶ Run** button (`run.toolbar`, a toolbar item declared to `Layout`, on the `trailing` side, of the menu kind, `layout` R30): the menu lists the commands grouped by repo, with the command as the subtitle and the state badge (R10) of the matching tab; a click launches (R7). The button carries a blue badge when at least one command is running, red when the last one to finish failed (cleared when the tab is activated). With no command configured at all, the menu shows a config example. Neither `commands` nor the button are touched by the agents.
 
-### Exécution
+### Execution
 
-- R7 — Lancer `repo:nom` : si un onglet `run.<id>` existe → il est activé ; s'il est `running`, le process reçoit `SIGINT` (R9) et, après `exited`, `TerminalService.relaunch` ; s'il est `idle`/`exited`, `relaunch` direct. Sinon → `TerminalService.spawn(command:, cwd:, env:, kind: "run.<id>", title: "repo:nom")` (`terminal` R16) : le process démarre immédiatement, sans shell ni prompt.
-- R8 — La commande est passée **telle quelle** à `$SHELL -l -c` (`terminal` R1) ; les `env` sont injectés dans l'environnement du process (`terminal` R3), jamais préfixés dans la ligne de commande. Rien n'est recomposé (`architecture.md`, sécurité) : la commande est le texte de l'utilisateur.
-- R9 — Arrêt : `cmd+.` (portée `terminal`, sans effet hors d'un onglet `run.*`, décision 2026-08-27) envoie `SIGINT` au groupe de process (`terminal` R9) ; un second `cmd+.` dans les 2 s envoie `SIGTERM` ; jamais `SIGKILL` automatique. Relance (R7) = arrêt puis attente d'`exited` (10 s max, puis abandon loggé : l'onglet reste `running`, l'utilisateur voit que le process n'a pas cédé) avant `relaunch`.
-- R10 — État par onglet `run` : `idle` / `running` / `succeeded` / `failed(code)`, dérivé de `terminal` R6 (`exited(0)` → `succeeded`, sinon `failed`). Badge sur l'onglet : point bleu (running), vert (0), rouge (≠ 0) ; effacé à l'activation de l'onglet après la fin, ou à la relance.
-- R11 — Raccourci par commande : `config.shortcuts["run.<id>"]` (`config` R3) ; aucun défaut. Portée globale.
-- R12 — Fermeture d'un onglet `run` en `running` : confirmation (`terminal` R10). Fermeture de la fenêtre : idem, une confirmation par onglet.
-- R13 — Les onglets `run` sont restaurés (`layout` R28) en état `idle` au même cwd, titre conservé, surface vide avec *Relancer* ; la commande n'est **pas** relancée.
+- R7 — Launching `repo:name`: if a `run.<id>` tab exists → it is activated; if it is `running`, the process receives `SIGINT` (R9) and, after `exited`, `TerminalService.relaunch`; if it is `idle`/`exited`, `relaunch` directly. Otherwise → `TerminalService.spawn(command:, cwd:, env:, kind: "run.<id>", title: "repo:name")` (`terminal` R16): the process starts immediately, with no shell and no prompt.
+- R8 — The command is passed **as is** to `$SHELL -l -c` (`terminal` R1); the `env` values are injected into the process's environment (`terminal` R3), never prefixed onto the command line. Nothing is recomposed (`architecture.md`, security): the command is the user's text.
+- R9 — Stopping: `cmd+.` (scope `terminal`, no effect outside a `run.*` tab, decision 2026-08-27) sends `SIGINT` to the process group (`terminal` R9); a second `cmd+.` within 2 s sends `SIGTERM`; never an automatic `SIGKILL`. Relaunching (R7) = stop then wait for `exited` (10 s max, then give up with a log: the tab stays `running` and the user sees that the process did not yield) before `relaunch`.
+- R10 — State per `run` tab: `idle` / `running` / `succeeded` / `failed(code)`, derived from `terminal` R6 (`exited(0)` → `succeeded`, otherwise `failed`). Badge on the tab: a blue dot (running), green (0), red (≠ 0); cleared when the tab is activated after it ends, or on relaunch.
+- R11 — A shortcut per command: `config.shortcuts["run.<id>"]` (`config` R3); no default. Global scope.
+- R12 — Closing a `run` tab that is `running`: a confirmation (`terminal` R10). Closing the window: the same, one confirmation per tab.
+- R13 — `run` tabs are restored (`layout` R28) in the `idle` state at the same cwd, the title kept, an empty surface with *Relaunch*; the command is **not** relaunched.
 
-## Cas limites
+## Edge cases
 
-- Commande qui lance un shell interactif ou un TUI : fonctionne (c'est une surface terminal) ; la relance passe par `SIGINT` puis `relaunch`, jamais par du texte envoyé.
-- `commands` contient un `env` avec un secret : `config` R11 (clé `password`) s'applique ; autres clés acceptées — c'est le choix de l'utilisateur.
-- Deux workspaces déclarant la même commande : indépendants (onglets par fenêtre).
-- Nom de commande en conflit avec une clé réservée (`$env`) : ignoré avec avertissement dans la palette.
+- A command that launches an interactive shell or a TUI: works (it is a terminal surface); relaunching goes through `SIGINT` then `relaunch`, never through sent text.
+- `commands` contains an `env` with a secret: `config` R11 (the `password` key) applies; other keys are accepted — it is the user's choice.
+- Two workspaces declaring the same command: independent (tabs are per window).
+- A command name clashing with a reserved key (`$env`): ignored with a warning in the palette.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Détection automatique (`package.json`, `Makefile`, `pom.xml`).
-- Séquences, dépendances, commandes parallèles, tâches en arrière-plan sans terminal.
-- Panneau dédié ; commandes dans le menu de l'app.
-- Capture/parsing de la sortie (problèmes, liens vers erreurs de compilation).
-- Variables/templating dans les commandes (`${file}`, `${branch}`).
+- Automatic detection (`package.json`, `Makefile`, `pom.xml`).
+- Sequences, dependencies, parallel commands, background tasks without a terminal.
+- A dedicated panel; commands in the app menu.
+- Capturing/parsing the output (problems, links to compilation errors).
+- Variables/templating in the commands (`${file}`, `${branch}`).
 
-## Options techniques
+## Technical options
 
-- **Dossier** : `Run/` (`architecture.md`). `RunFeature` déclare à `Layout` l'élément de toolbar `run.toolbar` et le kind d'onglet `run.<id>`.
-- **Palette partagée** : `Palette/` (dossier partagé, livré en M1) : `Palette.present(PaletteSource, over: NSWindow)` ; `PaletteSource(placeholder:, results: (String) async -> Results, select: (PaletteItem, newGroup: Bool) -> Void, secondary: ((PaletteItem) -> Void)?)` — `newGroup` = `cmd+enter` (nouvel onglet, R6), `secondary` = `opt+enter` (copier, R6 ; ajouté en M3) ; items `PaletteItem(id:, title: AttributedString, subtitle:)` ; fuzzy **FuzzyMatch** (`FuzzyMatcher.topMatches`), le même que le quick open (`editor` R17).
-- **Signaux / état** : `TerminalService.signal(_:to:)`, `state(of:)`, événements `exited` (`terminal` R16) ; `relaunch` refuse un onglet `running` : la relance R7 (arrêt, attente d'`exited`, `relaunch`) vit dans `Run/`. Badge d'onglet : `Run/` repose le sien (bleu/vert/rouge, R10) à chaque événement de ses onglets, après celui de `TerminalService` (`terminal` R7) ; `ToolbarBadge.BadgeColor` gagne `blue`.
-- **Tests** : parsing/validation de `commands` (R1–R3), construction de l'environnement (R8), machine d'états d'un onglet `run` (R7, R9, R10) pilotée par des événements terminal simulés.
+- **Folder**: `Run/` (`architecture.md`). `RunFeature` declares the `run.toolbar` toolbar item and the `run.<id>` tab kind to `Layout`.
+- **Shared palette**: `Palette/` (the shared folder, shipped in M1): `Palette.present(PaletteSource, over: NSWindow)`; `PaletteSource(placeholder:, results: (String) async -> Results, select: (PaletteItem, newGroup: Bool) -> Void, secondary: ((PaletteItem) -> Void)?)` — `newGroup` = `cmd+enter` (a new tab, R6), `secondary` = `opt+enter` (copy, R6; added in M3); items `PaletteItem(id:, title: AttributedString, subtitle:)`; fuzzy through **FuzzyMatch** (`FuzzyMatcher.topMatches`), the same one as quick open (`editor` R17).
+- **Signals / state**: `TerminalService.signal(_:to:)`, `state(of:)`, `exited` events (`terminal` R16); `relaunch` refuses a `running` tab: the R7 relaunch (stop, wait for `exited`, `relaunch`) lives in `Run/`. Tab badge: `Run/` sets its own (blue/green/red, R10) on every event of its tabs, after `TerminalService`'s one (`terminal` R7); `ToolbarBadge.BadgeColor` gains `blue`.
+- **Tests**: parsing/validating `commands` (R1–R3), building the environment (R8), the `run` tab state machine (R7, R9, R10) driven by simulated terminal events.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).

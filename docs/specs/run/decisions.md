@@ -1,19 +1,19 @@
-# run — Décisions
+# run — Decisions
 
-| Date | Décision | Alternatives rejetées | Raison |
+| Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
-| 2026-08-27 | `"root"` accepté comme alias de `"."` dans `commands` | `.` seul | L'id s'écrit `root:nom`, l'auteur a écrit `root` d'instinct ; coût nul |
-| 2026-08-27 | R3b : une seule source de commandes, `.wraith/config.json` | Précédence global/workspace | Config globale supprimée (config, 2026-08-26) |
-| 2026-08-27 | `cmd+.` (`run.stop`) en portée `terminal`, no-op hors onglet `run.*` | Une action `tab(kind: "run.<id>")` par commande | Une action, une ligne de raccourci ; `ShortcutRegistry` n'a pas de désenregistrement |
-| 2026-08-27 | Relance d'un onglet `running` (R7) orchestrée dans `Run/` (`SIGINT`, attente d'`exited` 10 s, `relaunch`) ; `TerminalService` inchangé | `relaunch` qui arrête lui-même | M2 : `run` réutilise `TerminalService` tel quel ; l'attente est un besoin de `run` seul |
-| 2026-08-27 | Badge d'onglet R10 posé par `Run/` par-dessus celui de `TerminalService` ; `blue` ajouté à `ToolbarBadge` | Couleurs paramétrables dans `TerminalService` | Une ligne dans `Layout/` contre une abstraction pour deux appelants |
-| 2026-08-27 | « Dernières lancées en premier » (R5) : liste en mémoire par fenêtre | Champ dans `state.json` | Pas de migration de format pour un confort ; à revoir à l'usage |
-| 2026-08-27 | Commande retirée de la config : ses onglets ouverts restent, un onglet persisté n'est pas restauré (kind non enregistré) ; son raccourci `run.<id>` reste enregistré et ne fait rien | Commande dans le payload de l'onglet | Même politique que `agents` ; le layout ignore déjà un kind inconnu |
-| 2026-08-26 | Palette `cmd+r` **et** bouton ▶ Run (menu) dans la barre d'outils ; pas de panneau | Palette seule (décision du 2026-08-25) ; panneau de boutons | Un clic pour le quotidien, la palette pour le clavier ; le panneau coûterait un slot |
-| 2026-08-26 | Les agents CLI ne sont pas des commandes `run` | Déclarer `claude` dans `commands` | Un run est défini par l'utilisateur ; un agent est connu de Wraith (`agents`) |
-| 2026-08-25 | Un onglet terminal par commande (`repo:nom`), réutilisé ; relance = `ctrl+c` puis renvoi ; `cmd+enter` force un nouvel onglet | Nouvel onglet à chaque fois | Évite l'accumulation ; le cas « je veux garder l'ancien » a son raccourci |
-| 2026-08-25 | Config seulement : pas de détection auto, pas de séquences ni dépendances | Détection `package.json`/`Makefile` ; `"deploy": ["build","test"]` | Explicite et prévisible ; `a && b` couvre les séquences |
-| 2026-08-26 | `env` par commande ou par repo, injecté dans l'environnement du process (remplace « préfixé `K=V` à la commande » du 2026-08-25) ; la commande elle-même n'est jamais modifiée | Préfixe `K=V` dans la ligne ; templating | Wraith lance le process (`terminal` R3) : plus rien à échapper |
-| 2026-08-26 | État running/exit code dérivé de la fin du process (`terminal` R6) (remplace « OSC 133 » du 2026-08-25) | Shell integration ; process hors terminal | Wraith lance le process : fiable quel que soit le shell ; l'environnement du login shell est conservé par `$SHELL -l -c` |
-| 2026-08-25 | Arrêt : `cmd+.` → `SIGINT`, second appui → `SIGTERM` ; jamais `SIGKILL` automatique | Kill direct | Laisser le process s'arrêter proprement (serveurs, DB) |
-| 2026-08-25 | La palette (fuzzy + UI) est un dossier partagé (`Palette/`), commun au quick open et à `run` | Composant dupliqué dans chaque feature | `architecture.md` : ce dont deux features ont besoin vit dans un dossier partagé |
+| 2026-08-27 | `"root"` accepted as an alias for `"."` in `commands` | `.` alone | The id reads `root:name`, and the author instinctively wrote `root`; zero cost |
+| 2026-08-27 | R3b: a single source of commands, `.wraith/config.json` | Global/workspace precedence | The global config was removed (config, 2026-08-26) |
+| 2026-08-27 | `cmd+.` (`run.stop`) with the `terminal` scope, a no-op outside a `run.*` tab | One `tab(kind: "run.<id>")` action per command | One action, one shortcut row; `ShortcutRegistry` has no unregistration |
+| 2026-08-27 | Relaunching a `running` tab (R7) orchestrated in `Run/` (`SIGINT`, wait 10 s for `exited`, `relaunch`); `TerminalService` unchanged | A `relaunch` that stops the process itself | M2: `run` reuses `TerminalService` as is; the wait is a need of `run` alone |
+| 2026-08-27 | The R10 tab badge is set by `Run/` on top of `TerminalService`'s one; `blue` added to `ToolbarBadge` | Configurable colors inside `TerminalService` | One line in `Layout/` against an abstraction for two callers |
+| 2026-08-27 | "Most recently launched first" (R5): an in-memory list per window | A field in `state.json` | No format migration for a convenience; to be revisited in use |
+| 2026-08-27 | A command removed from the config: its open tabs stay, a persisted tab is not restored (unregistered kind); its `run.<id>` shortcut stays registered and does nothing | The command inside the tab's payload | The same policy as `agents`; the layout already ignores an unknown kind |
+| 2026-08-26 | The `cmd+r` palette **and** a ▶ Run button (menu) in the toolbar; no panel | The palette alone (decision of 2026-08-25); a panel of buttons | One click for the daily case, the palette for the keyboard; a panel would cost a slot |
+| 2026-08-26 | CLI agents are not `run` commands | Declaring `claude` in `commands` | A run is defined by the user; an agent is known to Wraith (`agents`) |
+| 2026-08-25 | One terminal tab per command (`repo:name`), reused; relaunch = `ctrl+c` then resend; `cmd+enter` forces a new tab | A new tab every time | Avoids piling up; the "I want to keep the old one" case has its shortcut |
+| 2026-08-25 | Config only: no automatic detection, no sequences and no dependencies | `package.json`/`Makefile` detection; `"deploy": ["build","test"]` | Explicit and predictable; `a && b` covers sequences |
+| 2026-08-26 | `env` per command or per repo, injected into the process's environment (replaces "`K=V` prefixed onto the command" of 2026-08-25); the command itself is never modified | A `K=V` prefix on the line; templating | Wraith launches the process (`terminal` R3): there is nothing left to escape |
+| 2026-08-26 | The running/exit-code state derived from the end of the process (`terminal` R6) (replaces "OSC 133" of 2026-08-25) | Shell integration; a process outside the terminal | Wraith launches the process: reliable whatever the shell; the login shell's environment is preserved by `$SHELL -l -c` |
+| 2026-08-25 | Stopping: `cmd+.` → `SIGINT`, a second press → `SIGTERM`; never an automatic `SIGKILL` | A direct kill | Let the process stop cleanly (servers, databases) |
+| 2026-08-25 | The palette (fuzzy + UI) is a shared folder (`Palette/`), common to quick open and `run` | A component duplicated in each feature | `architecture.md`: what two features need lives in a shared folder |
