@@ -18,7 +18,7 @@ struct CenterView: View {
     private func node(_ node: LayoutNode) -> AnyView {
         switch node {
         case .group(let id):
-            return AnyView(TabGroupView(layout: layout, groupID: id))
+            return AnyView(TabGroupView(layout: layout, theme: theme, groupID: id))
         case .split(.vertical, let first, let second):
             // design R21: a 1 pt line inside the island, no inner gutter.
             return AnyView(
@@ -41,24 +41,27 @@ struct CenterView: View {
 /// One tab group: its tab bar and the active tab, or the home screen when empty (layout R33).
 struct TabGroupView: View {
     let layout: LayoutManager
+    let theme: ThemeService
     let groupID: GroupID
 
     var body: some View {
         let group = layout.model[group: groupID] ?? TabGroup(id: groupID)
         let isActive = layout.model.activeGroup == groupID
+        let tokens = theme.tokens
         VStack(spacing: 0) {
             if !group.isEmpty {
-                TabBarView(layout: layout, group: group, isActiveGroup: isActive)
-                Divider()
+                TabBarView(layout: layout, theme: theme, group: group, isActiveGroup: isActive)
+                // design R16: a thin separator under the bar only.
+                tokens.separator.color.frame(height: 1)
             }
             content(of: group)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
-            // layout R17: the active group is the one commands apply to; it is marked.
+            // layout R17, design R3: the active group is the only thing carrying the accent.
             Rectangle()
-                .strokeBorder(isActive ? Color.accentColor.opacity(0.6) : .clear, lineWidth: 1)
+                .strokeBorder(isActive ? tokens.accent.color : .clear, lineWidth: 1)
                 .allowsHitTesting(false)
         }
         .contentShape(Rectangle())
@@ -72,7 +75,7 @@ struct TabGroupView: View {
         if let tab = group.active, let view = layout.view(for: tab) {
             view
         } else {
-            HomeView(layout: layout)
+            HomeView(layout: layout, theme: theme)
         }
     }
 }
@@ -80,18 +83,23 @@ struct TabGroupView: View {
 /// layout R16: one component, scrollable, active tab kept visible, tabs never under a minimum width.
 struct TabBarView: View {
     let layout: LayoutManager
+    let theme: ThemeService
     let group: TabGroup
     let isActiveGroup: Bool
 
-    private let minimumTabWidth: CGFloat = 120
-
     var body: some View {
+        let tokens = theme.tokens
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
                     ForEach(group.tabs) { tab in
-                        tabButton(tab)
-                            .id(tab.id)
+                        TabButton(
+                            tab: tab, tokens: tokens, isActive: tab.id == group.activeTab,
+                            isActiveGroup: isActiveGroup,
+                            activate: { layout.activate(tab.id, in: group.id) },
+                            close: { Task { await layout.closeTab(tab.id) } }
+                        )
+                        .id(tab.id)
                     }
                 }
             }
@@ -100,49 +108,55 @@ struct TabBarView: View {
                 proxy.scrollTo(active)
             }
         }
-        .frame(height: 30)
-        .background(.bar)
+        .frame(height: tokens.barHeight)
+        .background(tokens.surfaceRaised.color)
     }
+}
 
-    private func tabButton(_ tab: Tab) -> some View {
-        let isActive = tab.id == group.activeTab
-        return HStack(spacing: 6) {
+/// design R5, R16: a flat rectangle; active = the island's surface and a 2 pt accent rule on its
+/// bottom edge; the close button only under the mouse.
+private struct TabButton: View {
+    let tab: Tab
+    let tokens: ThemeService.Tokens
+    let isActive: Bool
+    let isActiveGroup: Bool
+    let activate: () -> Void
+    let close: () -> Void
+
+    private static let minimumWidth: CGFloat = 120
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 6) {
             // terminal R7: the owner's mark; a running process is dirty (terminal R10) but the
             // dot says it already.
             if case .dot(let color) = tab.badge {
                 Circle()
-                    .fill(Self.color(color))
+                    .fill(tokens.status(color).color)
                     .frame(width: 7, height: 7)
             }
             Text(tab.title + (tab.isDirty && tab.badge == .none ? " •" : ""))
                 .lineLimit(1)
                 .font(.callout)
                 .italic(tab.isPreview)
-                .foregroundStyle(isActive && isActiveGroup ? .primary : .secondary)
-            Button {
-                Task { await layout.closeTab(tab.id) }
-            } label: {
+                .foregroundStyle(isActive && isActiveGroup ? tokens.textPrimary.color : tokens.textSecondary.color)
+            Button(action: close) {
                 Image(systemName: "xmark")
                     .font(.caption2)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(tokens.textSecondary.color)
+            .opacity(isHovered ? 1 : 0)
         }
         .padding(.horizontal, 12)
-        .frame(minWidth: minimumTabWidth, maxHeight: .infinity)
-        .background(isActive ? Color(nsColor: .controlBackgroundColor) : .clear)
+        .frame(minWidth: Self.minimumWidth, maxHeight: .infinity)
+        .background(isActive ? tokens.surface.color : .clear)
+        .overlay(alignment: .bottom) {
+            (isActive ? tokens.accent.color : .clear).frame(height: 2)
+        }
         .contentShape(Rectangle())
-        .onTapGesture {
-            layout.activate(tab.id, in: group.id)
-        }
-    }
-
-    private static func color(_ color: ToolbarBadge.BadgeColor) -> Color {
-        switch color {
-        case .green: return .green
-        case .orange: return .orange
-        case .blue: return .blue
-        case .red: return .red
-        }
+        .onHover { isHovered = $0 }
+        .onTapGesture(perform: activate)
     }
 }

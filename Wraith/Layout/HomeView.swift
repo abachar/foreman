@@ -6,6 +6,7 @@ import SwiftUI
 /// lists its own actions. Sections without entries are not shown.
 struct HomeView: View {
     let layout: LayoutManager
+    let theme: ThemeService
 
     private static let layoutActionIDs = ["layout.split.vertical", "layout.split.horizontal"]
 
