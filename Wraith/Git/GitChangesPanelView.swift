@@ -8,22 +8,10 @@ struct GitChangesPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Changes")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            Divider()
+            PanelHeaderView(title: "Changes", theme: theme) { EmptyView() }
             if let banner = model.banner {
                 // git R28: git missing or too old; nothing else happens.
-                Label(banner, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .padding(6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.bar)
+                BannerView(text: banner, icon: "exclamationmark.triangle", tone: .error, theme: theme)
             }
             if model.sections.isEmpty {
                 if model.isDiscovering {
@@ -134,7 +122,7 @@ struct GitRepoSectionView: View {
                 group("Conflicts", entries: sections.conflicts, kind: .conflicts)
                 group("Staged", entries: sections.staged, kind: .staged)
                 group("Changes", entries: sections.changes, kind: .changes)
-                GitCommitView(section: section, feature: feature)
+                GitCommitView(section: section, feature: feature, theme: theme)
             }
         } header: {
             header
@@ -194,7 +182,7 @@ struct GitRepoSectionView: View {
                 }
                 .padding(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.bar)
+                .background(theme.tokens.surfaceRaised.color)
             }
             if !section.stashes.isEmpty {
                 stashList
@@ -299,7 +287,7 @@ struct GitRepoSectionView: View {
     private func banner(_ text: String, icon: String) -> some View {
         Label(text, systemImage: icon)
             .font(.callout)
-            .foregroundStyle(.red)
+            .foregroundStyle(theme.tokens.statusRed.color)
             .lineLimit(3)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -439,6 +427,7 @@ struct GitRepoSectionView: View {
 struct GitCommitView: View {
     let section: GitModel.Section
     let feature: GitFeature
+    let theme: ThemeService
 
     private var canCommit: Bool {
         CommitMessage.canCommit(
@@ -470,7 +459,9 @@ struct GitCommitView: View {
                 let subject = CommitMessage.subject(of: section.message).count
                 Text("\(subject)/\(CommitMessage.subjectLimit)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(subject > CommitMessage.subjectLimit ? .red : .secondary)
+                    .foregroundStyle(
+                        subject > CommitMessage.subjectLimit
+                            ? theme.tokens.statusRed.color : theme.tokens.textSecondary.color)
                 Toggle(
                     "Amend",
                     isOn: Binding(get: { section.isAmending }, set: { feature.setAmending($0, in: section.id) })

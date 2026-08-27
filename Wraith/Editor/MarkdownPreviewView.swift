@@ -28,6 +28,9 @@ struct MarkdownPreviewView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollPosition($position, anchor: .top)
+        .foregroundStyle(theme.tokens.textPrimary.color)
+        .tint(theme.tokens.accent.color)
+        .background(theme.tokens.surface.color)
         .onChange(of: position.viewID(type: Int.self)) { _, id in
             // The first layout of a rebuilt view reports block 0: ignored until restored.
             guard isRestored, let id else { return }
@@ -157,7 +160,8 @@ private struct CodeBlockView: View {
                 .font(Font(theme.editorFont))
                 .padding(10)
         }
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.6))
+        // design R8: the sunken shade, opaque (the tint let text show through, M8 8.7).
+        .background(theme.tokens.surfaceSunken.color)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .task(id: code) {
             guard

@@ -41,10 +41,15 @@ struct SchemaOutlineView: NSViewRepresentable {
         scroll.documentView = outline
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
+        outline.backgroundColor = theme.tokens.surface.nsColor
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        if let outline = context.coordinator.outline, outline.backgroundColor != theme.tokens.surface.nsColor {
+            outline.backgroundColor = theme.tokens.surface.nsColor
+            outline.reloadData()
+        }
         context.coordinator.sync(version: model.version, filter: model.filter)
         context.coordinator.outline?.sizeLastColumnToFit()
     }
@@ -192,20 +197,25 @@ struct SchemaOutlineView: NSViewRepresentable {
                 outlineView.makeView(withIdentifier: identifier, owner: nil) as? NSTableCellView ?? makeCell(identifier)
             let isLoading = model.loading.contains(node.id)
             let text = NSMutableAttributedString(
-                string: node.title, attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)])
+                string: node.title,
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                    .foregroundColor: theme.tokens.textPrimary.nsColor,
+                ])
             if let subtitle = node.subtitle {
                 text.append(
                     NSAttributedString(
                         string: "  " + subtitle,
                         attributes: [
                             .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize - 1),
-                            .foregroundColor: NSColor.secondaryLabelColor,
+                            .foregroundColor: theme.tokens.textSecondary.nsColor,
                         ]))
             }
             cell.textField?.attributedStringValue = text
             cell.textField?.toolTip = node.subtitle ?? node.title
             cell.imageView?.image = NSImage(systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
-            cell.imageView?.contentTintColor = isLoading ? .tertiaryLabelColor : theme.schemaTint(for: node)
+            cell.imageView?.contentTintColor =
+                isLoading ? theme.tokens.textDisabled.nsColor : theme.schemaTint(for: node)
             return cell
         }
 

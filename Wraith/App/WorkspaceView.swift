@@ -95,20 +95,10 @@ struct WorkspaceView: View {
             VStack(spacing: 0) {
                 // config R7: the last valid config stays active, the error is shown with its line.
                 if let error = workspace.configError {
-                    Label(error.description, systemImage: "exclamationmark.triangle")
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                        .padding(6)
-                        .frame(maxWidth: .infinity)
-                        .background(.bar)
+                    BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
                 }
                 ForEach(layout.shortcuts.problems, id: \.description) { problem in
-                    Label(problem.description, systemImage: "keyboard")
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                        .padding(6)
-                        .frame(maxWidth: .infinity)
-                        .background(.bar)
+                    BannerView(text: problem.description, icon: "keyboard", tone: .error, theme: theme)
                 }
                 if isStateLoaded {
                     ZonesView(layout: layout, theme: theme) {
@@ -129,6 +119,8 @@ struct WorkspaceView: View {
                 }
             }
             .background(tokens.windowBackground.color)
+            // design R10: the system's semantic colors (alerts, menus, `.secondary`) agree with the set.
+            .preferredColorScheme(theme.isDark(systemIsDark: theme.systemIsDark) ? .dark : .light)
         } else {
             ContentUnavailableView(
                 "Folder Not Found",

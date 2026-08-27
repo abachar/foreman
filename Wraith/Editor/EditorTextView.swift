@@ -18,8 +18,8 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSTextView.scrollableTextView()
-        guard let textView = scroll.documentView as? NSTextView else { return scroll }
+        let scroll = CurrentLineTextView.scrollableTextView()
+        guard let textView = scroll.documentView as? CurrentLineTextView else { return scroll }
         textView.font = theme.editorFont
         textView.isEditable = !document.isReadOnly
         textView.isRichText = false
@@ -37,9 +37,12 @@ struct EditorTextView: NSViewRepresentable {
         textView.delegate = context.coordinator
         tab.textView = textView
         // editor R6: the gutter.
-        scroll.verticalRulerView = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
+        scroll.drawsBackground = false
+        Self.paint(textView, ruler: ruler, tokens: theme.tokens)
         if document.isHighlightable, let language = tab.language {
             // The grammar comes when it is ready (M6 6.5): plain text until then, no freeze.
             context.coordinator.attaching = Task { [highlighter, weak textView, coordinator = context.coordinator] in
@@ -79,7 +82,7 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let textView = scroll.documentView as? NSTextView else { return }
+        guard let textView = scroll.documentView as? CurrentLineTextView else { return }
         // SwiftUI may rebuild the native view when the tab is shown again: the commands must
         // reach the live instance.
         tab.textView = textView
@@ -87,6 +90,7 @@ struct EditorTextView: NSViewRepresentable {
         if textView.font != theme.editorFont {
             textView.font = theme.editorFont
         }
+        Self.paint(textView, ruler: scroll.verticalRulerView as? LineNumberRulerView, tokens: theme.tokens)
         if context.coordinator.reloadVersion != tab.reloadVersion, let document = tab.document {
             // editor R9: silent reload, cursor and scroll preserved.
             context.coordinator.reloadVersion = tab.reloadVersion
@@ -106,6 +110,20 @@ struct EditorTextView: NSViewRepresentable {
         let location = TextEditing.location(ofLine: line, in: textView.string as NSString)
         textView.setSelectedRange(NSRange(location: location, length: 0))
         textView.scrollRangeToVisible(textView.selectedRange())
+    }
+
+    /// design R8, R22: the text, the caret, the selection, the current line and the gutter.
+    static func paint(_ textView: CurrentLineTextView, ruler: LineNumberRulerView?, tokens: ThemeService.Tokens) {
+        let background = tokens.surface.nsColor
+        guard textView.backgroundColor != background || textView.currentLineColor != tokens.surfaceSunken.nsColor
+        else { return }
+        textView.backgroundColor = background
+        textView.textColor = tokens.textPrimary.nsColor
+        textView.insertionPointColor = tokens.textPrimary.nsColor
+        textView.selectedTextAttributes = [.backgroundColor: tokens.accent.nsColor(alpha: 0.35)]
+        textView.currentLineColor = tokens.surfaceSunken.nsColor
+        ruler?.textColor = tokens.textSecondary.nsColor
+        ruler?.backgroundColor = background
     }
 
     @MainActor

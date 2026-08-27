@@ -40,7 +40,7 @@ struct PostgresHistoryView: View {
                 model.setPinned(entry.id, !entry.isPinned)
             } label: {
                 Image(systemName: entry.isPinned ? "pin.fill" : "pin")
-                    .foregroundStyle(entry.isPinned ? Color.accentColor : .secondary)
+                    .foregroundStyle(entry.isPinned ? theme.tokens.accent.color : theme.tokens.textSecondary.color)
             }
             .buttonStyle(.plain)
             .help(entry.isPinned ? "Unpin" : "Pin (kept beyond the last 500)")
@@ -58,7 +58,7 @@ struct PostgresHistoryView: View {
                     if let error = entry.error {
                         Text("·")
                         Text(error)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(theme.tokens.statusRed.color)
                             .lineLimit(1)
                     } else if let rows = entry.rowCount {
                         Text("·")

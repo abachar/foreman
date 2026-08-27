@@ -56,10 +56,16 @@ struct ExplorerOutlineView: NSViewRepresentable {
         scroll.documentView = outline
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
+        outline.backgroundColor = theme.tokens.surface.nsColor
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        // design R8: the tree sits on the island.
+        if let outline = context.coordinator.outline, outline.backgroundColor != theme.tokens.surface.nsColor {
+            outline.backgroundColor = theme.tokens.surface.nsColor
+            outline.reloadData()
+        }
         context.coordinator.sync(version: model.version, hidesExcluded: model.hidesExcluded)
         context.coordinator.outline?.sizeLastColumnToFit()
         if let path = model.revealRequest {
@@ -326,17 +332,19 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 // explorer R4, R15: greyed when excluded or gitignored, colored by git status.
                 let isGreyed = node.isExcluded || model.isGitIgnored(node.relativePath)
                 let status = isGreyed ? nil : model.gitStatus(of: node)
+                let tokens = theme.tokens
                 cell.textField?.textColor =
-                    isGreyed ? .tertiaryLabelColor : status.map(theme.color(for:)) ?? .labelColor
+                    isGreyed ? tokens.textDisabled.nsColor : status.map(theme.color(for:)) ?? tokens.textPrimary.nsColor
                 cell.imageView?.image = NSImage(systemSymbolName: Self.symbol(for: node), accessibilityDescription: nil)
                 cell.imageView?.contentTintColor =
-                    isGreyed ? .tertiaryLabelColor : status.map(theme.color(for:)) ?? .secondaryLabelColor
+                    isGreyed
+                    ? tokens.textDisabled.nsColor : status.map(theme.color(for:)) ?? tokens.textSecondary.nsColor
             case .more(_, let count):
                 cell.textField?.isEditable = false
                 cell.textField?.stringValue = "… and \(count) more (click to load all)"
-                cell.textField?.textColor = .secondaryLabelColor
+                cell.textField?.textColor = theme.tokens.textSecondary.nsColor
                 cell.imageView?.image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: nil)
-                cell.imageView?.contentTintColor = .secondaryLabelColor
+                cell.imageView?.contentTintColor = theme.tokens.textSecondary.nsColor
             }
             return cell
         }

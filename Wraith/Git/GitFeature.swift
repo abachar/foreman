@@ -75,7 +75,7 @@ final class GitFeature {
             panel: PanelDescriptor(
                 id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
                 makeView: { [unowned self] in
-                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self))
+                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))
                 },
                 activate: { [weak self] in self?.activateHistory() },
                 deactivate: { [weak self] in self?.history.reload(with: nil) }))

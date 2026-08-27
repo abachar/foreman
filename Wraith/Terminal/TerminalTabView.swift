@@ -34,11 +34,11 @@ struct TerminalTabView: View {
             .id("\(id.uuid)-\(tab.generation)")
             .help(tab.subtitle ?? "")
             if case .exited(let exit) = tab.state {
-                Divider()
+                service.theme.tokens.separator.color.frame(height: 1)
                 HStack {
                     Text("exited · \(exit.label)")
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(service.theme.tokens.textSecondary.color)
                     Spacer()
                     Button("Relaunch") {
                         // Refused only for a missing folder, and the button is disabled then.
@@ -47,18 +47,13 @@ struct TerminalTabView: View {
                     .disabled(tab.isCwdMissing)
                 }
                 .padding(6)
-                .background(.bar)
+                .background(service.theme.tokens.surfaceRaised.color)
             }
         }
     }
 
     private func banner(_ text: String, symbol: String) -> some View {
-        Label(text, systemImage: symbol)
-            .font(.callout)
-            .foregroundStyle(.red)
-            .padding(6)
-            .frame(maxWidth: .infinity)
-            .background(.bar)
+        BannerView(text: text, icon: symbol, tone: .error, theme: service.theme)
     }
 }
 

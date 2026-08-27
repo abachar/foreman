@@ -5,20 +5,14 @@ struct GitHistoryPanelView: View {
     let model: GitHistoryModel
     let changes: GitModel
     let feature: GitFeature
+    let theme: ThemeService
     @State private var filterText = ""
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             if let error = model.error {
-                Label(error.description, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .padding(6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.bar)
+                BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
             }
             if model.repoID == nil {
                 ContentUnavailableView("No Repository", systemImage: "clock.arrow.circlepath")
@@ -34,7 +28,7 @@ struct GitHistoryPanelView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        PanelHeaderView(title: "History", theme: theme) {
             Picker(
                 "Repository",
                 selection: Binding(
@@ -63,14 +57,11 @@ struct GitHistoryPanelView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 260)
                 .onSubmit { feature.filterHistory(filterText) }
-            Spacer()
             if model.isLoading {
                 ProgressView()
                     .controlSize(.small)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 
     private var table: some View {

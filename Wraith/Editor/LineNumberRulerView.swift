@@ -8,6 +8,13 @@ final class LineNumberRulerView: NSRulerView {
     private weak var textView: NSTextView?
     private let font: NSFont
     private var observers: [any NSObjectProtocol] = []
+    /// design R8: the numbers and the ground come from the tokens.
+    var textColor = NSColor.secondaryLabelColor {
+        didSet { needsDisplay = true }
+    }
+    var backgroundColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
 
     init(textView: NSTextView, font: NSFont) {
         self.textView = textView
@@ -39,13 +46,19 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
+    override func draw(_ dirtyRect: NSRect) {
+        backgroundColor.setFill()
+        dirtyRect.fill()
+        drawHashMarksAndLabels(in: dirtyRect)
+    }
+
     override func drawHashMarksAndLabels(in rect: NSRect) {
         guard let textView, let layoutManager = textView.textLayoutManager,
             let contentManager = layoutManager.textContentManager
         else { return }
         let text = textView.string as NSString
         let visible = textView.visibleRect
-        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
         let inset = textView.textContainerInset
         let width = max(44, CGFloat(String(max(1, lineCount(text))).count + 2) * font.pointSize * 0.7)
         if abs(ruleThickness - width) > 0.5 {

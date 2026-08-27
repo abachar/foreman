@@ -11,7 +11,7 @@ struct PostgresQueryView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            theme.tokens.separator.color.frame(height: 1)
             VSplitView {
                 SQLEditorView(
                     tab: tab, theme: theme, onRun: { feature.run(tab) }, onStop: { feature.stop() }
@@ -53,7 +53,8 @@ struct PostgresQueryView: View {
             .help("Cancel on the server (⌘.)")
             Toggle(isOn: Binding(get: { connection.allowWrites }, set: { feature.setAllowWrites($0) })) {
                 Image(systemName: "pencil")
-                    .foregroundStyle(connection.allowWrites ? .red : .secondary)
+                    .foregroundStyle(
+                        connection.allowWrites ? theme.tokens.statusRed.color : theme.tokens.textSecondary.color)
             }
             .toggleStyle(.button)
             .buttonStyle(.borderless)
@@ -67,7 +68,8 @@ struct PostgresQueryView: View {
             .help("Query history")
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .frame(height: theme.tokens.barHeight)
+        .background(theme.tokens.surfaceRaised.color)
         // R20: the sheet belongs to the tab it was opened for.
         .sheet(
             isPresented: Binding(
@@ -87,17 +89,17 @@ struct PostgresQueryView: View {
                 // R19: the message, the SQLSTATE, and what to do about it.
                 VStack(alignment: .leading, spacing: 2) {
                     Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(theme.tokens.statusRed.color)
                     if let hint = tab.hint {
                         Text(hint)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.tokens.textSecondary.color)
                     }
                 }
                 .font(.callout)
                 .textSelection(.enabled)
                 .padding(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.bar)
+                .background(theme.tokens.surfaceRaised.color)
             }
             if let message = connection.configMessage {
                 ContentUnavailableView {
@@ -134,7 +136,7 @@ struct PostgresQueryView: View {
                     "truncated at \(PostgresFeature.rowLimit) rows, add a LIMIT",
                     systemImage: "exclamationmark.triangle"
                 )
-                .foregroundStyle(.orange)
+                .foregroundStyle(theme.tokens.statusOrange.color)
             }
             Text("·")
             Text(result.durationText)
@@ -143,9 +145,9 @@ struct PostgresQueryView: View {
             Spacer()
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(theme.tokens.textSecondary.color)
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
-        .background(.bar)
+        .background(theme.tokens.surfaceRaised.color)
     }
 }

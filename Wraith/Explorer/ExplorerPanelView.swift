@@ -13,16 +13,9 @@ struct ExplorerPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             if let error = model.error {
                 // explorer R19: an IO error is shown here and leaves the tree untouched.
-                Label(error.description, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .padding(6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.bar)
+                BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
             }
             ExplorerOutlineView(
                 model: model, theme: theme, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID),
@@ -40,11 +33,7 @@ struct ExplorerPanelView: View {
     }
 
     private var header: some View {
-        HStack {
-            Text(model.root.lastPathComponent)
-                .font(.headline)
-                .lineLimit(1)
-            Spacer()
+        PanelHeaderView(title: model.root.lastPathComponent, theme: theme) {
             Button {
                 operations.newFile(near: nil)
             } label: {
@@ -69,7 +58,5 @@ struct ExplorerPanelView: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 }

@@ -18,6 +18,9 @@ struct HomeView: View {
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // design R19: the same tokens, no illustration.
+        .foregroundStyle(theme.tokens.textPrimary.color)
+        .background(theme.tokens.surface.color)
     }
 
     @ViewBuilder
@@ -27,7 +30,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Actions")
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.tokens.textSecondary.color)
             ForEach(entries) { entry in
                 row(
                     title: entry.title, icon: entry.icon, shortcut: layout.shortcuts.shortcut(for: entry.id),
@@ -48,7 +51,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.tokens.textSecondary.color)
                 ForEach(entries) { entry in
                     row(
                         title: entry.title, icon: entry.icon, shortcut: layout.shortcuts.shortcut(for: entry.id),
@@ -75,7 +78,7 @@ struct HomeView: View {
                 if let shortcut {
                     Text(shortcut.description)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.tokens.textSecondary.color)
                 }
             }
             .frame(maxWidth: 360)

@@ -38,9 +38,12 @@ struct SQLEditorView: NSViewRepresentable {
         tab.textView = textView
         context.coordinator.theme = theme
         context.coordinator.recolor(textView)
-        scroll.verticalRulerView = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
+        scroll.drawsBackground = false
+        EditorTextView.paint(textView, ruler: ruler, tokens: theme.tokens)
         return scroll
     }
 
@@ -52,6 +55,7 @@ struct SQLEditorView: NSViewRepresentable {
         if textView.font != theme.editorFont {
             textView.font = theme.editorFont
         }
+        EditorTextView.paint(textView, ruler: scroll.verticalRulerView as? LineNumberRulerView, tokens: theme.tokens)
         if let replacement = tab.pendingReplacement {
             tab.pendingReplacement = nil
             textView.insertText(
@@ -94,13 +98,13 @@ struct SQLEditorView: NSViewRepresentable {
             let whole = NSRange(location: 0, length: storage.length)
             storage.beginEditing()
             storage.removeAttribute(.foregroundColor, range: whole)
-            storage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: whole)
+            storage.addAttribute(.foregroundColor, value: theme.tokens.textPrimary.nsColor, range: whole)
             for token in SQLHighlighter.tokens(in: storage.string) where NSMaxRange(token.range) <= storage.length {
                 storage.addAttribute(.foregroundColor, value: theme.color(for: token.role), range: token.range)
             }
             storage.endEditing()
             textView.typingAttributes = [
-                .font: textView.font ?? theme.editorFont, .foregroundColor: NSColor.labelColor,
+                .font: textView.font ?? theme.editorFont, .foregroundColor: theme.tokens.textPrimary.nsColor,
             ]
         }
 
@@ -129,7 +133,7 @@ struct SQLEditorView: NSViewRepresentable {
 
 /// `NSTextView` that hands `cmd+enter` and `cmd+.` to the tab (postgres R10, R13: keys of the
 /// panel, not `ShortcutAction`s — see the M5 backlog).
-final class SQLTextView: NSTextView {
+final class SQLTextView: CurrentLineTextView {
     var onRun: () -> Void = {}
     var onStop: () -> Void = {}
 

@@ -11,7 +11,6 @@ struct PostgresSchemaPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             banner
             if let message = connection.configMessage {
                 // R2: no section, the message and the example.
@@ -31,17 +30,12 @@ struct PostgresSchemaPanelView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        PanelHeaderView(title: connection.label ?? "Postgres", theme: theme) {
             // R5: the state dot.
             Circle()
                 .fill(Color(nsColor: theme.color(for: connection.state)))
                 .frame(width: 8, height: 8)
                 .help(stateText)
-            Text(connection.label ?? "Postgres")
-                .font(.headline)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer()
             TextField("Filter", text: Bindable(model).filter)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 160)
@@ -56,7 +50,8 @@ struct PostgresSchemaPanelView: View {
             }
             Toggle(isOn: Binding(get: { connection.allowWrites }, set: { feature.setAllowWrites($0) })) {
                 Image(systemName: "pencil")
-                    .foregroundStyle(connection.allowWrites ? .red : .secondary)
+                    .foregroundStyle(
+                        connection.allowWrites ? theme.tokens.statusRed.color : theme.tokens.textSecondary.color)
             }
             .toggleStyle(.button)
             .buttonStyle(.borderless)
@@ -70,30 +65,15 @@ struct PostgresSchemaPanelView: View {
             .help("Refresh")
             .disabled(connection.configMessage != nil)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
     private var banner: some View {
         if let error = connection.error {
-            Label(error, systemImage: "exclamationmark.triangle")
-                .font(.callout)
-                .foregroundStyle(.red)
-                .lineLimit(3)
-                .textSelection(.enabled)
-                .padding(6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.bar)
+            BannerView(text: error, icon: "exclamationmark.triangle", tone: .error, theme: theme)
         }
         ForEach(connection.warnings, id: \.self) { warning in
-            Label(warning, systemImage: "exclamationmark.triangle")
-                .font(.callout)
-                .foregroundStyle(.orange)
-                .lineLimit(2)
-                .padding(6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.bar)
+            BannerView(text: warning, icon: "exclamationmark.triangle", tone: .warning, theme: theme)
         }
     }
 

@@ -55,13 +55,14 @@ struct EditorTabView: View {
             // editor R9: the file changed on disk while this tab has unsaved changes.
             HStack {
                 Label("Modified on disk", systemImage: "arrow.triangle.2.circlepath")
+                    .foregroundStyle(theme.tokens.statusOrange.color)
                 Spacer()
                 Button("Keep My Changes") { tab.keepChanges() }
                 Button("Reload") { Task { await tab.reload() } }
             }
             .font(.callout)
             .padding(6)
-            .background(.bar)
+            .background(theme.tokens.surfaceRaised.color)
         case .deleted:
             banner("Deleted on disk — ⌘S recreates it", icon: "trash")
         }
@@ -82,10 +83,6 @@ struct EditorTabView: View {
     }
 
     private func banner(_ text: String, icon: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(.callout)
-            .padding(6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.bar)
+        BannerView(text: text, icon: icon, theme: theme)
     }
 }

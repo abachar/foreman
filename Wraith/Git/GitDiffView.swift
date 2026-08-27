@@ -42,7 +42,7 @@ struct GitDiffView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            Divider()
+            theme.tokens.separator.color.frame(height: 1)
             files(diff)
         }
     }
@@ -103,7 +103,7 @@ struct GitDiffView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
-        .background(.bar)
+        .background(theme.tokens.surfaceRaised.color)
     }
 
     nonisolated static func headerText(_ file: FileDiff) -> String {
@@ -127,7 +127,7 @@ struct GitDiffView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.quaternary.opacity(0.4))
+                .background(theme.tokens.surfaceSunken.color)
             if model.isSideBySide {
                 // git R13b: one row per pair, both cells the height of the taller one, lines wrap.
                 LazyVStack(spacing: 0) {
