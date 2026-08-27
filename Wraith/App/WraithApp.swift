@@ -13,6 +13,9 @@ struct WraithApp: App {
             appDelegate.takeLaunchFolder()
         }
         .defaultSize(width: 1100, height: 700)
+        // product R1, R8: Wraith restores its own workspaces from state.json; the system's window
+        // restoration brought back a $HOME window at every launch, one more each time (2026-08-28).
+        .restorationBehavior(.disabled)
         .commands {
             CommandGroup(replacing: .newItem) {
                 OpenFolderButton()
