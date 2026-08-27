@@ -45,6 +45,7 @@ struct ZonesView: NSViewControllerRepresentable {
                 layout.windowFrame = window.frame
                 // design R14: one flat ground, no text title; the toolbar sits on it (R15).
                 window.titlebarAppearsTransparent = true
+                window.titlebarSeparatorStyle = .none
                 window.titleVisibility = .hidden
                 window.backgroundColor = tokens.windowBackground.nsColor
                 toolbar.attach(to: window)

@@ -107,9 +107,19 @@ final class ZonesViewController: NSSplitViewController {
                 gutterView.gutterColor = configuration.windowBackground
             }
         }
-        // design R14: the title area paints the same ground as the gutters.
-        if let window = view.window, window.backgroundColor != configuration.windowBackground {
-            window.backgroundColor = configuration.windowBackground
+        // design R14, R15: the title area paints the same ground as the gutters. SwiftUI's window
+        // bridge turns `titlebarAppearsTransparent` back off after the first update, which puts a
+        // material band behind the toolbar (bug: 2026-08-27), so the three are re-asserted here.
+        if let window = view.window {
+            if window.backgroundColor != configuration.windowBackground {
+                window.backgroundColor = configuration.windowBackground
+            }
+            if !window.titlebarAppearsTransparent {
+                window.titlebarAppearsTransparent = true
+            }
+            if window.titlebarSeparatorStyle != .none {
+                window.titlebarSeparatorStyle = .none
+            }
         }
         center.rootView = configuration.center
         for (side, slot) in slots {
