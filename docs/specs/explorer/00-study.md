@@ -1,80 +1,80 @@
-# explorer — Étude
+# explorer — Study
 
-## Objectif
+## Goal
 
-Panneau gauche `explorer.tree` : l'arbre de fichiers du workspace, paresseux, rafraîchi par FSEvents, depuis lequel on ouvre des fichiers (aperçu ou fixe) et on fait le CRUD de base. Il affiche les états git fournis par `git`, sans en dépendre.
+Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEvents, from which files are opened (as a preview or pinned) and basic CRUD is done. It shows the git states provided by `git`, without depending on it.
 
 ## User stories
 
-- US1 — `cmd+shift+e` : l'arbre apparaît sur la racine du workspace, dossiers repliés ; je déplie à la demande, sans attendre.
-- US2 — Je crée/renomme/supprime un fichier au terminal : l'arbre se met à jour seul en moins d'une seconde.
-- US3 — Un clic sur un fichier l'ouvre en aperçu dans le groupe actif ; un double clic le fixe. Cliquer un autre fichier remplace l'aperçu.
-- US4 — Quand je change d'onglet, l'arbre déplie et sélectionne le fichier correspondant.
-- US5 — Je repère d'un coup d'œil ce qui est modifié (git) et ce qui est ignoré (grisé).
-- US6 — Clic droit : nouveau fichier/dossier, renommer, supprimer, révéler dans le Finder, copier le chemin.
+- US1 — `cmd+shift+e`: the tree appears on the workspace root, folders collapsed; I expand on demand, without waiting.
+- US2 — I create/rename/delete a file in the terminal: the tree updates on its own in less than a second.
+- US3 — Clicking a file opens it as a preview in the active group; double-clicking pins it. Clicking another file replaces the preview.
+- US4 — When I switch tabs, the tree expands to and selects the matching file.
+- US5 — I can tell at a glance what is modified (git) and what is ignored (greyed out).
+- US6 — Right-click: new file/folder, rename, delete, reveal in Finder, copy the path.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Contenu et filtrage
+### Content and filtering
 
-- R1 — La racine de l'arbre est la racine du workspace ; elle n'est pas affichée comme nœud, ses enfants sont le premier niveau.
-- R2 — Tri : dossiers d'abord, puis fichiers, chacun par nom insensible à la casse (ordre `localizedStandardCompare`, donc `file2 < file10`).
-- R3 — Tout est visible sauf `.git/` (et `.wraith/state.json`, `.DS_Store`). Les dotfiles sont affichés.
-- R4 — Les entrées **ignorées par git** (info reçue de `git`, R15) sont grisées. Les dossiers de la liste d'exclusion commune (`architecture.md` : `node_modules`, `target`, `.build`…) sont grisés même sans info git, et jamais dépliés automatiquement (R11).
-- R5 — Un toggle « masquer les fichiers ignorés » (menu du panneau, persisté dans `state.json`) cache les entrées grisées. Défaut : visibles.
-- R6 — Liens symboliques : affichés avec une icône dédiée, dépliables si dossier, jamais suivis lors d'une opération récursive (suppression, rafraîchissement).
+- R1 — The root of the tree is the workspace root; it is not shown as a node, its children are the first level.
+- R2 — Sorting: folders first, then files, each by case-insensitive name (`localizedStandardCompare` order, so `file2 < file10`).
+- R3 — Everything is visible except `.git/` (and `.wraith/state.json`, `.DS_Store`). Dotfiles are shown.
+- R4 — Entries **ignored by git** (information received from `git`, R15) are greyed out. Folders on the shared exclusion list (`architecture.md`: `node_modules`, `target`, `.build`…) are greyed out even without git information, and never expanded automatically (R11).
+- R5 — A "hide ignored files" toggle (the panel menu, persisted in `state.json`) hides the greyed-out entries. Default: visible.
+- R6 — Symlinks: shown with a dedicated icon, expandable when they point to a folder, never followed during a recursive operation (deletion, refresh).
 
-### Chargement et rafraîchissement
+### Loading and refreshing
 
-- R7 — Chargement **par niveau** : le contenu d'un dossier est lu à son premier dépliage (paresse, `architecture.md` P4). Aucune lecture récursive, jamais.
-- R8 — Le premier niveau est lu à l'activation du panneau (`layout` R4), hors main actor, et rendu dès disponible. Un dossier de plus de 5 000 entrées est affiché tronqué (« … et N autres ») avec un bouton pour tout charger.
-- R9 — Rafraîchissement par `FSWatchService` (flux FSEvents unique, `architecture.md`) : à un événement sur un chemin, seul le dossier parent concerné est rechargé (`reloadItem(_:reloadChildren:)`), et seulement s'il est déplié (un dossier replié est relu à son prochain dépliage). L'abonnement est actif uniquement panneau visible ; à la réactivation, les dossiers dépliés sont rechargés une fois.
-- R10 — Le rechargement d'un dossier conserve l'état déplié, la sélection et le scroll pour les éléments encore présents ; c'est le comportement de `NSOutlineView` avec des items à identité stable (chemin relatif), rien à fusionner à la main.
-- R11 — État déplié persisté dans `state.json` (liste de chemins relatifs) et restauré ; les dossiers grisés (R4) ne sont jamais restaurés dépliés.
+- R7 — Loading is **level by level**: a folder's content is read at its first expansion (laziness, `architecture.md` P4). No recursive read, ever.
+- R8 — The first level is read when the panel is shown (`layout` R4), off the main actor, and rendered as soon as it is available. A folder with more than 5,000 entries is shown truncated ("… and N more") with a button to load everything.
+- R9 — Refreshing through `FSWatchService` (the single FSEvents stream, `architecture.md`): on an event on a path, only the parent folder concerned is reloaded (`reloadItem(_:reloadChildren:)`), and only if it is expanded (a collapsed folder is re-read at its next expansion). The subscription is only active while the panel is visible; on reactivation, the expanded folders are reloaded once.
+- R10 — Reloading a folder keeps the expanded state, the selection and the scroll for the items still present; that is `NSOutlineView`'s behaviour with items that have a stable identity (the relative path), nothing to merge by hand.
+- R11 — The expanded state is persisted in `state.json` (a list of relative paths) and restored; greyed-out folders (R4) are never restored expanded.
 
-### Ouverture
+### Opening
 
-- R12 — Simple clic sur un fichier : ouverture en onglet **aperçu** dans le groupe actif via `Editor.open(path, preview: true)` ; un seul onglet aperçu par groupe, remplacé par l'aperçu suivant. Double clic, ou toute édition dans l'onglet, le fixe (`editor` définit l'onglet). Clic sur un fichier déjà ouvert : active son onglet.
-- R13 — `opt+clic` (ou entrée de menu) : ouvre dans un **nouveau groupe** à droite (`layout` R9) si l'on veut comparer.
-- R14 — Suivi de l'onglet actif (`Layout.activeTab`) : quand l'onglet actif change et qu'il correspond à un fichier sous la racine, l'arbre déplie le chemin et sélectionne le fichier (sans le faire défiler si déjà visible). Désactivable par toggle du panneau (persisté). Un fichier hors racine ne déplie rien.
-- R15 — Badges git : l'explorer s'abonne à `Git.statusChanges` (`AsyncStream` de `(repo, [path: GitFileStatus])`) ; il colore les fichiers (modifié, ajouté, non suivi, conflit) et propage un point sur les dossiers ancêtres. Hors repo : aucun badge, aucune erreur.
+- R12 — Single click on a file: opens a **preview** tab in the active group through `Editor.open(path, preview: true)`; one preview tab per group, replaced by the next preview. A double click, or any edit in the tab, pins it (`editor` defines the tab). Clicking a file that is already open: activates its tab.
+- R13 — `opt+click` (or a menu entry): opens in a **new group** on the right (`layout` R9) when you want to compare.
+- R14 — Following the active tab (`Layout.activeTab`): when the active tab changes and matches a file under the root, the tree expands the path and selects the file (without scrolling if it is already visible). Can be turned off by a panel toggle (persisted). A file outside the root expands nothing.
+- R15 — Git badges: the explorer subscribes to `Git.statusChanges` (an `AsyncStream` of `(repo, [path: GitFileStatus])`); it colors the files (modified, added, untracked, conflicted) and propagates a dot onto the ancestor folders. Outside a repo: no badge, no error.
 
-### Opérations
+### Operations
 
-- R16 — Nouveau fichier / nouveau dossier : créés dans le dossier sélectionné (ou le parent du fichier sélectionné, ou la racine), nom saisi dans une feuille (décision 2026-08-27), puis le fichier est ouvert (fixe). Le nom peut contenir des `/` pour créer les dossiers intermédiaires.
-- R17 — Renommer : édition en ligne (`enter` sur l'élément ou menu). L'explorer appelle `Editor.fileRenamed(old, new)` pour que les onglets ouverts suivent.
-- R18 — Supprimer : vers la **corbeille** (`trashItem`), avec confirmation listant le nombre d'éléments pour un dossier non vide. L'explorer appelle `Editor.fileDeleted(path)`.
-- R19 — Toute opération est refusée si le chemin cible n'est pas sous la racine (`architecture.md`, sécurité) ou si le nom est vide, `.`/`..`, ou contient un caractère interdit. Une erreur d'IO (permission, existe déjà) s'affiche en bannière du panneau et ne modifie pas l'arbre.
-- R20 — Menu contextuel : Nouveau fichier, Nouveau dossier, Renommer, Supprimer, Révéler dans le Finder, Copier le chemin (relatif à la racine), Copier le chemin absolu. Pas de « terminal ici » (`product` R4), pas de copier/couper/coller de fichiers, pas de drag & drop.
-- R21 — Navigation clavier dans l'arbre : `↑↓` déplacent, `→` déplie / `←` replie ou remonte, `enter` renomme, `space` ouvre en aperçu, `cmd+↓` ouvre fixe, `cmd+delete` supprime, `escape` rend le focus au centre (`layout` R6).
+- R16 — New file / new folder: created in the selected folder (or the parent of the selected file, or the root), the name typed in a sheet (decision 2026-08-27), then the file is opened (pinned). The name may contain `/` to create the intermediate folders.
+- R17 — Rename: inline editing (`enter` on the item, or the menu). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
+- R18 — Delete: to the **trash** (`trashItem`), with a confirmation listing the number of items for a non-empty folder. The explorer calls `Editor.fileDeleted(path)`.
+- R19 — Any operation is refused if the target path is not under the root (`architecture.md`, security) or if the name is empty, `.`/`..`, or contains a forbidden character. An IO error (permission, already exists) is shown in the panel's banner and does not modify the tree.
+- R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path. No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.
+- R21 — Keyboard navigation in the tree: `↑↓` move, `→` expands / `←` collapses or goes up, `enter` renames, `space` opens as a preview, `cmd+↓` opens pinned, `cmd+delete` deletes, `escape` gives the focus back to the center (`layout` R6).
 
-## Cas limites
+## Edge cases
 
-- Dossier non lisible (permissions) : affiché avec icône verrou, dépliage sans effet, pas d'erreur bloquante.
-- Rafale d'événements (`git checkout`, `npm install`) : le debounce de `FSWatchService` (~300 ms) coalesce ; l'explorer relit chaque dossier concerné une seule fois par rafale.
-- Fichier sélectionné supprimé de l'extérieur : sélection perdue, aucun message.
-- Renommage qui ne change que la casse (`Foo` → `foo`) sur APFS insensible à la casse : autorisé, effectué via un nom temporaire.
-- Volume réseau ou lent : la lecture hors main actor garantit une UI réactive ; un dossier en cours de lecture affiche un état « chargement ».
-- Workspace = `$HOME` : arbre énorme mais paresseux ; `Library` est grisé via la liste d'exclusion commune.
+- Unreadable folder (permissions): shown with a lock icon, expanding does nothing, no blocking error.
+- A burst of events (`git checkout`, `npm install`): `FSWatchService`'s debounce (~300 ms) coalesces them; the explorer re-reads each folder concerned once per burst.
+- The selected file is deleted from outside: the selection is lost, no message.
+- A rename that only changes the case (`Foo` → `foo`) on case-insensitive APFS: allowed, done through a temporary name.
+- Network or slow volume: reading off the main actor keeps the UI responsive; a folder being read shows a "loading" state.
+- Workspace = `$HOME`: a huge but lazy tree; `Library` is greyed out through the shared exclusion list.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Drag & drop, copier/couper/coller de fichiers, déplacement entre dossiers.
-- Recherche dans l'arbre (le quick open `cmd+p` est dans `editor`).
-- Icônes par type de fichier (une icône fichier / dossier / lien suffit).
-- Multi-sélection et opérations groupées.
-- Ouvrir un fichier avec une application externe (hors « révéler dans le Finder »).
-- Suivi de fichiers hors de la racine.
+- Drag and drop, file copy/cut/paste, moving between folders.
+- Searching in the tree (`cmd+p` quick open is in `editor`).
+- Icons per file type (one file / folder / link icon is enough).
+- Multi-selection and batch operations.
+- Opening a file with an external application (other than "reveal in Finder").
+- Watching files outside the root.
 
-## Options techniques
+## Technical options
 
-- **Dossier** : `Sources/Wraith/Explorer/`.
-- **Vue** : `NSOutlineView` dans un `NSViewRepresentable` (plateforme d'abord, `architecture.md` P3), data source paresseux : `numberOfChildren`/`child(index:)` lisent le niveau au premier dépliage, `reloadItem(_:reloadChildren:)` pour R9. L'identité d'un item est son chemin relatif.
-- **Modèle** : `FileNode` (`struct`, `Identifiable` par chemin relatif) : nom, kind (file/dir/symlink), isIgnored, children chargés ou non. `ExplorerModel` (`@MainActor @Observable`) tient la sélection, les badges et les toggles ; la lecture d'un niveau est un simple `FileManager.contentsOfDirectory(resourceKeys: isDirectory, isSymbolicLink, isHidden)` dans une `Task` hors main actor.
-- **Opérations** : `FileManager` (`createDirectory`, `moveItem`, `trashItem`), erreurs enveloppées dans `ExplorerError`.
-- **Liens avec les autres features** (appels directs, `architecture.md`) : consomme `FSWatchService`, `Layout.activeTab`, `Git.statusChanges` ; appelle `Editor.open(path, preview:, newGroup:)`, `Editor.fileRenamed`, `Editor.fileDeleted`.
-- **Tests** : tri (R2), filtrage (R3–R5), validation des noms et chemins (R19), propagation des badges (R15), sur un répertoire temporaire.
+- **Folder**: `Sources/Wraith/Explorer/`.
+- **View**: `NSOutlineView` in an `NSViewRepresentable` (platform first, `architecture.md` P3), with a lazy data source: `numberOfChildren`/`child(index:)` read the level at the first expansion, `reloadItem(_:reloadChildren:)` for R9. An item's identity is its relative path.
+- **Model**: `FileNode` (a `struct`, `Identifiable` by relative path): name, kind (file/dir/symlink), isIgnored, children loaded or not. `ExplorerModel` (`@MainActor @Observable`) holds the selection, the badges and the toggles; reading a level is a plain `FileManager.contentsOfDirectory(resourceKeys: isDirectory, isSymbolicLink, isHidden)` in a `Task` off the main actor.
+- **Operations**: `FileManager` (`createDirectory`, `moveItem`, `trashItem`), errors wrapped in `ExplorerError`.
+- **Links with the other features** (direct calls, `architecture.md`): consumes `FSWatchService`, `Layout.activeTab`, `Git.statusChanges`; calls `Editor.open(path, preview:, newGroup:)`, `Editor.fileRenamed`, `Editor.fileDeleted`.
+- **Tests**: sorting (R2), filtering (R3–R5), name and path validation (R19), badge propagation (R15), on a temporary directory.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).

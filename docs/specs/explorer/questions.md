@@ -1,3 +1,3 @@
-# Questions ouvertes
+# Open questions
 
-- (aucune)
+- (none)
