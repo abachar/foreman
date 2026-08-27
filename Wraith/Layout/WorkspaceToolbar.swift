@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 import Observation
 
 /// The native toolbar of a window (layout R30–R32).
@@ -7,7 +8,10 @@ import Observation
 @MainActor
 final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     private let layout: LayoutManager
-    private let toolbar = NSToolbar(identifier: "dev.crafters.wraith.toolbar")
+    /// A unique identifier per window: toolbars sharing one form a "family" and AppKit replays
+    /// every insertion on each member, which asserts as soon as two windows differ in items
+    /// (bug: the second window crashed, 2026-08-27).
+    private let toolbar = NSToolbar(identifier: "dev.crafters.wraith.toolbar.\(UUID().uuidString)")
     private var menuItemsByMenu: [ObjectIdentifier: String] = [:]
 
     init(layout: LayoutManager) {
