@@ -1,93 +1,93 @@
-# editor — Étude
+# editor — Study
 
-## Objectif
+## Goal
 
-Onglet central `editor.file` : lire et éditer les fichiers texte du workspace avec highlighting tree-sitter, preview markdown, recherche dans le fichier, plus deux points d'entrée : quick open (`cmd+p`, fuzzy sur les chemins) et recherche dans le contenu (`cmd+shift+f`, panneau bas). Éditeur **simple** : ni complétion, ni LSP, ni multi-curseurs.
+Center tab `editor.file`: read and edit the workspace's text files with tree-sitter highlighting, markdown preview, in-file search, plus two entry points: quick open (`cmd+p`, fuzzy over paths) and content search (`cmd+shift+f`, bottom panel). A **simple** editor: no completion, no LSP, no multiple cursors.
 
 ## User stories
 
-- US1 — Je clique un fichier dans l'explorer : il s'affiche en < 100 ms, coloré, en aperçu ; je tape, l'onglet devient fixe et marqué modifié ; `cmd+s` sauve.
-- US2 — `cmd+p`, je tape `usrctrl`, `UserController.java` remonte en tête ; `enter` l'ouvre.
-- US3 — `cmd+shift+f`, je tape un terme : les occurrences du workspace s'affichent groupées par fichier ; un clic ouvre le fichier à la ligne.
-- US4 — Un build régénère un fichier ouvert non modifié : il se recharge seul. S'il était modifié, on me demande.
-- US5 — Un `README.md` s'ouvre en source ; `cmd+shift+v` bascule en preview.
-- US6 — J'ouvre par erreur un binaire ou un fichier de 200 Mo : message clair, pas de gel.
+- US1 — I click a file in the explorer: it appears in < 100 ms, highlighted, as a preview; I type, the tab becomes pinned and marked as modified; `cmd+s` saves.
+- US2 — `cmd+p`, I type `usrctrl`, `UserController.java` comes up first; `enter` opens it.
+- US3 — `cmd+shift+f`, I type a term: the workspace's occurrences appear grouped by file; a click opens the file at the line.
+- US4 — A build regenerates an open, unmodified file: it reloads on its own. If it was modified, I am asked.
+- US5 — A `README.md` opens as source; `cmd+shift+v` switches to preview.
+- US6 — I open a binary or a 200 MB file by mistake: a clear message, no freeze.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Onglet et cycle de vie
+### Tab and lifecycle
 
-- R1 — Un onglet `editor.file` référence un fichier (chemin relatif à la racine, absolu sinon) et possède un état : `preview` / `pinned`, `isDirty`, position du curseur, scroll. Un même fichier n'est ouvert qu'une fois par groupe ; l'ouvrir à nouveau active l'onglet existant.
-- R2 — Aperçu (`explorer` R12) : titre en italique ; un seul aperçu par groupe, remplacé par le suivant. Devient fixe (`pinned`) sur double clic, première modification, ou `cmd+k` (« keep open » ; décision 2026-08-26 : pas de chord `cmd+k enter`, le registre ne les connaît pas).
-- R3 — Ouverture (`Editor.open(path, preview:, newGroup:, line:)`, appelé par l'explorer, git, la palette, la recherche) : lecture hors main actor ; détection d'encodage UTF-8 (BOM toléré), sinon Latin-1 avec avertissement ; fins de ligne détectées (LF/CRLF) et préservées à la sauvegarde ; si `line` est fourni, le curseur y est placé et la ligne centrée.
-- R4 — Persistance (`layout` R28) : chemin, `pinned`, curseur, scroll. `isDirty` n'est jamais persisté : à la fermeture de la fenêtre avec un onglet modifié, confirmation (`layout` R15) ; le contenu non sauvé est perdu si l'on confirme. Fichier disparu à la restauration : onglet ignoré (`product` cas limite tranché).
-- R5 — Titre : nom du fichier ; si deux onglets du même groupe portent le même nom, le dossier parent est ajouté (`a/index.ts`, `b/index.ts`). Marqueur `●` quand `isDirty`.
+- R1 — An `editor.file` tab references a file (a path relative to the root, absolute otherwise) and has a state: `preview` / `pinned`, `isDirty`, cursor position, scroll. The same file is only open once per group; opening it again activates the existing tab.
+- R2 — Preview (`explorer` R12): italic title; one preview per group, replaced by the next one. Becomes `pinned` on a double click, on the first edit, or with `cmd+k` ("keep open"; decision 2026-08-26: no `cmd+k enter` chord, the registry does not know about chords).
+- R3 — Opening (`Editor.open(path, preview:, newGroup:, line:)`, called by the explorer, git, the palette, the search): read off the main actor; UTF-8 encoding detection (BOM tolerated), otherwise Latin-1 with a warning; line endings detected (LF/CRLF) and preserved on save; if `line` is given, the cursor goes there and the line is centred.
+- R4 — Persistence (`layout` R28): path, `pinned`, cursor, scroll. `isDirty` is never persisted: when the window closes with a modified tab, a confirmation appears (`layout` R15); unsaved content is lost if it is confirmed. A file gone at restoration: the tab is ignored (`product` edge case, settled).
+- R5 — Title: the file name; if two tabs of the same group have the same name, the parent folder is added (`a/index.ts`, `b/index.ts`). A `●` marker when `isDirty`.
 
-### Édition
+### Editing
 
-- R6 — Fonctions v1 : gouttière avec numéros de ligne (décision 2026-08-27), saisie, sélection, undo/redo (`cmd+z`/`cmd+shift+z`), couper/copier/coller, indentation en conservant l'indent de la ligne précédente, `tab` insère selon le fichier (espaces/tabs détectés sur les 100 premières lignes, défaut 4 espaces), `cmd+]`/`cmd+[` indente/désindente la sélection, `cmd+/` commente/décommente la ligne (préfixe fourni par la grammaire), `cmd+d` non (réservé split, `layout`), déplacer une ligne `opt+↑/↓`, aller à la ligne `cmd+l`.
-- R7 — Recherche dans le fichier : `cmd+f` (barre en haut de l'onglet, insensible à la casse par défaut, `enter`/`shift+enter` suivant/précédent, occurrences surlignées), `cmd+opt+f` remplacer (un / tous). `escape` ferme la barre.
-- R8 — Sauvegarde : `cmd+s` explicite uniquement, **pas d'autosave**. Écriture atomique (`coding-rules`) en conservant encodage et fins de ligne ; nouvelle ligne finale ajoutée si absente (option désactivable par `insertFinalNewline` dans la section `editor` de `.wraith/config.json` — il n'y a pas de config globale, décision config 2026-08-26). `cmd+opt+s` sauve tous les onglets modifiés.
-- R9 — Fichier modifié sur disque (via `FSWatchService`) : si l'onglet n'est pas `isDirty` → rechargement silencieux avec curseur et scroll préservés ; si `isDirty` → bannière « modifié sur disque » avec *Garder mes changements* / *Recharger*. Fichier supprimé sur disque : bannière « supprimé » ; l'onglet reste, `cmd+s` le recrée. Fichier renommé (`Editor.fileRenamed`, `explorer` R17) : l'onglet suit.
-- R10 — Conflit à la sauvegarde (fichier modifié sur disque depuis la dernière lecture, et l'utilisateur n'a pas tranché la bannière R9) : la sauvegarde est refusée avec *Écraser* / *Annuler*.
+- R6 — v1 features: a gutter with line numbers (decision 2026-08-27), typing, selection, undo/redo (`cmd+z`/`cmd+shift+z`), cut/copy/paste, indentation keeping the previous line's indent, `tab` inserting according to the file (spaces/tabs detected over the first 100 lines, 4 spaces by default), `cmd+]`/`cmd+[` to indent/outdent the selection, `cmd+/` to comment/uncomment the line (prefix provided by the grammar), no `cmd+d` (reserved for split, `layout`), move a line with `opt+↑/↓`, go to line with `cmd+l`.
+- R7 — In-file search: `cmd+f` (a bar at the top of the tab, case-insensitive by default, `enter`/`shift+enter` for next/previous, occurrences highlighted), `cmd+opt+f` to replace (one / all). `escape` closes the bar.
+- R8 — Saving: `cmd+s` explicitly only, **no autosave**. Atomic write (`coding-rules`) keeping the encoding and the line endings; a final newline is added when missing (can be turned off with `insertFinalNewline` in the `editor` section of `.wraith/config.json` — there is no global config, config decision 2026-08-26). `cmd+opt+s` saves every modified tab.
+- R9 — File modified on disk (through `FSWatchService`): if the tab is not `isDirty` → a silent reload with the cursor and scroll preserved; if it is `isDirty` → a "modified on disk" banner with *Keep my changes* / *Reload*. File deleted on disk: a "deleted" banner; the tab stays, `cmd+s` recreates it. File renamed (`Editor.fileRenamed`, `explorer` R17): the tab follows.
+- R10 — Conflict on save (the file changed on disk since the last read, and the user did not answer the R9 banner): the save is refused with *Overwrite* / *Cancel*.
 
 ### Highlighting
 
-- R11 — Grammaires v1 (mapping par extension et par nom de fichier) : java, kotlin, typescript, tsx, javascript, json, yaml, toml, markdown, bash (`.sh`, `.zsh`, `.zshrc`…), swift, html, css, dockerfile (`Dockerfile*`) ; sql arrive avec `postgres` (M5, décision 2026-08-26). Extension inconnue → texte brut.
-- R12 — Highlighting fourni par le dossier partagé `Highlight/` (`architecture.md`) : Neon attache un highlighter à l'`NSTextView`, parse hors main actor, de façon incrémentale et annulable à chaque frappe, et applique lui-même les attributs. L'éditeur ne fait que fournir la grammaire (R11) et le thème : les rôles (`keyword`, `string`, `comment`, `type`, `function`, `number`, `variable`, `punctuation`…) sont mappés en couleurs par `ThemeService`.
-- R13 — Le highlighting est dégradable : grammaire absente, parsing en erreur ou trop lent (> 200 ms sur le premier parse) → texte brut, log `debug`, aucune bannière.
-- R14 — Markdown : l'onglet a deux modes, `source` (défaut) et `preview`, bascule `cmd+shift+v` ; le mode est persisté avec l'onglet. Preview rendue depuis l'AST `swift-markdown` : titres, listes, code (coloré via R11 si le langage est connu), tableaux, liens (ouverts dans le navigateur sur `cmd+clic` ; liens relatifs vers un fichier du workspace ouverts dans Wraith), images locales du workspace uniquement, jamais de ressource distante (`architecture.md`, sécurité).
+- R11 — v1 grammars (mapped by extension and by file name): java, kotlin, typescript, tsx, javascript, json, yaml, toml, markdown, bash (`.sh`, `.zsh`, `.zshrc`…), swift, html, css, dockerfile (`Dockerfile*`); sql arrives with `postgres` (M5, decision 2026-08-26). Unknown extension → plain text.
+- R12 — Highlighting is provided by the shared `Highlight/` folder (`architecture.md`): Neon attaches a highlighter to the `NSTextView`, parses off the main actor, incrementally and cancellably on every keystroke, and applies the attributes itself. The editor only provides the grammar (R11) and the theme: the roles (`keyword`, `string`, `comment`, `type`, `function`, `number`, `variable`, `punctuation`…) are mapped to colors by `ThemeService`.
+- R13 — Highlighting is degradable: a missing grammar, a parsing error or too slow (> 200 ms on the first parse) → plain text, a `debug` log, no banner.
+- R14 — Markdown: the tab has two modes, `source` (default) and `preview`, toggled with `cmd+shift+v`; the mode is persisted with the tab. The preview is rendered from the `swift-markdown` AST: headings, lists, code (highlighted through R11 when the language is known), tables, links (opened in the browser on `cmd+click`; relative links to a workspace file opened in Wraith), local workspace images only, never a remote resource (`architecture.md`, security).
 
-### Limites de taille et binaires
+### Size limits and binaries
 
-- R15 — Détection **avant** lecture complète : un fichier est binaire s'il contient un octet nul dans ses 8 premiers Ko ou si son extension est dans une liste connue (images, archives, exécutables…). Un binaire n'est pas ouvert : onglet « fichier binaire — N Ko » avec *Révéler dans le Finder*.
-- R16 — Taille : > 2 Mo → ouverture en **lecture seule sans highlighting** avec bannière ; > 50 Mo → refus (message avec taille). Ligne > 10 000 caractères → highlighting désactivé pour le fichier.
+- R15 — Detection **before** the full read: a file is binary if it contains a null byte in its first 8 KB or if its extension is in a known list (images, archives, executables…). A binary is not opened: a "binary file — N KB" tab with *Reveal in Finder*.
+- R16 — Size: > 2 MB → opened **read-only without highlighting** with a banner; > 50 MB → refused (a message with the size). A line longer than 10,000 characters → highlighting disabled for the file.
 
 ### Quick open (`cmd+p`)
 
-- R17 — Palette partagée (`Palette/`, `architecture.md`, aussi utilisée par `run`) ; recherche fuzzy sur les chemins relatifs du workspace, insensible à la casse, scoring par la lib fuzzy retenue (sous-séquence avec bonus sur les frontières `/`, `.`, `_`, `-`, camelCase, et sur le nom de fichier). Les 50 meilleurs résultats sont affichés ; `↑↓` naviguent, `enter` ouvre (fixe), `cmd+enter` ouvre dans un nouveau groupe, `escape` ferme.
-- R18 — L'index des chemins est construit **à la première ouverture de la palette**, hors main actor, en parcourant le workspace avec la liste d'exclusion commune (`architecture.md`) plus les entrées gitignored connues (via `Git.statusChanges`, sinon ignorées) ; il est maintenu par `FSWatchService` ensuite. Plafond : 200 000 entrées, au-delà l'index est tronqué avec avertissement dans la palette.
-- R19 — Palette vide (aucune saisie) : les fichiers récemment ouverts de ce workspace, les plus récents en premier (liste de 50 persistée dans `state.json`).
+- R17 — Shared palette (`Palette/`, `architecture.md`, also used by `run`); fuzzy search over the workspace's relative paths, case-insensitive, scored by the chosen fuzzy library (subsequence with bonuses on `/`, `.`, `_`, `-` and camelCase boundaries, and on the file name). The 50 best results are shown; `↑↓` navigate, `enter` opens (pinned), `cmd+enter` opens in a new group, `escape` closes.
+- R18 — The path index is built **the first time the palette is opened**, off the main actor, by walking the workspace with the shared exclusion list (`architecture.md`) plus the known gitignored entries (through `Git.statusChanges`, otherwise ignored); it is then maintained by `FSWatchService`. Cap: 200,000 entries; beyond that the index is truncated with a warning in the palette.
+- R19 — Empty palette (nothing typed): this workspace's recently opened files, most recent first (a list of 50 persisted in `state.json`).
 
-### Recherche dans le contenu (`cmd+shift+f`)
+### Content search (`cmd+shift+f`)
 
-- R20 — Panneau **bas** `editor.search` : champ de recherche, options *casse* / *mot entier* / *regex*, filtre d'inclusion (glob, ex. `src/**/*.ts`). Exécution via le binaire `rg` s'il est dans le `PATH`, sinon `grep -rn` (`Process` avec arguments en tableau, jamais un shell — `architecture.md`, sécurité) ; exclusions communes appliquées ; `.gitignore` respecté par `rg` nativement.
-- R21 — Résultats groupés par fichier, dépliés, ligne avec la correspondance surlignée ; clic ou `enter` ouvre le fichier à la ligne (aperçu), `cmd+enter` fixe. Plafond 2 000 correspondances (message « résultats tronqués »). Une recherche en cours est annulée par la suivante ou par la fermeture du panneau.
-- R22 — Pas de remplacement multi-fichiers en v1 (`sed`/`rg` au terminal).
+- R20 — **Bottom** panel `editor.search`: a search field, *case* / *whole word* / *regex* options, an include filter (glob, e.g. `src/**/*.ts`). Run through the `rg` binary when it is in the `PATH`, otherwise `grep -rn` (`Process` with an array of arguments, never a shell — `architecture.md`, security); the shared exclusions are applied; `.gitignore` is honoured natively by `rg`.
+- R21 — Results grouped by file, expanded, one row per match with the match highlighted; a click or `enter` opens the file at the line (as a preview), `cmd+enter` pins it. Cap of 2,000 matches (a "results truncated" message). A running search is cancelled by the next one or by closing the panel.
+- R22 — No multi-file replace in v1 (`sed`/`rg` in the terminal).
 
-### Raccourcis
+### Shortcuts
 
-- R23 — Les raccourcis de l'éditeur (`cmd+s`, `cmd+f`, `cmd+z`, `cmd+/`, `cmd+l`, `cmd+shift+v`…) sont déclarés au `ShortcutRegistry` avec la portée **onglet `editor.file` actif** : ils ne capturent rien quand un terminal a le focus (`layout` R25). `cmd+p` et `cmd+shift+f` sont globaux.
+- R23 — The editor's shortcuts (`cmd+s`, `cmd+f`, `cmd+z`, `cmd+/`, `cmd+l`, `cmd+shift+v`…) are declared to the `ShortcutRegistry` with the scope **`editor.file` tab active**: they capture nothing while a terminal has the focus (`layout` R25). `cmd+p` and `cmd+shift+f` are global.
 
-## Cas limites
+## Edge cases
 
-- Fichier sans permission d'écriture : ouvert en lecture seule avec bannière ; `cmd+s` propose *Révéler dans le Finder*.
-- Encodage non UTF-8 : lu en Latin-1, bannière ; la sauvegarde ré-écrit en **UTF-8** avec avertissement explicite dans la bannière (pas de conservation d'encodage exotique).
-- Fichier en cours d'écriture par un autre process (build) : rafale d'événements coalescée par le debounce ; le rechargement (R9) lit l'état final.
-- Grammaire qui crashe sur un fichier pathologique : tree-sitter est robuste ; en cas de timeout, R13.
-- Quick open sur `$HOME` : index plafonné (R18), le message invite à ouvrir un sous-dossier.
-- `rg` absent et `grep` sur un gros workspace : lent mais annulable ; message suggérant `brew install ripgrep`.
+- File without write permission: opened read-only with a banner; `cmd+s` offers *Reveal in Finder*.
+- Non-UTF-8 encoding: read as Latin-1, with a banner; saving rewrites it as **UTF-8** with an explicit warning in the banner (no preservation of exotic encodings).
+- A file being written by another process (a build): a burst of events coalesced by the debounce; the reload (R9) reads the final state.
+- A grammar crashing on a pathological file: tree-sitter is robust; on a timeout, R13.
+- Quick open on `$HOME`: the index is capped (R18), and the message invites opening a subfolder.
+- `rg` missing and `grep` on a large workspace: slow but cancellable; a message suggests `brew install ripgrep`.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- LSP, complétion, diagnostics, go-to-definition. (Le **formatage** est sorti de cette liste le 2026-08-27 : voir [01-study-formatter.md](01-study-formatter.md).)
-- Multi-curseurs, sélection par colonnes, minimap, code folding, bracket matching avancé.
-- Remplacement multi-fichiers.
-- Preview markdown côte à côte synchronisée.
-- Édition de fichiers hors du workspace autrement qu'en ouvrant par chemin absolu (aucun « ouvrir un fichier » système).
-- Autosave, historique local des versions.
-- Thèmes de couleurs propres à l'éditeur (les rôles sont mappés par `ThemeService` sur le thème du terminal, `terminal` R14).
+- LSP, completion, diagnostics, go-to-definition. (**Formatting** left this list on 2026-08-27: see [01-study-formatter.md](01-study-formatter.md).)
+- Multiple cursors, column selection, minimap, code folding, advanced bracket matching.
+- Multi-file replace.
+- Side-by-side synchronised markdown preview.
+- Editing files outside the workspace other than by opening an absolute path (no system "open a file").
+- Autosave, local version history.
+- Color themes specific to the editor (the roles are mapped by `ThemeService` onto the terminal theme, `terminal` R14).
 
-## Options techniques
+## Technical options
 
-- **Dossier** : `Sources/Wraith/Editor/` ; consomme les dossiers partagés `Highlight/` et `Palette/`.
-- **Composant texte** : `NSTextView` sur **TextKit 2** (`NSTextLayoutManager`) dans un `NSViewRepresentable` (plateforme d'abord, `architecture.md` P3). Undo, sélection, IME, accessibilité, performance sur gros fichiers gratuits. Vue custom rejetée (coût énorme), TextKit 1 rejeté (déprécié de fait). Risque connu : angles morts de TextKit 2 (retour automatique à TextKit 1 sur certaines API) ; à valider par prototype au découpage de M1.
-- **Highlighting** : `Highlight/` = SwiftTreeSitter + Neon utilisés comme conçus (`architecture.md` P2) : `TextViewHighlighter` de Neon attaché à l'`NSTextView`, avec `LanguageConfiguration` par grammaire (queries `highlights.scm` des packages SPM `tree-sitter-*`). Neon gère l'incrémental, l'annulation et l'application des attributs ; l'éditeur ne réécrit aucune session de parsing. `Highlight/` porte le mapping extension → grammaire (R11) et le mapping rôle → couleur via `ThemeService`.
-- **Markdown** : `swift-markdown` (AST `Document`) → SwiftUI (`Text` avec `AttributedString` + blocs). Code blocks colorés via `Highlight/`.
-- **Fuzzy** : `Palette/` avec la lib fuzzy SPM retenue (`architecture.md`) ; l'éditeur fournit les chemins et reçoit la sélection. Pas de scoring maison.
-- **Recherche contenu** : `Process` `rg --json` (parsing JSON par ligne) ou `grep -rnI --null` ; une `Task` annulable produit un `AsyncStream<SearchMatch>`.
-- **Tests** (parsers uniquement) : détection binaire/encodage/indent/EOL (R3, R6, R15), parsing sortie `rg`/`grep` (R20), mapping extension → grammaire (R11), titres dédupliqués (R5).
+- **Folder**: `Sources/Wraith/Editor/`; consumes the shared `Highlight/` and `Palette/` folders.
+- **Text component**: `NSTextView` on **TextKit 2** (`NSTextLayoutManager`) inside an `NSViewRepresentable` (platform first, `architecture.md` P3). Undo, selection, IME, accessibility and performance on large files come for free. A custom view was rejected (huge cost), TextKit 1 rejected (deprecated in practice). Known risk: TextKit 2's blind spots (some APIs silently fall back to TextKit 1); to be validated by a prototype when M1 is broken down.
+- **Highlighting**: `Highlight/` = SwiftTreeSitter + Neon used as designed (`architecture.md` P2): Neon's `TextViewHighlighter` attached to the `NSTextView`, with a `LanguageConfiguration` per grammar (the `highlights.scm` queries from the `tree-sitter-*` SPM packages). Neon handles incrementality, cancellation and applying the attributes; the editor never rewrites a parsing session. `Highlight/` carries the extension → grammar mapping (R11) and the role → color mapping through `ThemeService`.
+- **Markdown**: `swift-markdown` (the `Document` AST) → SwiftUI (`Text` with `AttributedString` + blocks). Code blocks highlighted through `Highlight/`.
+- **Fuzzy**: `Palette/` with the chosen fuzzy SPM library (`architecture.md`); the editor provides the paths and receives the selection. No home-made scoring.
+- **Content search**: `Process` with `rg --json` (JSON parsed line by line) or `grep -rnI --null`; a cancellable `Task` produces an `AsyncStream<SearchMatch>`.
+- **Tests** (parsers only): binary/encoding/indent/EOL detection (R3, R6, R15), parsing `rg`/`grep` output (R20), extension → grammar mapping (R11), deduplicated titles (R5).
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).

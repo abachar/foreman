@@ -1,4 +1,4 @@
-# Questions ouvertes
+# Open questions
 
-- [ ] Formatage (2026-08-27, [01-study-formatter.md](01-study-formatter.md)) : `formatter.timeout` (R30, borne de 5 s) doit-il être une clé de config dès la v1, ou attend-on de se faire couper par un `npx` lent ? Proposition : la clé existe dès la v1, elle coûte trois lignes.
-- [ ] Formatage (2026-08-27) : faut-il un retour visible quand le formateur n'a rien changé (R28) — un bref message d'état, ou rien du tout ? À trancher à l'usage.
+- [ ] Formatting (2026-08-27, [01-study-formatter.md](01-study-formatter.md)): should `formatter.timeout` (R30, the 5 s bound) be a config key from v1, or do we wait until a slow `npx` gets cut off? Proposal: the key exists from v1, it costs three lines.
+- [ ] Formatting (2026-08-27): should there be visible feedback when the formatter changed nothing (R28) — a brief status message, or nothing at all? To be settled in use.
