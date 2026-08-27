@@ -7,8 +7,6 @@ struct TerminalTabView: View {
     let id: TabID
     let service: TerminalService
 
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
         if let tab = service.tab(id) {
             content(tab)
@@ -25,9 +23,9 @@ struct TerminalTabView: View {
             if tab.isCwdMissing {
                 banner("Folder not found: \(tab.cwd.path(percentEncoded: false))", symbol: "questionmark.folder")
             }
+            // design R13: the surface's colors are the island's; the appearance is the theme's.
             TerminalSurfaceRepresentable(
-                id: id, service: service, font: service.theme.editorFont,
-                palette: service.theme.terminalPalette(dark: service.theme.isDark(systemIsDark: colorScheme == .dark))
+                id: id, service: service, font: service.theme.editorFont, palette: service.theme.terminalPalette
             )
             // One native view per tab and per process: two terminal tabs are views of the same
             // type, SwiftUI would otherwise update the first surface instead of making the second.

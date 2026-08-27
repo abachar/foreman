@@ -58,6 +58,14 @@ struct ThemeServiceTests {
         #expect(theme.terminalPalette(dark: true) != theme.terminalPalette(dark: false))
     }
 
+    /// design R13: no boundary inside the island.
+    @Test func terminalBackgroundIsTheIslandSurface() {
+        let theme = ThemeService()
+        #expect(theme.terminalPalette(dark: true).background == ThemeService.Tokens.dark.surface.nsColor)
+        #expect(theme.terminalPalette(dark: false).background == ThemeService.Tokens.light.surface.nsColor)
+        #expect(theme.terminalPalette(dark: true).foreground == ThemeService.Tokens.dark.textPrimary.nsColor)
+    }
+
     @Test func convertsColorsForSwiftTerm() {
         let red = TerminalSurfaceView.color(NSColor(srgbRed: 1, green: 0, blue: 0, alpha: 1))
         #expect(red.red == 65535 && red.green == 0 && red.blue == 0)
