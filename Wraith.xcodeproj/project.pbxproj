@@ -141,6 +141,7 @@
 				A1B2C3D400000000000000A2 /* AsyncFileMonitor */,
 				B1B2C3D40000003000020000 /* FuzzyMatch */,
 				C1B2C3D40000000000010002 /* SwiftTerm */,
+				D1B2C3D40000000000010002 /* PostgresNIO */,
 				B1B2C3D40000002000020000 /* Markdown */,
 				B1B2C3D40000000000010002 /* SwiftTreeSitter */,
 				B1B2C3D40000000000020002 /* Neon */,
@@ -215,6 +216,7 @@
 				A1B2C3D400000000000000A1 /* XCRemoteSwiftPackageReference "AsyncFileMonitor" */,
 				B1B2C3D40000003000010000 /* XCRemoteSwiftPackageReference "FuzzyMatch" */,
 				C1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				D1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "postgres-nio" */,
 				B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				B1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTreeSitter" */,
 				B1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "Neon" */,
@@ -698,6 +700,14 @@
 				minimumVersion = 1.20.0;
 			};
 		};
+		D1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "postgres-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/postgres-nio.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.33.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -795,6 +805,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
+		};
+		D1B2C3D40000000000010002 /* PostgresNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = PostgresNIO;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
