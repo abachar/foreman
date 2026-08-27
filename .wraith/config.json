@@ -2,6 +2,7 @@
     "commands": { 
         "root": { 
             "echo": "echo hello && sleep 5", 
+            "echox2": "echo hello && sleep 10", 
             "fail": "exit 2" 
         }
     }

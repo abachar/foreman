@@ -52,7 +52,7 @@ struct FSWatchServiceTests {
         try await Task.sleep(for: .milliseconds(300))
 
         try Data(#"{ "theme": "dark" }"#.utf8).write(to: file)
-        let accepted = try #require(await firstBatch(of: workspace.configChanges))
+        let accepted = try #require(await firstBatch(of: workspace.configChanges()))
         #expect(try accepted.section("theme", as: String.self) == "dark")
 
         try Data("{ broken".utf8).write(to: file)

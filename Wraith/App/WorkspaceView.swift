@@ -52,7 +52,7 @@ struct WorkspaceView: View {
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
                 theme.apply(workspace.config)
-                for await config in workspace.configChanges {
+                for await config in workspace.configChanges() {
                     applyShortcutOverrides(config)
                     theme.apply(config)
                 }

@@ -25,12 +25,7 @@ final class Workspace {
     /// The single FSEvents stream of this workspace (architecture: shared services).
     let fsWatch: FSWatchService
 
-    /// Every config accepted after a change on disk (config R6).
-    ///
-    /// Features subscribe from a task they own; nothing is emitted for a rejected file.
-    let configChanges: AsyncStream<WorkspaceConfig>
-
-    private let configChangesContinuation: AsyncStream<WorkspaceConfig>.Continuation
+    private var configSubscribers: [UUID: AsyncStream<WorkspaceConfig>.Continuation] = [:]
     private let stateWriteDelay: Duration
     private var pendingStateWrite: Task<Void, Never>?
     private var isPersistenceDisabled = false
@@ -43,12 +38,26 @@ final class Workspace {
         self.root = root
         self.stateWriteDelay = stateWriteDelay
         fsWatch = FSWatchService(roots: [root])
-        (configChanges, configChangesContinuation) = AsyncStream.makeStream()
+    }
+
+    /// Every config accepted after a change on disk (config R6), one stream per consumer.
+    ///
+    /// Features subscribe from a task they own; nothing is emitted for a rejected file.
+    func configChanges() -> AsyncStream<WorkspaceConfig> {
+        let (stream, continuation) = AsyncStream<WorkspaceConfig>.makeStream()
+        let key = UUID()
+        configSubscribers[key] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { @MainActor [weak self] in self?.configSubscribers[key] = nil }
+        }
+        return stream
     }
 
     isolated deinit {
         configWatch?.cancel()
-        configChangesContinuation.finish()
+        for continuation in configSubscribers.values {
+            continuation.finish()
+        }
     }
 
     // MARK: - Config
@@ -64,7 +73,9 @@ final class Workspace {
             }
             config = loaded
             configError = nil
-            configChangesContinuation.yield(loaded)
+            for continuation in configSubscribers.values {
+                continuation.yield(loaded)
+            }
         } catch let error as WorkspaceError {
             logger.error("config.json rejected: \(error.description, privacy: .public)")
             configError = error

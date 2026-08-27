@@ -40,7 +40,7 @@ final class AgentsFeature {
         self.terminal = terminal
         apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
-            for await config in workspace.configChanges {
+            for await config in workspace.configChanges() {
                 guard let self else { return }
                 apply(config)
             }

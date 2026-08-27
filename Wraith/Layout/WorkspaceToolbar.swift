@@ -120,6 +120,10 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             entries = secondaryMenu?() ?? []
         }
         menu.removeAllItems()
+        if case .menu = descriptor.kind {
+            // NSMenuToolbarItem is a pull-down: its first item is the hidden title.
+            menu.addItem(NSMenuItem(title: "", action: nil, keyEquivalent: ""))
+        }
         for entry in entries {
             let item = NSMenuItem(title: entry.title, action: #selector(performEntry(_:)), keyEquivalent: "")
             item.target = self
