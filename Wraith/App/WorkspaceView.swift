@@ -20,6 +20,7 @@ struct WorkspaceView: View {
     @State private var editor: EditorFeature?
     @State private var terminal: TerminalService?
     @State private var agents: AgentsFeature?
+    @State private var run: RunFeature?
     @State private var isStateLoaded = false
     @State private var hostWindow: NSWindow?
 
@@ -46,6 +47,7 @@ struct WorkspaceView: View {
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
+                run = RunFeature(layout: layout, workspace: workspace, terminal: terminal)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)

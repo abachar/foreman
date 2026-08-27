@@ -174,6 +174,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         switch color {
         case .green: return .systemGreen
         case .orange: return .systemOrange
+        case .blue: return .systemBlue
         case .red: return .systemRed
         }
     }

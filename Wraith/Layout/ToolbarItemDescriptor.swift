@@ -41,5 +41,6 @@ nonisolated enum ToolbarBadge: Equatable, Sendable {
         case green
         case orange
         case red
+        case blue
     }
 }

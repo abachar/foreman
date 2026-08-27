@@ -139,6 +139,7 @@ struct TabBarView: View {
         switch color {
         case .green: return .green
         case .orange: return .orange
+        case .blue: return .blue
         case .red: return .red
         }
     }
