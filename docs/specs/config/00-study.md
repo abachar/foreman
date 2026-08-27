@@ -10,7 +10,7 @@ Define where and how Wraith reads its configuration and persists its state, per 
 |---|---|---|
 | Workspace | `<root>/.wraith/config.json` | workspace config (repos, commands, postgres, shortcuts…) |
 | Workspace | `<root>/.wraith/state.json` | persisted UI state (splits, tabs, panels, sizes) |
-| Secrets | macOS Keychain | Postgres passwords, never in a file |
+| Secrets | macOS Keychain, or `postgres.password` in `config.json` for a local dev database (decision 2026-08-27) | Postgres password |
 
 ## User stories
 
@@ -36,7 +36,7 @@ Define where and how Wraith reads its configuration and persists its state, per 
   ```
   - `repos`: paths relative to the root; absent → scan for `.git/` (depth ≤ 2, ignoring `node_modules`, `target`, `.build`).
   - `commands`: `<repo or "."> → <name> → <shell command>`, run in the repo's folder.
-  - `postgres`: **a single object** (one connection per workspace), without a password; the password is read from the Keychain (key `wraith.postgres.<host>:<port>/<database>/<user>`). Detail in [postgres](../postgres/).
+  - `postgres`: **a single object** (one connection per workspace); the password is read from the Keychain (key `wraith.postgres.<host>:<port>/<database>/<user>`) unless the section carries a `password` (decision 2026-08-27). Detail in [postgres](../postgres/).
   - `agents`: `<id> → { title, command, icon, enabled }`; overrides a built-in agent or declares a new one. Detail in [agents](../agents/).
   - `commands`: short form (a string) or long form (`{ "run", "cwd", "env" }`). Detail in [run](../run/).
   - `shortcuts`: `<panel/action id> → <shortcut>`; overrides the defaults declared by the features.
@@ -47,7 +47,7 @@ Define where and how Wraith reads its configuration and persists its state, per 
 - R8 — `state.json` is written by Wraith only, debounced (~1 s after the last change) and on close. It is never watched.
 - R9 — `state.json` carries a schema version number; an unreadable state or one with an unknown version is ignored (start from the default state) and saved as `state.json.bak`.
 - R10 — Paths in `state.json` (terminal cwds, open files) are relative to the workspace root when they are inside it, absolute otherwise.
-- R11 — No secret is ever written into `.wraith/`; any sensitive value detected in `config.json` (a `password` key) raises a warning and is ignored.
+- R11 — Wraith never writes a secret into `.wraith/`. The user may write `postgres.password` in `config.json` (a local dev convenience, decision 2026-08-27): it is used as is, never logged and never copied to the Keychain; `config.json` is then to be kept out of version control.
 
 ## Edge cases
 

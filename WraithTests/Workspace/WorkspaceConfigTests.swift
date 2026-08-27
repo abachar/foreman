@@ -59,16 +59,15 @@ struct WorkspaceConfigTests {
         }
     }
 
-    @Test func ignoresPasswordKeysWithAWarning() async throws {
+    @Test func keepsPasswordKeysForTheFeature() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace(#"{ "postgres": { "host": "db", "port": 1, "password": "hunter2" } }"#)
 
         let config = try await fixture.load()
 
-        #expect(try config.section("postgres", as: Postgres.self) == Postgres(host: "db", port: 1))
-        #expect(config.warnings.count == 1)
-        #expect(config.warnings[0].contains("password"))
-        #expect(!config.warnings[0].contains("hunter2"))
+        // config R11 (decision 2026-08-27): the section owns its password, nothing is stripped.
+        #expect(try config.section("postgres", as: Postgres.self) == Postgres(host: "db", port: 1, password: "hunter2"))
+        #expect(config.warnings.isEmpty)
     }
 
     @Test func dropsDeclaredReposThatDoNotExist() async throws {

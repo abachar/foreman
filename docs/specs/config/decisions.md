@@ -5,6 +5,7 @@
 | 2026-08-25 | A `.wraith/` folder at the workspace root: `config.json` (user) + `state.json` (app) | A single `.wraith.json` file (initial README) | Separate what the user writes from what the app writes; extensible |
 | 2026-08-25 | Global config in `~/.config/wraith/config.json` | `~/.wraith/`, `~/Library/Application Support` | XDG convention, editable by hand, no collision with a `$HOME` workspace |
 | 2026-08-25 | Secrets in the Keychain only | A plaintext `password` field | Security, the file may well be versioned |
+| 2026-08-27 | `postgres.password` accepted in `config.json` as an optional plaintext field, used as is (replaces "ignored with a warning") | Keychain only | The author's databases are local dev instances; the Keychain chain stays the default when the key is absent, and the app still never writes a secret |
 | 2026-08-25 | Hot reload of `config.json`, not of `state.json` | Restart required | Comfort; `state.json` is written by the app only |
 | 2026-08-26 | A config change is broadcast by an `AsyncStream` on `Workspace`, not by an event bus | `EventBus` + a `configChanged` event (2026-08-25) | `architecture`: no `EventBus`, the owner of the information exposes a stream |
 | 2026-08-25 | Shortcuts as ASCII strings `"cmd+shift+g"` (modifiers `cmd`, `shift`, `alt`, `ctrl`, key in lowercase) | `⌘⇧G` notation | Readable, typable on a keyboard, no encoding ambiguity |

@@ -3,8 +3,8 @@ import PostgresNIO
 
 /// The `postgres` section of `.wraith/config.json` (postgres R1, R12; config R3, R5).
 ///
-/// One object = one connection per workspace; `password` never appears here, `WorkspaceConfig`
-/// drops it upstream (config R11).
+/// One object = one connection per workspace; `password` is optional (decision 2026-08-27: a
+/// local dev convenience) and short-circuits the Keychain chain of R3.
 nonisolated struct PostgresConfig: Equatable, Sendable {
     /// postgres R1: the three modes of `libpq` that PostgresNIO can honour.
     enum SSLMode: String, Sendable, CaseIterable {
@@ -30,6 +30,8 @@ nonisolated struct PostgresConfig: Equatable, Sendable {
     let database: String
     let user: String
     var sslMode = SSLMode.prefer
+    /// R3: when set, used as is; never logged, never written back anywhere.
+    var password: String?
     /// R1: startup parameters such as `application_name`, passed as they are.
     var options: [String: String] = [:]
     /// R12: `statement_timeout`, in seconds in the file.
@@ -51,6 +53,7 @@ nonisolated struct PostgresConfig: Equatable, Sendable {
         var database: String?
         var user: String?
         var sslmode: String?
+        var password: String?
         var options: [String: String]?
         var statementTimeout: Int?
     }
@@ -90,6 +93,7 @@ nonisolated struct PostgresConfig: Equatable, Sendable {
             }
         }
         result.options = section.options ?? [:]
+        result.password = section.password.flatMap { $0.isEmpty ? nil : $0 }
         if let seconds = section.statementTimeout {
             if statementTimeoutRange.contains(seconds) {
                 result.statementTimeout = .seconds(seconds)

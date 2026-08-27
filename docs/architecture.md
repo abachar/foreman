@@ -90,7 +90,7 @@ Rejected: libghostty (zig build, unstable API, nothing the product needs), libgi
 
 ## Security
 
-- No secret in the repository, `.wraith/`, logs or errors. Keychain only; a `password` key in `config.json` is ignored with a warning.
+- Wraith writes no secret into the repository, `.wraith/`, logs or errors. The Postgres password comes from the Keychain, or from `postgres.password` in `config.json` when the user chose to write it there (config decision 2026-08-27, local dev).
 - No command built by interpolating values coming from another file or from a program's output. `Process` with `arguments: [String]`. `run`/`agents` commands are the user's text, passed as is to `$SHELL -l -c`.
 - Every path coming from the config, the state or an event is checked to be under the workspace root before writing.
 - No unrequested network access: no telemetry, no updates, no remote resource in the markdown preview.

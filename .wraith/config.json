@@ -7,5 +7,10 @@
       "format": "swift format --in-place --recursive Wraith WraithTests",
       "run": "xcodebuild build -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -derivedDataPath DerivedData && open -a DerivedData/Build/Products/Debug/Wraith.app"
     }
+  },
+  "postgres": {
+    "host": "localhost",
+    "database": "postgres",
+    "user": "postgres"
   }
 }

@@ -35,8 +35,8 @@ struct PostgresConfigTests {
             outcome
                 == .configured(
                     PostgresConfig(
-                        host: "localhost", port: 5432, database: "ccoe", user: "me", sslMode: .prefer, options: [:],
-                        statementTimeout: .seconds(30)), warnings: []))
+                        host: "localhost", port: 5432, database: "ccoe", user: "me", sslMode: .prefer, password: nil,
+                        options: [:], statementTimeout: .seconds(30)), warnings: []))
     }
 
     @Test func databaseAndUserAreRequired() async throws {
@@ -84,13 +84,15 @@ struct PostgresConfigTests {
         #expect(config.keychainAccount == "wraith.postgres.db.local:6543/d/u")
     }
 
-    @Test func passwordIsStrippedUpstream() async throws {
+    @Test func passwordIsReadFromTheSection() async throws {
         let config = try await load(#"{ "postgres": { "database": "d", "user": "u", "password": "nope" } }"#)
-        #expect(config.warnings.count == 1)
-        guard case .configured = PostgresConfig.decode(from: config) else {
+        #expect(config.warnings.isEmpty)
+        guard case .configured(let decoded, _) = PostgresConfig.decode(from: config) else {
             Issue.record("expected configured")
             return
         }
+        #expect(decoded.password == "nope")
+        #expect(!decoded.label.contains("nope"))
     }
 
     @Test func sslModeMapsOntoTLS() throws {

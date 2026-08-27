@@ -100,8 +100,12 @@ final class PostgresFeature {
 
     // MARK: - Password (R3)
 
-    /// Keychain, then `~/.pgpass`, then a sheet; the choice to save goes back to the Keychain.
+    /// The section's `password` if set, else Keychain, then `~/.pgpass`, then a sheet; the choice to
+    /// save goes back to the Keychain.
     private func resolvePassword(for config: PostgresConfig) async throws(PostgresError) -> String {
+        if let password = config.password {
+            return password
+        }
         let account = config.keychainAccount
         if !mustAsk {
             if let secret = Self.stored(in: secrets, account: account) {
@@ -194,7 +198,8 @@ final class PostgresFeature {
             let rows = try await client.rows(query)
             model.error = nil
             return rows
-        } catch .authenticationFailed {
+        } catch .authenticationFailed where config.password == nil {
+            // A password written in the config is the user's: refused stays refused (R3).
             invalidatePassword(config)
             let rows = try await client.rows(query)
             model.error = nil

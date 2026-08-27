@@ -68,28 +68,7 @@ nonisolated struct WorkspaceConfig: Sendable {
         guard let dictionary = object as? [String: Any] else {
             throw WorkspaceError.invalidJSON(file: file, line: 1, message: "The top level must be an object.")
         }
-        return withoutPasswords(dictionary, file: file, warnings: &warnings)
-    }
-
-    /// config R11: a `password` key anywhere in the file is dropped and reported, never used.
-    private static func withoutPasswords(
-        _ dictionary: [String: Any],
-        file: URL,
-        warnings: inout [String]
-    ) -> [String: Any] {
-        var result: [String: Any] = [:]
-        for (key, value) in dictionary {
-            if key == "password" {
-                warnings.append("\(file.lastPathComponent): key \"password\" ignored, secrets belong in the Keychain.")
-                continue
-            }
-            if let nested = value as? [String: Any] {
-                result[key] = withoutPasswords(nested, file: file, warnings: &warnings)
-            } else {
-                result[key] = value
-            }
-        }
-        return result
+        return dictionary
     }
 
     private static func repos(declared: Any?, root: URL, warnings: inout [String]) -> [URL] {
