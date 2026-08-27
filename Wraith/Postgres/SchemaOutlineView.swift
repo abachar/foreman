@@ -9,6 +9,8 @@ struct SchemaOutlineView: NSViewRepresentable {
     let model: PostgresSchemaModel
     let feature: PostgresFeature
     let theme: ThemeService
+    /// design R6, R11: read here so a font change in the `theme` section re-enters `updateNSView`.
+    let font: NSFont
 
     func makeCoordinator() -> Coordinator {
         Coordinator(model: model, feature: feature, theme: theme)
@@ -21,7 +23,8 @@ struct SchemaOutlineView: NSViewRepresentable {
         outline.addTableColumn(column)
         outline.outlineTableColumn = column
         outline.headerView = nil
-        outline.rowSizeStyle = .small
+        // `.custom`: any other style makes the outline overwrite the cells' font (design R6).
+        outline.rowSizeStyle = .custom
         outline.indentationPerLevel = 12
         outline.autoresizesOutlineColumn = true
         outline.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
@@ -47,11 +50,14 @@ struct SchemaOutlineView: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        // design R6, R11: a new font family or size in the `theme` section reaches the cells.
         if let outline = context.coordinator.outline,
             outline.backgroundColor != theme.tokens.surface.nsColor || outline.rowHeight != theme.listRowHeight
+                || context.coordinator.appliedFont != font
         {
             outline.backgroundColor = theme.tokens.surface.nsColor
             outline.rowHeight = theme.listRowHeight
+            context.coordinator.appliedFont = font
             outline.reloadData()
         }
         context.coordinator.sync(version: model.version, filter: model.filter)
@@ -70,6 +76,8 @@ struct SchemaOutlineView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
         weak var outline: NSOutlineView?
+        /// The interface font the cells were last built with.
+        var appliedFont: NSFont?
         private let model: PostgresSchemaModel
         private let feature: PostgresFeature
         private let theme: ThemeService

@@ -16,6 +16,8 @@ enum ExplorerOpenMode {
 struct ExplorerOutlineView: NSViewRepresentable {
     let model: ExplorerModel
     let theme: ThemeService
+    /// design R6, R11: read here so a font change in the `theme` section re-enters `updateNSView`.
+    let font: NSFont
     let isFocused: Bool
     let onOpen: (FileNode, ExplorerOpenMode) -> Void
     let operations: ExplorerActions
@@ -32,7 +34,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.addTableColumn(column)
         outline.outlineTableColumn = column
         outline.headerView = nil
-        outline.rowSizeStyle = .small
+        // `.custom`: any other style makes the outline overwrite the cells' font (design R6).
+        outline.rowSizeStyle = .custom
         outline.indentationPerLevel = 12
         outline.autoresizesOutlineColumn = true
         // The only column takes the whole width from the first frame (bug: names hidden until
@@ -63,11 +66,14 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         // design R8: the tree sits on the island.
+        // design R6, R11: a new font family or size in the `theme` section reaches the cells.
         if let outline = context.coordinator.outline,
             outline.backgroundColor != theme.tokens.surface.nsColor || outline.rowHeight != theme.listRowHeight
+                || context.coordinator.appliedFont != font
         {
             outline.backgroundColor = theme.tokens.surface.nsColor
             outline.rowHeight = theme.listRowHeight
+            context.coordinator.appliedFont = font
             outline.reloadData()
         }
         context.coordinator.sync(version: model.version, hidesExcluded: model.hidesExcluded)
@@ -101,6 +107,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
         weak var outline: NSOutlineView?
+        /// The interface font the cells were last built with.
+        var appliedFont: NSFont?
         private let model: ExplorerModel
         private let onOpen: (FileNode, ExplorerOpenMode) -> Void
         private let operations: ExplorerActions

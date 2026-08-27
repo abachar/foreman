@@ -21,7 +21,7 @@ struct PostgresSchemaPanelView: View {
                         .textSelection(.enabled)
                 }
             } else {
-                SchemaOutlineView(model: model, feature: feature, theme: theme)
+                SchemaOutlineView(model: model, feature: feature, theme: theme, font: theme.interfaceFont())
             }
         }
         .sheet(item: Bindable(model).ddl) { document in

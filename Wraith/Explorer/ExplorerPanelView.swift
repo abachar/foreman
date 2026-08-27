@@ -18,7 +18,8 @@ struct ExplorerPanelView: View {
                 BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
             }
             ExplorerOutlineView(
-                model: model, theme: theme, isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID),
+                model: model, theme: theme, font: theme.interfaceFont(),
+                isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID),
                 onOpen: onOpen,
                 operations: operations)
         }
