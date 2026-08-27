@@ -23,11 +23,15 @@ ln -s "$PWD/cli/wraith" /usr/local/bin/wraith   # then `wraith .` opens a folder
 
 | Milestone | Scope | Status |
 |---|---|---|
-| M0 — Shell | window, layout, panels, shortcuts, toolbar, welcome screen, `wraith` CLI | 🟡 specs |
-| M1 — Explorer + Editor | file tree, file tabs, highlighting (`HighlightService`), quick open (`PaletteService`) | ⚪ |
-| M2 — Terminal host + Agents | PTY + SwiftTerm surface, `TerminalService`, agent buttons and tabs | ⚪ |
-| M3 — Run | workspace commands → terminal, `cmd+r` palette, ▶ Run button | ⚪ |
-| M4 — Git | changes, diff, history | ⚪ |
-| M5 — Postgres | schema browser, query editor, results | ⚪ |
-| M6 — Polish | themes, settings, distribution | ⚪ |
+| M0 — Shell | window, layout, panels, shortcuts, toolbar, welcome screen, `wraith` CLI | 🟢 |
+| M1 — Explorer + Editor | file tree, file tabs, highlighting (`Highlight/`), quick open (`Palette/`) | 🟢 |
+| M2 — Terminal host + Agents | PTY + SwiftTerm surface, `TerminalService`, agent buttons and tabs | 🟢 |
+| M3 — Run | workspace commands → terminal, `cmd+r` palette, ▶ Run button | 🟢 |
+| M4 — Git | changes, side-by-side diff, history, branches, stash, remote | 🟢 |
+| M5 — Postgres | schema browser, query tabs, result grid, history | 🟢 |
+| M6 — Polish | open points of M0–M5, shortcuts survey, CI, measured budgets, local release | 🟡 |
+| M7 — Formatting | format the active file and on save (`editor`) | ⚪ |
+| M8 — Visual redesign | theme tokens, every view (`design`) | ⚪ |
+
+The up-to-date table, task by task, is [`docs/backlog/README.md`](docs/backlog/README.md).
 
