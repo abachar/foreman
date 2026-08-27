@@ -15,7 +15,7 @@ No code for a domain without its `00-study.md`. A behaviour change updates the s
 
 The failure mode we guard against is an agent rewriting what a library or Apple already provides, and wrapping everything in layers "just in case". Concretely:
 
-- **Before writing any service, parser, manager, or component**: check whether a retained library (`docs/architecture.md` → *Dépendances retenues*) or an AppKit/SwiftUI/Foundation component does it. State the answer explicitly in your reply: *"using X because…"* or *"nothing exists, writing Y in ~N lines"*.
+- **Before writing any service, parser, manager, or component**: check whether a retained library (`docs/architecture.md` → *Retained dependencies*) or an AppKit/SwiftUI/Foundation component does it. State the answer explicitly in your reply: *"using X because…"* or *"nothing exists, writing Y in ~N lines"*.
 - **Use a library the way its documentation says.** Read the docs (`find-docs` / the package README), do not code from memory of what the library "probably" exposes. Do not wrap a library behind your own protocol.
 - **A protocol exists only when two implementations exist in the same commit.** No `…Service` protocol with one `…Impl`. No `Fake…` for tests unless a plain value or closure cannot do the job.
 - **No abstraction for a hypothetical future.** One user, no third-party plugins, no backward compatibility. If two features need the same thing, put it in a shared folder and call it directly.
