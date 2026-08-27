@@ -102,7 +102,7 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
   **Recorded proposal (accepted): start with A**, measure it on the machine with the mockup next to it, and move to B **only if** A leaves a visible material or separator that cannot be turned off. That is the "when hesitating between two solutions, take the shorter one" rule (`AGENTS.md`): A costs a few lines, B takes Wraith out of a native component that `architecture.md` P3 recommends. But the criterion is still the author's eye: if A does not give the mockup's look, B is legitimate and its spec is amended.
 - 8.1: **the `dark` set's values** — **read off the mockups on 2026-08-27** (`design/decisions.md`).
-- 8.1: **radius, gutter, bar height** — **settled 2026-08-27**: 8, 8, 36.
+- 8.1: **radius, gutter, bar height** — **settled 2026-08-27**: 8, 8, 36. Gutter lowered to 6 after the visual review (design decision 2026-08-27).
 - 8.1: **the toolbar's background** — **settled 2026-08-27**: `windowBackground`, flat `surfaceRaised` buttons.
 - 8.2: **highlighting colors** — **settled 2026-08-27**: a `syntax` family in the token set (IntelliJ Dark's colors), the editor follows Wraith's theme.
 - 8.3: **the center's gutter** — **settled 2026-08-27 (design R21)**: there is none inside the centre; the groups are separated by a 1 pt `separator` line, the gutter only exists between islands (`NSSplitView`).

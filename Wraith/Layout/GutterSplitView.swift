@@ -3,7 +3,7 @@ import AppKit
 /// design R20: the divider is the gutter — `gutter` points wide, painted in the window ground,
 /// no line drawn.
 final class GutterSplitView: NSSplitView {
-    var gutter: CGFloat = 8 {
+    var gutter: CGFloat = 6 {
         didSet { adjustSubviews() }
     }
     var gutterColor: NSColor = .clear {
