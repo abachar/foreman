@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import FuzzyMatch
 import SwiftUI
 import os
 
@@ -45,7 +47,10 @@ final class RunFeature {
     private let layout: LayoutManager
     private let workspace: Workspace
     private let terminal: TerminalService
+    private let palette: Palette
     private(set) var commands: [RunCommand] = []
+    /// run R5: the ids launched in this window, last first (decision 2026-08-27: not persisted).
+    private(set) var recents: [String] = []
     /// run R7: the tab a command reuses, the first one opened or restored for it.
     private var primaryTabs: [String: TabID] = [:]
     private var commandOfTab: [TabID: String] = [:]
@@ -56,11 +61,13 @@ final class RunFeature {
     private var eventsWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "run")
 
-    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService) {
+    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, palette: Palette) {
         self.layout = layout
         self.workspace = workspace
         self.terminal = terminal
+        self.palette = palette
         apply(workspace.config)
+        registerPalette()
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges {
                 guard let self else { return }
@@ -141,6 +148,8 @@ final class RunFeature {
             logger.warning("run.\(id, privacy: .public) not launched: unknown or greyed")
             return nil
         }
+        recents.removeAll { $0 == id }
+        recents.insert(id, at: 0)
         let primary = primaryTabs[id].flatMap { layout.model.owner(of: $0) != nil ? $0 : nil }
         switch Self.launchAction(primary: primary, state: primary.flatMap { terminal.tab($0)?.state }, newTab: newTab)
         {
@@ -186,6 +195,61 @@ final class RunFeature {
     private func activate(_ tab: TabID) {
         guard let owner = layout.model.owner(of: tab) else { return }
         layout.activate(tab, in: owner)
+    }
+
+    // MARK: - Palette (run R5, R6)
+
+    private func registerPalette() {
+        layout.shortcuts.register(
+            ShortcutAction(id: "run.palette", title: "Run Command", defaultShortcut: "cmd+r") { [weak self] in
+                self?.showPalette()
+            })
+        layout.register(
+            homeEntry: HomeEntry(id: "run.palette", title: "Run Command", icon: "play.circle", section: .actions) {
+                [weak self] in self?.showPalette()
+            })
+    }
+
+    /// `cmd+r`: the shared palette over the window (run R5).
+    private func showPalette() {
+        guard let window = NSApp.keyWindow else { return }
+        let source = PaletteSource(
+            placeholder: "Run command…",
+            results: { [weak self] query in
+                guard let self else { return PaletteSource.Results(items: []) }
+                return PaletteSource.Results(
+                    items: Self.items(commands, recents: recents, query: query),
+                    notice: commands.isEmpty ? "No commands in .wraith/config.json" : nil)
+            },
+            select: { [weak self] item, newTab in self?.launch(item.id, newTab: newTab) },
+            secondary: { [weak self] item in
+                // run R6: opt+enter copies the command text.
+                guard let command = self?.command(item.id) else { return }
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(command.command, forType: .string)
+            })
+        palette.present(source, over: window)
+    }
+
+    /// run R5: recents first then the catalog order, or the fuzzy ranking on `repo name`.
+    ///
+    /// A greyed command shows its reason instead of its text.
+    nonisolated static func items(_ commands: [RunCommand], recents: [String], query: String) -> [PaletteItem] {
+        let ordered: [RunCommand]
+        if query.isEmpty {
+            let recent = recents.compactMap { id in commands.first { $0.id == id } }
+            ordered = recent + commands.filter { !recents.contains($0.id) }
+        } else {
+            let byKey = Dictionary(commands.map { ("\($0.repo) \($0.name)", $0) }) { first, _ in first }
+            let matches = FuzzyMatcher(config: .smithWaterman)
+                .topMatches(byKey.keys, against: query, limit: Palette.limit)
+            ordered = matches.compactMap { byKey[$0.candidate] }
+        }
+        return ordered.map { command in
+            PaletteItem(
+                id: command.id, title: PaletteItem.highlighted(command.title, matching: query),
+                subtitle: command.problem ?? command.command)
+        }
     }
 
     // MARK: - Tabs (run R12, R13, layout R28)

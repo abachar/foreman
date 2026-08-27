@@ -47,4 +47,6 @@ struct PaletteSource {
     let results: (String) async -> Results
     /// `newGroup` is `cmd+enter` (editor R17, run R6).
     let select: (PaletteItem, _ newGroup: Bool) -> Void
+    /// `opt+enter` (run R6: copy the command); `nil` falls back to `select`.
+    var secondary: ((PaletteItem) -> Void)? = nil
 }

@@ -11,7 +11,7 @@ import SwiftUI
 @MainActor
 final class Palette {
     /// editor R17: at most this many rows.
-    static let limit = 50
+    nonisolated static let limit = 50
 
     private(set) var query = ""
     private(set) var results = PaletteSource.Results(items: [])
@@ -43,6 +43,8 @@ final class Palette {
                 move(by: 1)
             case .return(let newGroup):
                 select(newGroup: newGroup)
+            case .secondary:
+                selectSecondary()
             case .escape:
                 dismiss()
             }
@@ -107,18 +109,34 @@ final class Palette {
         dismiss()
         source.select(item, newGroup)
     }
+
+    /// run R6: `opt+enter`.
+    func selectSecondary() {
+        guard let source, results.items.indices.contains(selectedIndex) else { return }
+        guard let secondary = source.secondary else { return select(newGroup: false) }
+        let item = results.items[selectedIndex]
+        dismiss()
+        secondary(item)
+    }
 }
 
 /// The palette's window: arrows, return and escape are taken before the field editor sees them.
-private final class PalettePanel: NSPanel {
-    enum Key {
+final class PalettePanel: NSPanel {
+    nonisolated enum Key: Equatable, Sendable {
         case up
         case down
         case `return`(newGroup: Bool)
+        /// `opt+return`.
+        case secondary
         case escape
     }
 
     var onKey: (Key) -> Void = { _ in }
+
+    /// `cmd` opens in a new group, `opt` is the secondary action (editor R17, run R6).
+    nonisolated static func returnKey(_ flags: NSEvent.ModifierFlags) -> Key {
+        flags.contains(.option) ? .secondary : .return(newGroup: flags.contains(.command))
+    }
 
     override func sendEvent(_ event: NSEvent) {
         guard event.type == .keyDown else { return super.sendEvent(event) }
@@ -128,7 +146,7 @@ private final class PalettePanel: NSPanel {
         case 125:
             onKey(.down)
         case 36, 76:
-            onKey(.return(newGroup: event.modifierFlags.contains(.command)))
+            onKey(Self.returnKey(event.modifierFlags))
         case 53:
             onKey(.escape)
         default:

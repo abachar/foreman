@@ -38,3 +38,34 @@ struct RunFeatureTests {
         #expect(RunFeature.kind(of: "backend:test") == "run.backend:test")
     }
 }
+
+/// The palette rows (run R5).
+struct RunPaletteTests {
+    private let root = URL(filePath: "/ws")
+
+    private func command(_ repo: String, _ name: String, problem: String? = nil) -> RunCommand {
+        RunCommand(
+            id: RunCatalog.id(repo: repo, name: name), repo: repo, name: name, command: "make \(name)",
+            cwd: root, env: [:], problem: problem)
+    }
+
+    @Test func withoutAQueryRecentsComeFirstThenTheCatalogOrder() {
+        let commands = [command(".", "lint"), command("backend", "build"), command("backend", "test")]
+        let items = RunFeature.items(commands, recents: ["backend:test", "gone:x"], query: "")
+        #expect(items.map(\.id) == ["backend:test", "root:lint", "backend:build"])
+        #expect(items.first?.subtitle == "make test")
+    }
+
+    @Test func aQueryRanksFuzzilyOnRepoAndName() {
+        let commands = [command(".", "lint"), command("backend", "build"), command("backend", "test")]
+        let items = RunFeature.items(commands, recents: [], query: "bt")
+        #expect(items.first?.id == "backend:test")
+        #expect(!items.map(\.id).contains("root:lint"))
+    }
+
+    @Test func aGreyedCommandShowsItsReason() {
+        let items = RunFeature.items(
+            [command("frontend", "dev", problem: "repo not found: frontend")], recents: [], query: "")
+        #expect(items.first?.subtitle == "repo not found: frontend")
+    }
+}

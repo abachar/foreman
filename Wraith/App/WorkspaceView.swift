@@ -47,7 +47,7 @@ struct WorkspaceView: View {
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
-                run = RunFeature(layout: layout, workspace: workspace, terminal: terminal)
+                run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
