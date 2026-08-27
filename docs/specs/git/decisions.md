@@ -1,14 +1,14 @@
-# git — Décisions
+# git — Decisions
 
-| Date | Décision | Alternatives rejetées | Raison |
+| Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
-| 2026-08-25 | Binaire `git` via `Process`, formats machine (`--porcelain=v2 -z`, `--format`) | libgit2 / SwiftGit2 | Hooks, signing, credential helpers, `pull.rebase`… honorés gratuitement ; zéro C à enfermer ; SwiftGit2 peu maintenu |
-| 2026-08-25 | Périmètre complet : status, stage/unstage/discard, commit/amend, diff par hunk, log, fetch/pull/push, branches, stash | Lecture seule ; stage+commit seulement | Le terminal reste disponible, mais le quotidien tient dans le panneau |
-| 2026-08-25 | Tous les repos empilés en sections repliables | Un repo à la fois | Vue d'ensemble d'un workspace multi-repos (cas d'usage principal) |
-| 2026-08-25 | Diff unifié inline dans un onglet central ; log linéaire `--first-parent` en panneau bas | Côte à côte ; graphe de branches | Suffisant pour relire avant commit ; le graphe est un gros chantier de rendu |
-| 2026-08-26 | Diff coloré via le dossier partagé `Highlight/` (remplace la décision « sans highlighting » du 2026-08-25) | tree-sitter importé dans `Git/` ; diff +/− seul | Le highlighting est un composant partagé (`architecture.md`) ; `Git/` l'appelle directement |
-| 2026-08-26 | `GIT_TERMINAL_PROMPT=0` ; interaction requise → bannière avec la commande à copier, pas de terminal ouvert (remplace « bascule dans un terminal » du 2026-08-25) | Saisie de credentials dans Wraith ; surface terminal éphémère | Aucun secret dans l'app (`architecture.md`, sécurité) ; pas de shell libre (`product` R4) ; le cas est rare avec un helper/agent SSH configuré |
-| 2026-08-25 | Discard, drop stash, `-D`, checkout de commit, reset, cherry-pick, revert : confirmés ; `reset --hard` et `push --force` absents de l'UI | Tout accessible ; rien de destructif | Le destructif reste explicite ; l'irréversible reste au terminal |
-| 2026-08-25 | Jamais de `fetch` automatique ; rafraîchissement par FSEvents (worktree + `.git/HEAD`, `index`, `refs/`) | Polling ; fetch périodique | Aucun réseau non demandé, pas de polling disque (`architecture.md`) |
-| 2026-08-26 | `GitCLI` type concret, pas de protocole `GitService` ni de `FakeGitService` | Protocole + double de test | Une seule implémentation (`architecture.md` P1) ; les parseurs se testent sur fixtures, le panneau sur des `GitStatus` construits à la main |
-| 2026-08-25 | Commit via `-F <fichier temporaire>`, sans `--no-verify` ni contournement de config | Message en argument ; option « skip hooks » | Messages multi-lignes sûrs ; les hooks de l'utilisateur sont sa politique, pas la nôtre |
+| 2026-08-25 | The `git` binary through `Process`, machine formats (`--porcelain=v2 -z`, `--format`) | libgit2 / SwiftGit2 | Hooks, signing, credential helpers, `pull.rebase`… honoured for free; no C to wrap; SwiftGit2 is barely maintained |
+| 2026-08-25 | Full scope: status, stage/unstage/discard, commit/amend, per-hunk diff, log, fetch/pull/push, branches, stash | Read-only; stage+commit only | The terminal stays available, but the daily work fits in the panel |
+| 2026-08-25 | Every repo stacked as collapsible sections | One repo at a time | An overview of a multi-repo workspace (the main use case) |
+| 2026-08-25 | An inline unified diff in a center tab; a linear `--first-parent` log in a bottom panel | Side by side; a branch graph | Enough to review before committing; the graph is a large rendering project |
+| 2026-08-26 | The diff colored through the shared `Highlight/` folder (replaces the "no highlighting" decision of 2026-08-25) | tree-sitter imported into `Git/`; +/− diff only | Highlighting is a shared component (`architecture.md`); `Git/` calls it directly |
+| 2026-08-26 | `GIT_TERMINAL_PROMPT=0`; an interaction required → a banner with the command to copy, no terminal opened (replaces "switch to a terminal" of 2026-08-25) | Typing credentials into Wraith; an ephemeral terminal surface | No secret in the app (`architecture.md`, security); no free-form shell (`product` R4); the case is rare with a configured helper/SSH agent |
+| 2026-08-25 | Discard, drop stash, `-D`, checking out a commit, reset, cherry-pick, revert: confirmed; `reset --hard` and `push --force` absent from the UI | Everything reachable; nothing destructive | The destructive stays explicit; the irreversible stays in the terminal |
+| 2026-08-25 | Never an automatic `fetch`; refreshing through FSEvents (worktree + `.git/HEAD`, `index`, `refs/`) | Polling; a periodic fetch | No unrequested network, no disk polling (`architecture.md`) |
+| 2026-08-26 | `GitCLI` a concrete type, no `GitService` protocol and no `FakeGitService` | A protocol + a test double | A single implementation (`architecture.md` P1); the parsers are tested over fixtures, the panel over hand-built `GitStatus` values |
+| 2026-08-25 | Commit through `-F <temporary file>`, without `--no-verify` and without bypassing the config | The message as an argument; a "skip hooks" option | Safe multi-line messages; the user's hooks are their policy, not ours |

@@ -1,3 +1,3 @@
-# Questions ouvertes
+# Open questions
 
-- [ ] Fichiers ignorés pour l'explorer (`explorer` R4) : `status --ignored` complet (coûteux sur gros repos) ou `check-ignore` à la demande sur les dossiers dépliés ? À trancher au découpage de M4 après mesure.
+- [ ] Ignored files for the explorer (`explorer` R4): a full `status --ignored` (expensive on large repos) or `check-ignore` on demand for the expanded folders? To be settled when M4 is broken down, after measuring.
