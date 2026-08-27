@@ -2,6 +2,7 @@
 
 | Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
+| 2026-08-27 | Toolbar: a `center` placement and panel toggles declared by the layout (R30 amended, `design` R15) | Panels reachable by shortcut and menu only | The author wants the panels one click away, on the validated mockups; the toggles belong to the layout since `PanelManager` owns the visibility |
 | 2026-08-25 | The left/right/bottom panels frame the whole split tree | Panels per split | Classic IDE model, a single `[side: id?]` state, predictable |
 | 2026-08-25 | iTerm-like shortcuts: `cmd+w`/`cmd+1..9` for tabs, `cmd+d`/`cmd+shift+d` for splits, `cmd+opt+arrows` for group focus (`cmd+t` removed on 2026-08-26: no more default tab) | The VS Code set (`cmd+\`, `cmd+N` = group) | The author's habits; iTerm is the reference |
 | 2026-08-26 | No default tab kind: a split and the last tab closed both give an empty group with the home screen (IntelliJ style), fed by the features | `cmd+t` = new shell; a grey empty group; `cmd+t` = quick open | `product`: no free-form shell; the home screen recalls the shortcuts and gives access to the agents |

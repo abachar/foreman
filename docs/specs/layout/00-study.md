@@ -98,7 +98,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 
 ### Toolbar
 
-- R30 — The window has a native toolbar (`NSToolbar`). It contains only items declared by the features (`id`, title, icon, placement, kind): placement `leading` (agents) or `trailing` (run); kind *action* (click → callback) or *menu* (click → a list of entries provided on demand, with subtitles and badges). Order: the features' registration order, `leading` on the left, `trailing` on the right. The layout declares no item of its own in v1.
+- R30 — The window has a native toolbar (`NSToolbar`). It contains only items declared by the features (`id`, title, icon, placement, kind): placement `leading`, `center` or `trailing` (amended 2026-08-27, `design` R15: the Explorer toggle leads, the agents are centred, Run and the Database/Git/History toggles trail; `center` is new); kind *action* (click → callback) or *menu* (click → a list of entries provided on demand, with subtitles and badges). Order: the features' registration order, `leading` on the left, `trailing` on the right. The layout declares the panel toggles itself (amended 2026-08-27): one *action* item per registered panel of the left and right slots, whose badge-less icon carries a 1 pt accent outline while the panel is visible.
 - R31 — An item may carry a **badge** (`none` / `dot(color)`) updated by the owning feature (agent running, run failed). An item whose `id` is already taken is refused and logged as a `fault`. Right-clicking (or long-clicking) an *action* item opens its secondary menu when it declares one.
 - R32 — `cmd+opt+t` hides/shows the toolbar (persisted in `state.json`). The items' actions stay reachable through their shortcuts and through the palette.
 
