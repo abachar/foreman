@@ -10,7 +10,7 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 
 - US1 — `cmd+shift+g`: I see, per repo, what is modified, staged, untracked, conflicted, with the branch and how far ahead/behind its upstream it is.
 - US2 — I stage two files, write a message, `cmd+enter`: the commit is made with my usual hooks and my usual GPG/SSH signature.
-- US3 — I click a modified file: the diff opens in the center, as a preview; I can stage/discard a hunk.
+- US3 — I click a modified file: the diff opens in the center, as a preview, side by side.
 - US4 — `cmd+shift+h`: the current branch's log; a click shows the commit's diff.
 - US5 — I fetch/pull/push from the repo's bar; if git asks for interactive authentication, the error tells me clearly, with the command to run.
 - US6 — I switch branches, create one, stash/unstash without opening the terminal.
@@ -44,7 +44,7 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 - R13 — Center tab `git.diff` (a preview, `explorer` R12 by analogy; pinned on a double click): an **inline unified** diff, a header per file, numbered hunks, added/removed lines colored, old/new line numbers, **syntax highlighting** through the shared `Highlight/` folder (the grammar is derived from the extension, degradable to +/− colors alone). Read-only.
 - R13b — A **side-by-side** layout (old on the left, new on the right, a removed run facing the added run that follows it) is the default of the diff tab; a segmented control switches to inline. Both use the same highlighting and tint (author's request, 2026-08-27).
 - R14 — Sources: the worktree file against the index (`git diff -- <path>`), the index against HEAD (`git diff --cached`), a whole commit (`git show <sha>`), a file of a commit. Title: `path (working tree)`, `path (staged)`, `abc1234 subject`.
-- R15 — Per hunk: *Stage hunk* / *Unstage hunk* / *Discard hunk* (the patch applied through `git apply --cached` / `--reverse` on a temporary patch; discard is confirmed, R8). No line-by-line editing. **Deferred out of v1 on 2026-08-27** (author's choice: not needed); the rule stays for a later milestone.
+- R15 — **Removed on 2026-08-27** (the author does not stage by hunk): no per-hunk stage/unstage/discard, no line-by-line editing; staging is per file (R7). The number is kept so the other rules do not move.
 - R16 — Binary file: "binary, N KB → M KB". A diff over 5,000 lines: collapsed per file, expanded on demand. Renames detected (`-M`).
 - R17 — The diff of a worktree file refreshes with R4 (the file is edited again); a commit's diff is immutable.
 
