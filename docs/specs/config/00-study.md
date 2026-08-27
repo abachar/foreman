@@ -1,30 +1,30 @@
-# config — Étude
+# config — Study
 
-## Objectif
+## Goal
 
-Définir où et comment Wraith lit sa configuration et persiste son état, par workspace.
+Define where and how Wraith reads its configuration and persists its state, per workspace.
 
-## Emplacements
+## Locations
 
-| Portée | Chemin | Contenu |
+| Scope | Path | Content |
 |---|---|---|
-| Workspace | `<root>/.wraith/config.json` | config du workspace (repos, commands, postgres, shortcuts…) |
-| Workspace | `<root>/.wraith/state.json` | état d'UI persisté (splits, onglets, panneaux, tailles) |
-| Secrets | Keychain macOS | mots de passe Postgres, jamais dans un fichier |
+| Workspace | `<root>/.wraith/config.json` | workspace config (repos, commands, postgres, shortcuts…) |
+| Workspace | `<root>/.wraith/state.json` | persisted UI state (splits, tabs, panels, sizes) |
+| Secrets | macOS Keychain | Postgres passwords, never in a file |
 
 ## User stories
 
-- US1 — J'ouvre un dossier sans aucune config : tout fonctionne avec des valeurs par défaut (repos auto-détectés, pas de commandes, pas de Postgres).
-- US2 — Je décris mon workspace dans `.wraith/config.json` (repos, commandes, connexion PG, agents) et les features s'en servent.
-- US3 — Je modifie `config.json` pendant que Wraith tourne : la config est rechargée sans redémarrer.
-- US4 — Je peux surcharger un raccourci par workspace.
-- US5 — Je ferme et rouvre le workspace : je retrouve mon état.
+- US1 — I open a folder with no config at all: everything works with default values (auto-detected repos, no commands, no Postgres).
+- US2 — I describe my workspace in `.wraith/config.json` (repos, commands, PG connection, agents) and the features use it.
+- US3 — I edit `config.json` while Wraith is running: the config is reloaded without a restart.
+- US4 — I can override a shortcut per workspace.
+- US5 — I close and reopen the workspace: I find my state again.
 
-## Règles fonctionnelles
+## Functional rules
 
-- R1 — `.wraith/` est créé à la demande (première écriture de `state.json`), jamais `config.json` : celui-ci est toujours écrit par l'utilisateur.
-- R2 — Absence de `config.json` = config vide ; toutes les clés sont optionnelles.
-- R3 — Schéma de `config.json` (v1) :
+- R1 — `.wraith/` is created on demand (the first write of `state.json`), never `config.json`: that one is always written by the user.
+- R2 — No `config.json` = empty config; every key is optional.
+- R3 — Schema of `config.json` (v1):
   ```json
   {
     "repos": ["backend", "frontend"],
@@ -34,30 +34,30 @@ Définir où et comment Wraith lit sa configuration et persiste son état, par w
     "shortcuts": { "git.status": "cmd+shift+g" }
   }
   ```
-  - `repos` : chemins relatifs à la racine ; absent → scan des `.git/` (profondeur ≤ 2, ignore `node_modules`, `target`, `.build`).
-  - `commands` : `<repo ou "."> → <nom> → <commande shell>`, exécutées dans le dossier du repo.
-  - `postgres` : **un seul objet** (une connexion par workspace), sans mot de passe ; le mot de passe est lu dans le Keychain (clé `wraith.postgres.<host>:<port>/<database>/<user>`). Détail dans [postgres](../postgres/).
-  - `agents` : `<id> → { title, command, icon, enabled }` ; surcharge un agent intégré ou en déclare un nouveau. Détail dans [agents](../agents/).
-  - `commands` : forme courte (chaîne) ou longue (`{ "run", "cwd", "env" }`). Détail dans [run](../run/).
-  - `shortcuts` : `<panel/action id> → <raccourci>` ; surcharge les défauts déclarés par les features.
-- R4 — Précédence : défauts des features < `.wraith/config.json`. Il n'y a pas de configuration globale : tout est par workspace.
-- R5 — `Workspace` expose la config aux features ; chaque feature décode sa propre section (`config.section("postgres")`), `Workspace` ne connaît pas les schémas des features (`architecture` : config par section).
-- R6 — `config.json` est surveillé (via le flux FSEvents unique) ; à chaque changement valide, `Workspace` publie la nouvelle config sur son flux `configChanges` (`AsyncStream`), auquel les features intéressées s'abonnent.
-- R7 — Un `config.json` invalide (JSON malformé, type inattendu) n'empêche pas l'ouverture : la dernière config valide reste active et l'erreur est affichée (ligne + message).
-- R8 — `state.json` est écrit par Wraith uniquement, de façon débouncée (~1 s après le dernier changement) et à la fermeture. Il n'est jamais surveillé.
-- R9 — `state.json` porte un numéro de version de schéma ; un état illisible ou d'une version inconnue est ignoré (démarrage à l'état par défaut) et sauvegardé en `state.json.bak`.
-- R10 — Les chemins dans `state.json` (cwd des terminaux, fichiers ouverts) sont relatifs à la racine du workspace quand ils sont à l'intérieur, absolus sinon.
-- R11 — Aucun secret n'est jamais écrit dans `.wraith/` ; toute valeur sensible détectée dans `config.json` (clé `password`) déclenche un avertissement et est ignorée.
+  - `repos`: paths relative to the root; absent → scan for `.git/` (depth ≤ 2, ignoring `node_modules`, `target`, `.build`).
+  - `commands`: `<repo or "."> → <name> → <shell command>`, run in the repo's folder.
+  - `postgres`: **a single object** (one connection per workspace), without a password; the password is read from the Keychain (key `wraith.postgres.<host>:<port>/<database>/<user>`). Detail in [postgres](../postgres/).
+  - `agents`: `<id> → { title, command, icon, enabled }`; overrides a built-in agent or declares a new one. Detail in [agents](../agents/).
+  - `commands`: short form (a string) or long form (`{ "run", "cwd", "env" }`). Detail in [run](../run/).
+  - `shortcuts`: `<panel/action id> → <shortcut>`; overrides the defaults declared by the features.
+- R4 — Precedence: feature defaults < `.wraith/config.json`. There is no global configuration: everything is per workspace.
+- R5 — `Workspace` exposes the config to the features; each feature decodes its own section (`config.section("postgres")`), `Workspace` does not know the features' schemas (`architecture`: config by section).
+- R6 — `config.json` is watched (through the single FSEvents stream); on every valid change, `Workspace` publishes the new config on its `configChanges` stream (`AsyncStream`), which interested features subscribe to.
+- R7 — An invalid `config.json` (malformed JSON, unexpected type) does not prevent opening: the last valid config stays active and the error is shown (line + message).
+- R8 — `state.json` is written by Wraith only, debounced (~1 s after the last change) and on close. It is never watched.
+- R9 — `state.json` carries a schema version number; an unreadable state or one with an unknown version is ignored (start from the default state) and saved as `state.json.bak`.
+- R10 — Paths in `state.json` (terminal cwds, open files) are relative to the workspace root when they are inside it, absolute otherwise.
+- R11 — No secret is ever written into `.wraith/`; any sensitive value detected in `config.json` (a `password` key) raises a warning and is ignored.
 
-## Cas limites
+## Edge cases
 
-- Racine du workspace en lecture seule : `state.json` n'est pas écrit, l'app fonctionne sans persistance et le signale une fois.
-- `$HOME` comme workspace : `~/.wraith/` est créé chez l'utilisateur ; acceptable (c'est le comportement d'un shell avec ses dotfiles).
-- `.wraith/` versionné ou non : au choix de l'utilisateur ; recommandation `.gitignore` → `.wraith/state.json` et `.wraith/postgres-history.json` (tout fichier écrit par l'app).
-- Repo déclaré dans `repos` mais absent sur disque : ignoré avec avertissement.
+- Read-only workspace root: `state.json` is not written, the app works without persistence and says so once.
+- `$HOME` as the workspace: `~/.wraith/` is created in the user's home; acceptable (it is how a shell behaves with its dotfiles).
+- `.wraith/` versioned or not: the user's choice; recommended `.gitignore` → `.wraith/state.json` and `.wraith/postgres-history.json` (every file written by the app).
+- A repo declared in `repos` but missing on disk: ignored with a warning.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Config en YAML/TOML, ou en plusieurs fichiers.
-- Éditeur de préférences graphique.
-- Migration automatique de schéma entre versions.
+- Config in YAML/TOML, or across several files.
+- A graphical preferences editor.
+- Automatic schema migration between versions.
