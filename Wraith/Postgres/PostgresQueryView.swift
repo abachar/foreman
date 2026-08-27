@@ -16,9 +16,9 @@ struct PostgresQueryView: View {
                 SQLEditorView(
                     tab: tab, theme: theme, onRun: { feature.run(tab) }, onStop: { feature.stop() }
                 )
-                .frame(minHeight: 80)
+                .frame(maxWidth: .infinity, minHeight: 80)
                 results
-                    .frame(minHeight: 80)
+                    .frame(maxWidth: .infinity, minHeight: 80)
             }
         }
     }
