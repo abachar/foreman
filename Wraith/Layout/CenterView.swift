@@ -59,9 +59,12 @@ struct TabGroupView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
-            // layout R17, design R3: the active group is the only thing carrying the accent.
-            Rectangle()
-                .strokeBorder(isActive ? tokens.accent.color : .clear, lineWidth: 1)
+            // layout R17, design R3: the active group is the only thing carrying the accent; a lone
+            // group has nothing to be told apart from, and the stroke follows the island's corners
+            // (decision 2026-08-27).
+            let isMarked = isActive && layout.model.groups.count > 1
+            RoundedRectangle(cornerRadius: tokens.islandRadius)
+                .strokeBorder(isMarked ? tokens.accent.color : .clear, lineWidth: 1)
                 .allowsHitTesting(false)
         }
         .contentShape(Rectangle())
