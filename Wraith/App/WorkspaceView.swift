@@ -52,6 +52,11 @@ struct WorkspaceView: View {
                     layout: layout, workspace: workspace, theme: theme, palette: palette, highlighter: highlighter)
                 self.editor = editor
                 let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor, theme: theme)
+                // architecture: the Keychain store is created once here and injected (postgres R3).
+                // design R15: the toolbar's toggles follow the panels' registration order — Database
+                // before Git and History.
+                postgres = PostgresFeature(
+                    layout: layout, workspace: workspace, secrets: KeychainSecretStore(), theme: theme)
                 let git = GitFeature(
                     layout: layout, workspace: workspace, editor: editor, explorer: explorer, theme: theme,
                     highlighter: highlighter)
@@ -63,9 +68,6 @@ struct WorkspaceView: View {
                 self.terminal = terminal
                 agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
-                // architecture: the Keychain store is created once here and injected (postgres R3).
-                postgres = PostgresFeature(
-                    layout: layout, workspace: workspace, secrets: KeychainSecretStore(), theme: theme)
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
