@@ -12,4 +12,5 @@
 | 2026-08-27 | **SwiftTerm `v1.20.0`**, `.upToNextMinor` | The `main` branch | The API we use is identical (`startProcess(...currentDirectory:)`, `processDelegate`, `bell`, `clearScrollback`, `installColors`); `main` rewrites `LocalProcess` with no gain for us; `architecture.md`: `.upToNextMinor` versions |
 | 2026-08-25 | `cmd+w` asks for confirmation while the process is running; `SIGKILL` only on a forced close after 5 s | A direct kill; never a confirmation | Avoids killing a server or an agent by mistake |
 | 2026-08-25 | Wraith's `cmd+…` shortcuts take priority over the surface | The surface wins | Tabs and splits are Wraith's |
+| 2026-08-27 | Confirmed in use (M6 6.4): `bellStyle = .none` and R7's badge on an inactive tab, no visual bell | Going back to `.visual` | The badge is what the eye needs; a flashing surface under an agent is noise |
 | 2026-08-27 | Confirmed in use (M6 6.2): `cmd+c` copies the selection, `ctrl+c` reaches the process; no agent needed `cmd+c` | Passing `cmd+c` to the process when there is no selection | No agent among the four used depends on it; one rule is easier to remember |

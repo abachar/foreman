@@ -36,7 +36,7 @@ This is **not** `run`: a `run` command is defined by the user and lives in the p
 - R5 — Button menu (right-click or long click): *New session* (forces a new `agent.<id>` tab, not reused afterwards: only the first tab created is the button's one), *Launch in …* for each repo in `config.repos`/auto-detection (cwd = the repo). The command is passed as is (`architecture.md`, security), with no `env` and no templating.
 - R6 — The state is the terminal tab's (`terminal` R6): `idle` / `running` / `exited(code)`. Badge: a dot on the button and on the tab while `running`; the bell of an inactive agent tab marks the tab (`terminal` R7) and the button. Agent exited (`exited`): the surface stays frozen with *Relaunch* (`terminal` R8); clicking the agent's button relaunches in that same tab.
 - R7 — Closing: `terminal` R10–R11 (a confirmation while the agent is running; a clean stop).
-- R8 — Restoration (`layout` R28): the tab is recreated in the `idle` state at the same cwd, the title kept, an empty surface with *Relaunch*; the command is **not** relaunched automatically (the same choice as `run` R13). See the open question.
+- R8 — Restoration (`layout` R28): the tab is recreated in the `idle` state at the same cwd, the title kept, an empty surface with *Relaunch*; the command is **not** relaunched automatically (the same choice as `run` R13); no `resume` option (confirmed in use, decision 2026-08-27).
 - R9 — Shortcuts: `config.shortcuts["agents.<id>"]`, no default. Global scope. `cmd+opt+t` hides the toolbar (`layout` R32); the shortcuts stay active.
 
 ## Edge cases
