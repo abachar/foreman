@@ -38,7 +38,7 @@ That is the whole distribution of v1 (`product` R10): no signing, notarization, 
 | M3 — Run | workspace commands → terminal, `cmd+r` palette, ▶ Run button | 🟢 |
 | M4 — Git | changes, side-by-side diff, history, branches, stash, remote | 🟢 |
 | M5 — Postgres | schema browser, query tabs, result grid, history | 🟢 |
-| M6 — Polish | open points of M0–M5, shortcuts survey, CI, measured budgets, local release | 🟡 |
+| M6 — Polish | open points of M0–M5, shortcuts survey, CI, measured budgets, local release | 🟢 |
 | M7 — Formatting | format the active file and on save (`editor`) | ⚪ |
 | M8 — Visual redesign | theme tokens, every view (`design`) | ⚪ |
 
