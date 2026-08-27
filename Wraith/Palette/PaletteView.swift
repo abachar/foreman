@@ -70,6 +70,7 @@ struct PaletteView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
+                    .font(theme.font())
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundStyle(isSelected ? tokens.accentText.color : tokens.textPrimary.color)
