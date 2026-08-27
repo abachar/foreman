@@ -1,84 +1,84 @@
-# postgres — Étude
+# postgres — Study
 
-## Objectif
+## Goal
 
-Feature `postgres` (dossier `Postgres/`) : explorer le schéma d'une base et exécuter des requêtes en lecture, sans quitter le workspace. Panneau droit `postgres.schema` (`cmd+shift+b`), panneau bas `postgres.query` (éditeur SQL + grille de résultats, `cmd+shift+q`). Client : PostgresNIO, connexion paresseuse, secrets dans le Keychain.
+Feature `postgres` (folder `Postgres/`): explore a database's schema and run read queries without leaving the workspace. Right panel `postgres.schema` (`cmd+shift+b`), bottom panel `postgres.query` (SQL editor + result grid, `cmd+shift+q`). Client: PostgresNIO, lazy connection, secrets in the Keychain.
 
 ## User stories
 
-- US1 — `cmd+shift+b` : je saisis le mot de passe une seule fois, je vois les schémas et leurs tables de la base du workspace.
-- US2 — Je déplie une table : colonnes (type, null, défaut), index, contraintes, clés étrangères.
-- US3 — `cmd+shift+q`, j'écris une requête, `cmd+enter` : les 500 premières lignes en grille, temps d'exécution, nombre de lignes.
-- US4 — Je sélectionne deux lignes de SQL sur cinq : seule la sélection s'exécute ; sans sélection, tout le buffer part.
-- US5 — J'exporte le résultat en CSV ou JSON.
-- US6 — Je retrouve mes dernières requêtes dans l'historique.
-- US7 — Double clic sur une table : `SELECT * FROM schema.table LIMIT 500` s'exécute.
+- US1 — `cmd+shift+b`: I type the password once, and I see the schemas and their tables for the workspace's database.
+- US2 — I expand a table: columns (type, null, default), indexes, constraints, foreign keys.
+- US3 — `cmd+shift+q`, I write a query, `cmd+enter`: the first 500 rows in a grid, the execution time, the row count.
+- US4 — I select two lines of SQL out of five: only the selection runs; without a selection, the whole buffer goes.
+- US5 — I export the result as CSV or JSON.
+- US6 — I find my last queries again in the history.
+- US7 — Double-clicking a table: `SELECT * FROM schema.table LIMIT 500` runs.
 
-## Règles fonctionnelles
+## Functional rules
 
-### Connexion
+### Connection
 
-- R1 — Config (`config` R3, section `postgres`) : **un seul objet** = une connexion par workspace ; champs `host` (défaut `localhost`), `port` (5432), `database`, `user`, `sslmode` (`disable` | `prefer` | `require`, défaut `prefer`), `options` (`[String: String]`, ex. `application_name`). Jamais `password` (`config` R11). Une seule source : `.wraith/config.json` du workspace (`config` R4, décision config 2026-08-26 : il n'y a pas de config globale).
-- R2 — Pas de sélecteur : l'en-tête des deux panneaux affiche `user@host/database` et l'état (R5). Aucune section `postgres` configurée → panneau avec message et exemple de config. Changer de base = modifier `config.json` (rechargé à chaud, `config` R6 : la connexion précédente est fermée).
-- R3 — Mot de passe : cherché dans le Keychain (`config` R3), sinon dans `~/.pgpass` (format et permissions standard, seulement si le fichier est `0600`), sinon demandé (feuille de saisie, option *Enregistrer dans le Keychain* cochée par défaut). Une authentification refusée invalide l'entrée Keychain et redemande. Le mot de passe n'est retenu en mémoire que le temps de la connexion.
-- R4 — Connexion **paresseuse** : établie à la première action qui en a besoin (dépliage du schéma, exécution), pas à l'activation du panneau. Une seule connexion par fenêtre ; fermée à la désactivation des **deux** panneaux ou après 10 min d'inactivité ; rouverte à la demande. Timeout de connexion 10 s.
-- R5 — État de connexion visible (pastille : déconnecté / connexion / connecté / erreur) ; erreur affichée en bannière avec le message serveur (`PostgresError` de la feature, enveloppant l'erreur NIO).
+- R1 — Config (`config` R3, the `postgres` section): **a single object** = one connection per workspace; fields `host` (default `localhost`), `port` (5432), `database`, `user`, `sslmode` (`disable` | `prefer` | `require`, default `prefer`), `options` (`[String: String]`, e.g. `application_name`). Never `password` (`config` R11). A single source: the workspace's `.wraith/config.json` (`config` R4, config decision 2026-08-26: there is no global config).
+- R2 — No picker: the header of both panels shows `user@host/database` and the state (R5). No `postgres` section configured → a panel with a message and a config example. Changing database = editing `config.json` (hot-reloaded, `config` R6: the previous connection is closed).
+- R3 — Password: looked up in the Keychain (`config` R3), otherwise in `~/.pgpass` (standard format and permissions, only when the file is `0600`), otherwise asked for (an input sheet, with a *Save to the Keychain* option checked by default). A refused authentication invalidates the Keychain entry and asks again. The password is only held in memory for the lifetime of the connection.
+- R4 — **Lazy** connection: established at the first action that needs it (expanding the schema, running a query), not when the panel is activated. One connection per window; closed when **both** panels are deactivated or after 10 min of inactivity; reopened on demand. Connection timeout 10 s.
+- R5 — The connection state is visible (a dot: disconnected / connecting / connected / error); an error is shown in a banner with the server's message (the feature's `PostgresError`, wrapping the NIO error).
 
-### Schéma
+### Schema
 
-- R6 — Arbre : schémas (hors `pg_catalog`, `information_schema`, `pg_toast*` ; toggle « schémas système ») → **Tables**, **Vues**, **Vues matérialisées**, **Fonctions**, **Séquences**, **Types** (enums) → objets → pour une table : **Colonnes** (nom, type formaté, `NOT NULL`, défaut, PK), **Index** (nom, définition), **Contraintes** (PK, UNIQUE, CHECK, FK avec cible), **Clés étrangères entrantes**. Une vue affiche ses colonnes et sa définition.
-- R7 — Chargement **par niveau** à l'expansion (paresse, `architecture.md`), via requêtes sur `pg_catalog` (pas `information_schema`, trop lent), une requête par niveau, bornée (timeout 10 s). Aucun rafraîchissement automatique : bouton *Rafraîchir* (par nœud ou global).
-- R8 — Actions sur un objet : *Copier le nom qualifié*, *SELECT * LIMIT 500* (double clic ou menu, exécuté dans le panneau query), *Insérer le nom dans l'éditeur*, *Voir la DDL* (reconstruite côté client pour tables/vues/fonctions/index — best effort, lecture seule). Recherche/filtre textuel sur les noms chargés.
+- R6 — Tree: schemas (excluding `pg_catalog`, `information_schema`, `pg_toast*`; a "system schemas" toggle) → **Tables**, **Views**, **Materialised views**, **Functions**, **Sequences**, **Types** (enums) → objects → for a table: **Columns** (name, formatted type, `NOT NULL`, default, PK), **Indexes** (name, definition), **Constraints** (PK, UNIQUE, CHECK, FK with its target), **Incoming foreign keys**. A view shows its columns and its definition.
+- R7 — Loading **level by level** on expansion (laziness, `architecture.md`), through queries on `pg_catalog` (not `information_schema`, too slow), one query per level, bounded (10 s timeout). No automatic refresh: a *Refresh* button (per node or global).
+- R8 — Actions on an object: *Copy the qualified name*, *SELECT * LIMIT 500* (double click or menu, run in the query panel), *Insert the name into the editor*, *View the DDL* (reconstructed client-side for tables/views/functions/indexes — best effort, read-only). Text search/filter over the loaded names.
 
-### Éditeur SQL et exécution
+### SQL editor and execution
 
-- R9 — Le panneau `postgres.query` est divisé verticalement : éditeur SQL en haut (redimensionnable), résultats en bas. L'éditeur est une zone de texte monospace propre à la feature, colorée via le dossier partagé `Highlight/` (grammaire `sql`), avec undo, indentation, `cmd+/` commentaire `--`. Son contenu est persisté dans `state.json`.
-- R10 — Exécution (`cmd+enter`, touche du panneau) : la **sélection** si elle existe, sinon **tout le buffer**, envoyé tel quel comme **une seule instruction** (aucun split côté client). PostgresNIO n'expose que le protocole étendu, qui n'accepte pas plusieurs instructions dans un message (décision 2026-08-27) : un buffer qui en contient plusieurs reçoit l'erreur serveur `42601`, expliquée par une bannière qui invite à sélectionner l'instruction à exécuter. Pas de « instruction sous le curseur » (voir décisions).
-- R11 — **Autocommit**, session en lecture seule par défaut : la connexion exécute `SET default_transaction_read_only = on` ; un toggle *Autoriser l'écriture* (par session, non persisté, pastille rouge) la lève. Une erreur `read-only transaction` est expliquée par une bannière pointant le toggle.
-- R12 — Toute requête est bornée : `statement_timeout` 30 s (réglable par `statementTimeout` dans la section `postgres` de `.wraith/config.json`). Le SQL **généré par Wraith** (R8) porte un `LIMIT 500`. Le SQL **libre** est lu en **streaming** (lignes consommées au fil de l'eau, jamais tout en mémoire) et s'arrête à **50 000 lignes** : la requête est alors annulée (R13) et la grille affiche un avertissement « résultat tronqué à 50 000 lignes, ajoutez un `LIMIT` ». La grille affiche les lignes par pages de 500 à mesure qu'elles arrivent. Pas de curseur/portal.
-- R13 — Annulation : bouton *Stop* / `cmd+.` annule la tâche **et** envoie `SELECT pg_cancel_backend(<pid>)` sur une seconde connexion courte (le pid est lu à l'ouverture par `SELECT pg_backend_pid()`), puis ferme la connexion si le serveur ne répond pas en 5 s. `Task.cancel` seul ne fait que jeter les lignes côté client — PostgresNIO n'expose pas la requête cancel du protocole (décision 2026-08-27).
-- R14 — Une seule exécution à la fois par fenêtre ; `cmd+enter` pendant une exécution est refusé (bip) et non mis en file.
-- R15 — Paramètres : pas de paramètres liés dans l'éditeur libre (c'est du SQL tel quel, comme `psql`). En revanche, tout SQL **généré par Wraith** (R8, R7, R12) échappe les identifiants (`quote_ident` côté client) et lie ses valeurs (sécurité, `architecture.md`).
+- R9 — The `postgres.query` panel is split vertically: the SQL editor on top (resizable), the results below. The editor is a monospaced text area of the feature's own, colored through the shared `Highlight/` folder (the `sql` grammar), with undo, indentation, and `cmd+/` for `--` comments. Its content is persisted in `state.json`.
+- R10 — Execution (`cmd+enter`, a key of the panel): the **selection** if there is one, otherwise the **whole buffer**, sent as is as **a single statement** (no client-side splitting). PostgresNIO only exposes the extended protocol, which does not accept several statements in one message (decision 2026-08-27): a buffer holding several of them gets the server error `42601`, explained by a banner inviting the user to select the statement to run. No "statement under the cursor" (see the decisions).
+- R11 — **Autocommit**, with a read-only session by default: the connection runs `SET default_transaction_read_only = on`; an *Allow writes* toggle (per session, not persisted, a red dot) lifts it. A `read-only transaction` error is explained by a banner pointing at the toggle.
+- R12 — Every query is bounded: `statement_timeout` 30 s (adjustable with `statementTimeout` in the `postgres` section of `.wraith/config.json`). SQL **generated by Wraith** (R8) carries a `LIMIT 500`. **Free-form** SQL is read as a **stream** (rows consumed as they come, never all in memory) and stops at **50,000 rows**: the query is then cancelled (R13) and the grid shows a "result truncated at 50,000 rows, add a `LIMIT`" warning. The grid shows the rows in pages of 500 as they arrive. No cursor/portal.
+- R13 — Cancellation: the *Stop* button / `cmd+.` cancels the task **and** sends `SELECT pg_cancel_backend(<pid>)` over a second short-lived connection (the pid is read at connection time by `SELECT pg_backend_pid()`), then closes the connection if the server does not answer within 5 s. `Task.cancel` alone only discards the rows client-side — PostgresNIO does not expose the protocol's cancel request (decision 2026-08-27).
+- R14 — One execution at a time per window; `cmd+enter` during an execution is refused (a beep) and not queued.
+- R15 — Parameters: no bound parameters in the free-form editor (it is SQL as is, like `psql`). SQL **generated by Wraith** (R8, R7, R12), on the other hand, quotes identifiers (`quote_ident` client-side) and binds its values (security, `architecture.md`).
 
-### Résultats
+### Results
 
-- R16 — Grille lecture seule : en-têtes (nom, type PG), tri **client** par colonne sur la page chargée, largeur de colonne ajustable, sélection de cellules/lignes, `cmd+c` copie en TSV (cellule, lignes, ou tout). Valeurs : `NULL` distingué visuellement, `bytea` en hex tronqué, `json/jsonb` pretty-print sur double clic (popover), dates ISO 8601, tableaux `{…}` texte.
-- R17 — Barre d'état : `N lignes (page 1/…) · 42 ms · user@base`. Une instruction sans résultat (`UPDATE`, `CREATE`) affiche `OK · 3 lignes affectées`. Une exécution = une instruction (R10), donc un seul résultat affiché.
-- R18 — Export : *CSV* (RFC 4180, en-têtes, `NULL` vide) et *JSON* (tableau d'objets, types natifs quand possible) du résultat **chargé** ou, sur option, de la requête entière re-exécutée en streaming vers le fichier (plafond 1 000 000 lignes). Destination via `NSSavePanel`.
-- R19 — Erreur d'exécution : bannière avec message, `SQLSTATE`, et position → curseur placé sur l'erreur dans l'éditeur.
+- R16 — A read-only grid: headers (name, PG type), **client-side** sorting per column over the loaded page, adjustable column widths, cell/row selection, `cmd+c` copies as TSV (a cell, rows, or everything). Values: `NULL` visually distinguished, `bytea` as truncated hex, `json/jsonb` pretty-printed on a double click (a popover), dates in ISO 8601, arrays as `{…}` text.
+- R17 — Status bar: `N rows (page 1/…) · 42 ms · user@database`. A statement with no result set (`UPDATE`, `CREATE`) shows `OK · 3 rows affected`. One execution = one statement (R10), so a single result is shown.
+- R18 — Export: *CSV* (RFC 4180, headers, `NULL` empty) and *JSON* (an array of objects, native types where possible) of the **loaded** result or, as an option, of the whole query re-run and streamed to the file (capped at 1,000,000 rows). Destination through `NSSavePanel`.
+- R19 — An execution error: a banner with the message, the `SQLSTATE`, and the position → the cursor is placed on the error in the editor.
 
-### Historique
+### History
 
-- R20 — Chaque requête exécutée (texte, `user@host/database`, date, durée, nombre de lignes / erreur) est ajoutée à `.wraith/postgres-history.json` (max 500 entrées, FIFO, jamais versionné : recommandé dans `.gitignore` avec `state.json`). Panneau d'historique (bouton ou `cmd+opt+h` en portée panneau) : recherche, clic → recharge dans l'éditeur, *Épingler* (conservée hors FIFO). Rien du résultat n'est persisté.
+- R20 — Every query run (text, `user@host/database`, date, duration, row count / error) is appended to `.wraith/postgres-history.json` (max 500 entries, FIFO, never versioned: recommended in `.gitignore` alongside `state.json`). A history panel (a button, or `cmd+opt+h` with the panel scope): search, click → reload it into the editor, *Pin* (kept out of the FIFO). Nothing from the result is persisted.
 
-## Cas limites
+## Edge cases
 
-- Serveur injoignable : erreur en < 10 s, pas de retry automatique ; le schéma déjà chargé reste affiché (grisé).
-- Connexion coupée en cours de requête : erreur, reconnexion à la prochaine action.
-- Base avec des milliers de tables : chargement par niveau + filtre ; un niveau > 5 000 objets est tronqué avec bouton.
-- Colonne très large (texte de 1 Mo) : cellule tronquée à 1 000 caractères, contenu complet sur double clic.
-- Types inconnus/extensions (PostGIS, etc.) : rendus par leur représentation texte.
-- `~/.pgpass` avec mauvaises permissions : ignoré avec avertissement (comportement de `libpq`).
-- Deux fenêtres, même base : deux connexions distinctes, indépendantes.
-- Résultat contenant des `\t`/`\n` : copie TSV les échappe, CSV les quote.
+- Server unreachable: an error in < 10 s, no automatic retry; the schema already loaded stays visible (greyed out).
+- Connection dropped mid-query: an error, reconnection on the next action.
+- A database with thousands of tables: level-by-level loading + a filter; a level over 5,000 objects is truncated with a button.
+- A very wide column (1 MB of text): the cell is truncated at 1,000 characters, the full content on a double click.
+- Unknown types/extensions (PostGIS, etc.): rendered through their text representation.
+- `~/.pgpass` with wrong permissions: ignored with a warning (`libpq`'s behaviour).
+- Two windows on the same database: two separate, independent connections.
+- A result containing `\t`/`\n`: the TSV copy escapes them, the CSV quotes them.
 
-## Hors périmètre v1
+## Out of scope for v1
 
-- Édition des données dans la grille, génération d'`UPDATE`/`INSERT`.
-- Transactions explicites dans l'UI (`BEGIN`/`COMMIT`/`ROLLBACK` restent tapables, mais sans gestion d'état).
-- Autocomplétion SQL.
-- Diagramme ER, `EXPLAIN` visuel, statistiques, monitoring, gestion des rôles.
-- Tunnel SSH, connexion via `DATABASE_URL`, autres SGBD.
-- Modification du schéma via l'UI.
+- Editing data in the grid, generating `UPDATE`/`INSERT`.
+- Explicit transactions in the UI (`BEGIN`/`COMMIT`/`ROLLBACK` can still be typed, but with no state handling).
+- SQL autocompletion.
+- ER diagrams, visual `EXPLAIN`, statistics, monitoring, role management.
+- SSH tunnels, connecting through `DATABASE_URL`, other database engines.
+- Modifying the schema through the UI.
 
-## Options techniques
+## Technical options
 
-- **Client** : PostgresNIO (SPM, épinglé `.upToNextMinor`) importé dans `Postgres/`, une `PostgresConnection` par fenêtre (pas le pool `PostgresClient` de la lib, qui demande une tâche `run()` vivante), derrière un type concret `PostgresClient` propre à la feature (`actor` : `connect`, `query(sql) -> AsyncThrowingStream<QueryEvent>`, `close`). Pas de protocole : une seule implémentation (`architecture.md` P1). Les lignes sont converties en `QueryValue` (`null`, `text`, `int`, `double`, `bool`, `date`, `json`, `bytes`, `raw(String)`) pour la grille et l'export ; `QueryResult { columns: [ColumnInfo], rows: [[QueryValue]] }`.
-- **Exécution et bornes** : `PostgresConnection.query(_:logger:)` avec `PostgresQuery(unsafeSQL:)` pour le buffer de l'éditeur — protocole étendu, une instruction par exécution (R10) ; le SQL généré par Wraith passe par la même API avec paramètres liés et `LIMIT 500`. `PostgresRowSequence` (une `AsyncSequence` avec back-pressure) alimente la grille ; à 50 000 lignes la requête est annulée (R13). Pas de portal, pas de tokenizer SQL.
-- **Annulation** : `Task.cancel` (qui jette les lignes côté client) plus `pg_cancel_backend` sur une seconde connexion, seul moyen public d'arrêter la requête côté serveur (R13).
-- **Secrets** : `SecretStore` (dossier `Workspace/`) avec clé `wraith.postgres.<host>:<port>/<database>/<user>` ; double `InMemorySecretStore` en tests (justifié : le Keychain n'est pas testable hermétiquement).
-- **Tests** : formatage des valeurs et export CSV/JSON (R16, R18), fusion globale/workspace de la config (R1), lecture `.pgpass` (R3), FIFO/épinglage de l'historique (R20). La logique des panneaux est testée sur des `QueryResult` construits à la main, sans double de `PostgresClient`.
+- **Client**: PostgresNIO (SPM, pinned `.upToNextMinor`) imported into `Postgres/`, one `PostgresConnection` per window (not the library's `PostgresClient` pool, which needs a live `run()` task), behind a concrete `PostgresClient` type belonging to the feature (an `actor`: `connect`, `query(sql) -> AsyncThrowingStream<QueryEvent>`, `close`). No protocol: a single implementation (`architecture.md` P1). Rows are converted into `QueryValue` (`null`, `text`, `int`, `double`, `bool`, `date`, `json`, `bytes`, `raw(String)`) for the grid and the export; `QueryResult { columns: [ColumnInfo], rows: [[QueryValue]] }`.
+- **Execution and bounds**: `PostgresConnection.query(_:logger:)` with `PostgresQuery(unsafeSQL:)` for the editor's buffer — the extended protocol, one statement per execution (R10); SQL generated by Wraith goes through the same API with bound parameters and a `LIMIT 500`. `PostgresRowSequence` (an `AsyncSequence` with back-pressure) feeds the grid; at 50,000 rows the query is cancelled (R13). No portal, no SQL tokenizer.
+- **Cancellation**: `Task.cancel` (which discards the rows client-side) plus `pg_cancel_backend` over a second connection, the only public way to stop the query on the server side (R13).
+- **Secrets**: `SecretStore` (the `Workspace/` folder) with the key `wraith.postgres.<host>:<port>/<database>/<user>`; an `InMemorySecretStore` double in the tests (justified: the Keychain cannot be tested hermetically).
+- **Tests**: value formatting and CSV/JSON export (R16, R18), merging the global/workspace config (R1), reading `.pgpass` (R3), the history's FIFO/pinning (R20). The panels' logic is tested over hand-built `QueryResult` values, without a `PostgresClient` double.
 
-## Décisions
+## Decisions
 
-Voir [decisions.md](decisions.md).
+See [decisions.md](decisions.md).
