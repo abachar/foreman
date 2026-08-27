@@ -2,20 +2,23 @@ import AppKit
 import Foundation
 import Observation
 
-/// The native toolbar of a window (layout R30–R32).
+/// The native toolbar of a window (layout R30–R32), dressed as design R15 says (option A,
+/// decision 2026-08-27): `unifiedCompact`, one flat `ToolbarButton` per item on the tokens.
 ///
 /// Leading items, a flexible space, trailing items, in registration order; nothing of its own.
 @MainActor
 final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     private let layout: LayoutManager
+    private let theme: ThemeService
     /// A unique identifier per window: toolbars sharing one form a "family" and AppKit replays
     /// every insertion on each member, which asserts as soon as two windows differ in items
     /// (bug: the second window crashed, 2026-08-27).
     private let toolbar = NSToolbar(identifier: "dev.crafters.wraith.toolbar.\(UUID().uuidString)")
     private var menuItemsByMenu: [ObjectIdentifier: String] = [:]
 
-    init(layout: LayoutManager) {
+    init(layout: LayoutManager, theme: ThemeService) {
         self.layout = layout
+        self.theme = theme
         super.init()
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
@@ -25,7 +28,8 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     /// Installs the toolbar and keeps it in sync with the manager.
     func attach(to window: NSWindow) {
         window.toolbar = toolbar
-        window.toolbarStyle = .unified
+        // design R4, R15: the thin bar; its ground is the window's (R14).
+        window.toolbarStyle = .unifiedCompact
         sync()
     }
 
@@ -41,9 +45,14 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
                 toolbar.insertItem(withItemIdentifier: identifier, at: index)
             }
         }
+        let tokens = theme.tokens
         for item in toolbar.items {
-            guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue) else { continue }
-            item.image = Self.image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+            guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue),
+                let button = item.view as? ToolbarButton
+            else { continue }
+            button.tokens = tokens
+            button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+            button.fit()
         }
     }
 
@@ -68,41 +77,45 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         willBeInsertedIntoToolbar: Bool
     ) -> NSToolbarItem? {
         guard let descriptor = layout.toolbarItem(identifier.rawValue) else { return nil }
-        let item: NSToolbarItem
-        switch descriptor.kind {
-        case .action:
-            item = NSToolbarItem(itemIdentifier: identifier)
-            item.target = self
-            item.action = #selector(performItem(_:))
-        case .menu:
-            let menuItem = NSMenuToolbarItem(itemIdentifier: identifier)
-            menuItem.menu = menu(for: descriptor.id)
-            menuItem.showsIndicator = true
-            item = menuItem
-        }
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        let button = ToolbarButton()
+        button.identifier = NSUserInterfaceItemIdentifier(descriptor.id)
+        button.title = descriptor.title
+        button.tokens = theme.tokens
+        button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+        button.target = self
+        button.action = #selector(performButton(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        button.fit()
+        item.view = button
         item.label = descriptor.title
         item.toolTip = descriptor.title
-        item.image = Self.image(descriptor.icon, badge: layout.badge(of: descriptor.id))
-        item.isBordered = true
+        item.isBordered = false
         return item
     }
 
-    @objc private func performItem(_ sender: NSToolbarItem) {
-        guard let descriptor = layout.toolbarItem(sender.itemIdentifier.rawValue),
-            case .action(let perform, let secondaryMenu) = descriptor.kind
-        else { return }
-        // layout R31: a right click (or control-click) opens the secondary menu instead.
-        if let event = NSApp.currentEvent, event.type == .rightMouseUp || event.modifierFlags.contains(.control),
-            secondaryMenu != nil
-        {
-            let menu = menu(for: descriptor.id)
-            menuNeedsUpdate(menu)
-            if let view = sender.view {
-                NSMenu.popUpContextMenu(menu, with: event, for: view)
+    @objc private func performButton(_ sender: ToolbarButton) {
+        guard let id = sender.identifier?.rawValue, let descriptor = layout.toolbarItem(id) else { return }
+        let event = NSApp.currentEvent
+        let isSecondary = event.map { $0.type == .rightMouseUp || $0.modifierFlags.contains(.control) } ?? false
+        switch descriptor.kind {
+        case .menu:
+            popUp(menu(for: id), under: sender)
+        case .action(let perform, let secondaryMenu):
+            // layout R31: a right click (or control-click) opens the secondary menu instead.
+            if isSecondary {
+                if secondaryMenu != nil {
+                    popUp(menu(for: id), under: sender)
+                }
+                return
             }
-            return
+            perform()
         }
-        perform()
+    }
+
+    private func popUp(_ menu: NSMenu, under button: NSButton) {
+        menuNeedsUpdate(menu)
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY + 4), in: button)
     }
 
     // MARK: - Menus (built on demand, layout R30)
@@ -124,17 +137,13 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             entries = secondaryMenu?() ?? []
         }
         menu.removeAllItems()
-        if case .menu = descriptor.kind {
-            // NSMenuToolbarItem is a pull-down: its first item is the hidden title.
-            menu.addItem(NSMenuItem(title: "", action: nil, keyEquivalent: ""))
-        }
         for entry in entries {
             let item = NSMenuItem(title: entry.title, action: #selector(performEntry(_:)), keyEquivalent: "")
             item.target = self
             item.subtitle = entry.subtitle
             item.representedObject = Entry(perform: entry.perform)
             if case .dot(let color) = entry.badge {
-                item.image = Self.dot(color)
+                item.image = dot(color)
             }
             menu.addItem(item)
         }
@@ -154,14 +163,23 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     // MARK: - Images
 
-    /// The icon, with a colored dot in its corner when the item carries a badge (layout R31).
-    private static func image(_ icon: String, badge: ToolbarBadge) -> NSImage? {
+    /// The icon, with a colored dot in its corner when the item carries a badge (layout R31);
+    /// design R15: the dot is a state token, the icon is tinted by the button.
+    private func image(_ icon: String, badge: ToolbarBadge) -> NSImage? {
         guard let base = IconImage.resolve(icon) else { return nil }
         guard case .dot(let color) = badge else { return base }
+        let tint = theme.tokens.textPrimary.nsColor
+        let dot = theme.tokens.status(color).nsColor
         let size = NSSize(width: base.size.width + 4, height: base.size.height + 4)
         let image = NSImage(size: size, flipped: false) { rect in
-            base.draw(in: NSRect(x: 0, y: 0, width: base.size.width, height: base.size.height))
-            nsColor(color).setFill()
+            let tinted = base.copy() as? NSImage ?? base
+            tinted.isTemplate = false
+            tinted.lockFocus()
+            tint.set()
+            NSRect(origin: .zero, size: tinted.size).fill(using: .sourceAtop)
+            tinted.unlockFocus()
+            tinted.draw(in: NSRect(x: 0, y: 0, width: base.size.width, height: base.size.height))
+            dot.setFill()
             NSBezierPath(ovalIn: NSRect(x: rect.maxX - 7, y: rect.maxY - 7, width: 6, height: 6)).fill()
             return true
         }
@@ -169,21 +187,12 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         return image
     }
 
-    private static func dot(_ color: ToolbarBadge.BadgeColor) -> NSImage {
-        let image = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in
-            nsColor(color).setFill()
+    private func dot(_ color: ToolbarBadge.BadgeColor) -> NSImage {
+        let fill = theme.tokens.status(color).nsColor
+        return NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in
+            fill.setFill()
             NSBezierPath(ovalIn: rect).fill()
             return true
-        }
-        return image
-    }
-
-    private static func nsColor(_ color: ToolbarBadge.BadgeColor) -> NSColor {
-        switch color {
-        case .green: return .systemGreen
-        case .orange: return .systemOrange
-        case .blue: return .systemBlue
-        case .red: return .systemRed
         }
     }
 }

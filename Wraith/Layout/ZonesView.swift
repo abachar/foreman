@@ -9,7 +9,7 @@ struct ZonesView: NSViewControllerRepresentable {
     let onWindow: (NSWindow) -> Void
 
     func makeCoordinator() -> WorkspaceToolbar {
-        WorkspaceToolbar(layout: layout)
+        WorkspaceToolbar(layout: layout, theme: theme)
     }
 
     func makeNSViewController(context: Context) -> ZonesViewController {
