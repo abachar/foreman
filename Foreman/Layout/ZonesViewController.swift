@@ -42,6 +42,7 @@ final class ZonesViewController: GutterSplitViewController {
     private var isApplying = false
     private var hasShownFirstFrame = false
     private var frameObservations: [Task<Void, Never>] = []
+    private var titlebarObservation: NSKeyValueObservation?
 
     /// A controller given its own split view must hold its items before the view loads: an empty
     /// one asserts in `viewDidLoad` (checked on macOS 26, 2026-08-27), so everything is built here.
@@ -76,13 +77,39 @@ final class ZonesViewController: GutterSplitViewController {
     override func viewDidLayout() {
         super.viewDidLayout()
         applyRoom()
+        assertGround()
         if !hasShownFirstFrame, let window = view.window {
             hasShownFirstFrame = true
             configuration?.onWindow(window)
             observeFrame(of: window)
+            // design R14: the bridge resets the title area after its first update, before any
+            // layout pass or SwiftUI update happens (bug: a lighter toolbar until the first
+            // file was opened, 2026-08-29); the property itself is watched.
+            titlebarObservation = window.observe(\.titlebarAppearsTransparent, options: [.new]) {
+                [weak self] _, _ in
+                MainActor.assumeIsolated { self?.assertGround() }
+            }
             DispatchQueue.main.async { [weak self] in
                 self?.configuration?.onFirstFrame()
             }
+        }
+    }
+
+    /// design R14, R15: the title area paints the same ground as the gutters.
+    ///
+    /// SwiftUI's window bridge turns `titlebarAppearsTransparent` back off after its first update, which puts a
+    /// material band behind the toolbar (bug: 2026-08-27), so the three are re-asserted on every
+    /// update, every layout pass and whenever the property flips (2026-08-29).
+    private func assertGround() {
+        guard let window = view.window, let configuration else { return }
+        if window.backgroundColor != configuration.windowBackground {
+            window.backgroundColor = configuration.windowBackground
+        }
+        if !window.titlebarAppearsTransparent {
+            window.titlebarAppearsTransparent = true
+        }
+        if window.titlebarSeparatorStyle != .none {
+            window.titlebarSeparatorStyle = .none
         }
     }
 
@@ -110,20 +137,7 @@ final class ZonesViewController: GutterSplitViewController {
                 gutterView.gutterColor = configuration.windowBackground
             }
         }
-        // design R14, R15: the title area paints the same ground as the gutters. SwiftUI's window
-        // bridge turns `titlebarAppearsTransparent` back off after the first update, which puts a
-        // material band behind the toolbar (bug: 2026-08-27), so the three are re-asserted here.
-        if let window = view.window {
-            if window.backgroundColor != configuration.windowBackground {
-                window.backgroundColor = configuration.windowBackground
-            }
-            if !window.titlebarAppearsTransparent {
-                window.titlebarAppearsTransparent = true
-            }
-            if window.titlebarSeparatorStyle != .none {
-                window.titlebarSeparatorStyle = .none
-            }
-        }
+        assertGround()
         center.rootView = configuration.center
         Self.round(center.view, radius: configuration.islandRadius)
         for (side, slot) in slots {
