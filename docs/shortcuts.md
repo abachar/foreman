@@ -93,18 +93,16 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+c` | — | Copy the grid selection, or everything, as TSV | native (`Table`) | 🟢 (2026-08-27) |
 | *(no default)* | `postgres.history` | Query history sheet (`cmd+opt+h` from `postgres` R20 ruled out: it is macOS *Hide Others*) | global | 🟢 (2026-08-27) |
 
-## Browser (`browser` R2, R10) — M11
+## Browser (`browser` R1, R9) — M11
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+o` | `browser.open` | New browser tab on the home URL | global | ⚪ M11 |
-| `cmd+l` | `browser.address` | Focus the address field | tab(browser.page) | ⚪ M11 |
+| `cmd+shift+o` | `browser.open` | Open / activate the window's browser tab (needs `config.browser.url`) | global | ⚪ M11 |
 | `cmd+shift+r` | `browser.reload` | Reload (`cmd+r` stays the run palette, decision 2026-08-28) | tab(browser.page) | ⚪ M11 |
 | `cmd+[` / `cmd+]` | `browser.back` / `.forward` | Back / forward | tab(browser.page) | ⚪ M11 |
-| `cmd+=` / `cmd+-` / `cmd+0` | `browser.zoomIn` / `.zoomOut` / `.zoomReset` | Page zoom | tab(browser.page) | ⚪ M11 |
 | `cmd+opt+i` | `browser.inspect` | Web Inspector | tab(browser.page) | ⚪ M11 |
 | `cmd+e` | `browser.sendToAgent` | Send the URL to the active agent (`agents` R10b) | tab(browser.page) | ⚪ M11 |
-| `escape` | — | Address field: restore the URL, focus the page | native | ⚪ M11 |
+| `cmd+=` / `cmd+-` | — | Page zoom | native (WebKit) | ⚪ M11 |
 
 ## Free
 

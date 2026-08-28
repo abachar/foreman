@@ -1,6 +1,6 @@
 # Open questions — browser
 
-- [ ] Downloads (`WKDownload`): refused in v1 (R7). If a dev flow needs them (an export button), the target would be `~/Downloads` with a banner naming the file.
-- [ ] Find in page: `WKWebView.find(_:configuration:)` exists (macOS 13); a small field in the chrome on `cmd+f` is ~40 lines. Wait for the need.
-- [ ] Should the `run` feature offer *Open in Browser* on a command whose output prints a `http://localhost:…` URL? Would need to read the terminal output (`terminal` R4 says the process's output is never parsed). Probably a bookmark is enough.
-- [ ] Opening the markdown preview's external links inside Foreman instead of the system browser (`editor` R14): decide once the tab exists and is used.
+- [ ] A persistent session as an opt-in (`"browser": { "persistent": true }`) if logging in at every launch gets tiresome: `WKWebsiteDataStore(forIdentifier:)` with the UUID in `state.json`, ~15 lines.
+- [ ] Downloads (`WKDownload`): refused in v1 (R5). If a dev flow needs them, the target would be `~/Downloads` with a banner naming the file.
+- [ ] Find in page (`WKWebView.find(_:configuration:)`, macOS 13): ~40 lines when needed.
+- [ ] Opening the markdown preview's external links inside Foreman (`editor` R14): a second URL would break R1; decide once the tab is used.
