@@ -11,6 +11,14 @@ final class AgentsFeature {
         let id: String
         /// config R10: relative to the root when inside it.
         let cwd: String
+        /// git R32: the session diff base, kept across a relaunch of the app.
+        var session: Session? = nil
+    }
+
+    /// git R30, R32: what the session diff of a tab compares against.
+    nonisolated struct Session: Codable, Equatable, Sendable {
+        let repo: String
+        let base: String
     }
 
     /// agents R4, R6: what a click on the button does.
@@ -23,7 +31,11 @@ final class AgentsFeature {
     private let layout: LayoutManager
     private let workspace: Workspace
     private let terminal: TerminalService
+    private let git: GitFeature
     private var catalog: [Agent] = []
+    /// git R30: one snapshot per agent tab, taken at spawn and relaunch.
+    private var sessions: [TabID: Session] = [:]
+    private var snapshots: [TabID: Task<Void, Never>] = [:]
     private var visibleIDs: [String] = []
     /// agents R4: the tab the button reuses, the first one opened or restored for the agent.
     private var primaryTabs: [String: TabID] = [:]
@@ -36,10 +48,11 @@ final class AgentsFeature {
     private var detection: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.wraith", category: "agents")
 
-    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService) {
+    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, git: GitFeature) {
         self.layout = layout
         self.workspace = workspace
         self.terminal = terminal
+        self.git = git
         apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges() {
@@ -59,6 +72,9 @@ final class AgentsFeature {
         configWatch?.cancel()
         eventsWatch?.cancel()
         detection?.cancel()
+        for task in snapshots.values {
+            task.cancel()
+        }
     }
 
     // MARK: - Catalog and detection (agents R1–R3, US5)
@@ -205,6 +221,33 @@ final class AgentsFeature {
         syncBadge(id)
     }
 
+    // MARK: - Session diff (git R30–R32)
+
+    /// git R30: the working tree snapshotted when the agent's process starts; off the main actor,
+    /// the previous snapshot of the tab replaced.
+    private func takeSnapshot(of tab: TabID) {
+        guard let cwd = terminal.tab(tab)?.cwd else { return }
+        snapshots[tab]?.cancel()
+        snapshots[tab] = Task { [weak self, git] in
+            guard let snapshot = await git.snapshot(for: cwd), !Task.isCancelled, let self else { return }
+            sessions[tab] = Session(repo: snapshot.repo, base: snapshot.tree)
+        }
+    }
+
+    /// git R31a: one entry per agent tab of the window that has a snapshot.
+    private func sessionEntries(for id: String) -> [ToolbarMenuEntry] {
+        let tabs = agentOfTab.filter { $0.value == id }.keys
+            .filter { sessions[$0] != nil && layout.model.owner(of: $0) != nil }
+            .sorted { $0.uuid.uuidString < $1.uuid.uuidString }
+        return tabs.enumerated().map { index, tab in
+            let title = index == 0 ? "Session Changes" : "Session Changes (\(index + 1))"
+            return ToolbarMenuEntry(id: "agents.\(id).session.\(tab.uuid.uuidString)", title: title) { [weak self] in
+                guard let self, let session = sessions[tab], let agent = agent(id) else { return }
+                git.openSessionDiff(repo: session.repo, base: session.base, title: agent.title)
+            }
+        }
+    }
+
     /// agents R5: the secondary menu of the button.
     private func menu(for id: String) -> [ToolbarMenuEntry] {
         var entries = [
@@ -220,6 +263,7 @@ final class AgentsFeature {
                     [weak self] in self?.spawn(id, cwd: repo, primary: false)
                 })
         }
+        entries += sessionEntries(for: id)
         return entries
     }
 
@@ -241,6 +285,7 @@ final class AgentsFeature {
         if primaryTabs[agentID] == nil {
             primaryTabs[agentID] = id
         }
+        sessions[id] = decoded.session
         return terminal.restore(
             id, kind: Self.kind(of: agentID), title: agent.title, command: agent.command,
             cwd: Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root))
@@ -248,13 +293,16 @@ final class AgentsFeature {
 
     private func serialize(_ id: TabID, agentID: String) -> String? {
         guard let tab = terminal.tab(id) else { return nil }
-        let payload = Payload(id: agentID, cwd: Workspace.persistedPath(for: tab.cwd, root: workspace.root))
+        let payload = Payload(
+            id: agentID, cwd: Workspace.persistedPath(for: tab.cwd, root: workspace.root), session: sessions[id])
         // A two-field Codable struct always encodes.
         return String(decoding: (try? JSONEncoder().encode(payload)) ?? Data(), as: UTF8.self)
     }
 
     private func closed(_ id: TabID) {
         terminal.closed(id)
+        sessions[id] = nil
+        snapshots.removeValue(forKey: id)?.cancel()
         guard let agentID = agentOfTab.removeValue(forKey: id) else { return }
         if primaryTabs[agentID] == id {
             primaryTabs[agentID] = agentOfTab.first { $0.value == agentID }?.key
@@ -271,8 +319,11 @@ final class AgentsFeature {
             tab = id
         }
         guard let agentID = agentOfTab[tab] else { return }
-        if case .activated = event {
-            lastActivated = tab
+        switch event {
+        case .activated: lastActivated = tab
+        // git R30: at every start, whoever relaunched (the button or the surface's own button).
+        case .started: takeSnapshot(of: tab)
+        case .exited, .bell, .closed: break
         }
         syncBadge(agentID)
     }

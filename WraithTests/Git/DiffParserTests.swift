@@ -166,17 +166,29 @@ struct DiffParserTests {
         #expect(GitDiffPayload(repo: ".", source: .staged(path: "a.swift")).title == "a.swift (staged)")
         #expect(
             GitDiffPayload(repo: ".", source: .commit(sha: "abc1234def", subject: "fix: x")).title == "abc1234 fix: x")
+        // git R31: the session diff, two trees, the new side read from disk.
+        let session = GitDiffPayload(repo: ".", source: .session(base: "deadbeef", title: "Claude"))
+        #expect(session.title == "Claude · session")
         #expect(
-            GitDiffPayload(repo: ".", source: .workingTree(path: "-weird")).arguments
+            session.arguments(currentTree: "cafe") == [
+                "diff", "--no-color", "--no-ext-diff", "-M", "deadbeef", "cafe", "--",
+            ])
+        #expect(!session.source.isImmutable)
+        let file = FileDiff.added(path: "a.swift", content: "x")
+        #expect(session.oldObject(for: file) == nil)
+        #expect(session.newObjectIsWorktree)
+        #expect(GitDiffPayload.decode(session.encoded()) == session)
+        #expect(
+            GitDiffPayload(repo: ".", source: .workingTree(path: "-weird")).arguments()
                 == ["diff", "--no-color", "--no-ext-diff", "-M", "--", "-weird"])
         #expect(
-            GitDiffPayload(repo: ".", source: .staged(path: "a")).arguments
+            GitDiffPayload(repo: ".", source: .staged(path: "a")).arguments()
                 == ["diff", "--cached", "--no-color", "--no-ext-diff", "-M", "--", "a"])
         #expect(
-            GitDiffPayload(repo: ".", source: .commit(sha: "abc", subject: "s")).arguments
+            GitDiffPayload(repo: ".", source: .commit(sha: "abc", subject: "s")).arguments()
                 == ["show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc", "--"])
         #expect(
-            GitDiffPayload(repo: ".", source: .commitFile(sha: "abc", subject: "s", path: "p")).arguments
+            GitDiffPayload(repo: ".", source: .commitFile(sha: "abc", subject: "s", path: "p")).arguments()
                 == ["show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc", "--", "p"])
     }
 

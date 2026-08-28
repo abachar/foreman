@@ -622,6 +622,9 @@ final class GitFeature {
             sendToAgent(.literal(String(sha.prefix(7))))
         case .workingTree(let path), .staged(let path), .commitFile(_, _, let path):
             sendToAgent(.path(fileURL(path, in: payload.repo), lines: nil, isDirectory: false))
+        case .session:
+            // No single path: the lines have their own menu.
+            break
         }
     }
 
@@ -664,6 +667,41 @@ final class GitFeature {
                 sendLine: { [weak self] path, line in
                     self?.sendLineToAgent(path: path, line: line, in: diffModel.payload.repo)
                 }))
+    }
+
+    // MARK: - Session diff (git R30–R32)
+
+    /// git R30: the snapshot of the repo containing `cwd`; `nil` outside any repo or without git.
+    func snapshot(for cwd: URL) async -> (repo: String, tree: String)? {
+        guard let repo = await repo(containing: cwd), let client = await client(for: repo) else { return nil }
+        do {
+            return (repo.id, try await client.snapshotTree())
+        } catch {
+            logger.error("snapshot failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// git R31a: the session diff tab, reused when already open.
+    func openSessionDiff(repo: String, base: String, title: String) {
+        openDiff(GitDiffPayload(repo: repo, source: .session(base: base, title: title)), preview: false)
+    }
+
+    /// The known repo `cwd` is under (the deepest), the discovery when the panel never ran, or
+    /// `cwd` itself when it has a `.git` entry (a worktree, agents R12).
+    private func repo(containing cwd: URL) async -> GitRepo? {
+        let path = cwd.standardizedFileURL.path(percentEncoded: false)
+        func deepest(_ repos: [GitRepo]) -> GitRepo? {
+            repos.filter {
+                path == $0.url.path(percentEncoded: false) || path.hasPrefix($0.url.path(percentEncoded: false) + "/")
+            }
+            .max { $0.url.path().count < $1.url.path().count }
+        }
+        if let repo = deepest(model.sections.map(\.repo)) { return repo }
+        if let repo = deepest(await GitRepo.discover(root: workspace.root, declared: workspace.config.repos)) {
+            return repo
+        }
+        return GitRepo.hasGitEntry(cwd) ? GitRepo(url: cwd, root: workspace.root) : nil
     }
 
     /// The repo's `GitCLI`, created on demand for a tab restored before the panel ran (git R26).

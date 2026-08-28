@@ -299,10 +299,12 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         /// `show <sha>`, immutable (R17).
         case commit(sha: String, subject: String)
         case commitFile(sha: String, subject: String, path: String)
+        /// git R31: the working tree against the tree snapshotted when an agent started.
+        case session(base: String, title: String)
 
         var isImmutable: Bool {
             switch self {
-            case .workingTree, .staged: return false
+            case .workingTree, .staged, .session: return false
             case .commit, .commitFile: return true
             }
         }
@@ -310,7 +312,7 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         var path: String? {
             switch self {
             case .workingTree(let path), .staged(let path), .commitFile(_, _, let path): return path
-            case .commit: return nil
+            case .commit, .session: return nil
             }
         }
     }
@@ -326,17 +328,20 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         case .staged(let path): return "\(path) (staged)"
         case .commit(let sha, let subject): return "\(sha.prefix(7)) \(subject)"
         case .commitFile(let sha, _, let path): return "\(path) @ \(sha.prefix(7))"
+        case .session(_, let title): return "\(title) · session"
         }
     }
 
-    /// git R14, R27: the command; `show` prints the subject on its first line (read by the model).
-    var arguments: [String] {
+    /// git R14, R27, R31: the command; `show` prints the subject on its first line (read by the
+    /// model); a session diff compares its base with `currentTree`, rebuilt by the model.
+    func arguments(currentTree: String? = nil) -> [String] {
         let options = ["--no-color", "--no-ext-diff", "-M"]
         switch source {
         case .workingTree(let path): return ["diff"] + options + ["--", path]
         case .staged(let path): return ["diff", "--cached"] + options + ["--", path]
         case .commit(let sha, _): return ["show", "--format=%s"] + options + [sha, "--"]
         case .commitFile(let sha, _, let path): return ["show", "--format=%s"] + options + [sha, "--", path]
+        case .session(let base, _): return ["diff"] + options + [base, currentTree ?? base, "--"]
         }
     }
 

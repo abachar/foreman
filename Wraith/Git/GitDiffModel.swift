@@ -110,7 +110,10 @@ final class GitDiffModel {
     private static func fetch(
         _ payload: GitDiffPayload, client: GitCLI, repo: GitRepo
     ) async throws(GitError) -> GitDiff {
-        let output = try await client.run(payload.arguments)
+        // git R31: the current tree is rebuilt on every refresh.
+        let currentTree: String? =
+            if case .session = payload.source { try await client.snapshotTree() } else { nil }
+        let output = try await client.run(payload.arguments(currentTree: currentTree))
         var diff = DiffParser.parse(output.stdout)
         if case .workingTree(let path) = payload.source, diff.files.isEmpty,
             let content = try? String(contentsOf: repo.url.appending(path: path), encoding: .utf8)
@@ -247,22 +250,23 @@ extension GitDiffPayload {
         case .workingTree: return ":\(path)"
         case .staged: return "HEAD:\(path)"
         case .commit(let sha, _), .commitFile(let sha, _, _): return "\(sha)^:\(path)"
+        case .session(let base, _): return "\(base):\(path)"
         }
     }
 
     nonisolated func newObject(for file: FileDiff) -> String? {
         guard let path = file.newPath else { return nil }
         switch source {
-        case .workingTree: return nil
+        case .workingTree, .session: return nil
         case .staged: return ":\(path)"
         case .commit(let sha, _), .commitFile(let sha, _, _): return "\(sha):\(path)"
         }
     }
 
     nonisolated var newObjectIsWorktree: Bool {
-        if case .workingTree = source {
-            return true
+        switch source {
+        case .workingTree, .session: return true
+        case .staged, .commit, .commitFile: return false
         }
-        return false
     }
 }

@@ -139,22 +139,43 @@ actor GitCLI {
     // MARK: - Running (git R26, R28)
 
     /// Runs git in the repo; a non-zero exit is classified (R28), a locked index retried once.
-    func run(_ arguments: [String], kind: Kind = .read) async throws(GitError) -> GitOutput {
+    ///
+    /// `environment` adds to git's variables for this run only (git R30: `GIT_INDEX_FILE`).
+    func run(
+        _ arguments: [String], kind: Kind = .read, environment: [String: String] = [:]
+    ) async throws(GitError)
+        -> GitOutput
+    {
         if kind == .read {
-            return try await runRetryingLock(arguments, kind: kind)
+            return try await runRetryingLock(arguments, kind: kind, environment: environment)
         }
         await acquireWrite()
         defer { releaseWrite() }
-        return try await runRetryingLock(arguments, kind: kind)
+        return try await runRetryingLock(arguments, kind: kind, environment: environment)
     }
 
-    private func runRetryingLock(_ arguments: [String], kind: Kind) async throws(GitError) -> GitOutput {
+    /// git R30: a tree of the whole working tree (tracked, modified, untracked; ignored left out),
+    /// written through a temporary index so the user's index is never touched (R29).
+    func snapshotTree() async throws(GitError) -> String {
+        let index = FileManager.default.temporaryDirectory.appending(path: "wraith-index-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: index) }
+        let environment = ["GIT_INDEX_FILE": index.path(percentEncoded: false)]
+        _ = try await run(["add", "-A", "--", "."], environment: environment)
+        return try await run(["write-tree"], environment: environment).text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func runRetryingLock(
+        _ arguments: [String], kind: Kind, environment: [String: String]
+    )
+        async throws(GitError) -> GitOutput
+    {
         do {
-            return try await execute(arguments, kind: kind)
+            return try await execute(arguments, kind: kind, environment: environment)
         } catch .commandFailed(let stderr) where GitError.isIndexLocked(stderr: stderr) {
             logger.info("index.lock held, retrying once")
             guard (try? await Task.sleep(for: Self.indexLockRetry)) != nil else { throw .cancelled }
-            return try await execute(arguments, kind: kind)
+            return try await execute(arguments, kind: kind, environment: environment)
         }
     }
 
@@ -176,12 +197,17 @@ actor GitCLI {
         writeWaiters.removeFirst().resume()
     }
 
-    private func execute(_ arguments: [String], kind: Kind) async throws(GitError) -> GitOutput {
+    private func execute(
+        _ arguments: [String], kind: Kind, environment extra: [String: String]
+    ) async throws(GitError)
+        -> GitOutput
+    {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
         process.currentDirectoryURL = repo
-        process.environment = Self.environment(from: environment, forRead: kind == .read)
+        process.environment = Self.environment(from: environment, forRead: kind == .read).merging(extra) { _, own in own
+        }
         process.standardInput = FileHandle.nullDevice
         let stdout = Pipe()
         let stderr = Pipe()

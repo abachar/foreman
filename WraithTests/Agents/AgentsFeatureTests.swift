@@ -26,6 +26,18 @@ struct AgentsFeatureTests {
         #expect(try JSONDecoder().decode(AgentsFeature.Payload.self, from: data) == payload)
         #expect(AgentsFeature.kind(of: "claude") == "agent.claude")
     }
+
+    /// git R32: the session base survives a relaunch of the app.
+    @Test func payloadKeepsTheSessionSnapshot() throws {
+        let payload = AgentsFeature.Payload(
+            id: "claude", cwd: "",
+            session: AgentsFeature.Session(repo: ".", base: "4b825dc642cb6eb9a060e54bf8d69288fbee4904"))
+        let data = try JSONEncoder().encode(payload)
+        #expect(try JSONDecoder().decode(AgentsFeature.Payload.self, from: data) == payload)
+        // A payload written before M10 still decodes.
+        let old = try JSONDecoder().decode(AgentsFeature.Payload.self, from: Data(#"{"id":"pi","cwd":"x"}"#.utf8))
+        #expect(old.session == nil)
+    }
 }
 
 /// agents R10, R10a: the mention text and the active agent choice.
