@@ -1,6 +1,6 @@
 # Code conventions
 
-> How Wraith's code is written, whichever agent or human writes it. The *what* is in [`specs/`](specs/), the *with what* and the *how it is assembled* in [`architecture.md`](architecture.md).
+> How Foreman's code is written, whichever agent or human writes it. The *what* is in [`specs/`](specs/), the *with what* and the *how it is assembled* in [`architecture.md`](architecture.md).
 
 ## Language
 
@@ -14,14 +14,14 @@ No accents and no non-ASCII characters in code identifiers and file names.
 ## Toolchain
 
 - Swift 6, language mode 6, strict concurrency. Apple Silicon. Deployment target = **the latest stable version of macOS** (26 when the project was created); we move up when the author's machine moves up, never any conditional code for an earlier version.
-- The Xcode project (`Wraith.xcodeproj`, format 110, created with Xcode 27 beta) is the source of truth for the build; SwiftPM is only used for dependencies. Settings frozen in the project: Swift 6, strict concurrency `complete`, warnings as errors, approachable concurrency + `MainActor` isolation by default, App Sandbox disabled.
-- Warnings = errors. `swift format lint --strict --recursive Wraith WraithTests` must pass (`.swift-format` at the root: 4 spaces, width 120).
+- The Xcode project (`Foreman.xcodeproj`, format 110, created with Xcode 27 beta) is the source of truth for the build; SwiftPM is only used for dependencies. Settings frozen in the project: Swift 6, strict concurrency `complete`, warnings as errors, approachable concurrency + `MainActor` isolation by default, App Sandbox disabled.
+- Warnings = errors. `swift format lint --strict --recursive Foreman ForemanTests` must pass (`.swift-format` at the root: 4 spaces, width 120).
 
 ## Files
 
 - One file = one main type, named after it. Extensions in `<Type>+<Subject>.swift`.
 - Order within a file: `import`, main type, extensions, private helper types.
-- `import`: only what is used; sorted system → Apple → third-party → Wraith. No `@_exported import`, no `@testable` outside tests.
+- `import`: only what is used; sorted system → Apple → third-party → Foreman. No `@_exported import`, no `@testable` outside tests.
 - No dead code: no "just in case" file, no commented-out block, no `#if` other than `#if DEBUG`.
 
 ## Naming
@@ -37,7 +37,7 @@ No accents and no non-ASCII characters in code identifiers and file names.
 - `let` by default. Value types by default; `class`/`actor` when identity or isolation is required. A `class` is `final` unless justified.
 - `internal` by default, `private` as soon as possible. `public`/`open`: useless (a single target).
 - No tuple with more than two components in a signature: a named `struct`.
-- `switch` on a Wraith `enum`: no `default`. `default` allowed on a third-party `enum`.
+- `switch` on a Foreman `enum`: no `default`. `default` allowed on a third-party `enum`.
 - `guard` and early exit; no more than 3 levels of nesting.
 
 ## Comments
@@ -52,7 +52,7 @@ No accents and no non-ASCII characters in code identifiers and file names.
 - One `enum … : Error` per feature, which may wrap the third-party error (`case underlying(Error)`). No thrown `String`, no hand-made `NSError`.
 - `try!`, `as!`, force unwrap: forbidden outside tests and commented constant literals. `fatalError`: programming invariants only, never on external data.
 - No silent `catch {}`: handle, propagate, or log with context.
-- `os.Logger`, one per feature, `subsystem: "dev.crafters.wraith"`. `print` forbidden outside the CLI script. No logging in a hot loop.
+- `os.Logger`, one per feature, `subsystem: "dev.crafters.foreman"`. `print` forbidden outside the CLI script. No logging in a hot loop.
 - Never a secret, file content, full SQL or terminal output in a log. Paths as `privacy: .private`.
 
 ## Concurrency
@@ -93,7 +93,7 @@ No accents and no non-ASCII characters in code identifiers and file names.
 - Branches `feat/<domain>-<subject>`, `fix/…`, `docs/…`, `chore/…`; `<domain>` = spec folder.
 - Conventional commits `type(scope): subject`, imperative, ≤ 72 characters; the body says *why* and cites the spec.
 - A commit builds and passes the tests. No "wip" and no history rewriting on a shared branch.
-- Never committed: `xcuserdata/`, `DerivedData/`, `.build/`, `.DS_Store`, `.wraith/state.json`, secrets. `Package.resolved` (inside the `.xcodeproj`) is committed.
+- Never committed: `xcuserdata/`, `DerivedData/`, `.build/`, `.DS_Store`, `.foreman/state.json`, secrets. `Package.resolved` (inside the `.xcodeproj`) is committed.
 - A behaviour change updates the spec (rule, decision) in the same commit.
 
 ## Checklist before pushing

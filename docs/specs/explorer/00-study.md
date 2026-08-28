@@ -19,7 +19,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 - R1 — The root of the tree is the workspace root; it is not shown as a node, its children are the first level.
 - R2 — Sorting: folders first, then files, each by case-insensitive name (`localizedStandardCompare` order, so `file2 < file10`).
-- R3 — Everything is visible except `.git/` (and `.wraith/state.json`, `.DS_Store`). Dotfiles are shown.
+- R3 — Everything is visible except `.git/` (and `.foreman/state.json`, `.DS_Store`). Dotfiles are shown.
 - R4 — Entries **ignored by git** (information received from `git`, R15) are greyed out. Folders on the shared exclusion list (`architecture.md`: `node_modules`, `target`, `.build`…) are greyed out even without git information, and never expanded automatically (R11).
 - R5 — A "hide ignored files" toggle (the panel menu, persisted in `state.json`) hides the greyed-out entries. Default: visible.
 - R6 — Symlinks: shown with a dedicated icon, expandable when they point to a folder, never followed during a recursive operation (deletion, refresh).
@@ -68,7 +68,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 ## Technical options
 
-- **Folder**: `Sources/Wraith/Explorer/`.
+- **Folder**: `Sources/Foreman/Explorer/`.
 - **View**: `NSOutlineView` in an `NSViewRepresentable` (platform first, `architecture.md` P3), with a lazy data source: `numberOfChildren`/`child(index:)` read the level at the first expansion, `reloadItem(_:reloadChildren:)` for R9. An item's identity is its relative path.
 - **Model**: `FileNode` (a `struct`, `Identifiable` by relative path): name, kind (file/dir/symlink), isIgnored, children loaded or not. `ExplorerModel` (`@MainActor @Observable`) holds the selection, the badges and the toggles; reading a level is a plain `FileManager.contentsOfDirectory(resourceKeys: isDirectory, isSymbolicLink, isHidden)` in a `Task` off the main actor.
 - **Operations**: `FileManager` (`createDirectory`, `moveItem`, `trashItem`), errors wrapped in `ExplorerError`.

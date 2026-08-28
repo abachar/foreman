@@ -7,11 +7,11 @@ One folder per domain, **in implementation order** (each row depends only on the
 | # | Folder | Domain | Depends on | Milestone |
 |---|---|---|---|---|
 | 1 | [product](product/) | vision, target user, non-goals, no free-form shell | — | M0 |
-| 2 | [config](config/) | `.wraith/config.json`, `state.json`, Keychain, hot reload | product | M0 |
+| 2 | [config](config/) | `.foreman/config.json`, `state.json`, Keychain, hot reload | product | M0 |
 | 3 | [layout](layout/) | zones, splits, tab groups, PanelManager, ShortcutRegistry, toolbar, home screen | config | M0 |
 | 4 | [explorer](explorer/) | file tree, FSEvents, CRUD, git badges | layout | M1 |
 | 5 | [editor](editor/) | viewer/editor, `Highlight`, markdown, quick open, search; formatting (`01-study-formatter.md`) | explorer, `Palette`, `Highlight` | M1, M7 |
-| 6 | [terminal](terminal/) | PTY owned by Wraith + SwiftTerm surface, `TerminalService` (one tab = one process, no shell) | layout | M2 |
+| 6 | [terminal](terminal/) | PTY owned by Foreman + SwiftTerm surface, `TerminalService` (one tab = one process, no shell) | layout | M2 |
 | 7 | [agents](agents/) | CLI agents (Claude Code, Antigravity, OpenCode): toolbar buttons, one tab per agent | terminal | M2 |
 | 8 | [run](run/) | workspace commands → terminal surface, `cmd+r` palette, ▶ Run button | terminal, `Palette` | M3 |
 | 9 | [git](git/) | changes, diff, history, remote, branches | explorer, editor (`Editor.open`), `Highlight` | M4 |

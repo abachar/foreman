@@ -8,7 +8,7 @@
 
 ## Style block (paste before every scene)
 
-Generate a **flat, sharp interface screenshot** of a macOS development application called **Wraith**. Size **1600 × 1000 pixels**, 16:10, pixel-sharp, no perspective, no reflection, no desktop behind it, no MacBook frame: the window itself fills the whole frame. No macOS menu bar, no status bar, no logo, no illustration, no VS Code-style vertical icon strip.
+Generate a **flat, sharp interface screenshot** of a macOS development application called **Foreman**. Size **1600 × 1000 pixels**, 16:10, pixel-sharp, no perspective, no reflection, no desktop behind it, no MacBook frame: the window itself fills the whole frame. No macOS menu bar, no status bar, no logo, no illustration, no VS Code-style vertical icon strip.
 
 Visual style, mandatory — the "Islands" style of IntelliJ IDEA's Dark theme:
 
@@ -59,7 +59,7 @@ Only `Explorer` outlined; the `▶ Run` button has a **red dot**. Centre island:
 
 ## Scene 7 — The home screen
 
-Only `Explorer` outlined. Left: the Explorer. Centre island **without tabs**: an empty group showing the home screen, everything centred on the island's background — the folder name `wraith` in title size; a row of four flat agent buttons; a list `Open file ⌘P`, `Run command ⌘R`, `Explorer ⌘⇧E`, `Git ⌘⇧G`, `History ⌘⇧H`, `Database ⌘⇧B`, `Split ⌘D` with the shortcuts in secondary grey; below, `Recent` with five file paths in secondary grey. No illustration, no logo.
+Only `Explorer` outlined. Left: the Explorer. Centre island **without tabs**: an empty group showing the home screen, everything centred on the island's background — the folder name `foreman` in title size; a row of four flat agent buttons; a list `Open file ⌘P`, `Run command ⌘R`, `Explorer ⌘⇧E`, `Git ⌘⇧G`, `History ⌘⇧H`, `Database ⌘⇧B`, `Split ⌘D` with the shortcuts in secondary grey; below, `Recent` with five file paths in secondary grey. No illustration, no logo.
 
 ## Scene 8 — Banners and the markdown preview
 

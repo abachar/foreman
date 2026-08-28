@@ -2,9 +2,9 @@
 
 ## Goal
 
-Feature `agents`: launch and come back to the **CLI agents** (Claude Code, Antigravity CLI, OpenCode…) in a terminal tab dedicated to each agent, with one click on a toolbar button (`layout` R30). Built-in agents are known to Wraith and shown when they are installed; `config.agents` adds to them or overrides them.
+Feature `agents`: launch and come back to the **CLI agents** (Claude Code, Antigravity CLI, OpenCode…) in a terminal tab dedicated to each agent, with one click on a toolbar button (`layout` R30). Built-in agents are known to Foreman and shown when they are installed; `config.agents` adds to them or overrides them.
 
-This is **not** `run`: a `run` command is defined by the user and lives in the palette; an agent is a tool Wraith knows, with its button, its icon and its reused tab.
+This is **not** `run`: a `run` command is defined by the user and lives in the palette; an agent is a tool Foreman knows, with its button, its icon and its reused tab.
 
 ## User stories
 

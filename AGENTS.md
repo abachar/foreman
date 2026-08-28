@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Wraith is a native macOS app written in Swift 6, developed entirely by AI agents (Claude Code, Antigravity, OpenCode…). This file is what every agent reads first. It is short on purpose.
+Foreman is a native macOS app written in Swift 6, developed entirely by AI agents (Claude Code, Antigravity, OpenCode…). This file is what every agent reads first. It is short on purpose.
 
 ## Read before writing code
 
@@ -24,9 +24,9 @@ The failure mode we guard against is an agent rewriting what a library or Apple 
 
 ## Working rules
 
-- Small commits, one feature at a time. A commit builds and passes tests (`xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation` — SwiftTerm ships a build-tool plugin the CLI cannot approve interactively, and its Metal renderer needs the Metal toolchain: `xcodebuild -downloadComponent MetalToolchain` once), passes `swift format lint --strict --recursive Wraith WraithTests`.
+- Small commits, one feature at a time. A commit builds and passes tests (`xcodebuild test -scheme Foreman -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation` — SwiftTerm ships a build-tool plugin the CLI cannot approve interactively, and its Metal renderer needs the Metal toolchain: `xcodebuild -downloadComponent MetalToolchain` once), passes `swift format lint --strict --recursive Foreman ForemanTests`.
 - Conventional commits in English (`feat(git): …`), body says *why* and cites the spec.
-- Never commit secrets, `.build/`, `.DS_Store`, `.wraith/state.json`.
+- Never commit secrets, `.build/`, `.DS_Store`, `.foreman/state.json`.
 - Git identity for commits: `a.bachar@hotmail.fr`.
 - Never read or list private keys under `~/.ssh`.
 - Use absolute paths in shell commands (the user's shell rewrites relative `cd`).

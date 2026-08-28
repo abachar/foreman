@@ -1,6 +1,6 @@
 # Architecture
 
-> How Wraith is put together: principles, structure, retained dependencies, architecture rules. The *what* is in [`specs/`](specs/), the code style in [`coding-rules.md`](coding-rules.md). This file changes when an architecture decision changes; every change is dated in the `decisions.md` of the domain concerned.
+> How Foreman is put together: principles, structure, retained dependencies, architecture rules. The *what* is in [`specs/`](specs/), the code style in [`coding-rules.md`](coding-rules.md). This file changes when an architecture decision changes; every change is dated in the `decisions.md` of the domain concerned.
 
 ## Principles
 
@@ -40,8 +40,8 @@ Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
 One Xcode project (SwiftUI macOS app, without App Sandbox: we read the whole disk and launch processes), one app target, one test target, one folder per feature. No internal framework, no "plugin" targets, no dynamic loading.
 
 ```
-Wraith.xcodeproj
-Wraith/
+Foreman.xcodeproj
+Foreman/
 ├── App/          # entry point, windows, menus, ThemeService
 ├── Workspace/    # config.json, state.json, FSWatch, Keychain
 ├── Layout/       # splits, tab groups, PanelManager, ShortcutRegistry, toolbar, home screen
@@ -49,8 +49,8 @@ Wraith/
 ├── Highlight/    # tree-sitter → attributes, shared (editor, diff, sql)
 ├── Terminal/     # SwiftTerm surface + process, TerminalService
 ├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/
-WraithTests/         # same split
-cli/wraith           # shell script: `open -a Wraith "$(pwd)"`
+ForemanTests/         # same split
+cli/foreman           # shell script: `open -a Foreman "$(pwd)"`
 ```
 
 - Direction of dependencies, by convention: `App` → features → shared folders (`Layout`, `Palette`, `Highlight`, `Terminal`, `Workspace`). A feature may call another feature directly (`Git` calls `Editor.open(path)`); we avoid cycles, that's all.
@@ -63,10 +63,10 @@ cli/wraith           # shell script: `open -a Wraith "$(pwd)"`
 - **`makeView` is lazy** and side-effect free; work starts when the panel is activated and stops when it is deactivated (P4). What `activate()` starts, `deactivate()` stops.
 - **Shared services, created once in `App` and injected**: `FSWatchService` (one FSEvents stream, multiplexed, ~300 ms debounce), `ThemeService`, `SecretStore`, `TerminalService`, `Palette`, `Highlight`. No `static let shared`. No disk polling.
 - **No `EventBus`.** A notification between features is a closure or an `AsyncStream` exposed by the owner of the information (`Git` exposes `statusChanges`, `Explorer` subscribes to it).
-- **Config by section**: each feature decodes its own section of `.wraith/config.json`; `Workspace` does not know the schemas.
+- **Config by section**: each feature decodes its own section of `.foreman/config.json`; `Workspace` does not know the schemas.
 - **Namespaced, stable identifiers** (`git.status`, `agent.claude`): they appear in `state.json` and in shortcuts; changing one is a migration.
 - **Third-party types stay near their use.** A view or a persisted model never handles a `PostgresRow` or a tree-sitter `Node`; the feature converts to its own type where the UI or persistence needs it — and only there.
-- **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `DerivedData`, `.wraith/state.json`).
+- **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `DerivedData`, `.foreman/state.json`).
 
 ## Retained dependencies
 
@@ -90,7 +90,7 @@ Rejected: libghostty (zig build, unstable API, nothing the product needs), libgi
 
 ## Security
 
-- Wraith writes no secret into the repository, `.wraith/`, logs or errors. The Postgres password comes from the Keychain, or from `postgres.password` in `config.json` when the user chose to write it there (config decision 2026-08-27, local dev).
+- Foreman writes no secret into the repository, `.foreman/`, logs or errors. The Postgres password comes from the Keychain, or from `postgres.password` in `config.json` when the user chose to write it there (config decision 2026-08-27, local dev).
 - No command built by interpolating values coming from another file or from a program's output. `Process` with `arguments: [String]`. `run`/`agents` commands are the user's text, passed as is to `$SHELL -l -c`.
 - Every path coming from the config, the state or an event is checked to be under the workspace root before writing.
 - No unrequested network access: no telemetry, no updates, no remote resource in the markdown preview.

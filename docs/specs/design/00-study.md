@@ -2,14 +2,14 @@
 
 ## Goal
 
-Give Wraith a **chosen** visual identity, instead of the system default. Today's fully native rendering — translucent materials (`.bar`), macOS 26's Liquid Glass, system chrome — is not what the author wants to look at eight hours a day. The target is IntelliJ's **"Islands"** style in the **Dark** theme: a flat dark ground, zones (editor, panels, terminal) laid on it like rounded-corner islands separated by gutters, a flat opaque toolbar, flat tabs, thin bars, **a single accent**, and **no transparency at all**.
+Give Foreman a **chosen** visual identity, instead of the system default. Today's fully native rendering — translucent materials (`.bar`), macOS 26's Liquid Glass, system chrome — is not what the author wants to look at eight hours a day. The target is IntelliJ's **"Islands"** style in the **Dark** theme: a flat dark ground, zones (editor, panels, terminal) laid on it like rounded-corner islands separated by gutters, a flat opaque toolbar, flat tabs, thin bars, **a single accent**, and **no transparency at all**.
 
-A **transverse** domain: it ships no feature. It defines the visual tokens and says which surface carries which. The code lives in `Wraith/App/` (an extension of `ThemeService`) and in the existing views; there is no `Design/` folder and no second theme service.
+A **transverse** domain: it ships no feature. It defines the visual tokens and says which surface carries which. The code lives in `Foreman/App/` (an extension of `ThemeService`) and in the existing views; there is no `Design/` folder and no second theme service.
 
 ## User stories
 
-- US1 — I open Wraith: the window is a flat dark ground, the editor, the explorer and the terminal are distinct rounded blocks, and nothing lets the desktop or a window underneath show through.
-- US2 — I change a color in `.wraith/config.json`: it applies without a restart, like the rest of the config.
+- US1 — I open Foreman: the window is a flat dark ground, the editor, the explorer and the terminal are distinct rounded blocks, and nothing lets the desktop or a window underneath show through.
+- US2 — I change a color in `.foreman/config.json`: it applies without a restart, like the rest of the config.
 - US3 — The terminal has exactly the same black as the island containing it: I do not see a lighter or darker rectangle inside the block.
 - US4 — I look at a window with four tabs and three panels: I can tell at a glance which group is active, because it is the only thing carrying the accent.
 - US5 — I read grey text on a dark ground for an hour without straining.
@@ -36,10 +36,10 @@ A **transverse** domain: it ships no feature. It defines the visual tokens and s
   | Text and rules | `textPrimary`, `textSecondary`, `textDisabled`, `separator`, `border` |
   | Accent and states | `accent`, `accentText` (text laid on the accent), `statusGreen`, `statusOrange`, `statusRed`, `statusBlue` |
   | Metrics | `islandRadius`, `gutter`, `barHeight`, `rowHeight`, `contentInset` |
-  | Syntax (2026-08-27) | one color per `HighlightRole` (editor R12), so the editor follows Wraith's theme and not the macOS appearance |
+  | Syntax (2026-08-27) | one color per `HighlightRole` (editor R12), so the editor follows Foreman's theme and not the macOS appearance |
   | Type (2026-08-28) | `interfaceFontName` (`nil` = the system font), `interfaceFontSize` (10…24) — R6 |
 - R10 — Two token sets, `dark` and `light`, with an identical structure, chosen by the mode from `terminal` R14 (`light` / `dark` / `system`). **Only `dark` is designed and validated in v1**; `light` is derived mechanically and is not a goal (see out of scope). The 16-color ANSI palette from `terminal` R14 is now part of the token set and must agree with it (R13).
-- R11 — Tokens can be overridden through the `theme` section of `.wraith/config.json`: `{ "theme": { "accent": "#4C8DF6", "islandRadius": 10, "interfaceFont": "Inter", "interfaceFontSize": 15 } }` (the font keys since 2026-08-28: a family name that is not installed falls back on the system font). Unknown key → a warning, ignored; malformed value (a color outside `#rgb`/`#rrggbb`, a negative or out-of-range metric) → a warning, the default value kept; the whole section is optional (`config` R2, R5) and hot-reloaded (`config` R6). No separate theme file (see out of scope).
+- R11 — Tokens can be overridden through the `theme` section of `.foreman/config.json`: `{ "theme": { "accent": "#4C8DF6", "islandRadius": 10, "interfaceFont": "Inter", "interfaceFontSize": 15 } }` (the font keys since 2026-08-28: a family name that is not installed falls back on the system font). Unknown key → a warning, ignored; malformed value (a color outside `#rgb`/`#rrggbb`, a negative or out-of-range metric) → a warning, the default value kept; the whole section is optional (`config` R2, R5) and hot-reloaded (`config` R6). No separate theme file (see out of scope).
 
 ### What stays native
 
@@ -84,7 +84,7 @@ A **transverse** domain: it ships no feature. It defines the visual tokens and s
 
 ### `ThemeService` extended, not a second service
 
-`ThemeService` (`Wraith/App/ThemeService.swift`) already carries: the decoded `terminal` section (`Settings`), the font (`editorFont`), the mode (`isDark(systemIsDark:)`), the two ANSI palettes (`TerminalPalette`) and the highlighting role colors (`color(for: HighlightRole)`). R9's tokens are added to the same type: one `struct Tokens` per set, two static constants, and a decoding of the `theme` section modelled on `Settings.decode(from:)`. A separate `DesignSystem` would be a second owner of the same information, which `architecture.md` forbids (shared services, created once in `App`).
+`ThemeService` (`Foreman/App/ThemeService.swift`) already carries: the decoded `terminal` section (`Settings`), the font (`editorFont`), the mode (`isDark(systemIsDark:)`), the two ANSI palettes (`TerminalPalette`) and the highlighting role colors (`color(for: HighlightRole)`). R9's tokens are added to the same type: one `struct Tokens` per set, two static constants, and a decoding of the `theme` section modelled on `Settings.decode(from:)`. A separate `DesignSystem` would be a second owner of the same information, which `architecture.md` forbids (shared services, created once in `App`).
 
 ### The toolbar: two routes
 

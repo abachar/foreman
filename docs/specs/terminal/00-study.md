@@ -23,10 +23,10 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 ### Process and environment
 
-- R1 — A terminal tab runs **one command** provided by the owning feature, through `$SHELL -l -c "<command>"` (the user's `$SHELL`, otherwise `/bin/zsh`): the login shell loads the user's environment (PATH, profiles) then runs the command; there is **no prompt**, the shell ends with the command. The command is the text provided as is (`architecture.md`, security), never recomposed by Wraith.
+- R1 — A terminal tab runs **one command** provided by the owning feature, through `$SHELL -l -c "<command>"` (the user's `$SHELL`, otherwise `/bin/zsh`): the login shell loads the user's environment (PATH, profiles) then runs the command; there is **no prompt**, the shell ends with the command. The command is the text provided as is (`architecture.md`, security), never recomposed by Foreman.
 - R2 — cwd: provided by the feature (`agents`: the root or a repo; `run`: the repo folder / `cwd`), necessarily under the root or an explicit absolute path. The cwd is the one used at launch; it is persisted (`config` R10) and used for restoration.
-- R3 — Environment: the login shell's, enriched with `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=wraith`, `WRAITH_WORKSPACE=<root>`, plus the `env` provided by the feature (`run` R8). No variable from `config.json` is injected by default.
-- R4 — No shell integration (OSC 7/133): useless, Wraith launches the process. The state comes from the end of the process (R6), the cwd is known (R2).
+- R3 — Environment: the login shell's, enriched with `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=foreman`, `FOREMAN_WORKSPACE=<root>`, plus the `env` provided by the feature (`run` R8). No variable from `config.json` is injected by default.
+- R4 — No shell integration (OSC 7/133): useless, Foreman launches the process. The state comes from the end of the process (R6), the cwd is known (R2).
 
 ### State, title and signals
 
@@ -43,9 +43,9 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 ### Input, mouse, appearance
 
-- R12 — Keyboard: `layout` R25 — everything that is not a Wraith `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`).
+- R12 — Keyboard: `layout` R25 — everything that is not a Foreman `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`).
 - R13 — Mouse: selection, copy, scrolling, forwarding mouse events to the TUIs that ask for them — all delegated to SwiftTerm. Detected links are clickable (`cmd+click`).
-- R14 — Appearance: the monospaced font (**JetBrains Mono 13** by default since 2026-08-28, the system monospaced font when it is not installed) and the theme are defined by Wraith (`ThemeService`); the `terminal` section of `.wraith/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
+- R14 — Appearance: the monospaced font (**JetBrains Mono 13** by default since 2026-08-28, the system monospaced font when it is not installed) and the theme are defined by Foreman (`ThemeService`); the `terminal` section of `.foreman/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
 - R15 — Resizing: the surface receives its size in points from the layout (`layout` R21); SwiftTerm derives rows/columns from it and propagates the window size to the process.
 
 ### Service for the features (`Terminal/`)
@@ -57,7 +57,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 ## Edge cases
 
 - `$SHELL` missing or not executable: fall back to `/bin/zsh`, with a message in the surface.
-- Command not found (`command not found`): the shell exits with 127 → `exited(127)`, visible in the surface; no Wraith banner.
+- Command not found (`command not found`): the shell exits with 127 → `exited(127)`, visible in the surface; no Foreman banner.
 - The persisted cwd is gone at restoration: an `idle` tab with a "folder not found" banner, *Relaunch* disabled until it is fixed.
 - A process that ignores `SIGINT`/`SIGTERM`: R11 (forced close only); otherwise it keeps running and the user sees `running`.
 - Massive output (a verbose build): SwiftTerm reads and renders in batches; the scrollback is bounded (R14).

@@ -20,7 +20,7 @@ Feature `run`: launch the commands declared in `config.json` (`commands`) on a w
 - R1 — The `commands` section (`config` R3): `{ "<repo or .>": { "<name>": "<command>" | { "run": "<command>", "cwd": "<subfolder>", "env": { "K": "V" } } } }`. The short form is a string; the long form adds `cwd` (relative to the repo, defaulting to the repo) and `env`. An `env` at the repo level (the reserved key `"$env"`) applies to all of its commands.
 - R2 — The `<repo>` must be `.` (alias `root`, the spelling of the id, accepted as long as no `root/` folder exists — decision 2026-08-27) or a path relative to the root that exists on disk (not necessarily a git repo). Missing: the command is listed greyed out with the reason. `cwd` must stay under the root (`architecture.md`, security).
 - R3 — A command's name: `[a-z0-9][a-z0-9:_-]*`, unique per repo. Full identifier `repo:name` (`.` becomes `root`). These ids are used by the shortcuts (`config.shortcuts["run.backend:test"]`, R11).
-- R3b — A single source: the workspace's `.wraith/config.json` (`config` R4, config decision 2026-08-26: no global configuration). Two workspaces share nothing.
+- R3b — A single source: the workspace's `.foreman/config.json` (`config` R4, config decision 2026-08-26: no global configuration). Two workspaces share nothing.
 - R4 — Hot reload on `Workspace.configChanges` (`config` R6): the palette and the shortcuts are recomputed; a running tab is not affected.
 
 ### Palette and button

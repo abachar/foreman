@@ -4,7 +4,7 @@
 
 ## Goal
 
-Format the active tab's file with the formatter the user already uses for that project, without leaving Wraith and without Wraith having an opinion on the style. One trigger: the explicit action (`cmd+shift+l`); formatting on save was dropped by the author on 2026-08-27 (decisions.md). This is an extension of the editor, **not a new domain**: no `Formatter/` folder, no new feature, no new panel.
+Format the active tab's file with the formatter the user already uses for that project, without leaving Foreman and without Foreman having an opinion on the style. One trigger: the explicit action (`cmd+shift+l`); formatting on save was dropped by the author on 2026-08-27 (decisions.md). This is an extension of the editor, **not a new domain**: no `Formatter/` folder, no new feature, no new panel.
 
 This study lifts the "formatting" line from 00-study.md's out-of-scope list; everything else on that line (LSP, completion, diagnostics, go-to-definition) stays there.
 
@@ -20,7 +20,7 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
 ### Triggering
 
 - R24 — One entry point, and only one: the `editor.format` action (default `cmd+shift+l`, scoped to `tab(editor.file)` like the editor's other actions, R23) on the active tab. No formatting on save (dropped 2026-08-27, R31), on typing, on paste, or over a selection (out of scope).
-- R25 — The formatter is chosen by **file extension**, in the `formatter` section of `.wraith/config.json` (`config` R3, R5):
+- R25 — The formatter is chosen by **file extension**, in the `formatter` section of `.foreman/config.json` (`config` R3, R5):
   ```json
   {
     "formatter": {
@@ -37,9 +37,9 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
     }
   }
   ```
-  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .wraith/config.json" once and does nothing; saving is neither blocked nor delayed. Keys are matched case-insensitively; a file without an extension (`Dockerfile`) is looked up by its full name. `timeout` (R30, seconds, 1…60, default 5) is the section's only reserved key; it is never read as an extension. A badly typed value or an empty command drops that entry with a warning, never the whole section (config R7).
-- R26 — The command is **the user's text**, run as is by `$SHELL -l -c "<command>"` with the login shell's environment (`terminal` R3, `Workspace.loginEnvironment()`) and `cwd` = the file's folder. No interpolation: Wraith injects neither the path, nor the content, nor any variable into the command line (`architecture.md`, security; the same policy as `run` and `agents`).
-- R27 — The text **from the view** (not the file on disk) is written to `stdin`, the formatted text is read from `stdout`, the diagnostics from `stderr`. Wraith gives the formatter no path: a command that needs the file name to pick its parser receives it in its own line (`--stdin-filepath file.ts`), written by the user.
+  An extension without an entry has no formatter: the action shows "no formatter for `.<ext>` in .foreman/config.json" once and does nothing; saving is neither blocked nor delayed. Keys are matched case-insensitively; a file without an extension (`Dockerfile`) is looked up by its full name. `timeout` (R30, seconds, 1…60, default 5) is the section's only reserved key; it is never read as an extension. A badly typed value or an empty command drops that entry with a warning, never the whole section (config R7).
+- R26 — The command is **the user's text**, run as is by `$SHELL -l -c "<command>"` with the login shell's environment (`terminal` R3, `Workspace.loginEnvironment()`) and `cwd` = the file's folder. No interpolation: Foreman injects neither the path, nor the content, nor any variable into the command line (`architecture.md`, security; the same policy as `run` and `agents`).
+- R27 — The text **from the view** (not the file on disk) is written to `stdin`, the formatted text is read from `stdout`, the diagnostics from `stderr`. Foreman gives the formatter no path: a command that needs the file name to pick its parser receives it in its own line (`--stdin-filepath file.ts`), written by the user.
 
 ### Applying
 
@@ -48,11 +48,11 @@ This study lifts the "formatting" line from 00-study.md's out-of-scope list; eve
 - R30 — Bound: `formatter.timeout` seconds, default 5, clamped to 1…60 (decision 2026-08-27). Beyond that the process is stopped (`SIGTERM` then `SIGKILL`), the text stays unchanged and the banner says so. One execution at a time per tab; a second trigger while one is running is ignored (a beep), never queued.
 - R31 — *(dropped 2026-08-27, number kept stable)* formatting on save. `cmd+s` writes the view's text as it is; the `formatter` section has no `onSave` key.
 - R32 — Refused with its reason on a read-only file or one above the read-only threshold (R16, 2 MB), and on a markdown tab in `preview` mode (R14): there is no editable text to replace.
-- R33 — The formatter receives no path and Wraith writes nothing for it: everything goes through `stdin`/`stdout`. If the user's command writes to disk itself, Wraith neither detects nor prevents it — it is their command, like a `run` (`run` R2).
+- R33 — The formatter receives no path and Foreman writes nothing for it: everything goes through `stdin`/`stdout`. If the user's command writes to disk itself, Foreman neither detects nor prevents it — it is their command, like a `run` (`run` R2).
 
 ## Edge cases
 
-- **A formatter that exits non-zero on a warning**: `tidy` returns 1 when it merely warns, even though its output on `stdout` is valid. Under R28 (exit code `0` required) nothing is applied and the warnings appear in the banner. `format-all` handles this by accepting `(0 1)` for `tidy` alone; Wraith does not, in v1 — the remedy is to use `prettier` for HTML, which is the recommended entry anyway. See the open question in `questions.md`.
+- **A formatter that exits non-zero on a warning**: `tidy` returns 1 when it merely warns, even though its output on `stdout` is valid. Under R28 (exit code `0` required) nothing is applied and the warnings appear in the banner. `format-all` handles this by accepting `(0 1)` for `tidy` alone; Foreman does not, in v1 — the remedy is to use `prettier` for HTML, which is the recommended entry anyway. See the open question in `questions.md`.
 - Binary missing from the `PATH`: the command returns `command not found` on `stderr` and a non-zero code; on top of that, the first word of the command is looked up in the resolved `PATH` (like `agents` R2) so we can say "`prettier` not found in PATH" rather than repeating the shell's complaint.
 - Syntactically invalid file: the formatters (prettier, black, rustfmt) exit with an error; R28 applies and the text does not move.
 - A formatter that is slow on the first call (a JVM, an `npx` resolving a package): R30's 5 s bound may cut it off; the banner then offers to raise the bound (`formatter.timeout`, in seconds) or to install the binary locally.
@@ -77,15 +77,15 @@ The point to settle is a single one: **an embedded library or an external binary
 
 ### The user's binaries, launched by `Process`
 
-This is what Wraith already does for `run`, `agents` and `rg`: `$SHELL -l -c "<command>"` with the login shell's environment resolved once per window (`Workspace.loginEnvironment()`), `stdin`/`stdout`/`stderr` as `Pipe`s, running off the main actor.
+This is what Foreman already does for `run`, `agents` and `rg`: `$SHELL -l -c "<command>"` with the login shell's environment resolved once per window (`Workspace.loginEnvironment()`), `stdin`/`stdout`/`stderr` as `Pipe`s, running off the main actor.
 
-**The contract is not ours, and it is not a guess.** `format-all-the-code` (`github.com/lassik/emacs-format-all-the-code`, maintained since 2017) does exactly this for around eighty languages, and its helper `format-all--buffer-easy` documents the contract in one sentence: *"Runs the external program EXECUTABLE. The program shall read unformatted code from stdin, write its formatted equivalent to stdout, write errors/warnings to stderr, and exit zero/non-zero on success/failure."* Read on the upstream repository on 2026-08-27: **102 formatter definitions**, and every one of them but a handful goes through that helper. That is R26–R28, word for word, validated across a far larger set of languages than Wraith highlights.
+**The contract is not ours, and it is not a guess.** `format-all-the-code` (`github.com/lassik/emacs-format-all-the-code`, maintained since 2017) does exactly this for around eighty languages, and its helper `format-all--buffer-easy` documents the contract in one sentence: *"Runs the external program EXECUTABLE. The program shall read unformatted code from stdin, write its formatted equivalent to stdout, write errors/warnings to stderr, and exit zero/non-zero on success/failure."* Read on the upstream repository on 2026-08-27: **102 formatter definitions**, and every one of them but a handful goes through that helper. That is R26–R28, word for word, validated across a far larger set of languages than Foreman highlights.
 
 **Targeted first (author's decision, 2026-08-27)**: six formatters cover what the author's projects need, and the R25 example and the manual checks of M7 use them — **prettier** (CSS, GraphQL, JavaScript, JSON, JSON5, JSX, Less, Markdown, PHP, SCSS, Solidity, Svelte, TOML, TSX, TypeScript, Vue, YAML, Angular, Flow), **black** (Python), **clang-format** (C, C++, Cuda, GLSL, Java, Objective-C, Protocol Buffers), **dockfmt** (Dockerfile), **sqlformat** (SQL), **swiftformat** (Swift). Nothing in the code knows this list: the section accepts any command, so the other formatters of the inventory below work the same way when the author reaches for them.
 
-Below, the recommended command for each grammar Wraith actually has (`editor` R11, plus `sql` in M5), with the invocation taken from `format-all.el` rather than from memory. `<recommended>` is one of the six targeted formatters when they cover the language; the alternatives are the other formatters `format-all` defines for the same language, kept for later.
+Below, the recommended command for each grammar Foreman actually has (`editor` R11, plus `sql` in M5), with the invocation taken from `format-all.el` rather than from memory. `<recommended>` is one of the six targeted formatters when they cover the language; the alternatives are the other formatters `format-all` defines for the same language, kept for later.
 
-| Wraith grammar | Extensions | Recommended command | Alternatives |
+| Foreman grammar | Extensions | Recommended command | Alternatives |
 |---|---|---|---|
 | java | `.java` | `clang-format --assume-filename=file.java` | `google-java-format -`, `astyle` |
 | kotlin | `.kt`, `.kts` | `ktlint --log-level=none --format --stdin` (later: not one of the six) | — |
@@ -105,7 +105,7 @@ Below, the recommended command for each grammar Wraith actually has (`editor` R1
 
 #### Reference: the external formatters `format-all` knows, by language
 
-The full inventory, supplied by the author on 2026-08-27, kept here **for the future**: a user adding a grammar to `formatter` in `config.json` has the candidate names at hand, beyond the six targeted first. Every entry is an external command driven over `stdin`/`stdout` and therefore fits R26–R28 as is, **except** the ones marked `*`, which are Emacs-internal modes (`Emacs`, `auctex`, `ledger-mode`) and have no CLI: those languages have no formatter Wraith can call. Only the rows whose grammar Wraith highlights (the table above) get a recommended invocation; the rest are names, not verified command lines.
+The full inventory, supplied by the author on 2026-08-27, kept here **for the future**: a user adding a grammar to `formatter` in `config.json` has the candidate names at hand, beyond the six targeted first. Every entry is an external command driven over `stdin`/`stdout` and therefore fits R26–R28 as is, **except** the ones marked `*`, which are Emacs-internal modes (`Emacs`, `auctex`, `ledger-mode`) and have no CLI: those languages have no formatter Foreman can call. Only the rows whose grammar Foreman highlights (the table above) get a recommended invocation; the rest are names, not verified command lines.
 
 | Language | Formatters |
 |---|---|
@@ -191,10 +191,10 @@ The full inventory, supplied by the author on 2026-08-27, kept here **for the fu
 
 Two things this table settles, which are R27's whole point:
 
-- **A formatter that infers its parser from the file name needs the name in its own command line**, because Wraith passes no path. `format-all` hits the same wall and solves it the same way — it appends `--stdin-filepath <file>` for prettier and oxfmt, `-assume-filename` for clang-format, `-filename` for shfmt, and falls back to `--parser <lang>` / `-ln <dialect>` when there is no file. In Wraith it is the user who writes that flag, once, in the config; the value is a placeholder name (`file.ts`), not the real path.
+- **A formatter that infers its parser from the file name needs the name in its own command line**, because Foreman passes no path. `format-all` hits the same wall and solves it the same way — it appends `--stdin-filepath <file>` for prettier and oxfmt, `-assume-filename` for clang-format, `-filename` for shfmt, and falls back to `--parser <lang>` / `-ln <dialect>` when there is no file. In Foreman it is the user who writes that flag, once, in the config; the value is a placeholder name (`file.ts`), not the real path.
 - **Some formatters take a subcommand, not a flag** (`taplo fmt -`, `deno fmt --ext md -`, `dockfmt fmt`, `sqlfluff fix … -`). That falls out for free: the config holds a shell command line, not a binary name.
 
-Cost: ~80 lines (launching, `Pipe`s, the time bound, the decision to apply), plus decoding the section. No dependency added. Binary detection: `AgentCatalog.executables(among:inPath:)` (`Wraith/Agents/AgentCatalog.swift`) is already written, `static` and pure — it is called directly rather than copied; note that it looks up the **first word** of the command, so `npx --no-install prettier …` is detected as `npx`, which is correct.
+Cost: ~80 lines (launching, `Pipe`s, the time bound, the decision to apply), plus decoding the section. No dependency added. Binary detection: `AgentCatalog.executables(among:inPath:)` (`Foreman/Agents/AgentCatalog.swift`) is already written, `static` and pure — it is called directly rather than copied; note that it looks up the **first word** of the command, so `npx --no-install prettier …` is detected as `npx`, which is correct.
 
 ### An embedded SPM library
 
@@ -207,7 +207,7 @@ No other formatting library is proposed here: they do not exist, and `AGENTS.md`
 ### The rest
 
 - **Applying the text**: `NSTextView.shouldChangeText(in:replacementString:)` then `replaceCharacters(in:with:)` then `didChangeText()` — the native way to make a modification undoable in one go, with the `NSUndoManager` already enabled (`allowsUndo = true`, `EditorTextView.swift`). Nothing to write.
-- **Cursor position**: line and column recorded before, reapplied after with `TextEditing.location(ofLine:in:)` (`Wraith/Editor/TextEditing.swift`, already written for `cmd+l`), clamped to the new text.
+- **Cursor position**: line and column recorded before, reapplied after with `TextEditing.location(ofLine:in:)` (`Foreman/Editor/TextEditing.swift`, already written for `cmd+l`), clamped to the new text.
 - **Tests**: decoding the `formatter` section (the `timeout` key is reserved, unknown extension, badly typed value), choosing the command by extension, deciding whether to apply (code, empty `stdout`, identical text), carrying the cursor position over (line/column, including a line that disappeared and a shortened file), building the invocation. No test launches a formatter (`coding-rules`: hermetic).
 
 ## Decisions

@@ -3,7 +3,7 @@
 | Date | Decision | Rejected alternatives | Why |
 |---|---|---|---|
 | 2026-08-25 | Dotfiles visible; gitignored entries and folders on the exclusion list greyed out; `.git/` hidden; a toggle to hide the greyed-out ones | Dotfiles hidden (Finder); everything visible without greying | We often work in `.github`, `.env.example`…; greying gives the information without hiding it |
-| 2026-08-25 | Basic CRUD (create, rename, delete to the trash, reveal, copy path), no drag and drop ("terminal here" removed on 2026-08-26, `product` R4) | Read-only; CRUD + D&D | The daily need without the cost of D&D; moving is done by the agent or outside Wraith |
+| 2026-08-25 | Basic CRUD (create, rename, delete to the trash, reveal, copy path), no drag and drop ("terminal here" removed on 2026-08-26, `product` R4) | Read-only; CRUD + D&D | The daily need without the cost of D&D; moving is done by the agent or outside Foreman |
 | 2026-08-25 | Single click = preview tab (replaced), double click or an edit = pinned tab | Single click = pinned tab | The VS Code model, avoids piling up tabs |
 | 2026-08-25 | The tree follows the active tab (a persisted toggle) and shows the git badges received from `Git.statusChanges` | An independent tree; an explorer that reads git itself | A single source of git status; the explorer never runs `git` |
 | 2026-08-25 | Loading level by level, targeted reload of the parent folder on FSEvents, never a recursive walk | A full in-memory index of the workspace | Laziness (`architecture.md` P4); a `$HOME` workspace is possible |

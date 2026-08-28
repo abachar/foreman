@@ -3,7 +3,7 @@
 DerivedData/
 xcuserdata/
 *.xcuserstate
-.wraith/state.json
-.wraith/postgres-history.json
+.foreman/state.json
+.foreman/postgres-history.json
 *.profraw
 *.profdata

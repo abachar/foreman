@@ -1,0 +1,17 @@
+#!/bin/sh
+# Opens a folder in Foreman: `foreman` for the current directory, `foreman <folder>` for another one.
+#
+# `open -a` launches or activates the running app and hands it the folder, which Foreman receives in
+# application(_:open:); a folder already open activates its window instead of opening a second one
+# (product R1, R2). The path is made absolute and symlink-free here so that `foreman .` and
+# `foreman /full/path` designate the same window.
+set -eu
+
+folder="${1:-.}"
+
+if [ ! -d "$folder" ]; then
+    printf 'foreman: not a folder: %s\n' "$folder" >&2
+    exit 1
+fi
+
+exec open -a Foreman "$(cd -- "$folder" && pwd -P)"

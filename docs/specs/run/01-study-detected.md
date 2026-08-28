@@ -4,7 +4,7 @@
 
 ## Goal
 
-Most repos already declare their commands: `package.json` scripts, a Maven `pom.xml`, a `Package.swift`. Wraith reads them and proposes the matching commands; nothing runs on its own, and `config.commands` stays the source for anything custom.
+Most repos already declare their commands: `package.json` scripts, a Maven `pom.xml`, a `Package.swift`. Foreman reads them and proposes the matching commands; nothing runs on its own, and `config.commands` stays the source for anything custom.
 
 ## Functional rules
 

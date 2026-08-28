@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Lint
-        run: swift format lint --strict --recursive Wraith WraithTests
+        run: swift format lint --strict --recursive Foreman ForemanTests
 
   build-test:
     runs-on: macos-latest
@@ -29,4 +29,4 @@ jobs:
         run: xcodebuild -downloadComponent MetalToolchain
       - name: Build and test
         # -skipPackagePluginValidation: SwiftTerm's build-tool plugin cannot be approved on a CLI (AGENTS.md).
-        run: xcodebuild test -scheme Wraith -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation
+        run: xcodebuild test -scheme Foreman -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation

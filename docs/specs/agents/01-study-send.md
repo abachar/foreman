@@ -16,7 +16,7 @@ The user reads a file, a diff or the tree, and wants to tell the agent "look at 
 
 ## Functional rules
 
-- R10 — **Active agent** = the `agent.*` tab most recently activated in the window (the `activated` event of `terminal` R16), whatever its state; with none ever activated, the first agent tab of the window in bar order. No agent tab → the entries are disabled and the shortcut does nothing (a `debug` log). Wraith never launches an agent to send it text.
+- R10 — **Active agent** = the `agent.*` tab most recently activated in the window (the `activated` event of `terminal` R16), whatever its state; with none ever activated, the first agent tab of the window in bar order. No agent tab → the entries are disabled and the shortcut does nothing (a `debug` log). Foreman never launches an agent to send it text.
 - R10a — The text written: `@<path>` for a file or a folder (a folder keeps its trailing `/`), `@<path>:<line>` for one line, `@<path>:<from>-<to>` for a selection spanning several lines; a trailing space; never a newline (the user submits). The path is relative to the agent tab's cwd when the file is under it, absolute otherwise. It is written as is through `TerminalService.write` (`terminal` R16), no bracketed-paste, no quoting: a path with spaces is the user's problem, as in the agents' own prompts.
 - R10b — Sources and their entry points:
   - editor tab (`editor.file`): `cmd+e` (`editor.sendToAgent`, scope `tab(editor.file)`) — the selection's line range when it is not empty, the file otherwise;
