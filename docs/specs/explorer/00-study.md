@@ -8,7 +8,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 - US1 — `cmd+shift+e`: the tree appears on the workspace root, folders collapsed; I expand on demand, without waiting.
 - US2 — I create/rename/delete a file in the terminal: the tree updates on its own in less than a second.
-- US3 — Clicking a file opens it as a preview in the active group; double-clicking pins it. Clicking another file replaces the preview.
+- US3 — Double-clicking a file opens it in the active group, for good (IntelliJ); a single click only selects (amended 2026-08-28).
 - US4 — When I switch tabs, the tree expands to and selects the matching file.
 - US5 — I can tell at a glance what is modified (git) and what is ignored (greyed out).
 - US6 — Right-click: new file/folder, rename, delete, reveal in Finder, copy the path.
@@ -34,7 +34,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 ### Opening
 
-- R12 — Single click on a file: opens a **preview** tab in the active group through `Editor.open(path, preview: true)`; one preview tab per group, replaced by the next preview. `cmd+↓`, `cmd+k`, or any edit in the tab, pins it (`editor` defines the tab; the double click renames since 2026-08-28, R17). Clicking a file that is already open: activates its tab.
+- R12 — **Amended 2026-08-28**: a single click **selects** the row, nothing else. A double click (or `enter`) opens the file **pinned** in the active group through `Editor.open(path, preview: false)`; with `opt`, in a new group on the right (R13). Double-clicking a file that is already open activates its tab. The tree never opens a preview tab (the editor keeps preview tabs for quick open and the git diff, `editor` R2). *(Until then: a click opened a preview replaced by the next one, a double click pinned.)*
 - R13 — `opt+click` (or a menu entry): opens in a **new group** on the right (`layout` R9) when you want to compare.
 - R14 — Following the active tab (`Layout.activeTab`): when the active tab changes and matches a file under the root, the tree expands the path and selects the file (without scrolling if it is already visible). Can be turned off by a panel toggle (persisted). A file outside the root expands nothing.
 - R15 — Git badges: the explorer subscribes to `Git.statusChanges` (an `AsyncStream` of `(repo, [path: GitFileStatus])`); it colors the files (modified, added, untracked, conflicted) and propagates a dot onto the ancestor folders. Outside a repo: no badge, no error.
@@ -42,11 +42,11 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 ### Operations
 
 - R16 — New file / new folder: created in the selected folder (or the parent of the selected file, or the root), the name typed in a sheet (decision 2026-08-27), then the file is opened (pinned). The name may contain `/` to create the intermediate folders.
-- R17 — Rename: inline editing (`enter` on the item, a double click, or the menu; never a single click on a selected row, decision 2026-08-28). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
+- R17 — Rename: inline editing, from the context menu or `shift+F6` (IntelliJ; amended 2026-08-28 — neither a click nor a double click ever starts it). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
 - R18 — Delete: to the **trash** (`trashItem`), with a confirmation listing the number of items for a non-empty folder. The explorer calls `Editor.fileDeleted(path)`.
 - R19 — Any operation is refused if the target path is not under the root (`architecture.md`, security) or if the name is empty, `.`/`..`, or contains a forbidden character. An IO error (permission, already exists) is shown in the panel's banner and does not modify the tree.
 - R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path, Send to Agent (`agents` `01-study-send.md` R10b, 2026-08-28). No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.
-- R21 — Keyboard navigation in the tree: `↑↓` move, `→` expands / `←` collapses or goes up, `enter` renames, `space` opens as a preview, `cmd+↓` opens pinned, `cmd+delete` deletes, `escape` gives the focus back to the center (`layout` R6).
+- R21 — Keyboard navigation in the tree: `↑↓` move, `→` expands / `←` collapses or goes up, `enter` opens (pinned), `shift+F6` renames, `cmd+delete` deletes, `escape` gives the focus back to the center (`layout` R6). (`space` and `cmd+↓` removed with the preview mode, 2026-08-28.)
 
 ## Edge cases
 

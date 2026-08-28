@@ -25,9 +25,8 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 |---|---|---|---|---|
 | `cmd+shift+e` | `explorer.tree` | Show / hide the tree | global | 🟢 |
 | `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
-| `space` | — | Open as a preview | native | 🟢 |
-| `cmd+↓` | — | Open pinned | native | 🟢 |
-| `enter` / double click | — | Rename (decision 2026-08-28) | native | 🟢 |
+| `enter` / double click | — | Open (pinned; `opt` + double click: in a new group) — decision 2026-08-28 | native | 🟢 |
+| `shift+F6` | — | Rename (IntelliJ; also the context menu) — decision 2026-08-28 | native | 🟢 |
 | — | — | Context menu › *Send to Agent* (`agents` `01-study-send.md` R10b) | native | 🟢 (2026-08-28) |
 | `cmd+delete` | — | Delete (trash) | native | 🟢 |
 

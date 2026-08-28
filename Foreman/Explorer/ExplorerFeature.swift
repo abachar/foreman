@@ -31,10 +31,10 @@ enum ExplorerFeature {
                         ExplorerPanelView(
                             model: model, layout: layout, theme: theme,
                             onStateChange: { state in workspace.setState("explorer", to: state) },
-                            // explorer R12, R13: preview, pinned, or a new group on the right.
+                            // explorer R12, R13: pinned, or a new group on the right; never a preview.
                             onOpen: { node, mode in
                                 editor.open(
-                                    workspace.root.appending(path: node.relativePath), preview: mode == .preview,
+                                    workspace.root.appending(path: node.relativePath), preview: false,
                                     newGroup: mode == .newGroup)
                             },
                             pathOfTab: { editor.path(of: $0) },

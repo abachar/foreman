@@ -7,8 +7,8 @@ import SwiftUI
 /// selection and scroll across reloads (R10). A folder's level is asked to the model at its
 /// first expansion (R7); the model's `version` tells this view what to reload.
 /// explorer R12, R13: how a file is opened from the tree.
+/// explorer R12 (2026-08-28): a double click or `enter` opens pinned; with `opt`, in a new group.
 enum ExplorerOpenMode {
-    case preview
     case pinned
     case newGroup
 }
@@ -47,7 +47,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.dataSource = context.coordinator
         outline.delegate = context.coordinator
         outline.target = context.coordinator
-        outline.action = #selector(Coordinator.clicked)
+        // explorer R12: a single click only selects.
         outline.doubleAction = #selector(Coordinator.doubleClicked)
         // explorer R20: the context menu, built for the clicked row.
         let menu = NSMenu()
@@ -130,18 +130,12 @@ struct ExplorerOutlineView: NSViewRepresentable {
             hidesExcluded = model.hidesExcluded
         }
 
-        /// explorer R12, R13: a click opens a preview; with `opt`, in a new group on the right.
-        @objc func clicked() {
+        /// explorer R12, R13: a double click opens the file pinned; with `opt`, in a new group on
+        /// the right (IntelliJ, decision 2026-08-28: no preview from the tree, no rename on a click).
+        @objc func doubleClicked() {
             guard let node = clickedFile() else { return }
             let isOption = NSApp.currentEvent?.modifierFlags.contains(.option) == true
-            onOpen(node, isOption ? .newGroup : .preview)
-        }
-
-        /// explorer R17: a double click renames (decision 2026-08-28: a single click on a selected
-        /// row must not start the editor, and the double click no longer pins).
-        @objc func doubleClicked() {
-            guard let outline, outline.clickedRow >= 0 else { return }
-            beginRename(row: outline.clickedRow)
+            onOpen(node, isOption ? .newGroup : .pinned)
         }
 
         /// The label is editable only for the duration of a rename, so AppKit's click-on-selected-
@@ -154,18 +148,15 @@ struct ExplorerOutlineView: NSViewRepresentable {
             outline.editColumn(0, row: row, with: nil, select: true)
         }
 
-        /// explorer R21: `space` previews, `cmd+↓` opens pinned, `enter` renames, `cmd+delete`
-        /// deletes; anything else is the outline's.
+        /// explorer R21: `enter` opens, `shift+F6` renames, `cmd+delete` deletes; anything else
+        /// is the outline's.
         func handle(_ key: KeyboardOutlineView.Key) -> Bool {
             guard let outline, outline.selectedRow >= 0 else { return false }
             switch key {
-            case .space:
-                guard let node = file(atRow: outline.selectedRow) else { return false }
-                onOpen(node, .preview)
-            case .commandDown:
+            case .open:
                 guard let node = file(atRow: outline.selectedRow) else { return false }
                 onOpen(node, .pinned)
-            case .enter:
+            case .rename:
                 guard node(atRow: outline.selectedRow) != nil else { return false }
                 beginRename(row: outline.selectedRow)
             case .commandDelete:
@@ -500,9 +491,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
 /// `NSOutlineView` that hands a few keys to its owner (explorer R21) before its own handling.
 final class KeyboardOutlineView: NSOutlineView {
     enum Key {
-        case space
-        case commandDown
-        case enter
+        case open
+        case rename
         case commandDelete
     }
 
@@ -510,14 +500,11 @@ final class KeyboardOutlineView: NSOutlineView {
 
     override func keyDown(with event: NSEvent) {
         let key: Key?
-        if event.charactersIgnoringModifiers == " ",
-            event.modifierFlags.intersection([.command, .option, .control]).isEmpty
-        {
-            key = .space
-        } else if event.keyCode == 125, event.modifierFlags.contains(.command) {
-            key = .commandDown
-        } else if event.keyCode == 36 || event.keyCode == 76 {
-            key = .enter
+        if event.keyCode == 36 || event.keyCode == 76 {
+            key = .open
+        } else if event.keyCode == 97, event.modifierFlags.contains(.shift) {
+            // explorer R21: `shift+F6`, IntelliJ's rename.
+            key = .rename
         } else if event.keyCode == 51, event.modifierFlags.contains(.command) {
             key = .commandDelete
         } else {
