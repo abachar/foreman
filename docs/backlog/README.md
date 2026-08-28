@@ -13,6 +13,6 @@ Breakdown and progress of the implementation, one file per milestone. The specs 
 | M6 — Polish | [m6-polish.md](m6-polish.md) | none of its own: open points from M0–M5 | 🟢 (2026-08-27; budgets measured, three faults fixed on the way: second window, grammar compile on main, quick open; CI tolerated until Xcode 27 reaches the runners) |
 | M7 — Formatting | [m7-formatter.md](m7-formatter.md) | editor (`01-study-formatter.md`) | 🟢 (2026-08-27; `cmd+shift+l` only, formatting on save dropped, no dependency added) |
 | M8 — Visual redesign | [m8-design.md](m8-design.md) | design (transverse), `ThemeService`, every view | 🟢 (2026-08-27; option A toolbar with panel toggles, file icons, current line; validated by the author's eye after the batch) |
-| M9 — Tab menu | [m9-tabs.md](m9-tabs.md) | layout (R35) | 🟢 (2026-08-28) |
+| M9 — Tabs and home screen | [m9-tabs.md](m9-tabs.md) | layout (R33 amended, R35) | 🟢 (2026-08-28) |
 
 Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.

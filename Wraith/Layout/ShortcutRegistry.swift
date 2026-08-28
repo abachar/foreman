@@ -97,6 +97,26 @@ final class ShortcutRegistry {
         rebuild()
     }
 
+    /// layout R33: the home screen's shortcut table.
+    ///
+    /// Every action with a shortcut, grouped by the feature its id is namespaced under
+    /// (`git.changes` → `git`), features and actions in registration order. A family of actions —
+    /// same parent id, same modifiers, titles sharing a leading phrase — is one row
+    /// (`Tab N · cmd+N`, `Focus Group · cmd+opt+←→↑↓`).
+    var documentation: [ShortcutGroup] {
+        var groups: [ShortcutGroup] = []
+        for action in actions {
+            guard let shortcut = shortcut(for: action.id) else { continue }
+            let feature = String(action.id.prefix { $0 != "." })
+            let index = groups.firstIndex { $0.feature == feature } ?? groups.count
+            if index == groups.count {
+                groups.append(ShortcutGroup(feature: feature, rows: []))
+            }
+            groups[index].add(action, shortcut)
+        }
+        return groups
+    }
+
     /// The shortcut currently bound to `id`, for display (home screen, menus).
     func shortcut(for id: String) -> Shortcut? {
         for table in bindings.values {
@@ -196,5 +216,89 @@ final class ShortcutRegistry {
     /// layout R22b: a `tab(kind)` action masks a global one, so only equal scopes conflict.
     private static func overlap(_ first: ShortcutScope, _ second: ShortcutScope) -> Bool {
         first == second
+    }
+}
+
+/// layout R33: one feature's bound actions, for the home screen.
+struct ShortcutGroup: Identifiable {
+    let feature: String
+    var rows: [ShortcutRow]
+
+    var id: String { feature }
+
+    /// Folds `action` into the row of its family when there is one, else appends a row.
+    mutating func add(_ action: ShortcutAction, _ shortcut: Shortcut) {
+        let parent = action.id.split(separator: ".").dropLast().joined(separator: ".")
+        if let index = rows.firstIndex(where: { $0.canFold(parent: parent, title: action.title, shortcut: shortcut) }) {
+            rows[index].fold(action, shortcut)
+        } else {
+            rows.append(ShortcutRow(action: action, shortcut: shortcut, parent: parent))
+        }
+    }
+}
+
+/// One line of the home screen's shortcut table: an action, or a family of them.
+struct ShortcutRow: Identifiable {
+    private static let arrows: [(key: String, symbol: Character)] = [
+        ("left", "←"), ("right", "→"), ("up", "↑"), ("down", "↓"),
+    ]
+
+    let id: String
+    private(set) var title: String
+    private let parent: String
+    private let modifiers: Shortcut.Modifiers
+    private var keys: [String]
+    private var performs: [() -> Void]
+
+    init(action: ShortcutAction, shortcut: Shortcut, parent: String) {
+        id = action.id
+        title = action.title
+        self.parent = parent
+        modifiers = shortcut.modifiers
+        keys = [shortcut.key]
+        performs = [action.perform]
+    }
+
+    /// The first action of the family.
+    var perform: () -> Void { performs[0] }
+
+    /// `cmd+w`, or for a family `cmd+N` / `cmd+opt+←→↑↓` / `cmd+shift+[]`.
+    var shortcut: String {
+        let base = Shortcut(key: keys[0], modifiers: modifiers).description
+        guard keys.count > 1 else { return base }
+        let joined: String
+        if keys.allSatisfy(Self.isDigit) {
+            joined = "N"
+        } else if keys.allSatisfy({ key in Self.arrows.contains { $0.key == key } }) {
+            joined = String(Self.arrows.filter { keys.contains($0.key) }.map(\.symbol))
+        } else {
+            joined = keys.joined()
+        }
+        return String(base.dropLast(keys[0].count)) + joined
+    }
+
+    private static func isDigit(_ key: String) -> Bool {
+        key.count == 1 && key.first?.isNumber == true
+    }
+
+    fileprivate func canFold(parent: String, title: String, shortcut: Shortcut) -> Bool {
+        self.parent == parent && modifiers == shortcut.modifiers && !Self.commonPrefix(self.title, title).isEmpty
+    }
+
+    fileprivate mutating func fold(_ action: ShortcutAction, _ shortcut: Shortcut) {
+        title = Self.commonPrefix(title, action.title)
+        keys.append(shortcut.key)
+        performs.append(action.perform)
+        if keys.allSatisfy(Self.isDigit) {
+            title += " N"
+        }
+    }
+
+    /// The leading whole words two titles share (`Focus Group Left` / `Focus Group Right` →
+    /// `Focus Group`); a family that already folded carries its trailing ` N` as a word to strip.
+    private static func commonPrefix(_ a: String, _ b: String) -> String {
+        let wordsA = a.split(separator: " ").filter { $0 != "N" }
+        let wordsB = b.split(separator: " ")
+        return zip(wordsA, wordsB).prefix { $0 == $1 }.map { String($0.0) }.joined(separator: " ")
     }
 }

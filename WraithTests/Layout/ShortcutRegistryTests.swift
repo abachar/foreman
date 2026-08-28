@@ -119,6 +119,47 @@ struct ShortcutRegistryTests {
 
         #expect(resolve("ctrl+l", kind: "agent.claude", terminal: true) == nil)
     }
+
+    // MARK: - layout R33
+
+    @Test func documentationGroupsBoundActionsByFeatureInRegistrationOrder() {
+        registry.register(action("git.changes", "cmd+shift+g"))
+        registry.register(action("editor.quickOpen", "cmd+p"))
+        registry.register(action("git.history", "cmd+shift+h"))
+        registry.register(action("agents.claude", nil))
+
+        let groups = registry.documentation
+        #expect(groups.map { $0.feature } == ["git", "editor"])
+        #expect(groups[0].rows.map { $0.id } == ["git.changes", "git.history"])
+        #expect(groups[1].rows.map { $0.shortcut } == ["cmd+p"])
+    }
+
+    @Test func documentationFoldsFamiliesIntoOneRow() {
+        for number in 1...3 {
+            registry.register(
+                ShortcutAction(id: "layout.tab.\(number)", title: "Tab \(number)", defaultShortcut: "cmd+\(number)") {})
+        }
+        registry.register(
+            ShortcutAction(id: "layout.tab.previous", title: "Previous Tab", defaultShortcut: "cmd+shift+[") {})
+        registry.register(ShortcutAction(id: "layout.tab.next", title: "Next Tab", defaultShortcut: "cmd+shift+]") {})
+        for (direction, title) in [("left", "Left"), ("right", "Right"), ("up", "Above"), ("down", "Below")] {
+            registry.register(
+                ShortcutAction(
+                    id: "layout.focus.\(direction)", title: "Focus Group \(title)",
+                    defaultShortcut: "cmd+opt+\(direction)"
+                ) {})
+        }
+        registry.register(ShortcutAction(id: "editor.moveLine.up", title: "Move Line Up", defaultShortcut: "opt+up") {})
+        registry.register(
+            ShortcutAction(id: "editor.moveLine.down", title: "Move Line Down", defaultShortcut: "opt+down") {})
+
+        let rows = registry.documentation.flatMap(\.rows).map { "\($0.title) · \($0.shortcut)" }
+        #expect(
+            rows == [
+                "Tab N · cmd+N", "Previous Tab · cmd+shift+[", "Next Tab · cmd+shift+]", "Focus Group · cmd+opt+←→↑↓",
+                "Move Line · opt+↑↓",
+            ])
+    }
 }
 
 /// layout R22b, R23: the `panel` scope.

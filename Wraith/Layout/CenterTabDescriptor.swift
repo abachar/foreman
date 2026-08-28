@@ -44,7 +44,6 @@ struct CenterTabDescriptor {
 struct HomeEntry: Identifiable {
     enum Section: CaseIterable {
         case agents
-        case actions
         case recent
     }
 

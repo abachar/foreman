@@ -220,12 +220,6 @@ final class EditorFeature {
             ShortcutAction(id: "editor.quickOpen", title: "Quick Open", defaultShortcut: "cmd+p") { [weak self] in
                 self?.quickOpen()
             })
-        layout.register(
-            homeEntry: HomeEntry(
-                id: "editor.quickOpen", title: "Open File", icon: "doc.text.magnifyingglass", section: .actions
-            ) {
-                [weak self] in self?.quickOpen()
-            })
     }
 
     private var active: (id: TabID, tab: EditorTab)? {

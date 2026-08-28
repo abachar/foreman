@@ -23,6 +23,11 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
         ("cmd", .command), ("shift", .shift), ("opt", .option), ("alt", .option), ("ctrl", .control),
     ]
 
+    init(key: String, modifiers: Modifiers) {
+        self.key = key
+        self.modifiers = modifiers
+    }
+
     /// `nil` for anything that is not `modifier(+modifier)*+key` with known names.
     init?(parsing text: String) {
         var parts = text.lowercased().split(separator: "+", omittingEmptySubsequences: false).map(String.init)

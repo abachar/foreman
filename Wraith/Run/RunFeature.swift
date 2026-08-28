@@ -225,10 +225,6 @@ final class RunFeature {
             ShortcutAction(id: "run.palette", title: "Run Command", defaultShortcut: "cmd+r") { [weak self] in
                 self?.showPalette()
             })
-        layout.register(
-            homeEntry: HomeEntry(id: "run.palette", title: "Run Command", icon: "play.circle", section: .actions) {
-                [weak self] in self?.showPalette()
-            })
     }
 
     /// `cmd+r`: the shared palette over the window (run R5).

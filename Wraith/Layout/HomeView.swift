@@ -1,46 +1,50 @@
 import SwiftUI
 
-/// The empty group (layout R33, R34): agents, main actions with their shortcuts, recent files.
+/// The empty group (layout R33, R34): agents and recent files on the left, every shortcut on the
+/// right, as documentation.
 ///
-/// Everything comes from the features (`HomeEntry`) and the shortcut table; the layout only
-/// lists its own actions. Sections without entries are not shown.
+/// Everything comes from the features (`HomeEntry`) and the shortcut table; the layout knows
+/// none of them inline. Sections without entries are not shown.
 struct HomeView: View {
     let layout: LayoutManager
     let theme: ThemeService
 
-    private static let layoutActionIDs = ["layout.split.vertical", "layout.split.horizontal"]
+    private static let columnWidth: CGFloat = 360
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            section("Agents", entries: layout.homeEntries.filter { $0.section == .agents })
-            actions
-            section("Recent", entries: layout.homeEntries.filter { $0.section == .recent })
+        HStack(alignment: .top, spacing: 64) {
+            VStack(alignment: .leading, spacing: 24) {
+                section("Agents", entries: layout.homeEntries.filter { $0.section == .agents })
+                section("Recent", entries: layout.homeEntries.filter { $0.section == .recent })
+                Spacer(minLength: 0)
+            }
+            .frame(width: Self.columnWidth)
+            shortcuts
+                .frame(width: Self.columnWidth)
         }
         .padding(40)
+        // Both columns as one block, centred in the group.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // design R19: the same tokens, no illustration.
         .foregroundStyle(theme.tokens.textPrimary.color)
         .background(theme.tokens.surface.color)
     }
 
-    @ViewBuilder
-    private var actions: some View {
-        let entries = layout.homeEntries.filter { $0.section == .actions }
-        let layoutActions = layout.shortcuts.actions.filter { Self.layoutActionIDs.contains($0.id) }
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Actions")
-                .font(theme.font(.title, weight: .medium))
-                .foregroundStyle(theme.tokens.textSecondary.color)
-            ForEach(entries) { entry in
-                row(
-                    title: entry.title, icon: entry.icon, shortcut: layout.shortcuts.shortcut(for: entry.id),
-                    action: entry.action)
-            }
-            ForEach(layoutActions, id: \.id) { action in
-                row(
-                    title: action.title, icon: "rectangle.split.2x1",
-                    shortcut: layout.shortcuts.shortcut(for: action.id),
-                    action: action.perform)
+    /// layout R33: the whole table, by feature, in registration order; a row performs the action.
+    private var shortcuts: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                heading("Shortcuts")
+                ForEach(layout.shortcuts.documentation) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.feature.capitalized)
+                            .font(theme.font(.small, weight: .medium))
+                            .foregroundStyle(theme.tokens.textSecondary.color)
+                        ForEach(group.rows) { row in
+                            self.row(title: row.title, icon: nil, shortcut: row.shortcut, action: row.perform)
+                        }
+                    }
+                }
             }
         }
     }
@@ -49,25 +53,29 @@ struct HomeView: View {
     private func section(_ title: String, entries: [HomeEntry]) -> some View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(theme.font(.title, weight: .medium))
-                    .foregroundStyle(theme.tokens.textSecondary.color)
+                heading(title)
                 ForEach(entries) { entry in
                     row(
-                        title: entry.title, icon: entry.icon, shortcut: layout.shortcuts.shortcut(for: entry.id),
-                        action: entry.action)
+                        title: entry.title, icon: entry.icon,
+                        shortcut: layout.shortcuts.shortcut(for: entry.id)?.description, action: entry.action)
                 }
             }
         }
     }
 
-    private func row(title: String, icon: String, shortcut: Shortcut?, action: @escaping () -> Void) -> some View {
+    private func heading(_ title: String) -> some View {
+        Text(title)
+            .font(theme.font(.title, weight: .medium))
+            .foregroundStyle(theme.tokens.textSecondary.color)
+    }
+
+    private func row(title: String, icon: String?, shortcut: String?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Label {
                     Text(title)
                 } icon: {
-                    if let image = FileIcon.image(named: icon) ?? IconImage.resolve(icon) {
+                    if let icon, let image = FileIcon.image(named: icon) ?? IconImage.resolve(icon) {
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFit()
@@ -76,12 +84,12 @@ struct HomeView: View {
                 }
                 Spacer()
                 if let shortcut {
-                    Text(shortcut.description)
+                    Text(shortcut)
                         .font(theme.codeFont(.small))
                         .foregroundStyle(theme.tokens.textSecondary.color)
                 }
             }
-            .frame(maxWidth: 360)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
     }
