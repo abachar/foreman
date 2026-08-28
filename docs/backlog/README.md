@@ -18,5 +18,6 @@ Breakdown and progress of the implementation, one file per milestone. The specs 
 | M11 — Browser | [m11-browser.md](m11-browser.md) | browser (new folder `Browser/`) | 🟢 (2026-08-28; the page itself checked by hand by the author) |
 | M12 — SQL grammar | [m12-sql-grammar.md](m12-sql-grammar.md) | editor (R11), postgres (R9) | 🟢 (2026-08-28) |
 | M13 — Explorer | [m13-explorer.md](m13-explorer.md) | explorer (R12, R17, R21 amended, R22) | 🟢 (2026-08-28) |
+| M14 — Polish, second round | [m14-polish-2.md](m14-polish-2.md) | editor (R14), design (R14, R21) | 🟢 (2026-08-29) |
 
 Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.

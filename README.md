@@ -43,9 +43,10 @@ That is the whole distribution of v1 (`product` R10): no signing, notarization, 
 | M8 — Visual redesign | theme tokens, every view (`design`) | 🟢 |
 | M9 — Tabs and home screen | tab context menu, two-column home with every shortcut (`layout`) | 🟢 |
 | M10 — Agentic workflow | send to agent (`cmd+e`), detected Run commands, session diff, worktrees per agent, code folding | 🟢 |
-| M11 — Browser | one web page per window on `config.browser.url`, private session, Web Inspector; agents from the config only | 🟢 |
+| M11 — Browser | one web page per window on `config.browser.url`, private session, Web Inspector, iPhone / iPad / Desktop viewports; agents from the config only | 🟢 |
 | M12 — SQL grammar | tree-sitter-sql for `.sql` and the query editor | 🟢 |
 | M13 — Explorer | IntelliJ opening (click selects, double click opens, `shift+F6` renames), drag and drop moves | 🟢 |
+| M14 — Polish, second round | markdown opens in preview, `toolbarGap` token, title area at first launch | 🟢 |
 
 The up-to-date table, task by task, is [`docs/backlog/README.md`](docs/backlog/README.md).
 
