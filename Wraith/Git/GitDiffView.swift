@@ -4,6 +4,8 @@ import SwiftUI
 struct GitDiffView: View {
     let model: GitDiffModel
     let theme: ThemeService
+    /// agents R10b: the line's context menu (side by side only: the inline column is one text).
+    let sendLine: (String, Int) -> Void
 
     var body: some View {
         Group {
@@ -59,7 +61,7 @@ struct GitDiffView: View {
                                 .padding(8)
                         } else {
                             ForEach(model.rendered[file.id] ?? []) { hunk in
-                                hunkView(hunk)
+                                hunkView(hunk, path: file.path)
                             }
                         }
                     }
@@ -119,7 +121,7 @@ struct GitDiffView: View {
         return file.path
     }
 
-    private func hunkView(_ hunk: RenderedHunk) -> some View {
+    private func hunkView(_ hunk: RenderedHunk, path: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(hunk.header)
                 .font(Font(theme.editorFont))
@@ -133,9 +135,9 @@ struct GitDiffView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(hunk.rows) { row in
                         HStack(alignment: .top, spacing: 0) {
-                            cell(row.left)
+                            cell(row.left, path: path)
                             Divider()
-                            cell(row.right)
+                            cell(row.right, path: path)
                         }
                         .fixedSize(horizontal: false, vertical: true)
                     }
@@ -152,7 +154,7 @@ struct GitDiffView: View {
         }
     }
 
-    private func cell(_ cell: RenderedCell?) -> some View {
+    private func cell(_ cell: RenderedCell?, path: String) -> some View {
         HStack(alignment: .top, spacing: 0) {
             Text(cell?.number ?? "")
                 .font(Font(theme.editorFont))
@@ -167,6 +169,11 @@ struct GitDiffView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cellBackground(cell?.kind))
+        .contextMenu {
+            if let line = cell.flatMap({ Int($0.number) }) {
+                Button("Send to Agent") { sendLine(path, line) }
+            }
+        }
     }
 
     private func cellBackground(_ kind: DiffLine.Kind?) -> Color {

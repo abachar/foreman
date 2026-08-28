@@ -66,7 +66,12 @@ struct WorkspaceView: View {
                 editor.watchGit(git.statusChanges())
                 let terminal = TerminalService(layout: layout, theme: theme, root: workspace.root)
                 self.terminal = terminal
-                agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
+                let agents = AgentsFeature(layout: layout, workspace: workspace, terminal: terminal)
+                self.agents = agents
+                // agents R10d: three direct calls, no provider protocol.
+                editor.sendToAgent = { [weak agents] in agents?.send($0) }
+                explorer.actions.sendToAgent = { [weak agents] in agents?.send($0) }
+                git.sendToAgent = { [weak agents] in agents?.send($0) }
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 restoreLayout()
                 workspace.watchConfig()

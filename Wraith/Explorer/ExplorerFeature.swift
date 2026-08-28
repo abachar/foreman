@@ -44,6 +44,13 @@ enum ExplorerFeature {
                 // explorer R8: the first level is read when the panel is shown, off the main actor.
                 activate: { model.activate() },
                 deactivate: { model.deactivate() }))
+        // agents R10b: `cmd+e` while the tree has the focus.
+        layout.shortcuts.register(
+            ShortcutAction(id: "explorer.sendToAgent", title: "Send to Agent", scope: .panel, defaultShortcut: "cmd+e")
+            {
+                guard layout.panels.isVisible(panelID), let node = actions.selectedNode else { return }
+                actions.sendToAgent(node)
+            })
         return Registration(model: model, actions: actions)
     }
 }
@@ -58,6 +65,8 @@ final class ExplorerActions {
     private let layout: LayoutManager
     /// explorer R20, git R20: set by `Git/` once it exists; `nil` hides the entry.
     var fileHistory: ((FileNode) -> Void)?
+    /// explorer R20, agents R10b: set by `Agents/` once it exists; `nil` hides the entry.
+    var sendToAgent: ((AgentMention) -> Void)?
 
     init(model: ExplorerModel, root: URL, editor: EditorFeature, layout: LayoutManager) {
         self.model = model
@@ -66,8 +75,14 @@ final class ExplorerActions {
         self.layout = layout
     }
 
-    private var selectedNode: FileNode? {
+    var selectedNode: FileNode? {
         model.selection.flatMap { model.node(at: $0) }
+    }
+
+    /// agents R10a: a file or a folder as `@path`.
+    func sendToAgent(_ node: FileNode) {
+        sendToAgent?(
+            .path(root.appending(path: node.relativePath), lines: nil, isDirectory: node.kind == .directory))
     }
 
     private var window: NSWindow? {

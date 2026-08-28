@@ -28,7 +28,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `space` | — | Open as a preview | native | 🟢 |
 | `cmd+↓` | — | Open pinned | native | 🟢 |
 | `enter` / double click | — | Rename (decision 2026-08-28) | native | 🟢 |
-| — | — | Context menu › *Send to Agent* (`agents` `01-study-send.md` R10b) | native | ⚪ M10 |
+| — | — | Context menu › *Send to Agent* (`agents` `01-study-send.md` R10b) | native | 🟢 (2026-08-28) |
 | `cmd+delete` | — | Delete (trash) | native | 🟢 |
 
 ## Editor (`editor` R6–R8, R14, R17, R23, R24)
@@ -64,7 +64,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
 | *(no default)* | `agents.<id>` | Open / activate the agent's tab | global | 🟢 |
-| `cmd+e` | `agents.send` | Send the file / selection / path / diff line to the active agent as `@path` (`01-study-send.md` R10b) | tab(editor.file), tab(git.diff), panel (explorer) | ⚪ M10 |
+| `cmd+e` | `editor.sendToAgent` / `explorer.sendToAgent` / `git.sendToAgent` | Send the file or selection lines / the selected path / the diff's file or sha to the active agent as `@path` (`01-study-send.md` R10b; three ids, one per scope: the registry binds one id per scope, decision 2026-08-28) | tab(editor.file), panel (explorer visible), tab(git.diff) | 🟢 (2026-08-28) |
 
 ## Run (`run` R5, R6, R9)
 

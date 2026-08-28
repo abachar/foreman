@@ -61,3 +61,22 @@ struct TextEditingTests {
         #expect(TextEditing.location(ofLine: 9, in: "ab\ncd\nef") == 8)
     }
 }
+
+/// agents R10b: the lines of a selection.
+struct SelectedLinesTests {
+    let text = "one\ntwo\nthree\n" as NSString
+
+    @Test func caretHasNoLines() {
+        #expect(TextEditing.selectedLines(NSRange(location: 5, length: 0), in: text) == nil)
+    }
+
+    @Test func selectionCoversItsLines() {
+        #expect(TextEditing.selectedLines(NSRange(location: 1, length: 2), in: text) == 1...1)
+        #expect(TextEditing.selectedLines(NSRange(location: 1, length: 6), in: text) == 1...2)
+    }
+
+    @Test func endAtColumnZeroExcludesThatLine() {
+        #expect(TextEditing.selectedLines(NSRange(location: 0, length: 4), in: text) == 1...1)
+        #expect(TextEditing.selectedLines(NSRange(location: 4, length: 4), in: text) == 2...2)
+    }
+}

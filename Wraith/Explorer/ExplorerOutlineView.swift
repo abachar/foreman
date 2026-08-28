@@ -213,6 +213,12 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 menu.addItem(.separator())
                 menu.addItem(withTitle: "Git History", action: #selector(menuHistory), keyEquivalent: "").target = self
             }
+            // agents R10b: the entry exists once `Agents/` is wired.
+            if operations.sendToAgent != nil {
+                menu.addItem(.separator())
+                menu.addItem(withTitle: "Send to Agent", action: #selector(menuSendToAgent), keyEquivalent: "").target =
+                    self
+            }
         }
 
         private var clickedNode: FileNode? {
@@ -229,6 +235,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         @objc private func menuDelete() { clickedNode.map { operations.delete($0) } }
         @objc private func menuReveal() { clickedNode.map { operations.revealInFinder($0) } }
         @objc private func menuHistory() { clickedNode.map { operations.showHistory($0) } }
+        @objc private func menuSendToAgent() { clickedNode.map { operations.sendToAgent($0) } }
         @objc private func menuCopyPath() { clickedNode.map { operations.copyPath($0, absolute: false) } }
         @objc private func menuCopyAbsolutePath() { clickedNode.map { operations.copyPath($0, absolute: true) } }
 

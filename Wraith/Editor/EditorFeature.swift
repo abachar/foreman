@@ -209,6 +209,7 @@ final class EditorFeature {
                 "editor.replace", "Find and Replace", "cmd+opt+f",
                 { [weak self] in self?.findActive(.showReplaceInterface) }
             ),
+            ("editor.sendToAgent", "Send to Agent", "cmd+e", { [weak self] in self?.sendActiveToAgent() }),
         ]
         for (id, title, shortcut, perform) in actions {
             layout.shortcuts.register(
@@ -220,6 +221,18 @@ final class EditorFeature {
             ShortcutAction(id: "editor.quickOpen", title: "Quick Open", defaultShortcut: "cmd+p") { [weak self] in
                 self?.quickOpen()
             })
+    }
+
+    /// agents R10b, R10d: set by `Agents/` once it exists.
+    var sendToAgent: ((AgentMention) -> Void)?
+
+    /// agents R10b: the selection's lines, or the file.
+    private func sendActiveToAgent() {
+        guard let (_, tab) = active, let sendToAgent else { return }
+        let lines = tab.textView.flatMap {
+            TextEditing.selectedLines($0.selectedRange(), in: $0.string as NSString)
+        }
+        sendToAgent(.path(tab.url, lines: lines, isDirectory: false))
     }
 
     private var active: (id: TabID, tab: EditorTab)? {

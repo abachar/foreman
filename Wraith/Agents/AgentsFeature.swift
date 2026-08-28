@@ -28,6 +28,8 @@ final class AgentsFeature {
     /// agents R4: the tab the button reuses, the first one opened or restored for the agent.
     private var primaryTabs: [String: TabID] = [:]
     private var agentOfTab: [TabID: String] = [:]
+    /// agents R10: the agent tab the user showed last.
+    private var lastActivated: TabID?
     private var registeredKinds: Set<String> = []
     private var configWatch: Task<Void, Never>?
     private var eventsWatch: Task<Void, Never>?
@@ -269,7 +271,60 @@ final class AgentsFeature {
             tab = id
         }
         guard let agentID = agentOfTab[tab] else { return }
+        if case .activated = event {
+            lastActivated = tab
+        }
         syncBadge(agentID)
+    }
+
+    // MARK: - Send to the active agent (agents R10)
+
+    /// agents R10: whether a live agent tab can take a mention (menus are disabled otherwise).
+    var canSend: Bool {
+        activeAgentTab != nil
+    }
+
+    /// agents R10a–R10c: the mention written into the active agent's PTY, its tab shown.
+    func send(_ mention: AgentMention) {
+        guard let id = activeAgentTab, let tab = terminal.tab(id) else {
+            logger.debug("nothing sent: no agent tab")
+            return
+        }
+        do {
+            try terminal.write(Array(mention.text(relativeTo: tab.cwd).utf8), to: id)
+        } catch {
+            logger.error("send failed: \(String(describing: error), privacy: .public)")
+            return
+        }
+        activate(id)
+    }
+
+    private var activeAgentTab: TabID? {
+        let candidates =
+            layout.model.active.tabs.map(\.id).filter { agentOfTab[$0] != nil }
+            + agentOfTab.keys.sorted { $0.uuid.uuidString < $1.uuid.uuidString }
+        return Self.activeAgentTab(
+            lastActivated: lastActivated,
+            candidates: candidates.map { ($0, layout.model.owner(of: $0) != nil ? terminal.tab($0)?.state : nil) })
+    }
+
+    /// agents R10: the last activated tab when it is still open and not exited, else the first
+    /// candidate in that state (`candidates` in bar order, `nil` state = gone).
+    nonisolated static func activeAgentTab(
+        lastActivated: TabID?, candidates: [(id: TabID, state: TerminalState?)]
+    )
+        -> TabID?
+    {
+        func isLive(_ state: TerminalState?) -> Bool {
+            switch state {
+            case .idle, .running: return true
+            case .exited, nil: return false
+            }
+        }
+        if let lastActivated, let last = candidates.first(where: { $0.id == lastActivated }), isLive(last.state) {
+            return lastActivated
+        }
+        return candidates.first { isLive($0.state) }?.id
     }
 
     /// agents R6: running → green; a marked tab → orange; else none.

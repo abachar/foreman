@@ -39,6 +39,16 @@ nonisolated enum TextEditing {
         text.lineRange(for: selection)
     }
 
+    /// agents R10b: the 1-based lines a non-empty selection covers; an end at column 0 does not
+    /// count that line; `nil` for a caret.
+    static func selectedLines(_ selection: NSRange, in text: NSString) -> ClosedRange<Int>? {
+        guard selection.length > 0 else { return nil }
+        let first = position(at: selection.location, in: text).line
+        let end = position(at: NSMaxRange(selection), in: text)
+        let last = end.column == 0 ? max(first, end.line - 1) : end.line
+        return first...last
+    }
+
     /// editor R6: `enter` keeps the indentation of the current line.
     static func newline(at selection: NSRange, in text: NSString) -> Edit {
         let line = text.lineRange(for: NSRange(location: selection.location, length: 0))

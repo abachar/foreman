@@ -79,6 +79,12 @@ final class GitFeature {
                 },
                 activate: { [weak self] in self?.activateHistory() },
                 deactivate: { [weak self] in self?.history.reload(with: nil) }))
+        // agents R10b: `cmd+e` on a diff tab sends its file, or the sha of a whole commit.
+        layout.shortcuts.register(
+            ShortcutAction(
+                id: "git.sendToAgent", title: "Send to Agent", scope: .tab(kind: Self.diffTabKind),
+                defaultShortcut: "cmd+e"
+            ) { [weak self] in self?.sendActiveDiffToAgent() })
         explorer.actions.fileHistory = { [weak self] node in
             guard let self, let repo = repoContaining(node.relativePath) else { return }
             showHistory(repo: repo.id, path: Self.path(node.relativePath, in: repo, root: workspace.root))
@@ -604,6 +610,31 @@ final class GitFeature {
         }
     }
 
+    /// agents R10b, R10d: set by `Agents/` once it exists.
+    var sendToAgent: ((AgentMention) -> Void)?
+
+    private func sendActiveDiffToAgent() {
+        guard let id = layout.model.active.active?.id, let payload = diffModels[id]?.payload, let sendToAgent else {
+            return
+        }
+        switch payload.source {
+        case .commit(let sha, _):
+            sendToAgent(.literal(String(sha.prefix(7))))
+        case .workingTree(let path), .staged(let path), .commitFile(_, _, let path):
+            sendToAgent(.path(fileURL(path, in: payload.repo), lines: nil, isDirectory: false))
+        }
+    }
+
+    /// agents R10b: one line of a diff, from its context menu.
+    func sendLineToAgent(path: String, line: Int, in repo: String) {
+        sendToAgent?(.path(fileURL(path, in: repo), lines: line...line, isDirectory: false))
+    }
+
+    /// A repo-relative path as an absolute URL; the root when the repo is not known any more.
+    private func fileURL(_ path: String, in repo: String) -> URL {
+        (model.section(repo)?.repo.url ?? workspace.root).appending(path: path)
+    }
+
     func pinDiff(_ id: TabID) {
         guard let model = diffModels[id], !pinnedDiffs.contains(id) else { return }
         pinnedDiffs.insert(id)
@@ -627,7 +658,12 @@ final class GitFeature {
         if !isOpeningPreview {
             pinnedDiffs.insert(id)
         }
-        return AnyView(GitDiffView(model: diffModel, theme: theme))
+        return AnyView(
+            GitDiffView(
+                model: diffModel, theme: theme,
+                sendLine: { [weak self] path, line in
+                    self?.sendLineToAgent(path: path, line: line, in: diffModel.payload.repo)
+                }))
     }
 
     /// The repo's `GitCLI`, created on demand for a tab restored before the panel ran (git R26).

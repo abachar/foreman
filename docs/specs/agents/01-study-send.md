@@ -19,9 +19,10 @@ The user reads a file, a diff or the tree, and wants to tell the agent "look at 
 - R10 — **Active agent** = the `agent.*` tab most recently activated in the window (the `activated` event of `terminal` R16), whatever its state; with none ever activated, the first agent tab of the window in bar order. No agent tab → the entries are disabled and the shortcut does nothing (a `debug` log). Wraith never launches an agent to send it text.
 - R10a — The text written: `@<path>` for a file or a folder (a folder keeps its trailing `/`), `@<path>:<line>` for one line, `@<path>:<from>-<to>` for a selection spanning several lines; a trailing space; never a newline (the user submits). The path is relative to the agent tab's cwd when the file is under it, absolute otherwise. It is written as is through `TerminalService.write` (`terminal` R16), no bracketed-paste, no quoting: a path with spaces is the user's problem, as in the agents' own prompts.
 - R10b — Sources and their entry points:
-  - editor tab (`editor.file`): `cmd+e` (`agents.send`, scope `tab(editor.file)`) — the selection's line range when it is not empty, the file otherwise;
-  - explorer: the context menu (*Send to Agent*, `explorer` R20 extended) on a file or folder, and `cmd+e` while the tree has the focus (scope `panel`);
-  - git diff tab (`git.diff`): the context menu on a line (*Send to Agent*: `path:line`), and `cmd+e` on the tab (scope `tab(git.diff)`: the file, or the commit's sha as `<sha>` when the tab shows a whole commit).
+  - editor tab (`editor.file`): `cmd+e` (`editor.sendToAgent`, scope `tab(editor.file)`) — the selection's line range when it is not empty, the file otherwise;
+  - explorer: the context menu (*Send to Agent*, `explorer` R20 extended) on a file or folder, and `cmd+e` while a panel has the focus and the tree is visible (`explorer.sendToAgent`, scope `panel`);
+  - git diff tab (`git.diff`): the context menu on a line of the side-by-side layout (*Send to Agent*: `path:line`; the inline layout draws a hunk as one text and has no line menu), and `cmd+e` on the tab (`git.sendToAgent`, scope `tab(git.diff)`: the file, or the commit's sha as `<sha>` when the tab shows a whole commit).
+  One id per scope: the registry binds an id to a single scope (decision 2026-08-28).
 - R10c — The agent's tab is activated after the write (the user sees the text and types the rest). Its group takes the focus.
 - R10d — The feature owning the source builds the text (it knows its paths); `AgentsFeature.send(_ text: String)` picks the tab and writes. No provider protocol: three direct calls.
 
