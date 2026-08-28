@@ -9,7 +9,8 @@ import class SwiftTreeSitter.Query
 struct LanguageTests {
     @Test(arguments: [
         ("Main.java", Language.java), ("App.kt", .kotlin), ("build.gradle.kts", .kotlin),
-        ("index.ts", .typescript), ("App.tsx", .tsx), ("lib.mjs", .javascript), ("x.jsx", .javascript),
+        ("index.ts", .typescript), ("App.tsx", .tsx), ("query.sql", .sql), ("lib.mjs", .javascript),
+        ("x.jsx", .javascript),
         ("package.json", .json), ("ci.yml", .yaml), ("stack.yaml", .yaml), ("Cargo.toml", .toml),
         ("README.md", .markdown), ("deploy.sh", .bash), (".zshrc", .bash), (".bash_profile", .bash),
         ("Editor.swift", .swift), ("index.html", .html), ("site.css", .css),
@@ -20,7 +21,7 @@ struct LanguageTests {
         #expect(Language.forFile(URL(filePath: "/ws/src/\(name)")) == language)
     }
 
-    @Test(arguments: ["notes.txt", "Makefile", "query.sql", "image.png", "noext", ".env"])
+    @Test(arguments: ["notes.txt", "Makefile", "image.png", "noext", ".env"])
     func unknownFilesArePlainText(name: String) {
         #expect(Language.forFile(URL(filePath: "/ws/\(name)")) == nil)
     }

@@ -14,7 +14,8 @@ struct PostgresQueryView: View {
             theme.tokens.separator.color.frame(height: 1)
             VSplitView {
                 SQLEditorView(
-                    tab: tab, theme: theme, onRun: { feature.run(tab) }, onStop: { feature.stop() }
+                    tab: tab, theme: theme, highlighter: feature.highlighter, onRun: { feature.run(tab) },
+                    onStop: { feature.stop() }
                 )
                 .frame(maxWidth: .infinity, minHeight: 80)
                 results

@@ -16,5 +16,6 @@ Breakdown and progress of the implementation, one file per milestone. The specs 
 | M9 — Tabs and home screen | [m9-tabs.md](m9-tabs.md) | layout (R33 amended, R35) | 🟢 (2026-08-28) |
 | M10 — Agentic workflow | [m10-agentic.md](m10-agentic.md) | agents (R10–R13), git (R30–R32), run (R14–R16), editor (R26–R28) | 🟢 (2026-08-28; the agent button menu entries — Session Changes, worktrees — checked by tests, not by hand) |
 | M11 — Browser | [m11-browser.md](m11-browser.md) | browser (new folder `Browser/`) | 🟢 (2026-08-28; the page itself checked by hand by the author) |
+| M12 — SQL grammar | [m12-sql-grammar.md](m12-sql-grammar.md) | editor (R11), postgres (R9) | 🟢 (2026-08-28) |
 
 Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.

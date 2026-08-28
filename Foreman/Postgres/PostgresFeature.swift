@@ -30,6 +30,8 @@ final class PostgresFeature {
     var executionTask: Task<Void, Never>?
     let layout: LayoutManager
     let theme: ThemeService
+    /// postgres R9: the shared highlighter, on the `sql` grammar (2026-08-28).
+    let highlighter: Highlighter
     private let workspace: Workspace
     private let secrets: any SecretStore
     private(set) var config: PostgresConfig?
@@ -41,7 +43,11 @@ final class PostgresFeature {
     private var configWatch: Task<Void, Never>?
     private let logger = os.Logger(subsystem: "dev.crafters.foreman", category: "postgres")
 
-    init(layout: LayoutManager, workspace: Workspace, secrets: any SecretStore, theme: ThemeService) {
+    init(
+        layout: LayoutManager, workspace: Workspace, secrets: any SecretStore, theme: ThemeService,
+        highlighter: Highlighter
+    ) {
+        self.highlighter = highlighter
         self.workspace = workspace
         self.secrets = secrets
         self.layout = layout

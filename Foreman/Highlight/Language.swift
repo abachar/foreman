@@ -9,6 +9,7 @@ import TreeSitterJava
 import TreeSitterJavaScript
 import TreeSitterKotlin
 import TreeSitterMarkdown
+import TreeSitterSql
 import TreeSitterSwift
 import TreeSitterTOML
 import TreeSitterTSX
@@ -17,8 +18,8 @@ import TreeSitterYAML
 
 /// The grammars Foreman ships (editor R11), one SPM package each, and the file names they cover.
 ///
-/// `sql` (editor R11) is not here: its package manifest does not resolve under Xcode 27 (M1, then
-/// again in M5 task 5.4), see `editor/decisions.md` 2026-08-27 and `editor/questions.md`.
+/// `sql` came last (2026-08-28): tree-sitter-sql's `gh-pages` branch, the one carrying the
+/// generated parser, resolves and builds next to SwiftTreeSitter under Xcode 27.
 nonisolated enum Language: String, CaseIterable, Sendable {
     case java
     case kotlin
@@ -34,6 +35,7 @@ nonisolated enum Language: String, CaseIterable, Sendable {
     case html
     case css
     case dockerfile
+    case sql
 
     /// editor R11: by file name first (`Dockerfile.dev`, `.zshrc`), then by extension; `nil` is
     /// plain text.
@@ -75,6 +77,8 @@ nonisolated enum Language: String, CaseIterable, Sendable {
             return .html
         case "css":
             return .css
+        case "sql", "psql":
+            return .sql
         default:
             return nil
         }
@@ -87,6 +91,8 @@ nonisolated enum Language: String, CaseIterable, Sendable {
             return "//"
         case .yaml, .toml, .bash, .dockerfile:
             return "#"
+        case .sql:
+            return "--"
         case .json, .markdown, .html, .css:
             return nil
         }
@@ -109,6 +115,7 @@ nonisolated enum Language: String, CaseIterable, Sendable {
         case .html: return SwiftTreeSitter.Language(tree_sitter_html())
         case .css: return SwiftTreeSitter.Language(tree_sitter_css())
         case .dockerfile: return SwiftTreeSitter.Language(tree_sitter_dockerfile())
+        case .sql: return SwiftTreeSitter.Language(tree_sitter_sql())
         }
     }
 
@@ -149,6 +156,8 @@ nonisolated enum Language: String, CaseIterable, Sendable {
             return try LanguageConfiguration(tree_sitter_css(), name: "CSS")
         case .dockerfile:
             return try LanguageConfiguration(tree_sitter_dockerfile(), name: "Dockerfile")
+        case .sql:
+            return try LanguageConfiguration(tree_sitter_sql(), name: "Sql")
         }
     }
 

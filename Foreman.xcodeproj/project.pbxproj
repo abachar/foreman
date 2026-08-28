@@ -26,6 +26,7 @@
 		B1B2C3D400000000000E0003 /* TreeSitterHTML in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000E0002 /* TreeSitterHTML */; };
 		B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000F0002 /* TreeSitterCSS */; };
 		B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000100002 /* TreeSitterDockerfile */; };
+		B1B2C3D40000000000110003 /* TreeSitterSql in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000110002 /* TreeSitterSql */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +93,7 @@
 				B1B2C3D400000000000E0003 /* TreeSitterHTML in Frameworks */,
 				B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */,
 				B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */,
+				B1B2C3D40000000000110003 /* TreeSitterSql in Frameworks */,
 			);
 		};
 		158380D1303E6BB600F921C8 /* Frameworks */ = {
@@ -158,6 +160,7 @@
 				B1B2C3D400000000000E0002 /* TreeSitterHTML */,
 				B1B2C3D400000000000F0002 /* TreeSitterCSS */,
 				B1B2C3D40000000000100002 /* TreeSitterDockerfile */,
+				B1B2C3D40000000000110002 /* TreeSitterSql */,
 			);
 			productName = Foreman;
 			productReference = 158380C7303E6BB500F921C8 /* Foreman.app */;
@@ -233,6 +236,7 @@
 				B1B2C3D400000000000E0001 /* XCRemoteSwiftPackageReference "tree-sitter-html" */,
 				B1B2C3D400000000000F0001 /* XCRemoteSwiftPackageReference "tree-sitter-css" */,
 				B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */,
+				B1B2C3D40000000000110001 /* XCRemoteSwiftPackageReference "tree-sitter-sql" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 158380C8303E6BB500F921C8 /* Products */;
@@ -676,6 +680,14 @@
 				minimumVersion = 0.2.0;
 			};
 		};
+		B1B2C3D40000000000110001 /* XCRemoteSwiftPackageReference "tree-sitter-sql" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/DerekStride/tree-sitter-sql";
+			requirement = {
+				branch = "gh-pages";
+				kind = branch;
+			};
+		};
 		B1B2C3D40000002000010000 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-markdown";
@@ -790,6 +802,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */;
 			productName = TreeSitterDockerfile;
+		};
+		B1B2C3D40000000000110002 /* TreeSitterSql */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1B2C3D40000000000110001 /* XCRemoteSwiftPackageReference "tree-sitter-sql" */;
+			productName = TreeSitterSql;
 		};
 		B1B2C3D40000002000020000 /* Markdown */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -1,4 +1,6 @@
 import AppKit
+import Neon
+import RangeState
 import SwiftUI
 
 /// The SQL editor of a query tab (postgres R9, R10): a monospaced `NSTextView` with the
@@ -9,6 +11,7 @@ import SwiftUI
 struct SQLEditorView: NSViewRepresentable {
     let tab: PostgresQueryTab
     let theme: ThemeService
+    let highlighter: Highlighter
     let onRun: () -> Void
     let onStop: () -> Void
 
@@ -36,8 +39,14 @@ struct SQLEditorView: NSViewRepresentable {
         textView.onRun = onRun
         textView.onStop = onStop
         tab.textView = textView
-        context.coordinator.theme = theme
-        context.coordinator.recolor(textView)
+        // postgres R9: the same Neon highlighter as the file editor, on the `sql` grammar (2026-08-28).
+        context.coordinator.attaching = Task { [highlighter, weak textView, coordinator = context.coordinator] in
+            guard let textView, let attached = await highlighter.attach(to: textView, language: .sql),
+                !Task.isCancelled
+            else { return }
+            coordinator.highlighter = attached
+            attached.invalidate(.all)
+        }
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
         scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
@@ -61,7 +70,7 @@ struct SQLEditorView: NSViewRepresentable {
             textView.insertText(
                 replacement, replacementRange: NSRange(location: 0, length: (textView.string as NSString).length))
             textView.setSelectedRange(NSRange(location: 0, length: 0))
-            context.coordinator.recolor(textView)
+            context.coordinator.highlighter?.invalidate(.all)
         }
         if let insertion = tab.pendingInsertion {
             tab.pendingInsertion = nil
@@ -79,33 +88,22 @@ struct SQLEditorView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
-        var theme: ThemeService?
+        /// Kept alive for the life of the tab: Neon only holds the text view weakly.
+        var highlighter: TextViewHighlighter?
+        var attaching: Task<Void, Never>?
         private let tab: PostgresQueryTab
 
         init(tab: PostgresQueryTab) {
             self.tab = tab
         }
 
+        isolated deinit {
+            attaching?.cancel()
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             tab.text = textView.string
-            recolor(textView)
-        }
-
-        /// postgres R9: the whole buffer is re-scanned on every edit; buffers are small.
-        func recolor(_ textView: NSTextView) {
-            guard let theme, let storage = textView.textStorage else { return }
-            let whole = NSRange(location: 0, length: storage.length)
-            storage.beginEditing()
-            storage.removeAttribute(.foregroundColor, range: whole)
-            storage.addAttribute(.foregroundColor, value: theme.tokens.textPrimary.nsColor, range: whole)
-            for token in SQLHighlighter.tokens(in: storage.string) where NSMaxRange(token.range) <= storage.length {
-                storage.addAttribute(.foregroundColor, value: theme.color(for: token.role), range: token.range)
-            }
-            storage.endEditing()
-            textView.typingAttributes = [
-                .font: textView.font ?? theme.editorFont, .foregroundColor: theme.tokens.textPrimary.nsColor,
-            ]
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

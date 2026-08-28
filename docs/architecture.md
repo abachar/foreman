@@ -78,7 +78,7 @@ We import where we use. Versions `.upToNextMinor`, `Package.resolved` committed,
 | Terminal surface + process | **SwiftTerm** | `LocalProcessTerminalView`: PTY, process, view, exit code through `processTerminated` |
 | Git | `git` binary through `Process` | machine formats (`--porcelain=v2 -z`, `--format`); honours hooks, signing, helpers |
 | Postgres | **PostgresNIO** | schema through `pg_catalog` |
-| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, `main` branch, editor decision 2026-08-26), 14 SPM grammars (`tree-sitter-*`) | editor, git diff; sql pending upstream (editor decision 2026-08-27) |
+| Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, `main` branch, editor decision 2026-08-26), 15 SPM grammars (`tree-sitter-*`; `sql` on tree-sitter-sql's `gh-pages` branch, editor decision 2026-08-28) | editor, git diff, Postgres query editor |
 | Markdown | **swift-markdown** | preview |
 | Fuzzy | **FuzzyMatch** (ordo-one) | fzf-style Smith-Waterman: boundary bonuses, ranges for highlighting (editor decision 2026-08-26) |
 | Content search | `rg` binary (`grep` fallback) | `cmd+shift+f` |
