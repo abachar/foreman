@@ -18,6 +18,39 @@ final class BrowserTab: NSObject {
         case refuse(String)
     }
 
+    /// browser R11: the page laid out at a device width, or at the tab's full size.
+    nonisolated enum Viewport: String, CaseIterable, Sendable {
+        case phone
+        case tablet
+        case desktop
+
+        /// Logical points of the current iPhone Pro and iPad Air (2026); `nil` = fill.
+        var size: CGSize? {
+            switch self {
+            case .phone: return CGSize(width: 393, height: 852)
+            case .tablet: return CGSize(width: 820, height: 1180)
+            case .desktop: return nil
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .phone: return "iphone"
+            case .tablet: return "ipad"
+            case .desktop: return "desktopcomputer"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .phone: return "iPhone (393 × 852)"
+            case .tablet: return "iPad (820 × 1180)"
+            case .desktop: return "Desktop (full size)"
+            }
+        }
+    }
+
+    var viewport: Viewport = .desktop
     private(set) var url: URL
     private(set) var title = ""
     private(set) var isLoading = false

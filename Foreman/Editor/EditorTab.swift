@@ -113,7 +113,7 @@ final class EditorTab {
 
     init(
         path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0,
-        mode: Mode = .source, previewBlock: Int = 0
+        mode: Mode? = nil, previewBlock: Int = 0
     ) {
         self.path = path
         self.url = url
@@ -121,7 +121,8 @@ final class EditorTab {
         requestedLine = line
         self.cursor = cursor
         self.scroll = scroll
-        self.mode = language == .markdown ? mode : .source
+        // editor R14 (amended 2026-08-29): a markdown file opens in preview unless the tab says otherwise.
+        self.mode = language == .markdown ? (mode ?? .preview) : .source
         self.previewBlock = previewBlock
     }
 
