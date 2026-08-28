@@ -84,4 +84,33 @@ struct LayoutManagerTests {
         #expect(layout.toolbarItem("agent.claude") == nil)
         #expect(layout.badge(of: "agent.claude") == .none)
     }
+
+    // MARK: - layout R35
+
+    @Test func closesTheSelectionInBarOrderAndStopsAtARefusal() async {
+        let layout = LayoutManager()
+        nonisolated(unsafe) var asked: [TabID] = []
+        layout.register(
+            tabKind: CenterTabDescriptor(
+                kind: "editor.file", makeView: { _, payload in AnyView(Text(payload)) }, serialize: { _ in nil },
+                confirmClose: { id in
+                    asked.append(id)
+                    return false
+                }))
+        layout.openTab(kind: "editor.file", title: "a", payload: "a")
+        let b = layout.openTab(kind: "editor.file", title: "b", payload: "b")
+        layout.openTab(kind: "editor.file", title: "c", payload: "c")
+        let d = layout.openTab(kind: "editor.file", title: "d", payload: "d")
+        guard let b, let d else {
+            Issue.record("tabs not opened")
+            return
+        }
+        layout.update(b, title: "b", isDirty: true)
+
+        await layout.closeTabs(.others, around: d)
+
+        // `a` went, `b` refused and stopped the rest: `c` stays.
+        #expect(layout.model.active.tabs.map(\.title) == ["b", "c", "d"])
+        #expect(asked == [b])
+    }
 }

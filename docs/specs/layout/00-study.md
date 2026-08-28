@@ -106,6 +106,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 
 - R33 — A group **without tabs** shows the home screen, in the spirit of IntelliJ's empty zone: in the middle, the list of the main actions with their shortcut (open a file `cmd+p`, run a command `cmd+r`, panels `cmd+shift+e/g/h/d/q`, split `cmd+d`), above it the available agents (buttons, `agents` R2) and below it the workspace's recent files (`editor` R19). The entries are provided by the features through the `ShortcutRegistry` and a home-entry registration (`id`, title, icon, section, action; same rules as R30); the layout knows none of them inline.
 - R34 — The home screen is not a tab: it does not appear in the bar, does not close, is not persisted. Opening a tab in the group replaces it; closing the last tab brings it back (R10). It takes the group's keyboard focus (global shortcuts work, `escape` has no effect).
+- R35 — **Tab context menu** (2026-08-28): right-clicking a tab of the bar opens a native menu with, in this order: *Close*, *Close Other Tabs*, *Close All Tabs*, *Close Unmodified Tabs*, *Close Tabs to the Left*, *Close Tabs to the Right*. Every entry acts on the group of the clicked tab, not on the active group; the clicked tab is the pivot of *Others*, *Left* and *Right*. *Unmodified* closes the tabs that are not `isDirty`, the clicked one included. The tabs close one by one in bar order through R15 (a dirty tab asks its owner; a refusal stops the rest), R10 applies if the group empties. An entry with nothing to close is disabled.
 
 ## Edge cases
 

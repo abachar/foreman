@@ -113,8 +113,39 @@ nonisolated struct TabGroup: Equatable, Sendable {
         tabs[index].badge = badge
     }
 
+    /// layout R35: what a menu entry closes, in bar order, around the clicked tab.
+    func tabs(toClose selection: TabCloseSelection, around id: TabID) -> [Tab] {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return [] }
+        switch selection {
+        case .others: return tabs.filter { $0.id != id }
+        case .all: return tabs
+        case .unmodified: return tabs.filter { !$0.isDirty }
+        case .left: return Array(tabs[..<index])
+        case .right: return Array(tabs[(index + 1)...])
+        }
+    }
+
     private mutating func step(by offset: Int) {
         guard let index = activeIndex, tabs.count > 1 else { return }
         activeTab = tabs[(index + offset + tabs.count) % tabs.count].id
+    }
+}
+
+/// layout R35: the multi-tab entries of the tab menu.
+nonisolated enum TabCloseSelection: CaseIterable, Sendable {
+    case others
+    case all
+    case unmodified
+    case left
+    case right
+
+    var title: String {
+        switch self {
+        case .others: return "Close Other Tabs"
+        case .all: return "Close All Tabs"
+        case .unmodified: return "Close Unmodified Tabs"
+        case .left: return "Close Tabs to the Left"
+        case .right: return "Close Tabs to the Right"
+        }
     }
 }

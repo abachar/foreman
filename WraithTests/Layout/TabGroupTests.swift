@@ -75,4 +75,40 @@ struct TabGroupTests {
         group.activatePrevious()
         #expect(group.active == two)
     }
+
+    // MARK: - layout R35
+
+    private func threeTabs() -> TabGroup {
+        var group = TabGroup()
+        group.insert(one)
+        group.insert(two)
+        group.insert(three)
+        return group
+    }
+
+    @Test func closeOthersKeepsThePivotOnly() {
+        #expect(threeTabs().tabs(toClose: .others, around: two.id).map(\.title) == ["one", "three"])
+    }
+
+    @Test func closeAllTakesEveryTabInBarOrder() {
+        #expect(threeTabs().tabs(toClose: .all, around: two.id).map(\.title) == ["one", "two", "three"])
+    }
+
+    @Test func closeUnmodifiedSkipsDirtyTabsAndIncludesThePivot() {
+        var group = threeTabs()
+        group.update(one.id, title: "one", isDirty: true)
+        #expect(group.tabs(toClose: .unmodified, around: two.id).map(\.title) == ["two", "three"])
+    }
+
+    @Test func closeLeftAndRightStopAtThePivot() {
+        let group = threeTabs()
+        #expect(group.tabs(toClose: .left, around: two.id).map(\.title) == ["one"])
+        #expect(group.tabs(toClose: .right, around: two.id).map(\.title) == ["three"])
+        #expect(group.tabs(toClose: .left, around: one.id).isEmpty)
+        #expect(group.tabs(toClose: .right, around: three.id).isEmpty)
+    }
+
+    @Test func closeSelectionAroundAnUnknownTabIsEmpty() {
+        #expect(threeTabs().tabs(toClose: .all, around: TabID()).isEmpty)
+    }
 }

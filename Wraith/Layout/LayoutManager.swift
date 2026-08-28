@@ -180,6 +180,18 @@ final class LayoutManager {
         tabKinds[tab.kind]?.onClose(id)
     }
 
+    /// layout R35: the menu's multi-tab entries, one `closeTab` at a time in bar order; a tab
+    /// still there after its turn (R15 refusal) stops the rest.
+    func closeTabs(_ selection: TabCloseSelection, around id: TabID) async {
+        guard let owner = model.owner(of: id), let group = model[group: owner] else { return }
+        for tab in group.tabs(toClose: selection, around: id) {
+            await closeTab(tab.id)
+            if model.owner(of: tab.id) != nil {
+                return
+            }
+        }
+    }
+
     /// layout R15: confirmations one by one, in reading order; a refusal stops everything.
     func confirmCloseAll() async -> Bool {
         for tab in model.dirtyTabs() {

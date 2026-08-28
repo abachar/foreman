@@ -109,6 +109,14 @@ struct TabBarView: View {
                             close: { Task { await layout.closeTab(tab.id) } }
                         )
                         .id(tab.id)
+                        // layout R35: the native menu; an entry with nothing to close is disabled.
+                        .contextMenu {
+                            Button("Close") { Task { await layout.closeTab(tab.id) } }
+                            ForEach(TabCloseSelection.allCases, id: \.self) { selection in
+                                Button(selection.title) { Task { await layout.closeTabs(selection, around: tab.id) } }
+                                    .disabled(group.tabs(toClose: selection, around: tab.id).isEmpty)
+                            }
+                        }
                     }
                 }
             }
