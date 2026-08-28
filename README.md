@@ -4,7 +4,7 @@
 
 ## About
 
-Foreman is a native macOS app. One window is one folder is one workspace, like an IDE — except the center of it is your CLI agents (Claude Code, Antigravity, OpenCode), each running in its own tab on an embedded terminal surface ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)), one click away in the toolbar. There is no free-form shell: terminal surfaces only exist to host agents and run commands. Everything else (file explorer, git, editor, Postgres browser, run commands) is a plugin that attaches panels around it.
+Foreman is a native macOS app. One window is one folder is one workspace, like an IDE — except the center of it is your CLI agents (Claude Code, Antigravity, OpenCode), each running in its own tab on an embedded terminal surface ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)), one click away in the toolbar. There is no free-form shell: terminal surfaces only exist to host agents and run commands. Everything else (file explorer, git, editor, Postgres browser, run commands, a browser tab on the page you serve) is a feature that attaches panels and tabs around it.
 
 Personal project, Apple Silicon first, local use only for now.
 
@@ -41,6 +41,11 @@ That is the whole distribution of v1 (`product` R10): no signing, notarization, 
 | M6 — Polish | open points of M0–M5, shortcuts survey, CI, measured budgets, local release | 🟢 |
 | M7 — Formatting | format the active file (`editor`; on save dropped) | 🟢 |
 | M8 — Visual redesign | theme tokens, every view (`design`) | 🟢 |
+| M9 — Tabs and home screen | tab context menu, two-column home with every shortcut (`layout`) | 🟢 |
+| M10 — Agentic workflow | send to agent (`cmd+e`), detected Run commands, session diff, worktrees per agent, code folding | 🟢 |
+| M11 — Browser | one web page per window on `config.browser.url`, private session, Web Inspector; agents from the config only | 🟢 |
+| M12 — SQL grammar | tree-sitter-sql for `.sql` and the query editor | 🟢 |
+| M13 — Explorer | IntelliJ opening (click selects, double click opens, `shift+F6` renames), drag and drop moves | 🟢 |
 
 The up-to-date table, task by task, is [`docs/backlog/README.md`](docs/backlog/README.md).
 
