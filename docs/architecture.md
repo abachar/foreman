@@ -32,6 +32,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 | Run | ▶ Run button + palette; one terminal tab per command | `cmd+r` |
 | Git | right panel: changes, history (one at a time); center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
 | Postgres | right panel: schema; center tabs: query + results | `cmd+shift+b` / `cmd+shift+q` |
+| Browser | center tabs: a web page (`WKWebView`) | `cmd+shift+o` |
 
 Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
 
@@ -48,7 +49,7 @@ Foreman/
 ├── Palette/      # shared fuzzy palette (quick open, run)
 ├── Highlight/    # tree-sitter → attributes, shared (editor, diff, sql)
 ├── Terminal/     # SwiftTerm surface + process, TerminalService
-├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/
+├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/  Browser/
 ForemanTests/         # same split
 cli/foreman           # shell script: `open -a Foreman "$(pwd)"`
 ```
@@ -83,6 +84,7 @@ We import where we use. Versions `.upToNextMinor`, `Package.resolved` committed,
 | Content search | `rg` binary (`grep` fallback) | `cmd+shift+f` |
 | Secrets | Security.framework (Keychain) | PG password |
 | Disk watching | **AsyncFileMonitor** (CleanCocoa) on FSEvents | one `FolderContentMonitor` per workspace, multicast; `FSWatchService` only adds path filtering and debounced batches |
+| Web page | WebKit (`WKWebView`) | one per browser tab, `isInspectable`, one `WKWebsiteDataStore` per workspace (browser decision 2026-08-28) |
 
 Criterion for adding one: the library does the job, is maintained, is Swift 6 compatible → we use it. "I could write it myself" is only an argument under 50 trivial lines.
 

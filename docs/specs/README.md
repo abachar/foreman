@@ -17,6 +17,7 @@ One folder per domain, **in implementation order** (each row depends only on the
 | 9 | [git](git/) | changes, diff, history, remote, branches | explorer, editor (`Editor.open`), `Highlight` | M4 |
 | 10 | [postgres](postgres/) | single connection, schema, queries, results | layout, `Highlight` | M5 |
 | 11 | [design](design/) | visual identity: `ThemeService` tokens, islands, flat bars, Dark theme (transverse, no feature) | layout, terminal (`ThemeService`) | M8 |
+| 12 | [browser](browser/) | a web page as a center tab: `WKWebView`, address bar, bookmarks from the config, Web Inspector | layout, config, agents (`cmd+e`) | M11 |
 
 `Palette` and `Highlight` are shared folders (`architecture.md`), both shipped with `editor` (M1: quick open and highlighting). The terminal comes after the editor: the app must already be usable (open, read, edit) before it hosts processes.
 
