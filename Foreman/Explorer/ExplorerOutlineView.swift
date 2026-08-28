@@ -49,6 +49,10 @@ struct ExplorerOutlineView: NSViewRepresentable {
         outline.target = context.coordinator
         // explorer R12: a single click only selects.
         outline.doubleAction = #selector(Coordinator.doubleClicked)
+        // explorer R22: moving by drag and drop, inside the tree only.
+        outline.registerForDraggedTypes([Coordinator.dragType])
+        outline.setDraggingSourceOperationMask(.move, forLocal: true)
+        outline.setDraggingSourceOperationMask([], forLocal: false)
         // explorer R20: the context menu, built for the clicked row.
         let menu = NSMenu()
         menu.delegate = context.coordinator
@@ -182,6 +186,56 @@ struct ExplorerOutlineView: NSViewRepresentable {
             guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind
             else { return nil }
             return node
+        }
+
+        // MARK: - Drag and drop (explorer R22)
+
+        static let dragType = NSPasteboard.PasteboardType("dev.crafters.foreman.explorer-path")
+
+        func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> (any NSPasteboardWriting)?
+        {
+            guard let item = item as? OutlineItem, case .node(let node) = item.kind else { return nil }
+            let pasteboardItem = NSPasteboardItem()
+            pasteboardItem.setString(node.relativePath, forType: Self.dragType)
+            return pasteboardItem
+        }
+
+        /// The drop lands on a folder (or the root when the target is empty space), never between rows.
+        func outlineView(
+            _ outlineView: NSOutlineView, validateDrop info: any NSDraggingInfo, proposedItem item: Any?,
+            proposedChildIndex index: Int
+        ) -> NSDragOperation {
+            guard let source = info.draggingPasteboard.string(forType: Self.dragType) else { return [] }
+            let folder = dropFolder(item)
+            guard folder.isFolder, ExplorerOperations.canMove(source, into: folder.path) else { return [] }
+            outlineView.setDropItem(folder.item, dropChildIndex: NSOutlineViewDropOnItemIndex)
+            return .move
+        }
+
+        func outlineView(
+            _ outlineView: NSOutlineView, acceptDrop info: any NSDraggingInfo, item: Any?, childIndex index: Int
+        ) -> Bool {
+            guard let source = info.draggingPasteboard.string(forType: Self.dragType),
+                let node = model.node(at: source)
+            else { return false }
+            let folder = dropFolder(item)
+            guard folder.isFolder, ExplorerOperations.canMove(source, into: folder.path) else { return false }
+            operations.move(node, into: folder.node)
+            return true
+        }
+
+        /// The folder a drop on `item` targets: the item's own folder for a file, the root for `nil`.
+        private func dropFolder(_ item: Any?) -> (item: Any?, node: FileNode?, path: String, isFolder: Bool) {
+            guard let item = item as? OutlineItem, case .node(let node) = item.kind else {
+                return (nil, nil, "", item == nil)
+            }
+            if node.kind == .directory {
+                return (item, node, node.relativePath, true)
+            }
+            let parentPath = ExplorerOperations.parentPath(of: node.relativePath)
+            guard !parentPath.isEmpty else { return (nil, nil, "", true) }
+            guard let parent = model.node(at: parentPath) else { return (nil, nil, "", false) }
+            return (items[parentPath], parent, parentPath, true)
         }
 
         // MARK: - NSMenuDelegate (explorer R20)

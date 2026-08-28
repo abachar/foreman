@@ -45,8 +45,9 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 - R17 — Rename: inline editing, from the context menu or `shift+F6` (IntelliJ; amended 2026-08-28 — neither a click nor a double click ever starts it). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
 - R18 — Delete: to the **trash** (`trashItem`), with a confirmation listing the number of items for a non-empty folder. The explorer calls `Editor.fileDeleted(path)`.
 - R19 — Any operation is refused if the target path is not under the root (`architecture.md`, security) or if the name is empty, `.`/`..`, or contains a forbidden character. An IO error (permission, already exists) is shown in the panel's banner and does not modify the tree.
-- R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path, Send to Agent (`agents` `01-study-send.md` R10b, 2026-08-28). No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.
+- R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path, Send to Agent (`agents` `01-study-send.md` R10b, 2026-08-28). No "terminal here" (`product` R4), no file copy/cut/paste. (Drag and drop: R22, added 2026-08-28.)
 - R21 — Keyboard navigation in the tree: `↑↓` move, `→` expands / `←` collapses or goes up, `enter` opens (pinned), `shift+F6` renames, `cmd+delete` deletes, `escape` gives the focus back to the center (`layout` R6). (`space` and `cmd+↓` removed with the preview mode, 2026-08-28.)
+- R22 — **Drag and drop (2026-08-28)**: a file or folder of the tree dragged onto a folder (or onto the empty area = the root) is **moved** there under its own name (`FileManager.moveItem`), the open tabs following as for a rename (R17). Refused (no drop indicator): onto itself, its own parent, one of its descendants, or when the name already exists there (R19 banner). Dropping between rows retargets to the enclosing folder. Only the tree's own items are accepted: nothing from the Finder or another app, nothing dragged out.
 
 ## Edge cases
 

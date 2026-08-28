@@ -136,6 +136,23 @@ final class ExplorerActions {
         }
     }
 
+    /// explorer R22: a drop into `folder` (`nil` = the root); the open tabs follow like a rename.
+    func move(_ node: FileNode, into folder: FileNode?) {
+        let url = root.appending(path: node.relativePath)
+        let destination = folder.map { root.appending(path: $0.relativePath) } ?? root
+        Task {
+            do {
+                let target = try await ExplorerOperations.move(url, into: destination, root: root)
+                editor.fileRenamed(from: url, to: target)
+                await refresh(url.deletingLastPathComponent())
+                await refresh(destination)
+                model.revealRequest = Workspace.persistedPath(for: target, root: root)
+            } catch {
+                model.report(error)
+            }
+        }
+    }
+
     /// explorer R18: confirmation, then the Trash.
     func delete(_ node: FileNode) {
         let url = root.appending(path: node.relativePath)

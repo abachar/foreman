@@ -65,3 +65,37 @@ struct ExplorerOperationsTests {
         #expect(await ExplorerOperations.entryCount(of: root) == 4)
     }
 }
+
+/// explorer R22: a drop moves inside the root, never onto itself, its parent or a descendant.
+struct ExplorerMoveTests {
+    @Test func dropTargetsAreChecked() {
+        #expect(ExplorerOperations.canMove("src/a.swift", into: "lib"))
+        #expect(ExplorerOperations.canMove("src/a.swift", into: ""))
+        #expect(!ExplorerOperations.canMove("src/a.swift", into: "src"))
+        #expect(!ExplorerOperations.canMove("src", into: "src"))
+        #expect(!ExplorerOperations.canMove("src", into: "src/inner"))
+        #expect(!ExplorerOperations.canMove("src", into: ""))
+        #expect(!ExplorerOperations.canMove("", into: "src"))
+    }
+
+    @Test func movesAndRefusesAnExistingName() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ExplorerMoveTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root.appending(path: "lib"), withIntermediateDirectories: true)
+        try "x".write(to: root.appending(path: "a.txt"), atomically: true, encoding: .utf8)
+        let moved = try await ExplorerOperations.move(
+            root.appending(path: "a.txt"), into: root.appending(path: "lib"), root: root)
+        #expect(moved.lastPathComponent == "a.txt")
+        #expect(FileManager.default.fileExists(atPath: root.appending(components: "lib", "a.txt").path()))
+        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "a.txt").path()))
+        try "y".write(to: root.appending(path: "a.txt"), atomically: true, encoding: .utf8)
+        await #expect(throws: ExplorerError.self) {
+            try await ExplorerOperations.move(
+                root.appending(path: "a.txt"), into: root.appending(path: "lib"), root: root)
+        }
+        await #expect(throws: ExplorerError.self) {
+            try await ExplorerOperations.move(
+                root.appending(path: "lib"), into: root.appending(path: "lib"), root: root)
+        }
+    }
+}

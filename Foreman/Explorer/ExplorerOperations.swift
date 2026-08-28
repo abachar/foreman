@@ -90,6 +90,39 @@ nonisolated enum ExplorerOperations {
         return target
     }
 
+    /// explorer R22: whether `relativePath` can be dropped into `folder` (both relative to the
+    /// root, `""` = the root): not onto itself, its own parent or one of its descendants.
+    static func canMove(_ relativePath: String, into folder: String) -> Bool {
+        guard !relativePath.isEmpty else { return false }
+        return folder != relativePath && folder != parentPath(of: relativePath) && !folder.hasPrefix(relativePath + "/")
+    }
+
+    /// The folder part of a relative path, `""` at the root.
+    static func parentPath(of relativePath: String) -> String {
+        guard let slash = relativePath.lastIndex(of: "/") else { return "" }
+        return String(relativePath[..<slash])
+    }
+
+    /// explorer R22: the item moved into `folder` under its own name; an existing name refuses.
+    @concurrent
+    static func move(_ url: URL, into folder: URL, root: URL) async throws(ExplorerError) -> URL {
+        let name = url.lastPathComponent
+        let source = Workspace.persistedPath(for: url, root: root)
+        let destinationFolder = Workspace.persistedPath(for: folder, root: root)
+        guard isInside(url, root: root), isInside(folder, root: root), canMove(source, into: destinationFolder)
+        else { throw .io(name, underlying: CocoaError(.fileWriteNoPermission)) }
+        let target = folder.appending(path: name).standardizedFileURL
+        guard !FileManager.default.fileExists(atPath: target.path(percentEncoded: false)) else {
+            throw .io(name, underlying: CocoaError(.fileWriteFileExists))
+        }
+        do {
+            try FileManager.default.moveItem(at: url, to: target)
+        } catch {
+            throw .io(name, underlying: error)
+        }
+        return target
+    }
+
     /// explorer R18: to the Trash, never deleted for good.
     @concurrent
     static func trash(_ url: URL, root: URL) async throws(ExplorerError) {

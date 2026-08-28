@@ -27,6 +27,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
 | `enter` / double click | — | Open (pinned; `opt` + double click: in a new group) — decision 2026-08-28 | native | 🟢 |
 | `shift+F6` | — | Rename (IntelliJ; also the context menu) — decision 2026-08-28 | native | 🟢 |
+| drag & drop | — | Move into a folder (`explorer` R22) | native (`NSOutlineView`) | 🟢 (2026-08-28) |
 | — | — | Context menu › *Send to Agent* (`agents` `01-study-send.md` R10b) | native | 🟢 (2026-08-28) |
 | `cmd+delete` | — | Delete (trash) | native | 🟢 |
 
