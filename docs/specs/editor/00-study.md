@@ -18,7 +18,7 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 ### Tab and lifecycle
 
 - R1 — An `editor.file` tab references a file (a path relative to the root, absolute otherwise) and has a state: `preview` / `pinned`, `isDirty`, cursor position, scroll. The same file is only open once per group; opening it again activates the existing tab.
-- R2 — Preview (`explorer` R12): italic title; one preview per group, replaced by the next one. Becomes `pinned` on a double click, on the first edit, or with `cmd+k` ("keep open"; decision 2026-08-26: no `cmd+k enter` chord, the registry does not know about chords).
+- R2 — Preview (`explorer` R12): italic title; one preview per group, replaced by the next one. Becomes `pinned` on `cmd+↓` in the tree, on the first edit, or with `cmd+k` ("keep open"; decision 2026-08-26: no `cmd+k enter` chord, the registry does not know about chords).
 - R3 — Opening (`Editor.open(path, preview:, newGroup:, line:)`, called by the explorer, git, the palette, the search): read off the main actor; UTF-8 encoding detection (BOM tolerated), otherwise Latin-1 with a warning; line endings detected (LF/CRLF) and preserved on save; if `line` is given, the cursor goes there and the line is centred.
 - R4 — Persistence (`layout` R28): path, `pinned`, cursor, scroll. `isDirty` is never persisted: when the window closes with a modified tab, a confirmation appears (`layout` R15); unsaved content is lost if it is confirmed. A file gone at restoration: the tab is ignored (`product` edge case, settled).
 - R5 — Title: the file name; if two tabs of the same group have the same name, the parent folder is added (`a/index.ts`, `b/index.ts`). A `●` marker when `isDirty`.

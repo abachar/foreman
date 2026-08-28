@@ -27,7 +27,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
 | `space` | — | Open as a preview | native | 🟢 |
 | `cmd+↓` | — | Open pinned | native | 🟢 |
-| `enter` | — | Rename | native | 🟢 |
+| `enter` / double click | — | Rename (decision 2026-08-28) | native | 🟢 |
 | `cmd+delete` | — | Delete (trash) | native | 🟢 |
 
 ## Editor (`editor` R6–R8, R14, R17, R23, R24)

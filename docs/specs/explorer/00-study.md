@@ -34,7 +34,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 ### Opening
 
-- R12 — Single click on a file: opens a **preview** tab in the active group through `Editor.open(path, preview: true)`; one preview tab per group, replaced by the next preview. A double click, or any edit in the tab, pins it (`editor` defines the tab). Clicking a file that is already open: activates its tab.
+- R12 — Single click on a file: opens a **preview** tab in the active group through `Editor.open(path, preview: true)`; one preview tab per group, replaced by the next preview. `cmd+↓`, `cmd+k`, or any edit in the tab, pins it (`editor` defines the tab; the double click renames since 2026-08-28, R17). Clicking a file that is already open: activates its tab.
 - R13 — `opt+click` (or a menu entry): opens in a **new group** on the right (`layout` R9) when you want to compare.
 - R14 — Following the active tab (`Layout.activeTab`): when the active tab changes and matches a file under the root, the tree expands the path and selects the file (without scrolling if it is already visible). Can be turned off by a panel toggle (persisted). A file outside the root expands nothing.
 - R15 — Git badges: the explorer subscribes to `Git.statusChanges` (an `AsyncStream` of `(repo, [path: GitFileStatus])`); it colors the files (modified, added, untracked, conflicted) and propagates a dot onto the ancestor folders. Outside a repo: no badge, no error.
@@ -42,7 +42,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 ### Operations
 
 - R16 — New file / new folder: created in the selected folder (or the parent of the selected file, or the root), the name typed in a sheet (decision 2026-08-27), then the file is opened (pinned). The name may contain `/` to create the intermediate folders.
-- R17 — Rename: inline editing (`enter` on the item, or the menu). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
+- R17 — Rename: inline editing (`enter` on the item, a double click, or the menu; never a single click on a selected row, decision 2026-08-28). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
 - R18 — Delete: to the **trash** (`trashItem`), with a confirmation listing the number of items for a non-empty folder. The explorer calls `Editor.fileDeleted(path)`.
 - R19 — Any operation is refused if the target path is not under the root (`architecture.md`, security) or if the name is empty, `.`/`..`, or contains a forbidden character. An IO error (permission, already exists) is shown in the panel's banner and does not modify the tree.
 - R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path. No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.

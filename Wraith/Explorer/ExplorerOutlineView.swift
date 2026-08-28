@@ -137,10 +137,21 @@ struct ExplorerOutlineView: NSViewRepresentable {
             onOpen(node, isOption ? .newGroup : .preview)
         }
 
-        /// explorer R12: a double click pins the tab.
+        /// explorer R17: a double click renames (decision 2026-08-28: a single click on a selected
+        /// row must not start the editor, and the double click no longer pins).
         @objc func doubleClicked() {
-            guard let node = clickedFile() else { return }
-            onOpen(node, .pinned)
+            guard let outline, outline.clickedRow >= 0 else { return }
+            beginRename(row: outline.clickedRow)
+        }
+
+        /// The label is editable only for the duration of a rename, so AppKit's click-on-selected-
+        /// row editing never fires.
+        private func beginRename(row: Int) {
+            guard let outline, node(atRow: row) != nil,
+                let cell = outline.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView
+            else { return }
+            cell.textField?.isEditable = true
+            outline.editColumn(0, row: row, with: nil, select: true)
         }
 
         /// explorer R21: `space` previews, `cmd+↓` opens pinned, `enter` renames, `cmd+delete`
@@ -156,7 +167,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 onOpen(node, .pinned)
             case .enter:
                 guard node(atRow: outline.selectedRow) != nil else { return false }
-                outline.editColumn(0, row: outline.selectedRow, with: nil, select: true)
+                beginRename(row: outline.selectedRow)
             case .commandDelete:
                 guard let node = node(atRow: outline.selectedRow) else { return false }
                 operations.delete(node)
@@ -167,6 +178,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         /// explorer R17: the cell's inline editor ended with a new name.
         @objc func renamed(_ sender: NSTextField) {
             guard let outline else { return }
+            sender.isEditable = false
             let row = outline.row(for: sender)
             guard row >= 0, let node = node(atRow: row) else { return }
             let name = sender.stringValue.trimmingCharacters(in: .whitespaces)
@@ -212,7 +224,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         @objc private func menuNewFolder() { operations.newFolder(near: clickedNode) }
         @objc private func menuRename() {
             guard let outline, outline.clickedRow >= 0 else { return }
-            outline.editColumn(0, row: outline.clickedRow, with: nil, select: true)
+            beginRename(row: outline.clickedRow)
         }
         @objc private func menuDelete() { clickedNode.map { operations.delete($0) } }
         @objc private func menuReveal() { clickedNode.map { operations.revealInFinder($0) } }
@@ -349,7 +361,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 outlineView.makeView(withIdentifier: identifier, owner: nil) as? NSTableCellView ?? makeCell(identifier)
             switch item.kind {
             case .node(let node):
-                cell.textField?.isEditable = true
+                cell.textField?.isEditable = false
                 cell.textField?.font = theme.interfaceFont()
                 cell.textField?.stringValue = node.name
                 // explorer R4, R15: greyed when excluded or gitignored, colored by git status.
