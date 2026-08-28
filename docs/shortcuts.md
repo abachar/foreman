@@ -63,7 +63,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| *(no default)* | `agents.<id>` | Open / activate the agent's tab | global | 🟢 |
+| *(no default)* | `agents.<id>` | Open / activate the agent's tab (the button exists for the ids of `config.agents`, R2 amended 2026-08-28) | global | 🟢 |
 | `cmd+e` | `editor.sendToAgent` / `explorer.sendToAgent` / `git.sendToAgent` | Send the file or selection lines / the selected path / the diff's file or sha to the active agent as `@path` (`01-study-send.md` R10b; three ids, one per scope: the registry binds one id per scope, decision 2026-08-28) | tab(editor.file), panel (explorer visible), tab(git.diff) | 🟢 (2026-08-28) |
 
 ## Run (`run` R5, R6, R9)
@@ -97,12 +97,11 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+o` | `browser.open` | Open / activate the window's browser tab (needs `config.browser.url`) | global | ⚪ M11 |
-| `cmd+shift+r` | `browser.reload` | Reload (`cmd+r` stays the run palette, decision 2026-08-28) | tab(browser.page) | ⚪ M11 |
-| `cmd+[` / `cmd+]` | `browser.back` / `.forward` | Back / forward | tab(browser.page) | ⚪ M11 |
-| `cmd+opt+i` | `browser.inspect` | Web Inspector | tab(browser.page) | ⚪ M11 |
-| `cmd+e` | `browser.sendToAgent` | Send the URL to the active agent (`agents` R10b) | tab(browser.page) | ⚪ M11 |
-| `cmd+=` / `cmd+-` | — | Page zoom | native (WebKit) | ⚪ M11 |
+| `cmd+shift+o` | `browser.open` | Open / activate the window's browser tab (needs `config.browser.url`) | global | 🟢 (2026-08-28) |
+| `cmd+shift+r` | `browser.reload` | Reload / stop (`cmd+r` stays the run palette, decision 2026-08-28) | tab(browser.page) | 🟢 (2026-08-28) |
+| `cmd+[` / `cmd+]` | `browser.back` / `.forward` | Back / forward | tab(browser.page) | 🟢 (2026-08-28) |
+| `cmd+e` | `browser.sendToAgent` | Send the URL to the active agent (`agents` R10b) | tab(browser.page) | 🟢 (2026-08-28) |
+| `cmd+=` / `cmd+-` | — | Page zoom | native (WebKit) | 🟢 |
 
 ## Free
 

@@ -21,6 +21,7 @@ struct WorkspaceView: View {
     @State private var editor: EditorFeature?
     @State private var terminal: TerminalService?
     @State private var agents: AgentsFeature?
+    @State private var browser: BrowserFeature?
     @State private var run: RunFeature?
     @State private var git: GitFeature?
     @State private var postgres: PostgresFeature?
@@ -72,6 +73,7 @@ struct WorkspaceView: View {
                 editor.sendToAgent = { [weak agents] in agents?.send($0) }
                 explorer.actions.sendToAgent = { [weak agents] in agents?.send($0) }
                 git.sendToAgent = { [weak agents] in agents?.send($0) }
+                browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 restoreLayout()
                 workspace.watchConfig()

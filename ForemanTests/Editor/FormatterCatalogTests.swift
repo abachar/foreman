@@ -77,3 +77,23 @@ struct FormatterCatalogTests {
                 "\(bin.appending(path: "prettier").path(percentEncoded: false)) --check", inPath: nil))
     }
 }
+
+/// editor R25: the binary lookup, on a temporary PATH (moved from the agents on 2026-08-28).
+struct FormatterBinaryTests {
+    @Test func findsAnExecutableInThePathOrByAbsolutePath() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "FormatterBinaryTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bin = root.appending(path: "bin")
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: root.appending(path: "empty"), withIntermediateDirectories: true)
+        try Data("#!/bin/sh\n".utf8).write(to: bin.appending(path: "prettier"))
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: bin.appending(path: "prettier").path())
+        try Data().write(to: bin.appending(path: "notexec"))
+        let path = "\(root.appending(path: "empty").path()):\(bin.path())"
+        #expect(FormatterCatalog.isBinaryAvailable("prettier --write", inPath: path))
+        #expect(!FormatterCatalog.isBinaryAvailable("notexec", inPath: path))
+        #expect(!FormatterCatalog.isBinaryAvailable("prettier", inPath: nil))
+        #expect(FormatterCatalog.isBinaryAvailable(bin.appending(path: "prettier").path() + " -w", inPath: nil))
+    }
+}

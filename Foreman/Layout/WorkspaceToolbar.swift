@@ -85,11 +85,13 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     }
 
     /// layout R30: leading, a space, centre, a space, trailing — the features' items first in
-    /// each placement, the layout's panel toggles after them (so Run precedes the right toggles).
+    /// each placement, the layout's panel toggles after them (so Run precedes the right toggles);
+    /// in the centre the agents come first, whatever the registration order (browser R1).
     nonisolated static func order(_ items: [(id: String, placement: ToolbarItemDescriptor.Placement)]) -> [String] {
         func ids(_ placement: ToolbarItemDescriptor.Placement) -> [String] {
             let own = items.filter { $0.placement == placement }.map(\.id)
-            return own.filter { LayoutManager.panelID(ofToggle: $0) == nil }
+            let features = own.filter { LayoutManager.panelID(ofToggle: $0) == nil }
+            return features.filter { $0.hasPrefix("agent.") } + features.filter { !$0.hasPrefix("agent.") }
                 + own.filter { LayoutManager.panelID(ofToggle: $0) != nil }
         }
         return ids(.leading) + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.center)

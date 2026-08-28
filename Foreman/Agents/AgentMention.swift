@@ -5,6 +5,8 @@ import Foundation
 nonisolated enum AgentMention: Equatable, Sendable {
     case path(URL, lines: ClosedRange<Int>?, isDirectory: Bool)
     case literal(String)
+    /// browser R9: a web address, as is (no `@`).
+    case url(URL)
 
     /// agents R10a: `@<path>[:<line>[-<line>]] `, relative to `cwd` when under it; a folder keeps
     /// its trailing `/`; a trailing space, no newline.
@@ -12,6 +14,8 @@ nonisolated enum AgentMention: Equatable, Sendable {
         switch self {
         case .literal(let text):
             return "@\(text) "
+        case .url(let url):
+            return "\(url.absoluteString) "
         case .path(let url, let lines, let isDirectory):
             var path = Self.relativePath(of: url, to: cwd)
             if isDirectory, !path.hasSuffix("/") {

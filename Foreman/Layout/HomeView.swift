@@ -14,7 +14,9 @@ struct HomeView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 64) {
             VStack(alignment: .leading, spacing: 24) {
-                section("Agents", entries: layout.homeEntries.filter { $0.section == .agents })
+                // browser R1: the page sits with the agents.
+                section(
+                    "Agents", entries: layout.homeEntries.filter { $0.section == .agents || $0.section == .browser })
                 section("Recent", entries: layout.homeEntries.filter { $0.section == .recent })
                 Spacer(minLength: 0)
             }

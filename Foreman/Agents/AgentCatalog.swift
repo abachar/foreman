@@ -8,13 +8,6 @@ nonisolated struct Agent: Equatable, Sendable, Identifiable {
     let command: String
     /// agents R3: an SF Symbol, an asset name, or a workspace file resolved by `AgentsFeature`.
     let icon: String
-    /// agents R2: a built-in agent is shown only when its binary is in the PATH; a declared one always.
-    let isBuiltIn: Bool
-
-    /// The binary looked up in the PATH: the first word of the command.
-    var binary: String {
-        String(command.split(separator: " ", maxSplits: 1).first ?? Substring(command))
-    }
 }
 
 /// The built-in agents and the `agents` section merged on top of them (agents R1, R3).
@@ -29,10 +22,10 @@ nonisolated enum AgentCatalog {
 
     /// agents R1.
     static let builtIns: [Agent] = [
-        Agent(id: "claude", title: "Claude Code", command: "claude", icon: "agent-claude", isBuiltIn: true),
-        Agent(id: "antigravity", title: "Antigravity", command: "agy", icon: "agent-antigravity", isBuiltIn: true),
-        Agent(id: "opencode", title: "OpenCode", command: "opencode", icon: "agent-opencode", isBuiltIn: true),
-        Agent(id: "pi", title: "Pi", command: "pi", icon: "agent-pi", isBuiltIn: true),
+        Agent(id: "claude", title: "Claude Code", command: "claude", icon: "agent-claude"),
+        Agent(id: "antigravity", title: "Antigravity", command: "agy", icon: "agent-antigravity"),
+        Agent(id: "opencode", title: "OpenCode", command: "opencode", icon: "agent-opencode"),
+        Agent(id: "pi", title: "Pi", command: "pi", icon: "agent-pi"),
     ]
 
     static let defaultIcon = "terminal"
@@ -42,27 +35,24 @@ nonisolated enum AgentCatalog {
         var warnings: [String]
     }
 
-    /// agents R3: the section on top of the built-ins.
+    /// agents R2 (amended 2026-08-28), R3: the declared ids only, in declaration order (sorted keys).
     ///
-    /// A built-in id overrides its fields, an unknown id declares a custom agent (`command`
-    /// required), `enabled: false` hides; an invalid entry is reported and skipped (config R7:
-    /// nothing here breaks the workspace). Built-ins first, then custom ids sorted.
+    /// A built-in id takes its defaults and overrides its fields (`{}` is enough to show it), an
+    /// unknown id declares a custom agent (`command` required), `enabled: false` hides; an invalid
+    /// entry is reported and skipped (config R7: nothing here breaks the workspace). No section →
+    /// no agent.
     static func merge(_ section: [String: Entry]?) -> Merged {
         var warnings: [String] = []
         var agents: [Agent] = []
-        let section = section ?? [:]
-        for builtIn in builtIns {
-            guard let entry = section[builtIn.id] else {
-                agents.append(builtIn)
+        for (id, entry) in (section ?? [:]).sorted(by: { $0.key < $1.key }) {
+            if entry.enabled == false { continue }
+            if let builtIn = builtIns.first(where: { $0.id == id }) {
+                agents.append(
+                    Agent(
+                        id: id, title: entry.title ?? builtIn.title, command: entry.command ?? builtIn.command,
+                        icon: entry.icon ?? builtIn.icon))
                 continue
             }
-            if entry.enabled == false { continue }
-            agents.append(
-                Agent(
-                    id: builtIn.id, title: entry.title ?? builtIn.title, command: entry.command ?? builtIn.command,
-                    icon: entry.icon ?? builtIn.icon, isBuiltIn: true))
-        }
-        for (id, entry) in section.sorted(by: { $0.key < $1.key }) where !builtIns.contains(where: { $0.id == id }) {
             guard isValid(id: id) else {
                 warnings.append("agents.\(id) ignored: an id is [a-z0-9][a-z0-9_-]*.")
                 continue
@@ -71,11 +61,7 @@ nonisolated enum AgentCatalog {
                 warnings.append("agents.\(id) ignored: \"command\" is required for a custom agent.")
                 continue
             }
-            if entry.enabled == false { continue }
-            agents.append(
-                Agent(
-                    id: id, title: entry.title ?? id, command: command, icon: entry.icon ?? defaultIcon,
-                    isBuiltIn: false))
+            agents.append(Agent(id: id, title: entry.title ?? id, command: command, icon: entry.icon ?? defaultIcon))
         }
         return Merged(agents: agents, warnings: warnings)
     }
@@ -87,20 +73,5 @@ nonisolated enum AgentCatalog {
         return id.unicodeScalars.allSatisfy { scalar in
             ("a"..."z").contains(scalar) || ("0"..."9").contains(scalar) || scalar == "_" || scalar == "-"
         }
-    }
-
-    /// agents R2: the names found as executables in `path`, without running anything.
-    static func executables(among names: Set<String>, inPath path: String?) -> Set<String> {
-        guard let path, !path.isEmpty else { return [] }
-        var found: Set<String> = []
-        for directory in path.split(separator: ":") {
-            for name in names where !found.contains(name) {
-                let candidate = URL(filePath: String(directory)).appending(path: name).path(percentEncoded: false)
-                if FileManager.default.isExecutableFile(atPath: candidate) {
-                    found.insert(name)
-                }
-            }
-        }
-        return found
     }
 }

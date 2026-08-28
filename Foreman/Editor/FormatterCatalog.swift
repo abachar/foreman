@@ -59,14 +59,20 @@ nonisolated struct FormatterCatalog: Decodable, Equatable, Sendable {
         command.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
     }
 
-    /// editor R25, edge cases: whether the command's binary exists in `path` (agents R2, without
-    /// launching anything); an absolute path is checked directly.
+    /// editor R25, edge cases: whether the command's binary exists in `path`.
+    ///
+    /// Nothing is launched; an absolute path is checked directly. Moved from `AgentCatalog` on
+    /// 2026-08-28, when the agents stopped being detected in the PATH (agents R2).
     static func isBinaryAvailable(_ command: String, inPath path: String?) -> Bool {
         let binary = binary(of: command)
         if binary.hasPrefix("/") {
             return FileManager.default.isExecutableFile(atPath: binary)
         }
-        return !AgentCatalog.executables(among: [binary], inPath: path).isEmpty
+        guard let path, !path.isEmpty else { return false }
+        return path.split(separator: ":").contains { directory in
+            FileManager.default.isExecutableFile(
+                atPath: URL(filePath: String(directory)).appending(path: binary).path(percentEncoded: false))
+        }
     }
 
     private struct Key: CodingKey {

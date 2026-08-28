@@ -58,7 +58,6 @@ final class AgentsFeature {
     private var registeredKinds: Set<String> = []
     private var configWatch: Task<Void, Never>?
     private var eventsWatch: Task<Void, Never>?
-    private var detection: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "agents")
 
     init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, git: GitFeature) {
@@ -84,13 +83,12 @@ final class AgentsFeature {
     isolated deinit {
         configWatch?.cancel()
         eventsWatch?.cancel()
-        detection?.cancel()
         for task in snapshots.values {
             task.cancel()
         }
     }
 
-    // MARK: - Catalog and detection (agents R1–R3, US5)
+    // MARK: - Catalog (agents R1–R3, US5)
 
     private func apply(_ config: WorkspaceConfig) {
         let merged: AgentCatalog.Merged
@@ -107,20 +105,8 @@ final class AgentsFeature {
         for agent in catalog {
             register(agent)
         }
-        // agents R2: detection follows every accepted config, never a timer.
-        detection?.cancel()
-        detection = Task { [weak self] in
-            await self?.detect()
-        }
-    }
-
-    private func detect() async {
-        let names = Set(catalog.filter(\.isBuiltIn).map(\.binary))
-        let path = await workspace.loginEnvironment()["PATH"]
-        // Disk IO (agents, technical options): off the main actor.
-        let found = await Task.detached { AgentCatalog.executables(among: names, inPath: path) }.value
-        guard !Task.isCancelled else { return }
-        show(catalog.filter { !$0.isBuiltIn || found.contains($0.binary) }.map(\.id))
+        // agents R2 (amended 2026-08-28): the config says which agents exist, nothing is detected.
+        show(catalog.map(\.id))
     }
 
     /// The tab kind and the shortcut of an agent exist for its whole life, even hidden, so its

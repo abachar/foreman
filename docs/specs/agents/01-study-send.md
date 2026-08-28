@@ -22,6 +22,7 @@ The user reads a file, a diff or the tree, and wants to tell the agent "look at 
   - editor tab (`editor.file`): `cmd+e` (`editor.sendToAgent`, scope `tab(editor.file)`) — the selection's line range when it is not empty, the file otherwise;
   - explorer: the context menu (*Send to Agent*, `explorer` R20 extended) on a file or folder, and `cmd+e` while a panel has the focus and the tree is visible (`explorer.sendToAgent`, scope `panel`);
   - git diff tab (`git.diff`): the context menu on a line of the side-by-side layout (*Send to Agent*: `path:line`; the inline layout draws a hunk as one text and has no line menu), and `cmd+e` on the tab (`git.sendToAgent`, scope `tab(git.diff)`: the file, or the commit's sha as `<sha>` when the tab shows a whole commit).
+  - browser tab (`browser.page`): `cmd+e` (`browser.sendToAgent`) sends the page's URL as plain text, no `@` (`browser` R9).
   One id per scope: the registry binds an id to a single scope (decision 2026-08-28).
 - R10c — The agent's tab is activated after the write (the user sees the text and types the rest). Its group takes the focus.
 - R10d — The feature owning the source builds the text (it knows its paths); `AgentsFeature.send(_ text: String)` picks the tab and writes. No provider protocol: three direct calls.

@@ -44,6 +44,8 @@ struct CenterTabDescriptor {
 struct HomeEntry: Identifiable {
     enum Section: CaseIterable {
         case agents
+        /// browser R1: the window's page, next to the agents.
+        case browser
         case recent
     }
 
