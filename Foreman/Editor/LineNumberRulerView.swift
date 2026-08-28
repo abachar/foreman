@@ -99,21 +99,22 @@ final class LineNumberRulerView: NSRulerView {
             let size = label.size(withAttributes: attributes)
             let lineHeight = fragment.textLineFragments.first?.typographicBounds.height ?? size.height
             label.draw(
-                at: NSPoint(x: ruleThickness - size.width - 6, y: y + lineHeight / 2 - size.height / 2),
+                at: NSPoint(
+                    x: ruleThickness - Self.chevronWidth - size.width - 4, y: y + lineHeight / 2 - size.height / 2),
                 withAttributes: attributes)
+            // editor R27: the chevron next to the code, in the numbers' color (author, 2026-08-28).
             if foldRegions.contains(where: { $0.first == current }) {
                 let name = foldedLines.contains(current) ? "chevron.right" : "chevron.down"
+                let configuration = NSImage.SymbolConfiguration(pointSize: font.pointSize - 3, weight: .semibold)
+                    .applying(NSImage.SymbolConfiguration(paletteColors: [textColor]))
                 if let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-                    .withSymbolConfiguration(
-                        NSImage.SymbolConfiguration(pointSize: font.pointSize - 3, weight: .semibold))
+                    .withSymbolConfiguration(configuration)
                 {
-                    let tinted = image.copy() as? NSImage ?? image
-                    tinted.isTemplate = true
                     let rect = NSRect(
-                        x: 3, y: y + lineHeight / 2 - image.size.height / 2, width: image.size.width,
+                        x: ruleThickness - Self.chevronWidth + (Self.chevronWidth - image.size.width) / 2,
+                        y: y + lineHeight / 2 - image.size.height / 2, width: image.size.width,
                         height: image.size.height)
-                    textColor.set()
-                    tinted.draw(
+                    image.draw(
                         in: rect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
                 }
             }
@@ -124,7 +125,8 @@ final class LineNumberRulerView: NSRulerView {
     /// editor R27: a click on the chevron strip folds or unfolds that line's region.
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        guard point.x <= Self.chevronWidth + 6, let textView, let layoutManager = textView.textLayoutManager,
+        guard point.x >= ruleThickness - Self.chevronWidth - 4, let textView,
+            let layoutManager = textView.textLayoutManager,
             let contentManager = layoutManager.textContentManager
         else { return super.mouseDown(with: event) }
         let y = point.y + textView.visibleRect.minY - textView.textContainerInset.height
