@@ -61,6 +61,11 @@ final class RunFeature {
     private let terminal: TerminalService
     private let palette: Palette
     private(set) var commands: [RunCommand] = []
+    /// run R14, R15: the two sources merged into `commands`.
+    private var declared: [RunCommand] = []
+    private var detected: [RunCommand] = []
+    private var detection: Task<Void, Never>?
+    private var manifestWatch: Task<Void, Never>?
     /// run R5: the ids launched in this window, last first (decision 2026-08-27: not persisted).
     private(set) var recents: [String] = []
     /// run R7: the tab a command reuses, the first one opened or restored for it.
@@ -98,11 +103,22 @@ final class RunFeature {
                 handle(event)
             }
         }
+        // run R16: a manifest at a repo root changed.
+        manifestWatch = Task { [weak self, workspace] in
+            for await batch in await workspace.fsWatch.changes(under: workspace.root) {
+                guard let self else { return }
+                if batch.contains(where: { RunCatalog.manifests.contains($0.lastPathComponent) }) {
+                    redetect()
+                }
+            }
+        }
     }
 
     isolated deinit {
         configWatch?.cancel()
         eventsWatch?.cancel()
+        detection?.cancel()
+        manifestWatch?.cancel()
         for task in pendingRelaunches.values {
             task.cancel()
         }
@@ -121,7 +137,31 @@ final class RunFeature {
         for warning in parsed.warnings {
             logger.warning("\(warning, privacy: .public)")
         }
-        commands = parsed.commands
+        declared = parsed.commands
+        publish()
+        redetect()
+    }
+
+    /// run R14, R16: the manifests read off the main actor, then merged (R15).
+    private func redetect() {
+        detection?.cancel()
+        let root = workspace.root
+        let repos = workspace.config.repos
+        detection = Task { [weak self] in
+            let found = await Self.detect(root: root, repos: repos)
+            guard !Task.isCancelled, let self else { return }
+            detected = found
+            publish()
+        }
+    }
+
+    @concurrent
+    private static func detect(root: URL, repos: [URL]) async -> [RunCommand] {
+        RunCatalog.detect(root: root, repos: repos)
+    }
+
+    private func publish() {
+        commands = RunCatalog.merge(declared: declared, detected: detected)
         for command in commands {
             register(command.id)
         }
@@ -265,7 +305,7 @@ final class RunFeature {
         return ordered.map { command in
             PaletteItem(
                 id: command.id, title: PaletteItem.highlighted(command.title, matching: query),
-                subtitle: command.problem ?? command.command)
+                subtitle: command.subtitle)
         }
     }
 
@@ -288,11 +328,21 @@ final class RunFeature {
                     isEnabled: false)
             ]
         }
-        return commands.map { command in
-            MenuRow(
-                id: kind(of: command.id), title: command.title, subtitle: command.problem ?? command.command,
-                badge: command.problem == nil ? badge(command.id) : .none, isEnabled: command.problem == nil)
+        var rows: [MenuRow] = []
+        for command in commands {
+            // run R15: the detected ones after the declared ones, under one heading.
+            if command.source != nil, !rows.contains(where: { $0.id == "run.detected" }) {
+                rows.append(
+                    MenuRow(
+                        id: "run.detected", title: "Detected", subtitle: "from the project's manifests", badge: .none,
+                        isEnabled: false))
+            }
+            rows.append(
+                MenuRow(
+                    id: kind(of: command.id), title: command.title, subtitle: command.subtitle,
+                    badge: command.problem == nil ? badge(command.id) : .none, isEnabled: command.problem == nil))
         }
+        return rows
     }
 
     private func menuEntries() -> [ToolbarMenuEntry] {

@@ -14,9 +14,18 @@ nonisolated struct RunCommand: Equatable, Sendable, Identifiable {
     let env: [String: String]
     /// run R2: why the command is listed greyed; `nil` when it can be launched.
     let problem: String?
+    /// run R14: the manifest a detected command comes from; `nil` for `config.commands`.
+    var source: String? = nil
 
     var title: String {
         "\(repo) › \(name)"
+    }
+
+    /// run R5, R15: the reason when greyed, else the command, with its manifest when detected.
+    var subtitle: String {
+        if let problem { return problem }
+        guard let source else { return command }
+        return "\(command) · \(source)"
     }
 }
 
@@ -117,6 +126,108 @@ nonisolated enum RunCatalog {
         return Parsed(commands: commands, warnings: warnings)
     }
 
+    // MARK: - Detection (run R14–R15)
+
+    /// run R16: the files whose change triggers a new detection.
+    static let manifests: Set<String> = [
+        "package.json", "pom.xml", "Package.swift", "Makefile", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock",
+    ]
+
+    /// run R14: the commands the manifests declare, read-only, at the root, in the declared repos
+    /// and in the root's first-level folders (a monorepo: `server/package.json`); an unreadable
+    /// or malformed manifest yields nothing.
+    static func detect(root: URL, repos: [URL]) -> [RunCommand] {
+        var commands: [RunCommand] = []
+        let root = root.standardizedFileURL
+        let folders = [root] + repos.map(\.standardizedFileURL) + firstLevelFolders(of: root)
+        for repoURL in folders.uniqued() where isDirectory(repoURL) {
+            let repo = repoURL == root ? "." : Workspace.persistedPath(for: repoURL, root: root)
+            func add(_ name: String, _ command: String, from source: String) {
+                guard isValid(name: name) else { return }
+                commands.append(
+                    RunCommand(
+                        id: id(repo: repo, name: name), repo: repo, name: name, command: command, cwd: repoURL,
+                        env: [:], problem: nil, source: source))
+            }
+            if let scripts = packageScripts(in: repoURL) {
+                let pm = packageManager(in: repoURL)
+                for name in scripts.keys.sorted() {
+                    add(name, "\(pm) run \(name)", from: "package.json")
+                }
+            }
+            if exists(repoURL, "pom.xml") {
+                for goal in ["test", "package", "verify"] {
+                    add("mvn-\(goal)", "mvn \(goal)", from: "pom.xml")
+                }
+            }
+            if exists(repoURL, "Package.swift") {
+                for goal in ["build", "test"] {
+                    add("swift-\(goal)", "swift \(goal)", from: "Package.swift")
+                }
+            }
+            for target in makeTargets(in: repoURL) {
+                add(target, "make \(target)", from: "Makefile")
+            }
+        }
+        return commands
+    }
+
+    /// run R15: a declared id wins; the detected ones follow, in their order.
+    static func merge(declared: [RunCommand], detected: [RunCommand]) -> [RunCommand] {
+        let ids = Set(declared.map(\.id))
+        return declared + detected.filter { !ids.contains($0.id) }
+    }
+
+    /// run R14: the root's visible, non-excluded folders, sorted.
+    private static func firstLevelFolders(of root: URL) -> [URL] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false))) ?? []
+        return names.sorted()
+            .filter { !$0.hasPrefix(".") && !ExcludedPaths.isExcluded($0) }
+            .map { root.appending(path: $0).standardizedFileURL }
+            .filter(isDirectory)
+    }
+
+    /// run R14: the package manager the lockfile says, `npm` by default.
+    static func packageManager(in repo: URL) -> String {
+        if exists(repo, "pnpm-lock.yaml") { return "pnpm" }
+        if exists(repo, "yarn.lock") { return "yarn" }
+        if exists(repo, "bun.lockb") || exists(repo, "bun.lock") { return "bun" }
+        return "npm"
+    }
+
+    private struct PackageManifest: Decodable {
+        var scripts: [String: String]?
+    }
+
+    private static func packageScripts(in repo: URL) -> [String: String]? {
+        guard let data = try? Data(contentsOf: repo.appending(path: "package.json")) else { return nil }
+        return (try? JSONDecoder().decode(PackageManifest.self, from: data))?.scripts
+    }
+
+    /// run R14: `name:` at column 0; `.PHONY`, dot targets, patterns and variables are skipped.
+    static func makeTargets(in repo: URL) -> [String] {
+        guard let text = try? String(contentsOf: repo.appending(path: "Makefile"), encoding: .utf8) else { return [] }
+        return makeTargets(text)
+    }
+
+    static func makeTargets(_ makefile: String) -> [String] {
+        let target = /^([a-zA-Z0-9_-]+):(?!=)/
+        var seen: Set<String> = []
+        var targets: [String] = []
+        for line in makefile.split(separator: "\n", omittingEmptySubsequences: false) {
+            guard let match = line.firstMatch(of: target) else { continue }
+            let name = String(match.1)
+            if seen.insert(name).inserted {
+                targets.append(name)
+            }
+        }
+        return targets
+    }
+
+    private static func exists(_ repo: URL, _ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: repo.appending(path: name).path(percentEncoded: false))
+    }
+
     /// run R3: `.` becomes `root`.
     nonisolated static func id(repo: String, name: String) -> String {
         "\(repo == "." ? "root" : repo):\(name)"
@@ -152,5 +263,12 @@ nonisolated enum RunCatalog {
         var isDirectory: ObjCBool = false
         return FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory)
             && isDirectory.boolValue
+    }
+}
+
+nonisolated extension Array where Element: Hashable {
+    fileprivate func uniqued() -> [Element] {
+        var seen: Set<Element> = []
+        return filter { seen.insert($0).inserted }
     }
 }
