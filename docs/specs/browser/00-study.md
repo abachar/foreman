@@ -16,7 +16,7 @@ The loop *agent edits → `run` serves → I look at the page* leaves the window
 
 ## Functional rules
 
-- R1 — **One browser tab per window**, kind `browser.page`, no payload beyond the kind (the URL is the config's). The button (`browser.open`, toolbar `trailing` before ▶ Run, `layout` R30) and `cmd+shift+o` open it in the active group, or activate it when it exists (`agents` R4 by analogy). Title: the page's title, else the host; icon `globe`. A second tab cannot be opened.
+- R1 — **One browser tab per window**, kind `browser.page`, no payload beyond the kind (the URL is the config's). The button (`browser.open`, toolbar `center`, right after the agents' buttons — the same family, `layout` R30) and `cmd+shift+o` open it in the active group, or activate it when it exists (`agents` R4 by analogy). Title: the page's title, else the host; icon `globe`. A second tab cannot be opened.
 - R2 — Config section `browser` (`config` R3): `{ "url": "<http or https URL>" }`. **Without a valid `url`, there is no button and no tab** (`agents` R2 by analogy); an invalid URL is reported (`config` R7). Hot reload (`config` R6): a new URL loads in the existing tab.
 - R3 — Content: one `WKWebView`, created when the tab is first shown and loaded then (`architecture` P4), kept alive while the tab exists; released on close. Restoration (`product` R6): the tab comes back on the config URL (not the last visited page).
 - R4 — Chrome above the page, on the island (`design` R8): back, forward, reload/stop, the current URL (read-only, selectable). Navigation is the page's links; there is no address field to type in (the URL is the config's).

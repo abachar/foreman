@@ -27,7 +27,7 @@ This is **not** `run`: a `run` command is defined by the user and lives in the p
   | `opencode` | OpenCode | `opencode` | `opencode` |
   | `pi` | Pi | `pi` | `pi` |
 
-- R2 — A built-in agent is **shown** when its binary is found in the `PATH` of the login shell's environment (the same one the terminals use, `terminal` R3, resolved once by `Workspace`). Not found → no button, no message. Detection is redone on every `Workspace.configChanges` and when the window opens, never by polling.
+- R2 — **Amended 2026-08-28**: an agent is **shown when its id is in `config.agents`** (a built-in with `{}` is enough: `"claude": {}`), in the section's declaration order (`config` R5: sorted keys) — the same rule as the browser button (`browser` R2). Nothing is looked up in the `PATH` any more; a missing binary is the terminal's error at launch (`terminal` R8). No section → no agent button. *(Until 2026-08-28: a built-in was shown when its binary was found in the login shell's `PATH`.)*
 - R3 — `config.agents` (`config` R3): `{ "<id>": { "title"?, "command"?, "icon"?, "enabled"? } }`. A built-in id overrides its fields (e.g. `"claude": { "command": "claude --continue" }`); an unknown id declares a custom agent (`command` mandatory, always shown, no detection); `"enabled": false` hides a built-in one. Precedence: `config` R4. Id: `[a-z0-9][a-z0-9_-]*`. `icon`: an SF Symbol name, the name of a built-in logo (`agent-claude`, `agent-antigravity`, `agent-opencode`, `agent-pi`; checked 2026-08-28), or the path of an SVG/PNG file relative to the workspace root (rendered monochrome like a symbol; outside the root → ignored). The built-in ones have their SVG logo in the asset catalog (`agent-<id>`, 2026-08-27).
 
 ### Launching and the tab
