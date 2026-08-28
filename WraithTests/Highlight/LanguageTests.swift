@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import class SwiftTreeSitter.Query
 
 @testable import Wraith
 
@@ -21,6 +22,15 @@ struct LanguageTests {
     @Test(arguments: ["notes.txt", "Makefile", "query.sql", "image.png", "noext", ".env"])
     func unknownFilesArePlainText(name: String) {
         #expect(Language.forFile(URL(filePath: "/ws/\(name)")) == nil)
+    }
+
+    /// tree-sitter-typescript's `highlights.scm` only adds captures on top of JavaScript's (bug
+    /// 2026-08-28: `.ts`/`.tsx` files had only their types colored).
+    @Test(arguments: [Language.typescript, .tsx])
+    func typeScriptHighlightsIncludeJavaScriptCaptures(language: Language) throws {
+        let javascript = try Language.javascript.makeConfiguration().queries[.highlights]
+        let typescript = try language.makeConfiguration().queries[.highlights]
+        #expect(try #require(typescript).patternCount > #require(javascript).patternCount)
     }
 
     @Test func everyLanguageLoadsItsQueries() throws {

@@ -103,10 +103,10 @@ nonisolated enum Language: String, CaseIterable, Sendable {
         case .kotlin:
             return try LanguageConfiguration(tree_sitter_kotlin(), name: "Kotlin")
         case .typescript:
-            return try LanguageConfiguration(
+            return try Self.typeScriptConfiguration(
                 tree_sitter_typescript(), name: "TypeScript", bundleName: "TreeSitterTypeScript_TreeSitterTypeScript")
         case .tsx:
-            return try LanguageConfiguration(
+            return try Self.typeScriptConfiguration(
                 tree_sitter_tsx(), name: "TSX", bundleName: "TreeSitterTypeScript_TreeSitterTSX")
         case .javascript:
             return try LanguageConfiguration(tree_sitter_javascript(), name: "JavaScript")
@@ -130,5 +130,36 @@ nonisolated enum Language: String, CaseIterable, Sendable {
         case .dockerfile:
             return try LanguageConfiguration(tree_sitter_dockerfile(), name: "Dockerfile")
         }
+    }
+
+    /// TypeScript and TSX highlighted with JavaScript's captures plus their own.
+    ///
+    /// tree-sitter-typescript ships `highlights.scm` files that only add the TypeScript-specific
+    /// captures on top of tree-sitter-javascript's (its README: the queries "inherit" JavaScript's);
+    /// SwiftTreeSitter loads one directory, so a `.ts`/`.tsx` file only got its types colored
+    /// (bug 2026-08-28). The two files are concatenated, JavaScript first.
+    private static func typeScriptConfiguration(
+        _ tsLanguage: OpaquePointer, name: String, bundleName: String
+    ) throws -> LanguageConfiguration {
+        let language = SwiftTreeSitter.Language(tsLanguage)
+        let directories = [
+            try queriesDirectory("TreeSitterJavaScript_TreeSitterJavaScript"), try queriesDirectory(bundleName),
+        ]
+        let highlights =
+            try directories
+            .map { try Data(contentsOf: $0.appending(path: "highlights.scm")) }
+            .reduce(into: Data()) { $0.append($1) }
+        return LanguageConfiguration(
+            language, name: name, queries: [.highlights: try Query(language: language, data: highlights)])
+    }
+
+    private static func queriesDirectory(_ bundleName: String) throws -> URL {
+        // Same lookup as SwiftTreeSitter's: the test host is not the app bundle.
+        for bundle in Bundle.allBundles + Bundle.allFrameworks {
+            if let url = bundle.url(forResource: bundleName, withExtension: "bundle") {
+                return url.appending(path: "Contents/Resources/queries", directoryHint: .isDirectory)
+            }
+        }
+        throw HighlightError.bundleNotFound(bundleName)
     }
 }
