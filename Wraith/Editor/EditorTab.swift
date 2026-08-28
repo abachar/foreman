@@ -86,6 +86,10 @@ final class EditorTab {
     /// re-inserts them instead of rebuilding and re-parsing the file (editor R4: undo, cursor and
     /// scroll come back with the tab).
     var textCoordinator: EditorTextView.Coordinator?
+    /// editor R26–R28: the regions of the current text and the first lines of the folded ones.
+    private(set) var foldRegions: [FoldRegion] = []
+    private(set) var foldedLines: Set<Int> = []
+    private var folding: Task<Void, Never>?
     /// editor R28, R30, R32: why the last formatting did nothing, shown in a banner until the
     /// next keystroke.
     var message: String?
@@ -189,9 +193,54 @@ final class EditorTab {
     }
 
     /// The view reports every change (editor R1, R2); a formatter message does not outlive it.
+    // MARK: - Folding (editor R26–R28)
+
+    /// editor R27: the innermost region around `line` folded or unfolded.
+    func setFold(atLine line: Int, folded: Bool) {
+        guard let region = Folding.innermost(foldRegions, containing: line) else { return }
+        if folded {
+            foldedLines.insert(region.first)
+        } else {
+            foldedLines.remove(region.first)
+        }
+    }
+
+    func toggleFold(atLine line: Int) {
+        guard let region = Folding.innermost(foldRegions, containing: line) else { return }
+        setFold(atLine: line, folded: !foldedLines.contains(region.first))
+    }
+
+    /// editor R28: a line inside a fold reached by the cursor (an edit, a search) unfolds it.
+    func unfoldHidden(line: Int) {
+        for region in foldRegions where foldedLines.contains(region.first) && region.first < line && line <= region.last
+        {
+            foldedLines.remove(region.first)
+        }
+    }
+
+    /// editor R26: the regions follow the text, a little after the last keystroke; a fold whose
+    /// region vanished is dropped.
+    func refreshFolds(after delay: Duration = .milliseconds(300)) {
+        folding?.cancel()
+        guard let language else { return }
+        folding = Task { [weak self] in
+            guard (try? await Task.sleep(for: delay)) != nil, let text = self?.currentText else { return }
+            let regions = await Self.regions(in: text, language: language)
+            guard !Task.isCancelled, let self else { return }
+            foldRegions = regions
+            foldedLines = foldedLines.filter { first in regions.contains { $0.first == first } }
+        }
+    }
+
+    @concurrent
+    private static func regions(in text: String, language: Language) async -> [FoldRegion] {
+        Folding.regions(in: text, language: language)
+    }
+
     func textDidChange() {
         isDirty = true
         message = nil
+        refreshFolds()
     }
 
     /// editor R30: `false` when a formatting is already running; `endFormatting` releases.

@@ -92,6 +92,26 @@ nonisolated enum Language: String, CaseIterable, Sendable {
         }
     }
 
+    /// The bare parser, for a parse without queries (editor R26 folding).
+    var treeSitterLanguage: SwiftTreeSitter.Language {
+        switch self {
+        case .java: return SwiftTreeSitter.Language(tree_sitter_java())
+        case .kotlin: return SwiftTreeSitter.Language(tree_sitter_kotlin())
+        case .typescript: return SwiftTreeSitter.Language(tree_sitter_typescript())
+        case .tsx: return SwiftTreeSitter.Language(tree_sitter_tsx())
+        case .javascript: return SwiftTreeSitter.Language(tree_sitter_javascript())
+        case .json: return SwiftTreeSitter.Language(tree_sitter_json())
+        case .yaml: return SwiftTreeSitter.Language(tree_sitter_yaml())
+        case .toml: return SwiftTreeSitter.Language(tree_sitter_toml())
+        case .markdown: return SwiftTreeSitter.Language(tree_sitter_markdown())
+        case .bash: return SwiftTreeSitter.Language(tree_sitter_bash())
+        case .swift: return SwiftTreeSitter.Language(tree_sitter_swift())
+        case .html: return SwiftTreeSitter.Language(tree_sitter_html())
+        case .css: return SwiftTreeSitter.Language(tree_sitter_css())
+        case .dockerfile: return SwiftTreeSitter.Language(tree_sitter_dockerfile())
+        }
+    }
+
     /// The parser and its `highlights.scm`, loaded from the package's resource bundle.
     ///
     /// Throws when the bundle or its queries are missing (editor R13: the caller falls back to

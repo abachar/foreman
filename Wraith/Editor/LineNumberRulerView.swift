@@ -15,6 +15,15 @@ final class LineNumberRulerView: NSRulerView {
     var backgroundColor: NSColor = .clear {
         didSet { needsDisplay = true }
     }
+    /// editor R27: a chevron on the first line of every region; folded ones point right.
+    var foldRegions: [FoldRegion] = [] {
+        didSet { needsDisplay = true }
+    }
+    var foldedLines: Set<Int> = [] {
+        didSet { needsDisplay = true }
+    }
+    var onToggleFold: ((Int) -> Void)?
+    private static let chevronWidth: CGFloat = 14
 
     init(textView: NSTextView, font: NSFont) {
         self.textView = textView
@@ -63,7 +72,8 @@ final class LineNumberRulerView: NSRulerView {
         let visible = textView.visibleRect
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
         let inset = textView.textContainerInset
-        let width = max(44, CGFloat(String(max(1, lineCount(text))).count + 2) * font.pointSize * 0.7)
+        let width =
+            max(44, CGFloat(String(max(1, lineCount(text))).count + 2) * font.pointSize * 0.7) + Self.chevronWidth
         if abs(ruleThickness - width) > 0.5 {
             ruleThickness = width
         }
@@ -81,17 +91,49 @@ final class LineNumberRulerView: NSRulerView {
                 number = lineCount(text.substring(to: offset) as NSString)
             }
             guard let current = number else { return false }
+            number = current + 1
+            // editor R26: a folded line has no height and no number.
+            guard frame.height >= 1 else { return true }
             let y = frame.minY + inset.height - visible.minY
             let label = "\(current)" as NSString
             let size = label.size(withAttributes: attributes)
+            let lineHeight = fragment.textLineFragments.first?.typographicBounds.height ?? size.height
             label.draw(
-                at: NSPoint(
-                    x: ruleThickness - size.width - 6,
-                    y: y + (fragment.textLineFragments.first?.typographicBounds.height ?? size.height) / 2 - size.height
-                        / 2), withAttributes: attributes)
-            number = current + 1
+                at: NSPoint(x: ruleThickness - size.width - 6, y: y + lineHeight / 2 - size.height / 2),
+                withAttributes: attributes)
+            if foldRegions.contains(where: { $0.first == current }) {
+                let name = foldedLines.contains(current) ? "chevron.right" : "chevron.down"
+                if let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                    .withSymbolConfiguration(
+                        NSImage.SymbolConfiguration(pointSize: font.pointSize - 3, weight: .semibold))
+                {
+                    let tinted = image.copy() as? NSImage ?? image
+                    tinted.isTemplate = true
+                    let rect = NSRect(
+                        x: 3, y: y + lineHeight / 2 - image.size.height / 2, width: image.size.width,
+                        height: image.size.height)
+                    textColor.set()
+                    tinted.draw(
+                        in: rect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+                }
+            }
             return frame.maxY < visible.maxY + inset.height
         }
+    }
+
+    /// editor R27: a click on the chevron strip folds or unfolds that line's region.
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard point.x <= Self.chevronWidth + 6, let textView, let layoutManager = textView.textLayoutManager,
+            let contentManager = layoutManager.textContentManager
+        else { return super.mouseDown(with: event) }
+        let y = point.y + textView.visibleRect.minY - textView.textContainerInset.height
+        guard let fragment = layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: y)) else { return }
+        let offset = contentManager.offset(
+            from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
+        let line = lineCount((textView.string as NSString).substring(to: offset) as NSString)
+        guard foldRegions.contains(where: { $0.first == line }) else { return }
+        onToggleFold?(line)
     }
 
     /// 1 + the newlines in `text`: the number of the last paragraph.

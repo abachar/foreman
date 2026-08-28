@@ -210,6 +210,8 @@ final class EditorFeature {
                 { [weak self] in self?.findActive(.showReplaceInterface) }
             ),
             ("editor.sendToAgent", "Send to Agent", "cmd+e", { [weak self] in self?.sendActiveToAgent() }),
+            ("editor.fold", "Fold Region", "cmd+opt+[", { [weak self] in self?.foldAtCursor(true) }),
+            ("editor.unfold", "Unfold Region", "cmd+opt+]", { [weak self] in self?.foldAtCursor(false) }),
         ]
         for (id, title, shortcut, perform) in actions {
             layout.shortcuts.register(
@@ -225,6 +227,13 @@ final class EditorFeature {
 
     /// agents R10b, R10d: set by `Agents/` once it exists.
     var sendToAgent: ((AgentMention) -> Void)?
+
+    /// editor R27: the region around the cursor.
+    private func foldAtCursor(_ folded: Bool) {
+        guard let (_, tab) = active, let textView = tab.textView else { return }
+        let line = TextEditing.position(at: textView.selectedRange().location, in: textView.string as NSString).line
+        tab.setFold(atLine: line, folded: folded)
+    }
 
     /// agents R10b: the selection's lines, or the file.
     private func sendActiveToAgent() {

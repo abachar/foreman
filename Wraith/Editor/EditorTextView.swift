@@ -45,9 +45,12 @@ struct EditorTextView: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 4, height: 6)
         textView.string = document.text
         textView.delegate = context.coordinator
+        // editor R26: folded paragraphs are laid out through the coordinator.
+        textView.textContentStorage?.delegate = context.coordinator
         tab.textView = textView
         // editor R6: the gutter.
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
+        ruler.onToggleFold = { [tab] line in tab.toggleFold(atLine: line) }
         scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
@@ -62,6 +65,7 @@ struct EditorTextView: NSViewRepresentable {
                 coordinator.highlighter = attached
                 attached.invalidate(.all)
             }
+            tab.refreshFolds(after: .zero)
         }
         // editor R4: cursor and scroll come back with the tab. The position is captured before
         // the observer exists: the first layout of a rebuilt view reports `y = 0`, which must
@@ -116,6 +120,8 @@ struct EditorTextView: NSViewRepresentable {
             scroll.reflectScrolledClipView(scroll.contentView)
             context.coordinator.highlighter?.invalidate(.all)
         }
+        // editor R26, R27: the folds reach the layout and the gutter.
+        context.coordinator.applyFolds(regions: tab.foldRegions, folded: tab.foldedLines, to: textView, in: scroll)
         guard let line = tab.requestedLine else { return }
         tab.requestedLine = nil
         // editor R3: the cursor goes to the line and the line is shown.
@@ -139,7 +145,7 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject, NSTextViewDelegate, NSTextContentStorageDelegate {
         /// The native view, owned here so it outlives the SwiftUI view that shows it.
         var scroll: NSScrollView?
         /// Kept alive for the life of the tab: Neon only holds the text view weakly.
@@ -150,6 +156,9 @@ struct EditorTextView: NSViewRepresentable {
         var isScrollRestored = false
         var reloadVersion = 0
         private let tab: EditorTab
+        /// editor R26: the characters of the hidden lines, as laid out.
+        private var hiddenCharacters = IndexSet()
+        private var appliedFolds: (regions: [FoldRegion], folded: Set<Int>) = ([], [])
 
         init(tab: EditorTab) {
             self.tab = tab
@@ -169,6 +178,72 @@ struct EditorTextView: NSViewRepresentable {
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             tab.cursor = textView.selectedRange().location
+            // editor R28: the cursor inside a fold (an edit, a search hit) opens it.
+            if !hiddenCharacters.isEmpty, hiddenCharacters.contains(textView.selectedRange().location) {
+                tab.unfoldHidden(
+                    line: TextEditing.position(at: textView.selectedRange().location, in: textView.string as NSString)
+                        .line)
+            }
+        }
+
+        // MARK: - Folding (editor R26, R27)
+
+        /// The hidden lines recomputed, the layout asked again for every paragraph, the gutter redrawn.
+        func applyFolds(regions: [FoldRegion], folded: Set<Int>, to textView: NSTextView, in scroll: NSScrollView) {
+            guard appliedFolds.regions != regions || appliedFolds.folded != folded else { return }
+            appliedFolds = (regions, folded)
+            let ruler = scroll.verticalRulerView as? LineNumberRulerView
+            ruler?.foldRegions = regions
+            ruler?.foldedLines = folded
+            let hidden = Folding.hiddenLines(regions, folded: folded)
+            let characters = Self.characters(ofLines: hidden, in: textView.string as NSString)
+            guard characters != hiddenCharacters else { return }
+            hiddenCharacters = characters
+            guard let storage = textView.textStorage else { return }
+            // An attribute-only edit over the whole text: the content storage rebuilds its
+            // paragraphs through the delegate and the layout follows; nothing changes on disk.
+            storage.beginEditing()
+            storage.edited(.editedAttributes, range: NSRange(location: 0, length: storage.length), changeInLength: 0)
+            storage.endEditing()
+            ruler?.needsDisplay = true
+        }
+
+        /// The character ranges of `lines` (1-based), as one index set.
+        nonisolated static func characters(ofLines lines: IndexSet, in text: NSString) -> IndexSet {
+            var result = IndexSet()
+            guard !lines.isEmpty else { return result }
+            var line = 1
+            var location = 0
+            while location < text.length, line <= (lines.last ?? 0) {
+                let range = text.lineRange(for: NSRange(location: location, length: 0))
+                if lines.contains(line) {
+                    result.insert(integersIn: range.location..<NSMaxRange(range))
+                }
+                line += 1
+                location = NSMaxRange(range)
+            }
+            return result
+        }
+
+        /// editor R26: a hidden paragraph keeps its characters (the storage is untouched) and
+        /// loses its height; the platform's way to fold on TextKit 2 (decision 2026-08-28).
+        func textContentStorage(
+            _ textContentStorage: NSTextContentStorage, textParagraphWith range: NSRange
+        )
+            -> NSTextParagraph?
+        {
+            guard hiddenCharacters.contains(range.location),
+                let original = textContentStorage.textStorage?.attributedSubstring(from: range)
+            else { return nil }
+            let hidden = NSMutableAttributedString(attributedString: original)
+            let style = NSMutableParagraphStyle()
+            style.minimumLineHeight = 0.01
+            style.maximumLineHeight = 0.01
+            style.lineSpacing = 0
+            hidden.addAttributes(
+                [.font: NSFont.systemFont(ofSize: 0.01), .paragraphStyle: style, .foregroundColor: NSColor.clear],
+                range: NSRange(location: 0, length: hidden.length))
+            return NSTextParagraph(attributedString: hidden)
         }
 
         /// editor R6: `tab` inserts the file's indent unit, `enter` keeps the line's indent.
