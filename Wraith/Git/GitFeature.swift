@@ -682,6 +682,19 @@ final class GitFeature {
         }
     }
 
+    /// agents R12: a new branch and its worktree, through the repo at `repoURL` (git R26).
+    func addWorktree(in repoURL: URL, folder: URL, branch: String) async throws(GitError) {
+        guard let client = await client(for: GitRepo(url: repoURL, root: workspace.root)) else { throw .gitNotFound }
+        _ = try await client.run(
+            ["worktree", "add", "-b", branch, folder.path(percentEncoded: false), "HEAD"], kind: .write)
+    }
+
+    /// agents R13: the worktree folder removed and forgotten by git; the branch stays.
+    func removeWorktree(in repoURL: URL, folder: URL) async throws(GitError) {
+        guard let client = await client(for: GitRepo(url: repoURL, root: workspace.root)) else { throw .gitNotFound }
+        _ = try await client.run(["worktree", "remove", "--force", folder.path(percentEncoded: false)], kind: .write)
+    }
+
     /// git R31a: the session diff tab, reused when already open.
     func openSessionDiff(repo: String, base: String, title: String) {
         openDiff(GitDiffPayload(repo: repo, source: .session(base: base, title: title)), preview: false)

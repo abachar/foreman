@@ -57,3 +57,28 @@ struct GitSessionDiffTests {
         #expect(model.diff?.files.map(\.path).sorted() == ["a.txt", "b.txt"])
     }
 }
+
+/// agents R12–R13: `git worktree add -b` and `remove --force`, the branch kept.
+@MainActor
+struct GitWorktreeTests {
+    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: GitSnapshotTests.git.path())))
+    func addsThenRemovesAWorktreeKeepingItsBranch() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "GitWorktreeTests-\(UUID().uuidString)")
+        let root = base.appending(path: "repo")
+        let folder = base.appending(path: "wt")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let client = GitCLI(executable: GitSnapshotTests.git, repo: root, loginEnvironment: ["PATH": "/usr/bin:/bin"])
+        _ = try await client.run(["init", "-q"], kind: .write)
+        _ = try await client.run(
+            ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"], kind: .write)
+
+        _ = try await client.run(
+            ["worktree", "add", "-b", "wraith/claude-1", folder.path(percentEncoded: false), "HEAD"], kind: .write)
+        #expect(GitRepo.hasGitEntry(folder))
+        _ = try await client.run(["worktree", "remove", "--force", folder.path(percentEncoded: false)], kind: .write)
+        #expect(!FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)))
+        let branches = try await client.run(["branch", "--list", "wraith/claude-1"]).text
+        #expect(branches.contains("wraith/claude-1"))
+    }
+}

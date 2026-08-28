@@ -40,6 +40,37 @@ struct AgentsFeatureTests {
     }
 }
 
+/// agents R12–R13: naming and the payload of a worktree tab.
+struct AgentWorktreeTests {
+    @Test func nameCarriesTheAgentAndTheMinute() throws {
+        var components = DateComponents()
+        (components.year, components.month, components.day, components.hour, components.minute) = (2026, 8, 28, 14, 5)
+        components.timeZone = .current
+        let date = try #require(Calendar(identifier: .gregorian).date(from: components))
+        #expect(AgentsFeature.worktreeName(agent: "claude", date: date) == "claude-20260828-1405")
+        #expect(
+            AgentsFeature.title("Claude Code", branch: "wraith/claude-20260828-1405")
+                == "Claude Code (wraith/claude-20260828-1405)")
+    }
+
+    @Test func folderLivesUnderApplicationSupport() {
+        let folder = AgentsFeature.worktreeFolder(
+            workspace: "Kanstrimi TV", name: "claude-20260828-1405",
+            applicationSupport: URL(filePath: "/Users/me/Library/Application Support"))
+        #expect(
+            folder.path(percentEncoded: false)
+                == "/Users/me/Library/Application Support/Wraith/worktrees/Kanstrimi TV/claude-20260828-1405")
+    }
+
+    @Test func payloadKeepsTheWorktree() throws {
+        let payload = AgentsFeature.Payload(
+            id: "claude", cwd: "/tmp/wt", session: nil,
+            worktree: AgentsFeature.Worktree(repo: "", folder: "/tmp/wt", branch: "wraith/claude-20260828-1405"))
+        let data = try JSONEncoder().encode(payload)
+        #expect(try JSONDecoder().decode(AgentsFeature.Payload.self, from: data) == payload)
+    }
+}
+
 /// agents R10, R10a: the mention text and the active agent choice.
 struct AgentSendTests {
     let cwd = URL(filePath: "/ws/app")

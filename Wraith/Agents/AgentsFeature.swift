@@ -13,6 +13,17 @@ final class AgentsFeature {
         let cwd: String
         /// git R32: the session diff base, kept across a relaunch of the app.
         var session: Session? = nil
+        /// agents R12b: the worktree the tab runs in.
+        var worktree: Worktree? = nil
+    }
+
+    /// agents R12–R13: a throwaway worktree and branch created for one tab.
+    nonisolated struct Worktree: Codable, Equatable, Sendable {
+        /// The repo it was added to, absolute or relative to the root (config R10).
+        let repo: String
+        /// Absolute (agents R12a: never under the root).
+        let folder: String
+        let branch: String
     }
 
     /// git R30, R32: what the session diff of a tab compares against.
@@ -35,6 +46,8 @@ final class AgentsFeature {
     private var catalog: [Agent] = []
     /// git R30: one snapshot per agent tab, taken at spawn and relaunch.
     private var sessions: [TabID: Session] = [:]
+    /// agents R12: the tabs running in a worktree of their own.
+    private var worktrees: [TabID: Worktree] = [:]
     private var snapshots: [TabID: Task<Void, Never>] = [:]
     private var visibleIDs: [String] = []
     /// agents R4: the tab the button reuses, the first one opened or restored for the agent.
@@ -209,16 +222,116 @@ final class AgentsFeature {
     }
 
     /// agents R4, R5: a new tab in the active group; the first one becomes the button's.
-    private func spawn(_ id: String, cwd: URL, primary: Bool) {
-        guard let agent = agent(id) else { return }
+    @discardableResult
+    private func spawn(_ id: String, cwd: URL, primary: Bool, title: String? = nil) -> TabID? {
+        guard let agent = agent(id) else { return nil }
         guard
-            let tab = terminal.spawn(command: agent.command, cwd: cwd, kind: Self.kind(of: id), title: agent.title)
-        else { return }
+            let tab = terminal.spawn(
+                command: agent.command, cwd: cwd, kind: Self.kind(of: id), title: title ?? agent.title)
+        else { return nil }
         agentOfTab[tab] = id
         if primary, primaryTabs[id] == nil {
             primaryTabs[id] = tab
         }
         syncBadge(id)
+        return tab
+    }
+
+    // MARK: - Worktrees (agents R12–R13)
+
+    /// agents R12: `<agent>-<yyyyMMdd-HHmm>`; the branch is `wraith/` + name.
+    nonisolated static func worktreeName(agent: String, date: Date) -> String {
+        let parts = Calendar(identifier: .gregorian).dateComponents(in: .current, from: date)
+        func two(_ value: Int?) -> String { String(format: "%02d", value ?? 0) }
+        return "\(agent)-\(parts.year ?? 0)\(two(parts.month))\(two(parts.day))-\(two(parts.hour))\(two(parts.minute))"
+    }
+
+    /// agents R12a: `~/Library/Application Support/Wraith/worktrees/<workspace>/<name>`.
+    nonisolated static func worktreeFolder(workspace: String, name: String, applicationSupport: URL) -> URL {
+        applicationSupport.appending(components: "Wraith", "worktrees", workspace, name)
+    }
+
+    /// agents R12b: the tab title carries the branch.
+    nonisolated static func title(_ agentTitle: String, branch: String) -> String {
+        "\(agentTitle) (\(branch))"
+    }
+
+    /// agents R12: the entries for the root when it is a repo, else one per declared repo.
+    private func worktreeEntries(for id: String) -> [ToolbarMenuEntry] {
+        let repos = GitRepo.hasGitEntry(workspace.root) ? [workspace.root] : workspace.config.repos
+        return repos.map { repo in
+            let suffix = repo == workspace.root ? "" : " (\(repo.lastPathComponent))"
+            return ToolbarMenuEntry(
+                id: "agents.\(id).worktree.\(repo.lastPathComponent)", title: "New Session in a Worktree\(suffix)"
+            ) { [weak self] in
+                Task { await self?.spawnInWorktree(id, repo: repo) }
+            }
+        }
+    }
+
+    private func spawnInWorktree(_ id: String, repo: URL) async {
+        guard let agent = agent(id) else { return }
+        let name = Self.worktreeName(agent: id, date: .now)
+        let branch = "wraith/\(name)"
+        guard
+            let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        else { return }
+        let folder = Self.worktreeFolder(
+            workspace: workspace.root.lastPathComponent, name: name, applicationSupport: support)
+        do {
+            try await git.addWorktree(in: repo, folder: folder, branch: branch)
+        } catch {
+            report("Worktree not created", error.description)
+            return
+        }
+        guard let tab = spawn(id, cwd: folder, primary: false, title: Self.title(agent.title, branch: branch)) else {
+            return
+        }
+        worktrees[tab] = Worktree(
+            repo: Workspace.persistedPath(for: repo, root: workspace.root), folder: folder.path(percentEncoded: false),
+            branch: branch)
+    }
+
+    /// agents R13: one entry per worktree tab of the agent in the window.
+    private func removeWorktreeEntries(for id: String) -> [ToolbarMenuEntry] {
+        worktrees.filter { agentOfTab[$0.key] == id && layout.model.owner(of: $0.key) != nil }
+            .sorted { $0.value.branch < $1.value.branch }
+            .map { tab, worktree in
+                ToolbarMenuEntry(
+                    id: "agents.\(id).removeWorktree.\(worktree.branch)", title: "Remove Worktree (\(worktree.branch))"
+                ) {
+                    [weak self] in Task { await self?.removeWorktree(of: tab) }
+                }
+            }
+    }
+
+    /// agents R13: confirmed, the tab closed first (a refusal keeps everything), the branch kept.
+    private func removeWorktree(of tab: TabID) async {
+        guard let worktree = worktrees[tab], let window = NSApp.keyWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = "Remove the worktree of \(worktree.branch)?"
+        alert.informativeText =
+            "\(worktree.folder) is deleted with its uncommitted changes (irreversible). The branch is kept."
+        alert.addButton(withTitle: "Remove Worktree")
+        alert.addButton(withTitle: "Cancel")
+        guard await alert.beginSheetModal(for: window) == .alertFirstButtonReturn else { return }
+        await layout.closeTab(tab)
+        guard layout.model.owner(of: tab) == nil else { return }
+        do {
+            try await git.removeWorktree(
+                in: Workspace.url(forPersistedPath: worktree.repo, root: workspace.root),
+                folder: URL(filePath: worktree.folder))
+        } catch {
+            report("Worktree not removed", error.description)
+        }
+    }
+
+    private func report(_ title: String, _ text: String) {
+        guard let window = NSApp.keyWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = text
+        alert.beginSheetModal(for: window)
     }
 
     // MARK: - Session diff (git R30–R32)
@@ -263,7 +376,9 @@ final class AgentsFeature {
                     [weak self] in self?.spawn(id, cwd: repo, primary: false)
                 })
         }
+        entries += worktreeEntries(for: id)
         entries += sessionEntries(for: id)
+        entries += removeWorktreeEntries(for: id)
         return entries
     }
 
@@ -286,15 +401,18 @@ final class AgentsFeature {
             primaryTabs[agentID] = id
         }
         sessions[id] = decoded.session
+        worktrees[id] = decoded.worktree
         return terminal.restore(
-            id, kind: Self.kind(of: agentID), title: agent.title, command: agent.command,
-            cwd: Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root))
+            id, kind: Self.kind(of: agentID),
+            title: decoded.worktree.map { Self.title(agent.title, branch: $0.branch) } ?? agent.title,
+            command: agent.command, cwd: Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root))
     }
 
     private func serialize(_ id: TabID, agentID: String) -> String? {
         guard let tab = terminal.tab(id) else { return nil }
         let payload = Payload(
-            id: agentID, cwd: Workspace.persistedPath(for: tab.cwd, root: workspace.root), session: sessions[id])
+            id: agentID, cwd: Workspace.persistedPath(for: tab.cwd, root: workspace.root), session: sessions[id],
+            worktree: worktrees[id])
         // A two-field Codable struct always encodes.
         return String(decoding: (try? JSONEncoder().encode(payload)) ?? Data(), as: UTF8.self)
     }
@@ -302,6 +420,7 @@ final class AgentsFeature {
     private func closed(_ id: TabID) {
         terminal.closed(id)
         sessions[id] = nil
+        worktrees[id] = nil
         snapshots.removeValue(forKey: id)?.cancel()
         guard let agentID = agentOfTab.removeValue(forKey: id) else { return }
         if primaryTabs[agentID] == id {
