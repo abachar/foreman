@@ -124,8 +124,11 @@ struct WorkspaceView: View {
                     .onChange(of: layout.snapshot()) { _, snapshot in
                         workspace.setState("layout", to: snapshot)
                     }
-                    // design R2: the gutter on the window's four edges.
-                    .padding(tokens.gutter)
+                    // design R2, R21: the gutter on three edges, the toolbar gap on top.
+                    .padding(
+                        EdgeInsets(
+                            top: tokens.toolbarGap, leading: tokens.gutter, bottom: tokens.gutter,
+                            trailing: tokens.gutter))
                 }
             }
             .background(tokens.windowBackground.color)

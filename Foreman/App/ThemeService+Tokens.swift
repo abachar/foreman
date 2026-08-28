@@ -27,6 +27,9 @@ extension ThemeService {
         // Metrics
         var islandRadius: Double
         var gutter: Double
+        /// design R2, R21: the gap under the toolbar, smaller than the gutter because the compact
+        /// toolbar already keeps ~5 pt under its buttons (author, 2026-08-29).
+        var toolbarGap: Double
         var barHeight: Double
         var rowHeight: Double
         var contentInset: Double
@@ -45,7 +48,7 @@ extension ThemeService {
             separator: ThemeColor(0x3D3F_44), border: ThemeColor(0x4548_4E),
             accent: ThemeColor(0x4A86_E0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x5FB8_65),
             statusOrange: ThemeColor(0xE0A6_3B), statusRed: ThemeColor(0xE553_4B), statusBlue: ThemeColor(0x4A86_E0),
-            islandRadius: 8, gutter: 6, barHeight: 36, rowHeight: 24, contentInset: 12,
+            islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
             interfaceFontName: nil, interfaceFontSize: 13,
             syntax: [
                 .keyword: ThemeColor(0xCF8E_6D), .string: ThemeColor(0x6AAB_73), .comment: ThemeColor(0x7A7E_85),
@@ -65,7 +68,7 @@ extension ThemeService {
             separator: ThemeColor(0xD9DB_E0), border: ThemeColor(0xC9CC_D2),
             accent: ThemeColor(0x3574_F0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x2E8B_3E),
             statusOrange: ThemeColor(0xB9711_A), statusRed: ThemeColor(0xC93B_34), statusBlue: ThemeColor(0x3574_F0),
-            islandRadius: 8, gutter: 6, barHeight: 36, rowHeight: 24, contentInset: 12,
+            islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
             interfaceFontName: nil, interfaceFontSize: 13,
             syntax: [
                 .keyword: ThemeColor(0x0033_B3), .string: ThemeColor(0x067D_17), .comment: ThemeColor(0x8C8C_8C),
@@ -115,7 +118,7 @@ extension ThemeService {
         // MARK: - The `theme` section (design R11)
 
         static let metricRanges: [String: ClosedRange<Double>] = [
-            "islandRadius": 0...32, "gutter": 0...32, "barHeight": 24...64, "rowHeight": 16...48,
+            "islandRadius": 0...32, "gutter": 0...32, "toolbarGap": 0...32, "barHeight": 24...64, "rowHeight": 16...48,
             "contentInset": 0...48, "interfaceFontSize": 10...24,
         ]
 
@@ -216,6 +219,7 @@ extension ThemeService {
                 switch key {
                 case "islandRadius": islandRadius = newValue
                 case "gutter": gutter = newValue
+                case "toolbarGap": toolbarGap = newValue
                 case "barHeight": barHeight = newValue
                 case "rowHeight": rowHeight = newValue
                 case "contentInset": contentInset = newValue
