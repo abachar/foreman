@@ -91,3 +91,5 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 ## Decisions
 
 See [decisions.md](decisions.md).
+
+Later studies: [`01-study-formatter.md`](01-study-formatter.md) (R24–R25), [`02-study-folding.md`](02-study-folding.md) (R26–R28, code folding).

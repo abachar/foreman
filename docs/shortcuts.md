@@ -28,6 +28,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `space` | — | Open as a preview | native | 🟢 |
 | `cmd+↓` | — | Open pinned | native | 🟢 |
 | `enter` / double click | — | Rename (decision 2026-08-28) | native | 🟢 |
+| — | — | Context menu › *Send to Agent* (`agents` `01-study-send.md` R10b) | native | ⚪ M10 |
 | `cmd+delete` | — | Delete (trash) | native | 🟢 |
 
 ## Editor (`editor` R6–R8, R14, R17, R23, R24)
@@ -46,6 +47,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Find / replace in the file (`NSTextFinder`); `escape` closes the bar (native) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Markdown source / preview | tab(editor.file) | 🟢 |
 | `cmd+shift+l` | `editor.format` | Format the active file (`01-study-formatter.md` R24) | tab(editor.file) | 🟢 |
+| `cmd+opt+[` / `cmd+opt+]` | `editor.fold` / `.unfold` | Fold / unfold the region at the cursor (`02-study-folding.md` R27) | tab(editor.file) | ⚪ M10 |
 | `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette: open / new group / close / navigate | native | 🟢 |
 
 ## Terminal (`terminal` R12) — `agent.*` / `run.*` surfaces
@@ -62,6 +64,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
 | *(no default)* | `agents.<id>` | Open / activate the agent's tab | global | 🟢 |
+| `cmd+e` | `agents.send` | Send the file / selection / path / diff line to the active agent as `@path` (`01-study-send.md` R10b) | tab(editor.file), tab(git.diff), panel (explorer) | ⚪ M10 |
 
 ## Run (`run` R5, R6, R9)
 
@@ -92,7 +95,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 ## Free
 
-`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+e`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
+`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+g`, `cmd+shift+o`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
 
 ## Verified on the author's machine (M6 task 6.2, 2026-08-27)
 

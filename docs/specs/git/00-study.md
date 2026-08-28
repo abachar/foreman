@@ -96,3 +96,5 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 ## Decisions
 
 See [decisions.md](decisions.md).
+
+Later study: [`01-study-session-diff.md`](01-study-session-diff.md) (R30–R32, session diff).

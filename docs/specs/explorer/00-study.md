@@ -45,7 +45,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 - R17 — Rename: inline editing (`enter` on the item, a double click, or the menu; never a single click on a selected row, decision 2026-08-28). The explorer calls `Editor.fileRenamed(old, new)` so that the open tabs follow.
 - R18 — Delete: to the **trash** (`trashItem`), with a confirmation listing the number of items for a non-empty folder. The explorer calls `Editor.fileDeleted(path)`.
 - R19 — Any operation is refused if the target path is not under the root (`architecture.md`, security) or if the name is empty, `.`/`..`, or contains a forbidden character. An IO error (permission, already exists) is shown in the panel's banner and does not modify the tree.
-- R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path. No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.
+- R20 — Context menu: New file, New folder, Rename, Delete, Reveal in Finder, Copy path (relative to the root), Copy absolute path, Send to Agent (`agents` `01-study-send.md` R10b, 2026-08-28). No "terminal here" (`product` R4), no file copy/cut/paste, no drag and drop.
 - R21 — Keyboard navigation in the tree: `↑↓` move, `→` expands / `←` collapses or goes up, `enter` renames, `space` opens as a preview, `cmd+↓` opens pinned, `cmd+delete` deletes, `escape` gives the focus back to the center (`layout` R6).
 
 ## Edge cases

@@ -64,3 +64,5 @@ Feature `run`: launch the commands declared in `config.json` (`commands`) on a w
 ## Decisions
 
 See [decisions.md](decisions.md).
+
+Later study: [`01-study-detected.md`](01-study-detected.md) (R14–R16, detected commands).
