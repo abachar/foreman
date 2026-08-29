@@ -8,6 +8,7 @@ Define where and how Foreman reads its configuration and persists its state, per
 
 | Scope | Path | Content |
 |---|---|---|
+| Global | `$XDG_CONFIG_HOME/foreman/config.json`, else `~/.config/foreman/config.json` | what is the same in every workspace (agents, shortcuts, theme, formatters…): the same schema as the workspace file, merged under it (R4, 2026-08-30) |
 | Workspace | `<root>/.foreman/config.json` | workspace config (repos, commands, postgres, shortcuts…); every key, type and default in [`docs/config.md`](../../config.md) (2026-08-29) |
 | Workspace | `<root>/.foreman/state.json` | persisted UI state (splits, tabs, panels, sizes) |
 | Secrets | macOS Keychain, or `postgres.password` in `config.json` for a local dev database (decision 2026-08-27) | Postgres password |
@@ -40,7 +41,7 @@ Define where and how Foreman reads its configuration and persists its state, per
   - `agents`: `<id> → { title, command, icon, enabled }`; overrides a built-in agent or declares a new one. Detail in [agents](../agents/).
   - `commands`: short form (a string) or long form (`{ "run", "cwd", "env" }`). Detail in [run](../run/).
   - `shortcuts`: `<panel/action id> → <shortcut>`; overrides the defaults declared by the features.
-- R4 — Precedence: feature defaults < `.foreman/config.json`. There is no global configuration: everything is per workspace.
+- R4 — **Amended 2026-08-30** (from use; reinstates the global config and the merge of 2026-08-26, cancelled the same day). Precedence: feature defaults < global file < `<root>/.foreman/config.json`. The merge is **one level deep**: a section that is an object in both files is merged key by key and the workspace's key wins; any other value (a string, a number, an array such as `repos`) is replaced whole. So a workspace overrides one agent or one shortcut without copying the globals, and no deep recursive merge is needed. Both files are optional (R2), both are watched and reloaded live (R6), both are treated the same when invalid (R7): the last valid version of *that* file stays and the error names it. Every section is merged the same way — nothing in the code knows that `repos` or `postgres` make no sense globally.
 - R5 — `Workspace` exposes the config to the features; each feature decodes its own section (`config.section("postgres")`), `Workspace` does not know the features' schemas (`architecture`: config by section).
 - R6 — `config.json` is watched (through the single FSEvents stream); on every valid change, `Workspace` publishes the new config on its `configChanges` stream (`AsyncStream`), which interested features subscribe to.
 - R7 — An invalid `config.json` (malformed JSON, unexpected type) does not prevent opening: the last valid config stays active and the error is shown (line + message).
@@ -59,6 +60,6 @@ Define where and how Foreman reads its configuration and persists its state, per
 
 ## Out of scope for v1
 
-- Config in YAML/TOML, or across several files.
+- Config in YAML/TOML, or spread over more files than the two of R4.
 - A graphical preferences editor.
 - Automatic schema migration between versions.

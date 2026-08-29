@@ -32,7 +32,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 - R5 — Tab title: **fixed**, provided by the feature (`Claude`, `backend:test`). A title pushed by the process (OSC 0/2) is exposed as a subtitle/tooltip, never in its place.
 - R6 — A tab's state: `idle` (created or restored, not launched yet) → `running` (a live process, pid known) → `exited(code)` (an exit code or a signal, reported by SwiftTerm when the process ends). Exposed by `TerminalService` and published as events; it is the only source of state for `agents` R6 and `run` R10.
-- R7 — An **inactive** tab is marked (a badge) when: the bell rings, or its process ends. The marker disappears when the tab is activated. No system notification in v1.
+- R7 — An **inactive** tab is marked (a badge) when: the bell rings, or its process ends. The marker disappears when the tab is activated. **Amended 2026-08-30**: when the same event happens while Foreman is not the active application, the app also asks for the user's attention (`NSApplication.requestUserAttention(.criticalRequest)`): the Dock icon bounces until Foreman is activated, and AppKit cancels the request itself at that moment. Agent and run tabs alike. Still no notification centre banner: Foreman cannot tell "the agent is waiting for you" from "the agent has finished" — both are a bell (decision 2026-08-30).
 - R8 — Process ended: the surface stays visible, frozen, with a status line at the bottom (`finished · code 0` / `code 1` / `signal SIGINT`) and a *Relaunch* button (same command, same cwd, a new PTY in the same tab). The tab never closes on its own.
 - R9 — Signals: `signal(SIGINT|SIGTERM, to: tab)` sent to the PTY's **process group**. `SIGKILL` is never automatic.
 
@@ -68,7 +68,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 - An **interactive shell** (`cmd+t`, "new terminal", "terminal here", a prompt): deliberately absent (`product` R4).
 - libghostty, Metal rendering, Ghostty config, shell integration (OSC 7/133).
 - Restoring the scrollback (`product`), tmux-style persistent sessions.
-- System notifications, per-workspace profiles.
+- Notification centre banners (`UNUserNotificationCenter`), per-workspace profiles. The Dock's attention request (R7) is not one: it needs no authorization and no signature.
 
 ## Technical options
 

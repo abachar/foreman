@@ -47,6 +47,9 @@ That is the whole distribution of v1 (`product` R10): no signing, notarization, 
 | M12 — SQL grammar | tree-sitter-sql for `.sql` and the query editor | 🟢 |
 | M13 — Explorer | IntelliJ opening (click selects, double click opens, `shift+F6` renames), drag and drop moves | 🟢 |
 | M14 — Polish, second round | markdown opens in preview, `toolbarGap` token, title area at first launch, inverted ground, `docs/config.md`, preview reading size, panels only with content | 🟢 |
+| M15 — Usage, first round | Dock bounce, Changes panel as a tree, folded folders in the explorer, shortcut problems shown, global `~/.config/foreman/config.json`, menus from the registry, last project reopened at launch | 🔴 |
+
+**M0–M14 are v1, finished on 2026-08-29.** What follows is continuous improvement driven by use: each milestone is a batch of frictions met while working in Foreman, not a step planned in advance.
 
 The up-to-date table, task by task, is [`docs/backlog/README.md`](docs/backlog/README.md).
 

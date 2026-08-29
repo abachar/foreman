@@ -2,6 +2,8 @@
 
 Breakdown and progress of the implementation, one file per milestone. The specs say *what* ([`../specs/`](../specs/)), this folder says *in what order and where we stand*.
 
+**M0–M14 built v1, finished on 2026-08-29.** From M15 on, a milestone is no longer a step in a plan: it is a batch of improvements coming from **use** — a friction met while working in Foreman, a rule written but never made visible. The numbering carries on because the specs and the decisions cite it.
+
 | Milestone | File | Domains | Status |
 |---|---|---|---|
 | M0 — Shell | [m0-shell.md](m0-shell.md) | product, config, layout | 🟢 (2026-08-26; CI on Xcode 27 unverified) |
@@ -19,5 +21,6 @@ Breakdown and progress of the implementation, one file per milestone. The specs 
 | M12 — SQL grammar | [m12-sql-grammar.md](m12-sql-grammar.md) | editor (R11), postgres (R9) | 🟢 (2026-08-28) |
 | M13 — Explorer | [m13-explorer.md](m13-explorer.md) | explorer (R12, R17, R21 amended, R22) | 🟢 (2026-08-28) |
 | M14 — Polish, second round | [m14-polish-2.md](m14-polish-2.md) | editor (R14), design (R2, R6, R14, R21), layout (R36), git, postgres, run | 🟢 (2026-08-29; inverted ground, config reference and preview reading size and conditional features added the same day) |
+| M15 — Usage, first round | [m15-usage.md](m15-usage.md) | terminal (R7), git (R6b), explorer (R23), layout (R24, R37), config (R4), product (R8) | 🔴 (opened 2026-08-30) |
 
 Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.

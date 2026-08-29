@@ -1,6 +1,8 @@
 # Configuration reference
 
-> Every key of `<root>/.foreman/config.json`, its type, its default and where it is decoded. The rules live in [`specs/config/00-study.md`](specs/config/00-study.md) (R2–R7) and in each domain's study; this file is the flat view, kept in step with the code in the same commit as any key change. Every key is optional (config R2); an invalid value is reported in the UI and the default stays (config R7); the file is watched and reloaded live (config R6). There is no global config (config R4).
+> Every key of the configuration, its type, its default and where it is decoded. The rules live in [`specs/config/00-study.md`](specs/config/00-study.md) (R2–R7) and in each domain's study; this file is the flat view, kept in step with the code in the same commit as any key change. Every key is optional (config R2); an invalid value is reported in the UI and the default stays (config R7); the files are watched and reloaded live (config R6).
+
+**Two files, one schema** (config R4, 2026-08-30): the global `$XDG_CONFIG_HOME/foreman/config.json` (else `~/.config/foreman/config.json`) and the workspace's `<root>/.foreman/config.json`. Every section below is accepted in both; a section that is an object in both is merged key by key, one level deep, and the workspace's key wins — any other value (a string, a number, an array such as `repos`) is replaced whole. In practice `agents`, `shortcuts`, `theme`, `terminal` and `formatter` belong in the global file, `repos`, `commands`, `postgres` and `browser` in the workspace's.
 
 Example with every section (values are the defaults unless noted):
 
