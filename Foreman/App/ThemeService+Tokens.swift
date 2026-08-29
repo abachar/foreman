@@ -36,6 +36,8 @@ extension ThemeService {
         // Type (design R6, 2026-08-28): the interface font, `nil` is the system font.
         var interfaceFontName: String?
         var interfaceFontSize: Double
+        /// design R6 (2026-08-29): the markdown preview's body size.
+        var readingFontSize: Double
         /// editor R12: the highlighting colors join the set (backlog M8, 8.2).
         var syntax: [HighlightRole: ThemeColor]
 
@@ -49,7 +51,7 @@ extension ThemeService {
             accent: ThemeColor(0x4A86_E0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x5FB8_65),
             statusOrange: ThemeColor(0xE0A6_3B), statusRed: ThemeColor(0xE553_4B), statusBlue: ThemeColor(0x4A86_E0),
             islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
-            interfaceFontName: nil, interfaceFontSize: 13,
+            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16,
             syntax: [
                 .keyword: ThemeColor(0xCF8E_6D), .string: ThemeColor(0x6AAB_73), .comment: ThemeColor(0x7A7E_85),
                 .type: ThemeColor(0x56A8_F5), .function: ThemeColor(0x57AA_F7), .number: ThemeColor(0x2AAC_B8),
@@ -69,7 +71,7 @@ extension ThemeService {
             accent: ThemeColor(0x3574_F0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x2E8B_3E),
             statusOrange: ThemeColor(0xB9711_A), statusRed: ThemeColor(0xC93B_34), statusBlue: ThemeColor(0x3574_F0),
             islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
-            interfaceFontName: nil, interfaceFontSize: 13,
+            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16,
             syntax: [
                 .keyword: ThemeColor(0x0033_B3), .string: ThemeColor(0x067D_17), .comment: ThemeColor(0x8C8C_8C),
                 .type: ThemeColor(0x0072_86), .function: ThemeColor(0x0060_A6), .number: ThemeColor(0x1750_EB),
@@ -119,7 +121,7 @@ extension ThemeService {
 
         static let metricRanges: [String: ClosedRange<Double>] = [
             "islandRadius": 0...32, "gutter": 0...32, "toolbarGap": 0...32, "barHeight": 24...64, "rowHeight": 16...48,
-            "contentInset": 0...48, "interfaceFontSize": 10...24,
+            "contentInset": 0...48, "interfaceFontSize": 10...24, "readingFontSize": 10...32,
         ]
 
         /// design R11: the font keys take a family name.
@@ -224,6 +226,7 @@ extension ThemeService {
                 case "rowHeight": rowHeight = newValue
                 case "contentInset": contentInset = newValue
                 case "interfaceFontSize": interfaceFontSize = newValue
+                case "readingFontSize": readingFontSize = newValue
                 default: break
                 }
             }

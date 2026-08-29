@@ -23,6 +23,21 @@ extension ThemeService {
         Font(interfaceFont(style, weight: weight))
     }
 
+    /// design R6 (2026-08-29): the markdown preview's type, scaled from the `readingFontSize` token
+    /// (body 1, headings 2 / 1.5 / 1.25 / 1 / 0.875 / 0.85, small 0.875).
+    func readingFont(scale: CGFloat = 1, weight: NSFont.Weight = .regular) -> NSFont {
+        let size = (tokens.readingFontSize * scale).rounded()
+        if let name = tokens.interfaceFontName, let font = NSFont(name: name, size: size) {
+            return weight == .regular ? font : NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        }
+        return NSFont.systemFont(ofSize: size, weight: weight)
+    }
+
+    /// design R6 (2026-08-29): code in the preview, the code font at 0.85 of the reading size.
+    var readingCodeFont: NSFont {
+        editorFont.withSize((tokens.readingFontSize * 0.85).rounded())
+    }
+
     /// The code font at an interface size: a sha, a line number, a ref in a list.
     func codeFont(_ style: TextStyle = .body) -> Font {
         Font(editorFont.withSize(Self.pointSize(of: style, body: tokens.interfaceFontSize)))

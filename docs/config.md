@@ -146,7 +146,8 @@ Metrics (points) and type:
 | `barHeight` | `36` | `24…64` | toolbar, tab bar, panel headers |
 | `rowHeight` | `24` | `16…48` | native list rows (explorer, schema); grows with the font if needed |
 | `contentInset` | `12` | `0…48` | padding inside the islands' content |
-| `interfaceFontSize` | `13` | `10…24` | body size of the chrome; `small` = body − 2, `title` = body + 1; markdown headings × 1.6 / 1.35 / 1.15 |
+| `interfaceFontSize` | `13` | `10…24` | body size of the chrome; `small` = body − 2, `title` = body + 1 |
+| `readingFontSize` | `16` | `10…32` | markdown preview body; headings × 2 / 1.5 / 1.25 / 1 / 0.875 / 0.85, small × 0.875, code × 0.85 in `terminal.font` |
 | `interfaceFont` | system font | family name | the chrome font (code keeps `terminal.font`) |
 
 Syntax colors are not overridable (editor R12).

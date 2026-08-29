@@ -27,7 +27,9 @@ struct MarkdownPreviewView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(theme.font())
+        // design R6: the reading size and a looser leading than the chrome (2026-08-29).
+        .font(Font(theme.readingFont()))
+        .lineSpacing(4)
         .scrollPosition($position, anchor: .top)
         .foregroundStyle(theme.tokens.textPrimary.color)
         .tint(theme.tokens.accent.color)
@@ -66,21 +68,29 @@ private struct MarkdownBlockView: View {
     let theme: ThemeService
     let highlighter: Highlighter
 
-    /// design R6: headings scale the interface font, `medium` (1.6, 1.35, 1.15, then the title).
+    /// design R6: headings scale the reading size, `medium`.
     private func headingFont(_ level: Int) -> Font {
-        let scale: CGFloat = level == 1 ? 1.6 : level == 2 ? 1.35 : level == 3 ? 1.15 : 1.05
-        let base = theme.interfaceFont(.body, weight: .medium)
-        return Font(base.withSize((base.pointSize * scale).rounded()))
+        let scales: [CGFloat] = [2, 1.5, 1.25, 1, 0.875, 0.85]
+        return Font(theme.readingFont(scale: scales[min(max(level, 1), 6) - 1], weight: .medium))
+    }
+
+    /// Inline code runs (`inlinePresentationIntent == .code`) take the preview's code font.
+    private func styled(_ text: AttributedString) -> AttributedString {
+        var text = text
+        for run in text.runs where run.inlinePresentationIntent?.contains(.code) == true {
+            text[run.range].font = Font(theme.readingCodeFont)
+        }
+        return text
     }
 
     var body: some View {
         switch block {
         case .heading(let level, let text):
-            Text(text)
+            Text(styled(text))
                 .font(headingFont(level))
                 .padding(.top, level <= 2 ? 8 : 4)
         case .paragraph(let text):
-            Text(text)
+            Text(styled(text))
         case .code(let language, let code):
             CodeBlockView(language: language, code: code, theme: theme, highlighter: highlighter)
         case .list(let ordered, let start, let items):
@@ -113,12 +123,12 @@ private struct MarkdownBlockView: View {
         case .table(let header, let rows):
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
-                    ForEach(Array(header.enumerated()), id: \.offset) { _, cell in Text(cell).bold() }
+                    ForEach(Array(header.enumerated()), id: \.offset) { _, cell in Text(styled(cell)).bold() }
                 }
                 Divider()
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     GridRow {
-                        ForEach(Array(row.enumerated()), id: \.offset) { _, cell in Text(cell) }
+                        ForEach(Array(row.enumerated()), id: \.offset) { _, cell in Text(styled(cell)) }
                     }
                 }
             }
@@ -130,11 +140,13 @@ private struct MarkdownBlockView: View {
                     .frame(maxWidth: 800, alignment: .leading)
                     .accessibilityLabel(alt)
             } else {
-                Text("[\(alt.isEmpty ? url.lastPathComponent : alt)]").foregroundStyle(.secondary)
+                Text("[\(alt.isEmpty ? url.lastPathComponent : alt)]")
+                    .font(Font(theme.readingFont(scale: 0.875)))
+                    .foregroundStyle(.secondary)
             }
         case .html(let raw):
             Text(raw)
-                .font(Font(theme.editorFont))
+                .font(Font(theme.readingCodeFont))
                 .foregroundStyle(.secondary)
         }
     }
@@ -164,7 +176,7 @@ private struct CodeBlockView: View {
     var body: some View {
         ScrollView(.horizontal) {
             Text(highlighted ?? AttributedString(code))
-                .font(Font(theme.editorFont))
+                .font(Font(theme.readingCodeFont))
                 .padding(10)
         }
         // design R8: the sunken shade, opaque (the tint let text show through, M8 8.7).

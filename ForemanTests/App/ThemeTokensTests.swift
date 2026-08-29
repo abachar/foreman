@@ -55,6 +55,14 @@ struct ThemeTokensTests {
         #expect(ThemeService.Tokens.dark != ThemeService.Tokens.light)
     }
 
+    /// design R6 (2026-08-29): the preview's scale, overridable through `theme.readingFontSize`.
+    @Test func appliesTheReadingFontSize() throws {
+        let overrides = try decodeOverrides(##"{ "readingFontSize": 18 }"##)
+        #expect(overrides.warnings.isEmpty)
+        #expect(ThemeService.Tokens.dark.applying(overrides).readingFontSize == 18)
+        #expect(ThemeService.Tokens.dark.readingFontSize == 16)
+    }
+
     @Test func aMissingSectionKeepsTheDefaults() {
         let overrides = ThemeService.Tokens.overrides(from: nil)
         #expect(overrides == .none)
