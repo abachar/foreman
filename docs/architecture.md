@@ -64,7 +64,7 @@ cli/foreman           # shell script: `open -a Foreman "$(pwd)"`
 - **`makeView` is lazy** and side-effect free; work starts when the panel is activated and stops when it is deactivated (P4). What `activate()` starts, `deactivate()` stops.
 - **Shared services, created once in `App` and injected**: `FSWatchService` (one FSEvents stream, multiplexed, ~300 ms debounce), `ThemeService`, `SecretStore`, `TerminalService`, `Palette`, `Highlight`. No `static let shared`. No disk polling.
 - **No `EventBus`.** A notification between features is a closure or an `AsyncStream` exposed by the owner of the information (`Git` exposes `statusChanges`, `Explorer` subscribes to it).
-- **Config by section**: each feature decodes its own section of `.foreman/config.json`; `Workspace` does not know the schemas.
+- **Config by section**: each feature decodes its own section of `.foreman/config.json`; `Workspace` does not know the schemas. Every key is listed in [`config.md`](config.md).
 - **Namespaced, stable identifiers** (`git.status`, `agent.claude`): they appear in `state.json` and in shortcuts; changing one is a migration.
 - **Third-party types stay near their use.** A view or a persisted model never handles a `PostgresRow` or a tree-sitter `Node`; the feature converts to its own type where the UI or persistence needs it — and only there.
 - **Persisted formats are versioned**; unknown version → ignored + `.bak`. One single disk exclusion list (`.git/objects`, `node_modules`, `target`, `.build`, `DerivedData`, `.foreman/state.json`).

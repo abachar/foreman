@@ -8,7 +8,7 @@ Define where and how Foreman reads its configuration and persists its state, per
 
 | Scope | Path | Content |
 |---|---|---|
-| Workspace | `<root>/.foreman/config.json` | workspace config (repos, commands, postgres, shortcuts…) |
+| Workspace | `<root>/.foreman/config.json` | workspace config (repos, commands, postgres, shortcuts…); every key, type and default in [`docs/config.md`](../../config.md) (2026-08-29) |
 | Workspace | `<root>/.foreman/state.json` | persisted UI state (splits, tabs, panels, sizes) |
 | Secrets | macOS Keychain, or `postgres.password` in `config.json` for a local dev database (decision 2026-08-27) | Postgres password |
 

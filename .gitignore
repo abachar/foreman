@@ -7,3 +7,4 @@ xcuserdata/
 .foreman/postgres-history.json
 *.profraw
 *.profdata
+.foreman/config.json
