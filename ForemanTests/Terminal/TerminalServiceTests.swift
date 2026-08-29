@@ -73,3 +73,25 @@ struct TerminalServiceTests {
         #expect(TerminalService.signalAfterGrace(isStillRunning: false) == nil)
     }
 }
+
+/// terminal R7: when the Dock is asked to bounce.
+struct TerminalAttentionTests {
+    private let id = TabID()
+
+    @Test func askedForABellOrAnExitWhileTheAppIsInTheBackground() {
+        #expect(TerminalService.shouldRequestAttention(event: .bell(id), isAppActive: false))
+        #expect(TerminalService.shouldRequestAttention(event: .exited(id, .code(0)), isAppActive: false))
+        #expect(TerminalService.shouldRequestAttention(event: .exited(id, .signal(SIGINT)), isAppActive: false))
+    }
+
+    @Test func neverAskedWhileForemanIsTheActiveApplication() {
+        #expect(!TerminalService.shouldRequestAttention(event: .bell(id), isAppActive: true))
+        #expect(!TerminalService.shouldRequestAttention(event: .exited(id, .code(1)), isAppActive: true))
+    }
+
+    @Test func neverAskedForTheOtherEvents() {
+        #expect(!TerminalService.shouldRequestAttention(event: .started(id, pid: 1), isAppActive: false))
+        #expect(!TerminalService.shouldRequestAttention(event: .activated(id), isAppActive: false))
+        #expect(!TerminalService.shouldRequestAttention(event: .closed(id), isAppActive: false))
+    }
+}

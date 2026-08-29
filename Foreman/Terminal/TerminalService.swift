@@ -227,8 +227,26 @@ final class TerminalService {
     }
 
     private func publish(_ event: TerminalEvent) {
+        if Self.shouldRequestAttention(event: event, isAppActive: NSApp.isActive) {
+            // terminal R7: AppKit bounces until Foreman is activated, and cancels the request itself.
+            NSApp.requestUserAttention(.criticalRequest)
+        }
         for continuation in subscribers.values {
             continuation.yield(event)
+        }
+    }
+
+    /// terminal R7: a bell or the end of a process while Foreman is behind another application.
+    ///
+    /// Whether the tab is the active one does not matter: in the background no tab is under the
+    /// eye, and AppKit ignores the request anyway while the app is active.
+    nonisolated static func shouldRequestAttention(event: TerminalEvent, isAppActive: Bool) -> Bool {
+        guard !isAppActive else { return false }
+        switch event {
+        case .bell, .exited:
+            return true
+        case .started, .activated, .closed:
+            return false
         }
     }
 
