@@ -78,15 +78,13 @@ struct RunToolbarTests {
             cwd: URL(filePath: "/ws"), env: [:], problem: problem)
     }
 
-    @Test func menuListsCommandsWithTheirBadgeOrAnExample() {
+    @Test func menuListsCommandsWithTheirBadge() {
         let rows = RunFeature.menuRows([command(".", "test"), command("x", "y", problem: "repo not found: x")]) {
             $0 == "root:test" ? .dot(.blue) : .none
         }
         #expect(rows.map(\.badge) == [.dot(.blue), .none])
         #expect(rows.map(\.isEnabled) == [true, false])
         #expect(rows[1].subtitle == "repo not found: x")
-        let empty = RunFeature.menuRows([]) { _ in .none }
-        #expect(empty.count == 1 && !empty[0].isEnabled && empty[0].subtitle.contains("commands"))
     }
 
     @Test func buttonBadgeIsBlueThenRedThenNone() {

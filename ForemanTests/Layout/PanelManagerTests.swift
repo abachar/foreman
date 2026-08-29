@@ -29,6 +29,41 @@ struct PanelManagerTests {
         )
     }
 
+    /// layout R36: a withdrawn panel is hidden, deactivated and forgotten, its view included.
+    @Test func unregisterHidesAndForgetsThePanel() {
+        manager.register(panel("git.status", side: .right))
+        manager.toggle("git.status")
+        _ = manager.view(for: "git.status")
+
+        manager.unregister("git.status")
+        #expect(manager.visible.isEmpty)
+        #expect(manager.focus == .center)
+        #expect(probe.activations == ["+git.status", "-git.status"])
+        #expect(manager["git.status"] == nil)
+        #expect(manager.view(for: "git.status") == nil)
+
+        manager.register(panel("git.status", side: .right))
+        _ = manager.view(for: "git.status")
+        #expect(probe.built == 2)
+    }
+
+    /// layout R36: a panel registered after the restoration takes its slot, unless it was filled since.
+    @Test func lateRegistrationTakesItsRestoredSlot() {
+        manager.register(panel("pg.schema", side: .right))
+        manager.restore(visible: [.right: "git.status", .left: "explorer"])
+        #expect(manager.visible.isEmpty)
+        manager.activateVisible()
+
+        manager.register(panel("git.status", side: .right))
+        #expect(manager.visible == [.right: "git.status"])
+        #expect(probe.activations == ["+git.status"])
+
+        manager.toggle("pg.schema")
+        manager.unregister("git.status")
+        manager.register(panel("git.status", side: .right))
+        #expect(manager.visible == [.right: "pg.schema"])
+    }
+
     @Test func sameShortcutTwiceShowsThenHides() {
         manager.register(panel("git.status", side: .left))
 

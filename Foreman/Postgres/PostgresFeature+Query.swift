@@ -19,10 +19,6 @@ extension PostgresFeature {
                     }
                     queryTabs[id] = nil
                 }))
-        layout.shortcuts.register(
-            ShortcutAction(id: Self.queryTabKind, title: "New Query", defaultShortcut: "cmd+shift+q") { [weak self] in
-                self?.newQueryTab()
-            })
         // R9: `cmd+/` toggles `--` comments, like the file editor's `editor.comment`.
         layout.shortcuts.register(
             ShortcutAction(
@@ -30,12 +26,6 @@ extension PostgresFeature {
                 defaultShortcut: "cmd+/"
             ) { [weak self] in
                 self?.toggleComment()
-            })
-        // R20: no default shortcut (`cmd+opt+h` is macOS Hide Others), `config.shortcuts` can set one.
-        layout.shortcuts.register(
-            ShortcutAction(id: "postgres.history", title: "Query History", defaultShortcut: nil) { [weak self] in
-                guard let self, let tab = activeQueryTab ?? newQueryTab() else { return }
-                showHistory(for: tab)
             })
         runQuery = { [weak self] sql in
             guard let self, let tab = newQueryTab(text: sql) else { return }

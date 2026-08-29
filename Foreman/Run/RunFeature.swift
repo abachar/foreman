@@ -72,6 +72,7 @@ final class RunFeature {
     private var primaryTabs: [String: TabID] = [:]
     private var commandOfTab: [TabID: String] = [:]
     private var registeredKinds: Set<String> = []
+    private var isShown = false
     /// run R9: tabs waiting for `exited` to relaunch, with the task that gives up after the grace.
     private var pendingRelaunches: [TabID: Task<Void, Never>] = [:]
     /// run R9: when `cmd+.` last hit each tab.
@@ -87,10 +88,8 @@ final class RunFeature {
         self.workspace = workspace
         self.terminal = terminal
         self.palette = palette
-        apply(workspace.config)
-        registerPalette()
-        registerToolbar()
         registerStop()
+        apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges() {
                 guard let self else { return }
@@ -164,6 +163,20 @@ final class RunFeature {
         commands = RunCatalog.merge(declared: declared, detected: detected)
         for command in commands {
             register(command.id)
+        }
+        show(!commands.isEmpty)
+    }
+
+    /// run R6b (2026-08-29), layout R36: the button and the palette exist only with a command.
+    private func show(_ shown: Bool) {
+        guard shown != isShown else { return }
+        isShown = shown
+        if shown {
+            registerPalette()
+            registerToolbar()
+        } else {
+            layout.shortcuts.unregister("run.palette")
+            layout.removeToolbarItem(Self.toolbarID)
         }
     }
 
@@ -318,16 +331,8 @@ final class RunFeature {
                 kind: .menu(entries: { [weak self] in self?.menuEntries() ?? [] })))
     }
 
-    /// run R6b: every command with its state; an example when nothing is configured.
+    /// run R6b: every command with its state.
     nonisolated static func menuRows(_ commands: [RunCommand], badge: (String) -> ToolbarBadge) -> [MenuRow] {
-        guard !commands.isEmpty else {
-            return [
-                MenuRow(
-                    id: "run.example", title: "No commands configured",
-                    subtitle: #".foreman/config.json: { "commands": { ".": { "test": "make test" } } }"#, badge: .none,
-                    isEnabled: false)
-            ]
-        }
         var rows: [MenuRow] = []
         for command in commands {
             // run R15: the detected ones after the declared ones, under one heading.

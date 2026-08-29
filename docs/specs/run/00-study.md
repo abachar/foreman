@@ -27,7 +27,7 @@ Feature `run`: launch the commands declared in `config.json` (`commands`) on a w
 
 - R5 — `cmd+r` opens a palette (`Palette`, the shared folder, the same one as quick open). Entries `repo › name` with the command as the subtitle; fuzzy over `repo name`; default order: most recently launched first, then alphabetical.
 - R6 — `enter` launches (R7); `cmd+enter` launches in a **new** tab (without reuse); `opt+enter` copies the command to the clipboard. `escape` closes.
-- R6b — The **▶ Run** button (`run.toolbar`, a toolbar item declared to `Layout`, on the `trailing` side, of the menu kind, `layout` R30): the menu lists the commands grouped by repo, with the command as the subtitle and the state badge (R10) of the matching tab; a click launches (R7). The button carries a blue badge when at least one command is running, red when the last one to finish failed (cleared when the tab is activated). With no command configured at all, the menu shows a config example. Neither `commands` nor the button are touched by the agents.
+- R6b — The **▶ Run** button (`run.toolbar`, a toolbar item declared to `Layout`, on the `trailing` side, of the menu kind, `layout` R30): the menu lists the commands grouped by repo, with the command as the subtitle and the state badge (R10) of the matching tab; a click launches (R7). The button carries a blue badge when at least one command is running, red when the last one to finish failed (cleared when the tab is activated). With no command at all — declared or detected (R14) — **there is no button and no `cmd+r`** (amended 2026-08-29, `layout` R36); they appear with the first command. `run.stop` and the tab kinds stay. Neither `commands` nor the button are touched by the agents.
 
 ### Execution
 

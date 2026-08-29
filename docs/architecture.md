@@ -60,7 +60,7 @@ cli/foreman           # shell script: `open -a Foreman "$(pwd)"`
 
 ## Architecture rules
 
-- **Features do not drive the layout.** A feature *declares* (panel, slot, shortcut, `makeView`); `PanelManager` decides what is visible.
+- **Features do not drive the layout.** A feature *declares* (panel, slot, shortcut, `makeView`); `PanelManager` decides what is visible. A feature declares only what it can serve and withdraws it when the content goes (layout R36).
 - **`makeView` is lazy** and side-effect free; work starts when the panel is activated and stops when it is deactivated (P4). What `activate()` starts, `deactivate()` stops.
 - **Shared services, created once in `App` and injected**: `FSWatchService` (one FSEvents stream, multiplexed, ~300 ms debounce), `ThemeService`, `SecretStore`, `TerminalService`, `Palette`, `Highlight`. No `static let shared`. No disk polling.
 - **No `EventBus`.** A notification between features is a closure or an `AsyncStream` exposed by the owner of the information (`Git` exposes `statusChanges`, `Explorer` subscribes to it).

@@ -29,6 +29,17 @@ struct ShortcutRegistryTests {
         #expect(registry.problems == [.conflict(Shortcut(parsing: "cmd+shift+g")!, ids: ["git.status", "pg.schema"])])
     }
 
+    /// layout R36: withdrawing an action frees its shortcut and clears its conflict.
+    @Test func unregisterFreesTheShortcut() {
+        registry.register(action("git.status", "cmd+shift+g"))
+        registry.register(action("pg.schema", "cmd+shift+g"))
+        #expect(resolve("cmd+shift+g") == nil)
+
+        registry.unregister("pg.schema")
+        #expect(resolve("cmd+shift+g") == "git.status")
+        #expect(registry.problems.isEmpty)
+    }
+
     @Test func overrideCreatesAndResolvesConflicts() {
         registry.register(action("git.status", "cmd+shift+g"))
         registry.register(action("git.history", "cmd+shift+h"))

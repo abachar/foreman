@@ -91,6 +91,9 @@ final class PanelManager {
     private(set) var panels: [PanelDescriptor] = []
 
     private var views: [PanelID: AnyView] = [:]
+    /// layout R36: what `state.json` asked for, kept for the panels registered after restoration.
+    private var restored: [PanelSide: PanelID] = [:]
+    private var isActivated = false
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "layout")
 
     /// layout, edge cases: a duplicated id is a programming error, refused and logged as a fault.
@@ -101,7 +104,24 @@ final class PanelManager {
             return false
         }
         panels.append(descriptor)
+        // layout R36: a panel registered after the restoration takes its restored slot if still empty.
+        if restored[descriptor.side] == descriptor.id, visible[descriptor.side] == nil {
+            visible[descriptor.side] = descriptor.id
+            if isActivated {
+                descriptor.activate()
+            }
+        }
         return true
+    }
+
+    /// layout R36: a feature with nothing to show withdraws its panel; hidden first if visible.
+    func unregister(_ id: PanelID) {
+        guard let descriptor = self[id] else { return }
+        if visible[descriptor.side] == id {
+            hide(descriptor.side)
+        }
+        panels.removeAll { $0.id == id }
+        views[id] = nil
     }
 
     subscript(id: PanelID) -> PanelDescriptor? {
@@ -172,11 +192,13 @@ final class PanelManager {
     /// Restores the visible panels from `state.json` without activating them (layout R29): a panel
     /// that moved to another slot since is considered hidden (edge cases).
     func restore(visible restored: [PanelSide: PanelID]) {
+        self.restored = restored
         visible = restored.filter { side, id in self[id]?.side == side }
     }
 
     /// layout R29: after the first frame, the restored panels start their work.
     func activateVisible() {
+        isActivated = true
         for id in visible.values {
             self[id]?.activate()
         }

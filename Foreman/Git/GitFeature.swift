@@ -44,6 +44,8 @@ final class GitFeature {
     private(set) var branches: [GitBranch] = []
     private var isActive = false
     private var activation: Task<Void, Never>?
+    private var arePanelsShown = false
+    private var presence: Task<Void, Never>?
     private var watches: [Task<Void, Never>] = []
     private var configWatch: Task<Void, Never>?
     private var statusSubscribers: [UUID: AsyncStream<GitStatusChange>.Continuation] = [:]
@@ -61,24 +63,10 @@ final class GitFeature {
         if let state = try? workspace.state.section("git", as: GitState.self) {
             model.restore(state)
         }
-        let model = model
-        let theme = theme
-        layout.register(
-            panel: PanelDescriptor(
-                id: Self.panelID, title: "Changes", side: .right, icon: "arrow.triangle.branch",
-                defaultShortcut: "cmd+shift+g",
-                makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
-                activate: { [weak self] in self?.activate() },
-                deactivate: { [weak self] in self?.deactivate() }))
-        let history = history
-        layout.register(
-            panel: PanelDescriptor(
-                id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
-                makeView: { [unowned self] in
-                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))
-                },
-                activate: { [weak self] in self?.activateHistory() },
-                deactivate: { [weak self] in self?.history.reload(with: nil) }))
+        // git R1b: the panels exist only with a repo; the root or `config.repos` answers at once,
+        // the depth-2 scan answers off the main actor.
+        showPanels(!workspace.config.repos.isEmpty || GitRepo.hasGitEntry(workspace.root))
+        presence = Task { [weak self] in await self?.checkPresence() }
         // agents R10b: `cmd+e` on a diff tab sends its file, or the sha of a whole commit.
         layout.shortcuts.register(
             ShortcutAction(
@@ -100,15 +88,54 @@ final class GitFeature {
                 }))
         configWatch = Task { [weak self, workspace] in
             for await _ in workspace.configChanges() {
-                guard let self, isActive else { continue }
+                guard let self else { return }
+                await checkPresence()
+                guard isActive else { continue }
                 // git R1: the repos follow `config.repos`; a new `git.path` waits for the next window.
                 await discoverAndRefresh()
             }
         }
     }
 
+    // MARK: - Presence (git R1b, layout R36)
+
+    private func checkPresence() async {
+        let repos = await GitRepo.discover(root: workspace.root, declared: workspace.config.repos)
+        guard !Task.isCancelled else { return }
+        showPanels(!repos.isEmpty)
+    }
+
+    private func showPanels(_ shown: Bool) {
+        guard shown != arePanelsShown else { return }
+        arePanelsShown = shown
+        guard shown else {
+            layout.unregister(panel: Self.panelID)
+            layout.unregister(panel: Self.historyPanelID)
+            return
+        }
+        let model = model
+        let theme = theme
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.panelID, title: "Changes", side: .right, icon: "arrow.triangle.branch",
+                defaultShortcut: "cmd+shift+g",
+                makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
+                activate: { [weak self] in self?.activate() },
+                deactivate: { [weak self] in self?.deactivate() }))
+        let history = history
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
+                makeView: { [unowned self] in
+                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))
+                },
+                activate: { [weak self] in self?.activateHistory() },
+                deactivate: { [weak self] in self?.history.reload(with: nil) }))
+    }
+
     isolated deinit {
         activation?.cancel()
+        presence?.cancel()
         for task in commitTasks.values {
             task.cancel()
         }

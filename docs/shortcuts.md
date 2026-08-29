@@ -70,7 +70,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+r` | `run.palette` | Command palette | global | 🟢 |
+| `cmd+r` | `run.palette` | Command palette (needs a command, declared or detected; `run` R6b) | global | 🟢 (amended 2026-08-29) |
 | `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette: launch / new tab / copy / close | native | 🟢 |
 | `cmd+.` | `run.stop` | Stop the process (`SIGINT`, second press < 2 s → `SIGTERM`); no effect outside a `run.*` tab (decision 2026-08-27) | terminal | 🟢 |
 
@@ -78,20 +78,20 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+g` | `git.changes` | Changes panel | global | 🟢 (2026-08-27) |
-| `cmd+shift+h` | `git.history` | History panel | global | 🟢 (2026-08-27) |
+| `cmd+shift+g` | `git.changes` | Changes panel (needs a repo, `git` R1b) | global | 🟢 (amended 2026-08-29) |
+| `cmd+shift+h` | `git.history` | History panel (needs a repo, `git` R1b) | global | 🟢 (amended 2026-08-29) |
 | `cmd+enter` | — | Commit (message field) | native | 🟢 (2026-08-27) |
 
 ## Postgres (`postgres`)
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+b` | `postgres.schema` | Schema panel (default changed on 2026-08-27: `cmd+shift+d` belongs to `layout.split.horizontal`) | global | 🟢 (2026-08-27) |
-| `cmd+shift+q` | `postgres.query` | New query tab (center, decision 2026-08-27) | global | 🟢 (2026-08-27) |
+| `cmd+shift+b` | `postgres.schema` | Schema panel (needs a `postgres` section, R2; default changed on 2026-08-27: `cmd+shift+d` belongs to `layout.split.horizontal`) | global | 🟢 (amended 2026-08-29) |
+| `cmd+shift+q` | `postgres.query` | New query tab (center, decision 2026-08-27; needs a `postgres` section, R2) | global | 🟢 (amended 2026-08-29) |
 | `cmd+enter` / `cmd+.` | — | Execute / cancel | native (query tab) | 🟢 (2026-08-27) |
 | `cmd+/` | `postgres.comment` | Comment / uncomment (`--`) | tab(postgres.query) | 🟢 (2026-08-27) |
 | `cmd+c` | — | Copy the grid selection, or everything, as TSV | native (`Table`) | 🟢 (2026-08-27) |
-| *(no default)* | `postgres.history` | Query history sheet (`cmd+opt+h` from `postgres` R20 ruled out: it is macOS *Hide Others*) | global | 🟢 (2026-08-27) |
+| *(no default)* | `postgres.history` | Query history sheet (`cmd+opt+h` from `postgres` R20 ruled out: it is macOS *Hide Others*; needs a `postgres` section, R2) | global | 🟢 (amended 2026-08-29) |
 
 ## Browser (`browser` R1, R9) — M11
 

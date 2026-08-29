@@ -33,7 +33,7 @@ Example with every section (values are the defaults unless noted):
 
 | Key | Type | Default | Note |
 |---|---|---|---|
-| `repos` | `[string]` | absent → scan for `.git/` (depth ≤ 2, `node_modules`, `target`, `.build`, `DerivedData` skipped) | Paths relative to the root; a missing folder is dropped with a warning. |
+| `repos` | `[string]` | absent → scan for `.git/` (depth ≤ 2, `node_modules`, `target`, `.build`, `DerivedData` skipped) | Paths relative to the root; a missing folder is dropped with a warning. No repo at all → no git panels (git R1b). |
 
 ## `commands` — `Run/RunCatalog.swift` (run R1–R3, R8)
 
@@ -47,7 +47,7 @@ Example with every section (values are the defaults unless noted):
 | `<name>.env` | `{string: string}` | `{}` | Injected in the process environment, never on the command line. |
 | `$env` | `{string: string}` | `{}` | Reserved key: environment for every command of the repo, under the command's own `env`. |
 
-Commands detected from manifests (run R14) need no config.
+Commands detected from manifests (run R14) need no config. Without any command there is no ▶ Run button and no `cmd+r` (run R6b).
 
 ## `agents` — `Agents/AgentCatalog.swift` (agents R3)
 
@@ -64,7 +64,7 @@ Shortcut per agent: `shortcuts["agents.<id>"]`, none by default.
 
 ## `postgres` — `Postgres/PostgresConfig.swift` (postgres R1–R3, R12)
 
-One object = one connection per workspace. Without `database` and `user` the panel shows the example and does nothing.
+One object = one connection per workspace. Without `database` and `user` there is no Schema panel and no query shortcut (postgres R2).
 
 | Key | Type | Default | Note |
 |---|---|---|---|

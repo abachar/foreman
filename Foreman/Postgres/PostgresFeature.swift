@@ -39,6 +39,7 @@ final class PostgresFeature {
     private var visiblePanels = 0
     /// R3: after a refusal, the next attempt skips the Keychain and `.pgpass` and asks.
     private var mustAsk = false
+    private var isShown = false
     private var stateWatch: Task<Void, Never>?
     private var configWatch: Task<Void, Never>?
     private let logger = os.Logger(subsystem: "dev.crafters.foreman", category: "postgres")
@@ -53,17 +54,8 @@ final class PostgresFeature {
         self.layout = layout
         self.theme = theme
         history = PostgresHistoryModel(root: workspace.root)
-        apply(workspace.config)
         registerQueryTab()
-        // R4: `activate` connects nothing; the tree's first expansion does.
-        layout.register(
-            panel: PanelDescriptor(
-                id: Self.schemaPanelID, title: "Schema", side: .right, icon: "cylinder", defaultShortcut: "cmd+shift+b",
-                makeView: { [unowned self] in
-                    AnyView(PostgresSchemaPanelView(model: schema, connection: model, feature: self, theme: theme))
-                },
-                activate: { [weak self] in self?.panelActivated() },
-                deactivate: { [weak self] in self?.panelDeactivated() }))
+        apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
             for await config in workspace.configChanges() {
                 self?.apply(config)
@@ -89,6 +81,8 @@ final class PostgresFeature {
         if case .configured(let config, _) = outcome {
             decoded = config
         }
+        // R2 (2026-08-29), layout R36: the panel and the global shortcuts exist only with a section.
+        show(decoded != nil)
         guard decoded != config || client == nil else {
             model.apply(outcome)
             return
@@ -98,6 +92,36 @@ final class PostgresFeature {
         model.apply(outcome)
         replaceClient(with: decoded.map(makeClient))
         schema.setDatabase(decoded?.database)
+    }
+
+    private func show(_ shown: Bool) {
+        guard shown != isShown else { return }
+        isShown = shown
+        guard shown else {
+            layout.unregister(panel: Self.schemaPanelID)
+            layout.shortcuts.unregister(Self.queryTabKind)
+            layout.shortcuts.unregister("postgres.history")
+            return
+        }
+        // R4: `activate` connects nothing; the tree's first expansion does.
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.schemaPanelID, title: "Schema", side: .right, icon: "cylinder", defaultShortcut: "cmd+shift+b",
+                makeView: { [unowned self] in
+                    AnyView(PostgresSchemaPanelView(model: schema, connection: model, feature: self, theme: theme))
+                },
+                activate: { [weak self] in self?.panelActivated() },
+                deactivate: { [weak self] in self?.panelDeactivated() }))
+        layout.shortcuts.register(
+            ShortcutAction(id: Self.queryTabKind, title: "New Query", defaultShortcut: "cmd+shift+q") { [weak self] in
+                self?.newQueryTab()
+            })
+        // R20: no default shortcut (`cmd+opt+h` is macOS Hide Others), `config.shortcuts` can set one.
+        layout.shortcuts.register(
+            ShortcutAction(id: "postgres.history", title: "Query History", defaultShortcut: nil) { [weak self] in
+                guard let self, let tab = activeQueryTab ?? newQueryTab() else { return }
+                showHistory(for: tab)
+            })
     }
 
     private func makeClient(_ config: PostgresConfig) -> PostgresClient {

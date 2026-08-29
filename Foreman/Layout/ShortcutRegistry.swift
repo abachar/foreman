@@ -91,6 +91,12 @@ final class ShortcutRegistry {
         rebuild()
     }
 
+    /// layout R36: an action withdrawn with its feature's content; its shortcut is free again.
+    func unregister(_ id: String) {
+        actions.removeAll { $0.id == id }
+        rebuild()
+    }
+
     /// config R4, layout R26: the user's `shortcuts` section, applied on every config change.
     func apply(overrides: [String: String]) {
         self.overrides = overrides

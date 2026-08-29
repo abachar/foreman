@@ -59,6 +59,14 @@ final class LayoutManager {
                 kind: .action(perform: { [panels] in panels.toggle(panel.id) }, secondaryMenu: nil)))
     }
 
+    /// layout R36: the panel, its toggle shortcut and its toolbar toggle go together.
+    func unregister(panel id: PanelID) {
+        guard panels[id] != nil else { return }
+        panels.unregister(id)
+        shortcuts.unregister(id.rawValue)
+        removeToolbarItem(Self.toggleID(of: id))
+    }
+
     /// The toolbar item that toggles a panel; `nil` for an item that is not one.
     nonisolated static func toggleID(of panel: PanelID) -> String {
         "layout.panel.\(panel.rawValue)"
