@@ -74,6 +74,7 @@ struct SearchPanelView: View {
                 }
             }
             .listStyle(.inset)
+            .scrollContentBackground(.hidden)
         }
     }
 

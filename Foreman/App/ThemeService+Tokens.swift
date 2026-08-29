@@ -40,12 +40,12 @@ extension ThemeService {
         var syntax: [HighlightRole: ThemeColor]
 
         static let dark = Tokens(
-            windowBackground: ThemeColor(0x2123_28), surface: ThemeColor(0x3637_3B),
-            surfaceRaised: ThemeColor(0x3336_3A),
-            surfaceSunken: ThemeColor(0x1E23_26), surfaceOverlay: ThemeColor(0x2326_2A),
+            windowBackground: ThemeColor(0x3637_3B), surface: ThemeColor(0x1E1F_22),
+            surfaceRaised: ThemeColor(0x2B2D_30),
+            surfaceSunken: ThemeColor(0x1516_18), surfaceOverlay: ThemeColor(0x2628_2C),
             textPrimary: ThemeColor(0xDFE1_E5), textSecondary: ThemeColor(0x9DA0_A8),
             textDisabled: ThemeColor(0x6F73_7A),
-            separator: ThemeColor(0x3D3F_44), border: ThemeColor(0x4548_4E),
+            separator: ThemeColor(0x3436_3A), border: ThemeColor(0x4548_4E),
             accent: ThemeColor(0x4A86_E0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x5FB8_65),
             statusOrange: ThemeColor(0xE0A6_3B), statusRed: ThemeColor(0xE553_4B), statusBlue: ThemeColor(0x4A86_E0),
             islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
@@ -60,9 +60,9 @@ extension ThemeService {
 
         /// R10: mechanical, not designed.
         static let light = Tokens(
-            windowBackground: ThemeColor(0xEBEC_F0), surface: ThemeColor(0xFFFF_FF),
-            surfaceRaised: ThemeColor(0xF4F5_F7),
-            surfaceSunken: ThemeColor(0xE6E8_EC), surfaceOverlay: ThemeColor(0xF7F8_FA),
+            windowBackground: ThemeColor(0xFFFF_FF), surface: ThemeColor(0xF2F3_F5),
+            surfaceRaised: ThemeColor(0xE8E9_ED),
+            surfaceSunken: ThemeColor(0xDDDF_E4), surfaceOverlay: ThemeColor(0xF7F8_FA),
             textPrimary: ThemeColor(0x1E1F_22), textSecondary: ThemeColor(0x5A5D_63),
             textDisabled: ThemeColor(0x9A9D_A3),
             separator: ThemeColor(0xD9DB_E0), border: ThemeColor(0xC9CC_D2),

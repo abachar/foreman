@@ -33,6 +33,7 @@ struct GitChangesPanelView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
         .sheet(

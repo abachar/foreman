@@ -36,6 +36,17 @@ struct ThemeTokensTests {
         }
     }
 
+    /// design R2 (2026-08-29): the ground is lighter than the islands, the sunken fill darker.
+    @Test func theGroundIsLighterThanTheIslandsInBothSets() {
+        for tokens in [ThemeService.Tokens.dark, ThemeService.Tokens.light] {
+            let ground = tokens.windowBackground.relativeLuminance
+            let island = tokens.surface.relativeLuminance
+            #expect(ground > tokens.surfaceRaised.relativeLuminance)
+            #expect(ground > island)
+            #expect(island > tokens.surfaceSunken.relativeLuminance)
+        }
+    }
+
     @Test func bothSetsNameEveryHighlightRole() {
         for role in HighlightRole.allCases {
             #expect(ThemeService.Tokens.dark.syntax[role] != nil)

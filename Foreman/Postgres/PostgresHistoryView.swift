@@ -28,6 +28,7 @@ struct PostgresHistoryView: View {
                         .onTapGesture { onSelect(entry) }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             }
         }
         .frame(minWidth: 560, idealWidth: 720, minHeight: 360, idealHeight: 520)
