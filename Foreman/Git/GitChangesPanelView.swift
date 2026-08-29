@@ -117,6 +117,8 @@ struct GitRepoSectionView: View {
     let section: GitModel.Section
     let feature: GitFeature
     let theme: ThemeService
+    /// git R6b: which folders are folded shut, per group; nothing is persisted.
+    @State private var collapsed: [String: Set<String>] = [:]
 
     var body: some View {
         Section {
@@ -312,21 +314,71 @@ struct GitRepoSectionView: View {
                 groupActions(entries, kind: kind)
             }
             .padding(.top, 4)
-            ForEach(entries) { entry in
-                GitChangeRowView(
-                    entry: entry, letter: Self.letter(of: entry, kind: kind), theme: theme,
-                    color: Color(nsColor: theme.color(for: entry.fileStatus)),
-                    actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) },
-                    select: { preview in
-                        // git R13, US3: a click previews the diff, a double click pins it.
-                        feature.openDiff(
-                            GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)),
-                            preview: preview)
-                    },
-                    history: { feature.showHistory(repo: section.id, path: entry.path) })
+            // git R6b: one tree per group, open at first sight, no per-folder action.
+            ForEach(PathTree.rows(of: entries, collapsed: collapsed[title] ?? [])) { row in
+                switch row {
+                case .folder(let path, let label, let depth):
+                    folderRow(path, label: label, group: title, depth: depth)
+                case .file(let entry, let depth):
+                    GitChangeRowView(
+                        entry: entry, letter: Self.letter(of: entry, kind: kind), theme: theme,
+                        color: Color(nsColor: theme.color(for: entry.fileStatus)),
+                        actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) },
+                        select: { preview in
+                            // git R13, US3: a click previews the diff, a double click pins it.
+                            feature.openDiff(
+                                GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)),
+                                preview: preview)
+                        },
+                        history: { feature.showHistory(repo: section.id, path: entry.path) }
+                    )
+                    // The chevron's width, so a file's letter lines up with its folder's icon.
+                    .padding(.leading, Self.indent(depth) + Self.chevronWidth)
+                }
             }
         }
     }
+
+    /// git R6b: a folded chain on one row, the explorer's folder icon, and a click to close it.
+    ///
+    /// The only thing a folder row does: it carries no git action (R6b), staging stays per file.
+    private func folderRow(_ path: String, label: String, group: String, depth: Int) -> some View {
+        let isCollapsed = collapsed[group]?.contains(path) ?? false
+        return HStack(spacing: 4) {
+            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                .font(theme.font(.small))
+                .foregroundStyle(.secondary)
+                .frame(width: 10)
+            if let icon = FileIcon.image(named: FileIcon.folder(isExpanded: !isCollapsed)) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 14, height: 14)
+            }
+            Text(label)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.head)
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { toggle(path, in: group) }
+        .padding(.leading, Self.indent(depth))
+    }
+
+    private func toggle(_ path: String, in group: String) {
+        var folders = collapsed[group] ?? []
+        if folders.remove(path) == nil {
+            folders.insert(path)
+        }
+        collapsed[group] = folders
+    }
+
+    /// The explorer's `indentationPerLevel`, so both trees read at the same rhythm.
+    private static func indent(_ depth: Int) -> CGFloat {
+        CGFloat(depth) * 12
+    }
+
+    private static let chevronWidth: CGFloat = 14
 
     /// git R7: the per-section actions.
     @ViewBuilder
@@ -487,7 +539,7 @@ struct GitCommitView: View {
     }
 }
 
-/// git R6: status, name in bold, folder in grey, the actions on hover.
+/// git R6, R6b: status, name in bold, the rename origin in grey, the actions on hover.
 struct GitChangeRowView: View {
     struct Action: Identifiable {
         let title: String
@@ -519,8 +571,8 @@ struct GitChangeRowView: View {
                 Text(name)
                     .fontWeight(.semibold)
                     .lineLimit(1)
-                if !folder.isEmpty {
-                    Text(folder)
+                if !origin.isEmpty {
+                    Text(origin)
                         .font(theme.font(.small))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -560,9 +612,8 @@ struct GitChangeRowView: View {
         entry.path.split(separator: "/").last.map(String.init) ?? entry.path
     }
 
-    private var folder: String {
-        let parent = entry.path.split(separator: "/").dropLast().joined(separator: "/")
-        guard let origin = entry.originalPath else { return parent }
-        return parent.isEmpty ? "\u{2190} \(origin)" : "\(parent)  \u{2190} \(origin)"
+    /// git R6b: the tree above the row already spells the parent out; only a rename adds anything.
+    private var origin: String {
+        entry.originalPath.map { "\u{2190} \($0)" } ?? ""
     }
 }
