@@ -6,7 +6,6 @@ struct PaletteView: View {
     let theme: ThemeService
 
     @State private var query = ""
-    @FocusState private var isFieldFocused: Bool
 
     var body: some View {
         let tokens = theme.tokens
@@ -18,7 +17,6 @@ struct PaletteView: View {
                 .padding(10)
                 .background(tokens.surfaceSunken.color, in: RoundedRectangle(cornerRadius: 6))
                 .padding(10)
-                .focused($isFieldFocused)
             ScrollViewReader { proxy in
                 List {
                     ForEach(Array(palette.results.items.enumerated()), id: \.element.id) { index, item in
@@ -52,7 +50,6 @@ struct PaletteView: View {
         .frame(width: 620, height: 420)
         .font(theme.font())
         .background(tokens.surfaceOverlay.color)
-        .onAppear { isFieldFocused = true }
         .onChange(of: query) { _, query in
             palette.update(query: query)
         }

@@ -69,8 +69,9 @@ final class Palette {
         panel.contentViewController = hosting
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
-        // `onAppear` runs before the panel is key and the hosted field exists only after a layout
-        // pass: claim the field now, and again on the next turn of the run loop.
+        // The one way the field takes the keyboard: SwiftUI's `onAppear` runs before the panel is
+        // key and the hosted field only exists after a layout pass, so the panel claims it itself,
+        // now and again on the next turn of the run loop.
         Self.focusField(of: panel)
         // After the layout pass: the hosted content may have resized the panel.
         panel.setFrameTopLeftPoint(NSPoint(x: window.frame.midX - 310, y: window.frame.maxY - 60))
