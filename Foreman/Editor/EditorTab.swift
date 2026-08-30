@@ -302,14 +302,16 @@ final class EditorTab {
         if !force, document.isStale(at: url) {
             return false
         }
-        var text = textView.string
-        if insertFinalNewline, !text.hasSuffix("\n") {
-            text = TextEditing.withFinalNewline(text)
+        var saved = textView.string
+        if insertFinalNewline, !saved.hasSuffix("\n") {
+            saved = TextEditing.withFinalNewline(saved)
             textView.insertText(
                 "\n", replacementRange: NSRange(location: (textView.string as NSString).length, length: 0))
         }
-        content = .text(try await FileDocument.write(text, to: url, as: document))
-        isDirty = false
+        content = .text(try await FileDocument.write(saved, to: url, as: document))
+        // A keystroke during the write is not on disk: the tab is clean only while the buffer
+        // still matches what was written.
+        isDirty = textView.string != saved
         diskState = .current
         return true
     }

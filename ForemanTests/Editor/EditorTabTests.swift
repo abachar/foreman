@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -94,6 +95,29 @@ struct EditorTabTests {
         tab = nil
         #expect(weakTab == nil)
         #expect(weakCoordinator == nil)
+    }
+
+    /// editor R8: the write needs no attached window — a detached view still saves, and the tab
+    /// is clean once the buffer matches what reached the disk.
+    @Test func saveWritesTheDetachedViewAndClearsDirty() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorTabTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appending(path: "a.txt")
+        try Data("one\n".utf8).write(to: url)
+        let tab = EditorTab(path: "a.txt", url: url, isPinned: true)
+        await tab.load()
+        let scroll = NSTextView.scrollableTextView()
+        let textView = try #require(scroll.documentView as? NSTextView)
+        textView.string = "two\n"
+        tab.textView = textView
+        tab.textDidChange()
+        #expect(tab.isDirty)
+
+        #expect(try await tab.save(insertFinalNewline: true))
+
+        #expect(!tab.isDirty)
+        #expect(try String(contentsOf: url, encoding: .utf8) == "two\n")
     }
 
     /// editor R34: a tab is untitled because of where its file is, so the save that moves the file

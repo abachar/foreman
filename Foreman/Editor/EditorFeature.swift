@@ -196,7 +196,8 @@ final class EditorFeature {
     /// editor R34, R8: `cmd+s` on an untitled tab asks where to write it, the workspace root by
     /// default; the file is named here and nowhere else (decision 2026-08-30).
     private func saveScratch(_ id: TabID, _ tab: EditorTab) async -> Bool {
-        guard let window = tab.textView?.window else { return false }
+        // Naming needs a panel (R8): it falls back to the key window when the view is detached.
+        guard let window = tab.textView?.window ?? NSApp.keyWindow else { return false }
         let panel = NSSavePanel()
         panel.directoryURL = workspace.root
         panel.nameFieldStringValue = tab.url.lastPathComponent
@@ -544,15 +545,19 @@ final class EditorFeature {
         }
     }
 
-    /// editor R8, R10 and edge cases: read-only offers the Finder, a stale file asks before
+    /// editor R8, R10 and edge cases — read-only offers the Finder, a stale file asks before
     /// overwriting, an IO error is shown.
+    ///
+    /// Only the prompts need a window: a dirty tab whose view is detached is still written, and
+    /// stays dirty when a prompt cannot be shown.
     private func save(_ id: TabID, _ tab: EditorTab, force: Bool = false) async -> Bool {
-        guard let window = tab.textView?.window else { return false }
         // editor R34: an untitled tab has no name yet; saving is where it gets one.
         if tab.isScratch {
             return await saveScratch(id, tab)
         }
+        let window = tab.textView?.window
         if tab.document?.isReadOnly == true {
+            guard let window else { return false }
             let alert = NSAlert()
             alert.messageText = "\(tab.url.lastPathComponent) is read-only"
             alert.addButton(withTitle: "Reveal in Finder")
@@ -567,6 +572,9 @@ final class EditorFeature {
                 syncDirty(id)
                 return true
             }
+            // editor R10: overwriting a file changed on disk needs consent; with no window to
+            // ask in, the tab stays dirty.
+            guard let window else { return false }
             let alert = NSAlert()
             alert.messageText = "\(tab.url.lastPathComponent) changed on disk"
             alert.informativeText = "Overwrite the file with your version?"
@@ -575,6 +583,10 @@ final class EditorFeature {
             guard await alert.beginSheetModal(for: window) == .alertFirstButtonReturn else { return false }
             return await save(id, tab, force: true)
         } catch {
+            guard let window else {
+                logger.error("save failed: \(error.description, privacy: .private)")
+                return false
+            }
             let alert = NSAlert()
             alert.messageText = "Could not save"
             alert.informativeText = error.description
@@ -585,7 +597,10 @@ final class EditorFeature {
 
     /// layout R15: a dirty tab asks before closing; saving counts as consent.
     private func confirmClose(_ id: TabID) async -> Bool {
-        guard let tab = tabs[id], tab.isDirty, let window = tab.textView?.window else { return true }
+        guard let tab = tabs[id], tab.isDirty else { return true }
+        // A detached view does not waive the consent: the prompt falls back to the key window,
+        // and with no window at all the close is refused.
+        guard let window = tab.textView?.window ?? NSApp.keyWindow else { return false }
         let alert = NSAlert()
         alert.messageText = "Save changes to \(tab.url.lastPathComponent)?"
         alert.informativeText = "Your changes will be lost if you don't save them."
