@@ -154,15 +154,25 @@ final class EditorTab {
 
     /// editor R9: called by the feature on every FSEvents batch touching the file.
     func fileChangedOnDisk() async {
-        let exists = FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
-        let stale = document?.isStale(at: url) ?? false
-        guard let action = Self.diskAction(isDirty: isDirty, exists: exists, isStale: stale) else { return }
+        let status = await Self.diskStatus(of: url, document: document)
+        guard let action = Self.diskAction(isDirty: isDirty, exists: status.exists, isStale: status.isStale) else {
+            return
+        }
         switch action {
         case .current:
             await reload()
         case .modified, .deleted:
             diskState = action
         }
+    }
+
+    /// The exists/stat pair off the main actor (coding rules: no blocking IO on it).
+    @concurrent
+    private static func diskStatus(of url: URL, document: FileDocument?) async -> (exists: Bool, isStale: Bool) {
+        (
+            exists: FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
+            isStale: document?.isStale(at: url) ?? false
+        )
     }
 
     /// editor R9: *Reload* on the banner, or the silent reload; cursor and scroll are kept.
