@@ -1,20 +1,23 @@
 import Foundation
 
-/// Why a file is not shown as text (editor R15, R16, edge cases).
+/// Why a file is not shown as text (editor R15, R16, edge cases), or why a search has no
+/// results to show (R21).
 nonisolated enum EditorError: Error, Equatable {
     /// editor R15: a null byte in the first 8 KB, or a known binary extension.
     case binary(bytes: Int)
     /// editor R16: over 50 MB.
     case tooLarge(bytes: Int)
     case unreadable(String)
+    /// editor R21: the search tool exited with an error (invalid regex, unreadable root).
+    case searchFailed(String)
 
     static func == (lhs: EditorError, rhs: EditorError) -> Bool {
         switch (lhs, rhs) {
         case (.binary(let a), .binary(let b)), (.tooLarge(let a), .tooLarge(let b)):
             return a == b
-        case (.unreadable(let a), .unreadable(let b)):
+        case (.unreadable(let a), .unreadable(let b)), (.searchFailed(let a), .searchFailed(let b)):
             return a == b
-        case (.binary, _), (.tooLarge, _), (.unreadable, _):
+        case (.binary, _), (.tooLarge, _), (.unreadable, _), (.searchFailed, _):
             return false
         }
     }
@@ -27,7 +30,7 @@ extension EditorError: CustomStringConvertible {
             return "Binary file — \(bytes.formatted(.byteCount(style: .file)))"
         case .tooLarge(let bytes):
             return "File too large to open (\(bytes.formatted(.byteCount(style: .file))), limit 50 MB)"
-        case .unreadable(let message):
+        case .unreadable(let message), .searchFailed(let message):
             return message
         }
     }

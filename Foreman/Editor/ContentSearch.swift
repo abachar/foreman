@@ -120,9 +120,24 @@ nonisolated enum ContentSearch {
         return regex.matches(in: text, range: whole).map(\.range)
     }
 
+    /// editor R21: the typed error for a run that produced nothing, `nil` when the exit only
+    /// means "no matches" (`rg` and `grep` both exit 1 for that) or success.
+    static func failure(status: Int32, tool: Tool, stderr: String) -> EditorError? {
+        switch tool {
+        case .ripgrep:
+            guard status >= 2 else { return nil }
+        case .grep:
+            guard status > 1 else { return nil }
+        }
+        let summary = stderr.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }.joined(separator: " ")
+        return .searchFailed(summary.isEmpty ? "Search tool exited with status \(status)" : String(summary.prefix(200)))
+    }
+
     /// Runs the tool in `root` and streams the matches.
     ///
     /// Cancelling the consumer kills the process; the stream ends after `limit` matches (R21).
+    /// A run that yields nothing and exits with an error throws it as an `EditorError`.
     static func run(_ options: Options, tool: Tool, root: URL) -> AsyncThrowingStream<Match, Error> {
         AsyncThrowingStream { continuation in
             let process = Process()
@@ -130,8 +145,15 @@ nonisolated enum ContentSearch {
             process.arguments = arguments(for: options, tool: tool)
             process.currentDirectoryURL = root
             let pipe = Pipe()
+            let errors = Pipe()
             process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
+            process.standardError = errors
+            // `nil` when the run was cut short (the cap, a cancel): the status means nothing then.
+            let (exits, exitContinuation) = AsyncStream.makeStream(of: Int32?.self)
+            process.terminationHandler = { process in
+                exitContinuation.yield(process.terminationReason == .exit ? process.terminationStatus : nil)
+                exitContinuation.finish()
+            }
             continuation.onTermination = { _ in
                 if process.isRunning {
                     process.terminate()
@@ -144,6 +166,8 @@ nonisolated enum ContentSearch {
                 return
             }
             Task.detached {
+                // Drained alongside stdout: a tool blocked on a full stderr pipe never exits.
+                async let stderr = drainStderr(errors)
                 var count = 0
                 do {
                     for try await line in pipe.fileHandleForReading.bytes.lines {
@@ -162,12 +186,38 @@ nonisolated enum ContentSearch {
                             break
                         }
                     }
-                    continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
+                    return
+                }
+                guard count == 0 else {
+                    continuation.finish()
+                    return
+                }
+                let diagnostics = await stderr
+                var exitIterator = exits.makeAsyncIterator()
+                if let status = await exitIterator.next() ?? nil,
+                    let searchFailure = failure(status: status, tool: tool, stderr: diagnostics)
+                {
+                    continuation.finish(throwing: searchFailure)
+                } else {
+                    continuation.finish()
                 }
             }
         }
+    }
+
+    /// The first lines of stderr, enough for a summary; the rest is read and dropped.
+    private static func drainStderr(_ pipe: Pipe) async -> String {
+        var lines: [String] = []
+        do {
+            for try await line in pipe.fileHandleForReading.bytes.lines where lines.count < 20 {
+                lines.append(line)
+            }
+        } catch {
+            // A read error on the diagnostics channel: whatever was collected is the summary.
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func relative(_ path: String) -> String {
