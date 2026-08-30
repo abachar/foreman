@@ -53,11 +53,18 @@ nonisolated struct KeychainSecretStore: SecretStore {
         return secret
     }
 
+    /// Adds the item, or updates it in place on `errSecDuplicateItem`: replacing never deletes
+    /// first, so the item and its metadata survive a failed write.
     func write(_ secret: String, for account: String) throws(SecretStoreError) {
-        try delete(account)
         var attributes = Self.query(account)
         attributes[kSecValueData as String] = Data(secret.utf8)
         let status = SecItemAdd(attributes as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            let update = [kSecValueData as String: Data(secret.utf8)]
+            let updated = SecItemUpdate(Self.query(account) as CFDictionary, update as CFDictionary)
+            guard updated == errSecSuccess else { throw .keychain(updated) }
+            return
+        }
         guard status == errSecSuccess else { throw .keychain(status) }
     }
 
