@@ -33,7 +33,22 @@ nonisolated struct FileDocument: Equatable, Sendable {
     /// editor, edge cases: no write permission, or R16 size.
     let isWritable: Bool
     /// When the file was read (editor R10: a later change on disk is a conflict).
-    var modificationDate: Date? = nil
+    let modificationDate: Date?
+    /// editor R16: scanned once here — as a computed property the O(text) scan ran on every read.
+    private let hasVeryLongLine: Bool
+
+    init(
+        text: String, encoding: Encoding, lineEnding: LineEnding, bytes: Int, isWritable: Bool,
+        modificationDate: Date? = nil
+    ) {
+        self.text = text
+        self.encoding = encoding
+        self.lineEnding = lineEnding
+        self.bytes = bytes
+        self.isWritable = isWritable
+        self.modificationDate = modificationDate
+        hasVeryLongLine = Self.hasVeryLongLine(in: text)
+    }
 
     var isReadOnly: Bool {
         !isWritable || bytes > Self.readOnlyThreshold
@@ -44,14 +59,14 @@ nonisolated struct FileDocument: Equatable, Sendable {
         bytes <= Self.readOnlyThreshold && !hasVeryLongLine
     }
 
-    private var hasVeryLongLine: Bool {
+    private static func hasVeryLongLine(in text: String) -> Bool {
         var count = 0
         for scalar in text.unicodeScalars {
             if scalar == "\n" {
                 count = 0
             } else {
                 count += 1
-                if count > Self.maximumHighlightedLine {
+                if count > maximumHighlightedLine {
                     return true
                 }
             }
