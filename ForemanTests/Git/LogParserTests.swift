@@ -93,6 +93,22 @@ struct LogParserTests {
         #expect(query.arguments(field: .subject).contains("--skip=0"))
     }
 
+    /// git R18: `--first-parent` is git's order, and an author date is not it — a rebased or
+    /// cherry-picked commit keeps an older one and must stay where git put it.
+    @Test func anUnfilteredPageKeepsGitsOrder() {
+        let first = [commit("a", 10), commit("b", 300), commit("c", 200)]
+        let page = [GitLogQuery.Page(field: nil, commits: first)]
+        #expect(GitLogQuery.combine(page, after: []).map(\.sha) == ["a", "b", "c"])
+        let next = [GitLogQuery.Page(field: nil, commits: [commit("c", 200), commit("d", 400)])]
+        #expect(GitLogQuery.combine(next, after: first).map(\.sha) == ["a", "b", "c", "d"])
+        // Two filtered queries have no order in common: those are dated, newest first.
+        let filtered = [
+            GitLogQuery.Page(field: .subject, commits: [commit("x", 10)]),
+            GitLogQuery.Page(field: .author, commits: [commit("y", 20)]),
+        ]
+        #expect(GitLogQuery.combine(filtered, after: []).map(\.sha) == ["y", "x"])
+    }
+
     @Test func mergesPagesBySha() {
         let merged = GitLogQuery.merge([[commit("a", 30), commit("b", 20)], [commit("b", 20), commit("c", 25)]])
         #expect(merged.map(\.sha) == ["a", "c", "b"])
