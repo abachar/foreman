@@ -33,6 +33,28 @@ struct MarkdownTests {
         #expect(MarkdownLinks.image("../../../x.png", from: file, root: root) == nil)
     }
 
+    /// editor R14, security: a destination leaving the workspace through an in-workspace symlink
+    /// is outside, wherever its unresolved path seems to sit.
+    @Test func aSymlinkOutOfTheWorkspaceIsIgnored() throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "MarkdownTests-\(UUID().uuidString)")
+        let workspace = base.appending(path: "ws")
+        let outside = base.appending(path: "outside")
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        try Data("secret".utf8).write(to: outside.appending(path: "secret.txt"))
+        try FileManager.default.createSymbolicLink(
+            at: workspace.appending(path: "link"), withDestinationURL: outside)
+        let readme = workspace.appending(path: "README.md")
+
+        #expect(MarkdownLinks.resolve("link/secret.txt", from: readme, root: workspace) == .ignored)
+        #expect(MarkdownLinks.image("link/secret.txt", from: readme, root: workspace) == nil)
+        // A workspace root that itself sits behind a symlink still contains its own files.
+        #expect(
+            MarkdownLinks.resolve("notes.md", from: readme, root: workspace)
+                == .file(workspace.appending(path: "notes.md").standardizedFileURL))
+    }
+
     @Test func buildsBlocksFromTheAST() async {
         let text = """
             # Title
