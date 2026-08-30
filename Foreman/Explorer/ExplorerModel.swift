@@ -12,6 +12,8 @@ final class ExplorerModel {
     let root: URL
     private(set) var levels: [String: DirectoryLevel] = [:]
     private(set) var loading: Set<String> = []
+    /// explorer R9: folders asked for again while their read was in flight; re-read once it lands.
+    private var dirty: Set<String> = []
     /// explorer R11: relative paths, persisted.
     var expanded: Set<String> = []
     /// explorer R23: an expanded folder whose content is a single-folder chain → its last segment.
@@ -255,19 +257,41 @@ final class ExplorerModel {
     /// Reads (or re-reads) one folder, off the main actor, then the chain it folds into (R23).
     ///
     /// `all` lifts the 5 000 entries cap (explorer R8). Concurrent calls for the same folder are
-    /// collapsed into the first one. The version moves once, at the end: the tree never shows the
-    /// folder unfolded for a frame. A cancelled caller stops the reads it asked for.
+    /// collapsed into the first one, which reads again for them. The version moves once, at the
+    /// end: the tree never shows the folder unfolded for a frame. A cancelled caller stops the
+    /// reads it asked for.
     func load(_ relativePath: String, all: Bool = false) async {
-        guard !loading.contains(relativePath), !Task.isCancelled else { return }
-        loading.insert(relativePath)
-        defer { loading.remove(relativePath) }
-        guard await read(relativePath, all: all), !Task.isCancelled else { return }
+        guard !Task.isCancelled, await readCoalescing(relativePath, all: all), !Task.isCancelled else { return }
         // explorer R9, R23: this read may have broken (or made) the chain of the rows above it.
         for row in Self.rowsFolding(through: relativePath, in: chains).union([relativePath]) {
             await resolveChain(from: row)
         }
         lastLoaded = relativePath
         version += 1
+    }
+
+    /// One level, read again when another request lands while the read is in flight.
+    ///
+    /// `loading` is what stops two reads of the same folder from racing, but dropping the second
+    /// request loses what it was asking about: a file created between the running read's syscall
+    /// and that request would only appear on the next FSEvents batch. The folder is marked dirty
+    /// instead, and the read in flight repeats itself.
+    private func readCoalescing(_ relativePath: String, all: Bool) async -> Bool {
+        guard !loading.contains(relativePath) else {
+            dirty.insert(relativePath)
+            return false
+        }
+        loading.insert(relativePath)
+        defer {
+            loading.remove(relativePath)
+            dirty.remove(relativePath)
+        }
+        var didRead = false
+        repeat {
+            dirty.remove(relativePath)
+            didRead = await read(relativePath, all: all)
+        } while didRead && dirty.contains(relativePath) && !Task.isCancelled
+        return didRead
     }
 
     /// One level onto `levels`; `false` when the folder could not be read (explorer R19).
@@ -292,7 +316,9 @@ final class ExplorerModel {
         var last = relativePath
         while let next = Self.foldTarget(levels[last]?.nodes ?? [], isGreyed: isGreyed) {
             guard !Task.isCancelled else { return }
-            if levels[next.relativePath] == nil, await !read(next.relativePath) {
+            // Through the same guard as `load`: a segment is a folder like any other, and a
+            // concurrent request for it must coalesce instead of racing this read.
+            if levels[next.relativePath] == nil, await !readCoalescing(next.relativePath, all: false) {
                 break
             }
             last = next.relativePath

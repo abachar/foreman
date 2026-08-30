@@ -57,6 +57,25 @@ struct ExplorerModelTests {
         #expect(model.lastLoaded == "a")
     }
 
+    /// explorer R9: a change landing while a folder is being read is not waited on until the next
+    /// FSEvents batch — the request that follows it re-reads instead of being dropped.
+    @Test func aRequestArrivingDuringAReadIsNotDropped() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "ExplorerCoalesceTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ExplorerModel(root: root)
+
+        let inFlight = Task { await model.load("") }
+        await Task.yield()
+        try "x".write(to: root.appending(path: "late.txt"), atomically: true, encoding: .utf8)
+        await model.load("")
+        await inFlight.value
+
+        #expect(model.children(of: "")?.map(\.name) == ["late.txt"])
+        #expect(model.loading.isEmpty)
+    }
+
     /// explorer R8, R9: hiding the panel mid-activation stops the reads it started.
     @Test func aCancelledLoadReadsNothing() async throws {
         let root = FileManager.default.temporaryDirectory
