@@ -1,0 +1,25 @@
+# M16 — New file, and the markdown viewer against GitHub
+
+Second round driven by use (2026-08-30), after [M15](m15-usage.md). Two subjects with nothing in common: **creating a file without leaving the keyboard**, and **the markdown preview measured against the one everybody reads all day**, GitHub's. No new folder, no dependency.
+
+Domains: [`editor`](../specs/editor/) (R1, R4, R14), [`explorer`](../specs/explorer/) (R16), [`layout`](../specs/layout/) (R33, R37, new R38), [`design`](../specs/design/) (R6).
+
+| # | Task | Rules | Library / native | Tests | Size | Status | PR |
+|---|---|---|---|---|---|---|---|
+| 16.1 | **An untitled tab is a scratch file**: a new tab with no name points at an empty file under `<root>/.foreman/scratches/`, so it stays an ordinary `editor.file` tab — nothing changes in `EditorTab`, restoration already works and a draft survives a quit. Title `Untitled`, `Untitled 2`… per workspace. `cmd+s` on such a tab **asks where to write it** (`NSSavePanel`, the workspace root by default), moves the scratch there and the tab becomes an ordinary file tab: title, highlighting from the new extension, quick-open index, the explorer shows it. The scratch goes with the tab when it is closed (after R15's confirmation). To be settled by the task: `.foreman/scratches/` out of git (`.gitignore` **and** the Changes panel, else every draft shows up as untracked) and out of the tree (`explorer` R3, as `state.json` already is) | editor R1, R4, R15, config R1, R8b, explorer R3, git R6 | `NSSavePanel`, `FileManager.moveItem`, the existing `FileDocument` | the numbering of the titles, the scratch path built for a workspace, a save turning the tab into a file tab (title, language, path), the scratch removed on close | M | 🔴 | |
+| 16.2 | **Four ways in**: *File ▸ New File* (`editor.newFile`, `cmd+n`, free since M0), a **double click on the empty part of the tab bar** and a **double click on the home screen** of an empty group open an untitled tab (16.1) in the group concerned. The explorer's *New File* is the fourth and **does not change** (R16): a right click there designates a folder, so the name is asked up front and the file is created in it | layout R38 (new), R33, R37, editor R1, explorer R16 (unchanged) | SwiftUI `onTapGesture(count: 2)` | the action registered and its shortcut, the group a new tab lands in | S | 🔴 | |
+| 16.3 | **The markdown preview beside GitHub's** (`github-markdown-css` as the reference, fetched once — the only network access of the milestone, author's call): render one reference document — headings, paragraphs, every list including nested and task lists, tables, quotes, code blocks and inline code, links, a local image, horizontal rules, long lines — in Foreman and in GitHub's viewer, and write the gaps down one by one (type scale, leading, space between blocks, the rule under `h1`/`h2`, quote bar, table borders, checkbox, code block background and radius, link colour, maximum reading width). Output: a comparison in `docs/specs/design/`, with its captures; **no code changes**. What is adopted is decided from it | design R6, editor R14 | — | — (a document) | S/M | 🔴 | |
+| 16.4 | **What 16.3 decides**: written once the comparison is read | design R6 (to amend) | — | `ThemeTokensTests`, `MarkdownBlocks` | ? | 🔴 | |
+
+## Definition of done
+
+- `cmd+n` opens an empty tab; I type, `cmd+s`, I choose the name: the file exists, the explorer shows it and the tab is an ordinary one.
+- A double click on the tab bar or on the empty group's home screen does the same, in that group.
+- Closing an untitled tab I typed into asks before losing it; quitting Foreman and reopening the workspace brings the draft back, still untitled.
+- The comparison document says, construct by construct, where Foreman's markdown differs from GitHub's — and the author decides what is taken.
+
+## Decisions taken during the milestone
+
+- **An untitled tab is named at the save, not before** (2026-08-30, author's call): a new file from the menu, the tab bar or the home screen is a place to type, not a name to invent. The explorer keeps naming first (R16 unchanged): a right click there designates the folder to create in, so the name is the only thing missing.
+- **An untitled tab is backed by a scratch file** (2026-08-30, author's idea): `<root>/.foreman/scratches/<name>` rather than a tab with no file. The tab stays an ordinary `editor.file` tab — no "no file yet" state to spread through the editor — restoration comes for free, and a draft survives a quit instead of being lost with the window.
+- **GitHub is compared before being copied** (2026-08-30, author's call): the gaps are listed first, and what is adopted — layout only, or colours too — is decided on what the comparison shows, not before it.
