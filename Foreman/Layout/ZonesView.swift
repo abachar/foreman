@@ -51,11 +51,18 @@ struct ZonesView: NSViewControllerRepresentable {
                 toolbar.attach(to: window)
                 // layout R25: a terminal surface has the focus when it is the active tab and the
                 // center has the keyboard.
-                layout.shortcuts.startMonitoring(window: window) {
-                    (
-                        activeTabKind: layout.model.active.active?.kind,
-                        isTerminalFocused: layout.isTerminalTabActive && layout.panels.focus == .center,
-                        isPanelFocused: layout.panels.focus != .center
+                // The monitor outlives this closure, so it holds the manager weakly through a
+                // binding of its own: nothing the window installs may keep the layout graph
+                // alive (audit C2).
+                let manager = layout
+                layout.shortcuts.startMonitoring(window: window) { [weak manager] in
+                    guard let manager else {
+                        return (activeTabKind: nil, isTerminalFocused: false, isPanelFocused: false)
+                    }
+                    return (
+                        activeTabKind: manager.model.active.active?.kind,
+                        isTerminalFocused: manager.isTerminalTabActive && manager.panels.focus == .center,
+                        isPanelFocused: manager.panels.focus != .center
                     )
                 }
                 onWindow(window)

@@ -346,3 +346,50 @@ struct ShortcutKeyEquivalentTests {
         #expect(equivalent("cmd+opt+left").key == Shortcut.character(NSLeftArrowFunctionKey))
     }
 }
+
+/// layout, audit C2: what the window installs must not outlive the window.
+///
+/// The monitor's block is retained by AppKit until `removeMonitor`, and it holds the focus
+/// context, whose captures reach the `LayoutManager`. Closing the window has to be what breaks
+/// that chain — a `deinit` cannot, since it is the chain that keeps `deinit` from running.
+@MainActor
+struct ShortcutMonitorLifetimeTests {
+    /// A window the test owns: `isReleasedWhenClosed` off, so closing it does not free it under
+    /// ARC, and never ordered in, so the host app does not quit with its last window.
+    static func window() -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled, .closable],
+            backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        return window
+    }
+
+    @Test func closingTheWindowReleasesEverythingTheMonitorHeld() {
+        weak var released: LayoutManager?
+        let window = Self.window()
+        do {
+            let layout = LayoutManager()
+            released = layout
+            // Captured strongly on purpose: the teardown must hold even for the worst caller.
+            layout.shortcuts.startMonitoring(window: window) {
+                (activeTabKind: layout.model.active.active?.kind, isTerminalFocused: false, isPanelFocused: false)
+            }
+        }
+        #expect(released != nil, "the monitor holds the manager while the window is open")
+
+        window.close()
+
+        #expect(released == nil, "closing the window must release the layout graph")
+    }
+
+    @Test func stoppingTwiceIsANoOp() {
+        let layout = LayoutManager()
+        let window = Self.window()
+        layout.shortcuts.startMonitoring(window: window) {
+            (activeTabKind: nil, isTerminalFocused: false, isPanelFocused: false)
+        }
+        layout.shortcuts.stopMonitoring()
+        layout.shortcuts.stopMonitoring()
+        window.close()
+    }
+}

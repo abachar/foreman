@@ -78,14 +78,14 @@ final class ShortcutRegistry {
     private var bindings: [ShortcutScope: [Shortcut: String]] = [:]
     private var overrides: [String: String] = [:]
     private var monitor: Any?
+    /// Removes the monitor when its window goes away; see `startMonitoring`.
+    private var windowClosing: NSObjectProtocol?
     /// What has the focus, as the monitor sees it; menus validate against the same context (R37).
     private var context: (() -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool))?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "layout")
 
     isolated deinit {
-        if let monitor {
-            NSEvent.removeMonitor(monitor)
-        }
+        stopMonitoring()
     }
 
     func register(_ action: ShortcutAction) {
@@ -173,12 +173,23 @@ final class ShortcutRegistry {
 
     /// layout, options: one local monitor per window, ahead of SwiftUI; `context` says what has
     /// the focus at the time of the event.
+    ///
+    /// The monitor is dropped when the window closes, not in `deinit`. AppKit retains the block
+    /// until `removeMonitor`, and the block holds `context`, whose captures reach back to the
+    /// `LayoutManager` that owns this registry: waiting for `deinit` waits for a release that the
+    /// monitor is itself preventing, and the whole layout graph of a closed window stays alive
+    /// (audit C2).
     func startMonitoring(
         window: NSWindow,
         context: @escaping () -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool)
     ) {
         guard monitor == nil else { return }
         self.context = context
+        windowClosing = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.stopMonitoring() }
+        }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak window] event in
             guard let self, event.window === window, let shortcut = Shortcut(event: event) else { return event }
             let focus = context()
@@ -190,6 +201,21 @@ final class ShortcutRegistry {
             action.perform()
             return nil
         }
+    }
+
+    /// Undoes `startMonitoring`, giving the event monitor back to AppKit.
+    ///
+    /// `context` is released with everything it captured; calling this twice is a no-op.
+    func stopMonitoring() {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        monitor = nil
+        context = nil
+        if let windowClosing {
+            NotificationCenter.default.removeObserver(windowClosing)
+        }
+        windowClosing = nil
     }
 
     // MARK: - Table
