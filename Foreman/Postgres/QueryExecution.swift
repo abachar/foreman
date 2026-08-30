@@ -51,6 +51,12 @@ nonisolated enum QueryExecution {
             }
             return nil
         }
+
+        /// R4: a running execution makes the window's connection busy, so hiding the last panel
+        /// of the feature must not close it under the statement.
+        var isBusy: Bool {
+            self != .idle
+        }
     }
 
     /// R13: after `pg_cancel_backend`, the connection is dropped if the server did not answer

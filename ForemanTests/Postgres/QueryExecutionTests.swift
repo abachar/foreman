@@ -52,6 +52,12 @@ struct QueryExecutionTests {
         #expect(running?.starting(first) == nil)
     }
 
+    /// R4: the feature reads this to answer "is the connection busy?" when a panel is hidden.
+    @Test func onlyARunningExecutionIsBusy() {
+        #expect(!QueryExecution.State.idle.isBusy)
+        #expect(QueryExecution.State.running(tab: TabID()).isBusy)
+    }
+
     @Test func connectionDropsOnlyWhenTheServerStaysSilentPastTheLimit() {
         #expect(QueryExecution.shouldDropConnection(answered: false, elapsed: .seconds(5)))
         #expect(!QueryExecution.shouldDropConnection(answered: false, elapsed: .seconds(4)))
