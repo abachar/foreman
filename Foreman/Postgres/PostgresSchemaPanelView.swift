@@ -56,7 +56,11 @@ struct PostgresSchemaPanelView: View {
             }
             .toggleStyle(.button)
             .buttonStyle(.borderless)
-            .help("Allow writes (this session only)")
+            // R11: the guard is a session setting, so free-form SQL that turns
+            // `default_transaction_read_only` off is not stopped by it; the help text says so.
+            .help(
+                "Allow writes (this session only). SQL that sets default_transaction_read_only off "
+                    + "escapes this guard.")
             Button {
                 Task { await model.refresh(nil) }
             } label: {
