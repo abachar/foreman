@@ -88,10 +88,8 @@ actor PostgresClient {
 
     private func establish() async throws -> PostgresConnection {
         let secret = try await password()
-        var configuration = PostgresConnection.Configuration(
-            host: config.host, port: config.port, username: config.user, password: secret, database: config.database,
-            tls: try PostgresConfig.tls(for: config.sslMode) { try NIOSSLContext(configuration: .clientDefault) })
-        configuration.options.connectTimeout = .seconds(Int64(Self.connectTimeout.components.seconds))
+        var configuration = try makeConfiguration(password: secret)
+        // R1: the section's `options` are this session's startup parameters.
         configuration.options.additionalStartupParameters = config.options.sorted { $0.key < $1.key }.map { ($0, $1) }
         let connection = try await PostgresConnection.connect(
             configuration: configuration, id: Int.random(in: 1...Int.max), logger: nioLogger)
@@ -104,6 +102,16 @@ actor PostgresClient {
             throw error
         }
         return connection
+    }
+
+    /// R1, R4: host, credentials, TLS and the connection timeout, as both the session's
+    /// connection and the short-lived cancel connection need them.
+    private func makeConfiguration(password secret: String) throws -> PostgresConnection.Configuration {
+        var configuration = PostgresConnection.Configuration(
+            host: config.host, port: config.port, username: config.user, password: secret, database: config.database,
+            tls: try PostgresConfig.tls(for: config.sslMode) { try NIOSSLContext(configuration: .clientDefault) })
+        configuration.options.connectTimeout = .seconds(Int64(Self.connectTimeout.components.seconds))
+        return configuration
     }
 
     /// R11, R12: the session is read-only and bounded from its first statement; values go
@@ -159,13 +167,9 @@ actor PostgresClient {
         guard let pid = backendPID else { return }
         do {
             let secret = try await password()
-            var configuration = PostgresConnection.Configuration(
-                host: config.host, port: config.port, username: config.user, password: secret,
-                database: config.database,
-                tls: try PostgresConfig.tls(for: config.sslMode) { try NIOSSLContext(configuration: .clientDefault) })
-            configuration.options.connectTimeout = .seconds(Int64(Self.connectTimeout.components.seconds))
             let helper = try await PostgresConnection.connect(
-                configuration: configuration, id: Int.random(in: 1...Int.max), logger: nioLogger)
+                configuration: try makeConfiguration(password: secret), id: Int.random(in: 1...Int.max),
+                logger: nioLogger)
             defer { Task { try? await helper.close() } }
             try await helper.query("SELECT pg_cancel_backend(\(pid))", logger: nioLogger)
         } catch {
@@ -205,23 +209,7 @@ actor PostgresClient {
     func rows(
         _ query: PostgresQuery, timeout: Duration = PostgresClient.catalogTimeout
     ) async throws(PostgresError) -> [PostgresRow] {
-        let result = await withTaskGroup(of: Result<[PostgresRow], PostgresError>?.self) { group in
-            group.addTask {
-                do {
-                    return .success(try await self.collect(query))
-                } catch {
-                    return .failure(PostgresError.classify(error))
-                }
-            }
-            group.addTask {
-                try? await Task.sleep(for: timeout)
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first ?? .failure(.timeout(timeout))
-        }
-        return try result.get()
+        try await PostgresDeadline.run(within: timeout) { try await self.collect(query) }
     }
 
     /// Collects the whole sequence, releasing the busy count whatever happens.
