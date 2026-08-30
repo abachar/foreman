@@ -22,7 +22,9 @@ final class PostgresSchemaModel {
     /// R8: the DDL being shown.
     var ddl: DDLDocument?
 
-    private let feature: PostgresFeature
+    /// Weak: the feature creates and owns the model, and its `deinit` is what closes the
+    /// connection — a strong back reference would make that `deinit` unreachable.
+    @ObservationIgnored private weak var feature: PostgresFeature?
     private var tasks: [String: Task<Void, Never>] = [:]
     private let logger = os.Logger(subsystem: "dev.crafters.foreman", category: "postgres")
 
@@ -89,7 +91,7 @@ final class PostgresSchemaModel {
         let task = Task { [weak self] in
             defer { self?.loading.remove(node.id) }
             do {
-                let rows = try await self?.feature.rows(query) ?? []
+                let rows = try await self?.feature?.rows(query) ?? []
                 guard let self, !Task.isCancelled else { return }
                 let nodes = try SchemaQueries.nodes(for: node, rows: rows)
                 levels[node.id] = all ? nodes : SchemaQueries.truncated(nodes, parent: node)
@@ -155,6 +157,7 @@ final class PostgresSchemaModel {
         case .relation(let schema, let name, let kind):
             await showRelationDDL(node, schema: schema, name: name, kind: kind)
         case .function(let schema, let name, let arguments):
+            guard let feature else { return }
             do {
                 let rows = try await feature.rows(
                     SchemaQueries.functionDefinition(schema: schema, name: name, arguments: arguments))
