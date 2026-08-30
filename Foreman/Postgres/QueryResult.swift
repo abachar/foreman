@@ -1,3 +1,4 @@
+import CoreTransferable
 import Foundation
 import PostgresNIO
 
@@ -58,6 +59,28 @@ nonisolated struct QueryResult: Equatable, Sendable {
     static func tsv(columns: [Column], rows: [Row]) -> String {
         ([columns.map(\.name).joined(separator: "\t")] + rows.map { $0.values.map(\.tsvText).joined(separator: "\t") })
             .joined(separator: "\n")
+    }
+}
+
+/// What `cmd+c` puts on the pasteboard (postgres R16): the loaded rows and the selection, as
+/// values.
+///
+/// The TSV of up to 50,000 rows is joined by the export, so it costs nothing until the
+/// clipboard actually asks for it — the grid's body is evaluated at every selection click
+/// (coding rules: no expensive work in a `body`).
+nonisolated struct QueryClipboard: Transferable {
+    let columns: [QueryResult.Column]
+    let rows: [QueryResult.Row]
+    /// R16: the selected row ids; empty means everything.
+    let selection: Set<Int>
+
+    /// R16: a header line then the rows, tab-separated.
+    var text: String {
+        QueryResult.tsv(columns: columns, rows: selection.isEmpty ? rows : rows.filter { selection.contains($0.id) })
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation(exporting: { (clipboard: QueryClipboard) in clipboard.text })
     }
 }
 

@@ -96,10 +96,14 @@ final class PostgresQueryTab: Identifiable {
         }
     }
 
+    /// R16: what `cmd+c` copies — the selected rows, or everything. The rows travel as values;
+    /// the TSV is joined only when the clipboard reads it.
+    var clipboard: QueryClipboard {
+        QueryClipboard(columns: result?.columns ?? [], rows: sortedRows, selection: gridSelection)
+    }
+
     /// R16: the selected rows, or everything, as TSV.
     var copyText: String {
-        guard let result else { return "" }
-        let rows = gridSelection.isEmpty ? sortedRows : sortedRows.filter { gridSelection.contains($0.id) }
-        return QueryResult.tsv(columns: result.columns, rows: rows)
+        result == nil ? "" : clipboard.text
     }
 }
