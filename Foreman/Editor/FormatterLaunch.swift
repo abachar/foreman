@@ -86,12 +86,15 @@ nonisolated enum FormatterLaunch {
             kill(pid, SIGTERM)
             if (try? await Task.sleep(for: killDelay)) != nil {
                 kill(pid, SIGKILL)
+                // A child of the formatter may keep the pipes open: closing them ends the reads.
+                try? output.fileHandleForReading.close()
+                try? errors.fileHandleForReading.close()
             }
             return true
         }
-        async let stdout = read(output.fileHandleForReading)
-        async let stderr = read(errors.fileHandleForReading)
-        await write(Data(text.utf8), to: input.fileHandleForWriting)
+        async let stdout = PipeIO.readToEnd(output.fileHandleForReading)
+        async let stderr = PipeIO.readToEnd(errors.fileHandleForReading)
+        await PipeIO.writeAndClose(Data(text.utf8), to: input.fileHandleForWriting)
         var status: Int32 = -1
         for await exit in exits {
             status = exit
@@ -104,22 +107,5 @@ nonisolated enum FormatterLaunch {
         return decide(
             status: status, stdout: String(decoding: formatted, as: UTF8.self),
             stderr: String(decoding: diagnostics, as: UTF8.self), original: text)
-    }
-
-    /// Blocking, on its own thread (like `Workspace.resolveLoginEnvironment`): `FileHandle.bytes`
-    /// stalled a 260 KB round trip through `cat`.
-    @concurrent
-    private static func read(_ handle: FileHandle) async -> Data {
-        (try? handle.readToEnd()) ?? Data()
-    }
-
-    @concurrent
-    private static func write(_ data: Data, to handle: FileHandle) async {
-        do {
-            try handle.write(contentsOf: data)
-        } catch {
-            // EPIPE: the formatter exited first; its status and stderr tell the story.
-        }
-        try? handle.close()
     }
 }
