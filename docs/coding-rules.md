@@ -62,6 +62,7 @@ No accents and no non-ASCII characters in code identifiers and file names.
 - Every long-running task is retained and cancelled by its owner; long loops check for cancellation.
 - No `DispatchSemaphore`/`NSLock` for business logic. No `Task { @MainActor in }` to hide an isolation error. No synchronous waiting on async. No `Task.detached` without justification.
 - Streams are `AsyncStream`, not callbacks stored by the consumer. Debouncing happens at the producer.
+- A child process's pipes are read and written through `PipeIO` (`DispatchIO`), never `FileHandle.bytes`: Foundation runs every `AsyncBytes` iteration on one shared serial queue, so two pipes read at once take turns and the quiet one blocks the busy one until the child wedges (verified 2026-08-30, audit M2).
 
 ## UI
 
