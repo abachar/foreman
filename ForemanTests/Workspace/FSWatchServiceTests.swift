@@ -29,6 +29,27 @@ struct FSWatchServiceTests {
         #expect(Set(batch.map(\.lastPathComponent)) == ["a", "b", "c"])
     }
 
+    @Test func emitsWithinTheMaxDelayUnderASustainedStream() async throws {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let service = FSWatchService(roots: [root], debounce: .milliseconds(200), maxDelay: .milliseconds(500))
+        let changes = await service.changes(under: root)
+        try await Task.sleep(for: .milliseconds(600))
+
+        // Writes closer together than the debounce, for longer than `firstBatch` waits: only the
+        // max-delay emit can deliver a batch before the timeout.
+        let writer = Task { [root] in
+            for index in 0..<80 {
+                guard (try? await Task.sleep(for: .milliseconds(100))) != nil else { return }
+                try? Data("\(index)".utf8).write(to: root.appending(path: "file"))
+            }
+        }
+        defer { writer.cancel() }
+
+        let batch = await firstBatch(of: changes) { $0.contains { $0.lastPathComponent == "file" } }
+        #expect(batch != nil)
+    }
+
     @Test func onlyDeliversChangesUnderTheSubscribedLocation() async throws {
         try FileManager.default.createDirectory(at: root.appending(path: "sub"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }

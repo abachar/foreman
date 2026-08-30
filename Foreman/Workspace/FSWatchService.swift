@@ -6,19 +6,25 @@ import Foundation
 /// Using AsyncFileMonitor because it owns the `FSEventStream` (creation, callback, lifecycle) and
 /// multicasts it as `AsyncStream`s; what is left here is Foreman's contract: a subscriber asks for
 /// the changes under a location and receives batches of canonical URLs, coalesced for ~300 ms so a
-/// burst of writes costs one batch.
+/// burst of writes costs one batch, and for at most ~1 s so a sustained stream still delivers.
 actor FSWatchService {
     private let monitor: FolderContentMonitor
     private let debounce: Duration
+    /// A trailing debounce alone never fires under a sustained stream: an emit is forced when the
+    /// oldest pending event reaches this age, which also bounds `pending`.
+    private let maxDelay: Duration
     private var source: Task<Void, Never>?
     private var subscribers: [UUID: Subscriber] = [:]
     private var pending: Set<URL> = []
+    private var oldestPending: ContinuousClock.Instant?
     private var flush: Task<Void, Never>?
 
-    /// `roots` are the folders observed; `debounce` is how long a burst is coalesced.
-    init(roots: [URL], debounce: Duration = .milliseconds(300)) {
+    /// `roots` are the folders observed; `debounce` is how long a burst is coalesced, `maxDelay`
+    /// how old its first event may get before the batch goes out anyway.
+    init(roots: [URL], debounce: Duration = .milliseconds(300), maxDelay: Duration = .seconds(1)) {
         monitor = FolderContentMonitor(paths: roots.map { $0.path(percentEncoded: false) }, latency: 0.1)
         self.debounce = debounce
+        self.maxDelay = maxDelay
     }
 
     isolated deinit {
@@ -55,7 +61,15 @@ actor FSWatchService {
 
     private func record(_ path: String) {
         pending.insert(URL(filePath: Self.normalized(URL(filePath: path))))
+        let now = ContinuousClock.now
+        let oldest = oldestPending ?? now
+        oldestPending = oldest
         flush?.cancel()
+        guard now - oldest < maxDelay else {
+            flush = nil
+            emit()
+            return
+        }
         flush = Task { [debounce] in
             guard (try? await Task.sleep(for: debounce)) != nil else { return }
             emit()
@@ -75,6 +89,7 @@ actor FSWatchService {
     private func emit() {
         let urls = pending.sorted { $0.path() < $1.path() }
         pending = []
+        oldestPending = nil
         for subscriber in subscribers.values {
             let matching = urls.filter { subscriber.matches($0.path(percentEncoded: false)) }
             if !matching.isEmpty {
