@@ -119,10 +119,23 @@ extension ThemeService {
 
         // MARK: - The `theme` section (design R11)
 
-        static let metricRanges: [String: ClosedRange<Double>] = [
-            "islandRadius": 0...32, "gutter": 0...32, "toolbarGap": 0...32, "barHeight": 24...64, "rowHeight": 16...48,
-            "contentInset": 0...48, "interfaceFontSize": 10...24, "readingFontSize": 10...32,
+        /// design R11: one table per family both validates a key in `overrides(from:)` and
+        /// applies it in `applying`, so the two lists cannot drift.
+        static let colorKeys: [String: WritableKeyPath<Tokens, ThemeColor> & Sendable] = [
+            "windowBackground": \.windowBackground, "surface": \.surface, "surfaceRaised": \.surfaceRaised,
+            "surfaceSunken": \.surfaceSunken, "surfaceOverlay": \.surfaceOverlay, "textPrimary": \.textPrimary,
+            "textSecondary": \.textSecondary, "textDisabled": \.textDisabled, "separator": \.separator,
+            "border": \.border, "accent": \.accent, "accentText": \.accentText, "statusGreen": \.statusGreen,
+            "statusOrange": \.statusOrange, "statusRed": \.statusRed, "statusBlue": \.statusBlue,
         ]
+
+        static let metricKeys:
+            [String: (range: ClosedRange<Double>, path: WritableKeyPath<Tokens, Double> & Sendable)] = [
+                "islandRadius": (0...32, \.islandRadius), "gutter": (0...32, \.gutter),
+                "toolbarGap": (0...32, \.toolbarGap), "barHeight": (24...64, \.barHeight),
+                "rowHeight": (16...48, \.rowHeight), "contentInset": (0...48, \.contentInset),
+                "interfaceFontSize": (10...24, \.interfaceFontSize), "readingFontSize": (10...32, \.readingFontSize),
+            ]
 
         /// design R11: the font keys take a family name.
         static let fontKeys: Set<String> = ["interfaceFont"]
@@ -141,7 +154,7 @@ extension ThemeService {
         static func overrides(from section: [String: JSONValue]?) -> Overrides {
             var overrides = Overrides()
             for (key, value) in (section ?? [:]).sorted(by: { $0.key < $1.key }) {
-                if let range = metricRanges[key] {
+                if let (range, _) = metricKeys[key] {
                     guard case .number(let number) = value, range.contains(number) else {
                         overrides.warnings.append(
                             "theme.\(key) ignored: expected a number in \(Int(range.lowerBound))…\(Int(range.upperBound))."
@@ -149,7 +162,7 @@ extension ThemeService {
                         continue
                     }
                     overrides.metrics[key] = number
-                } else if colorKeys.contains(key) {
+                } else if colorKeys[key] != nil {
                     guard case .string(let text) = value, let color = ThemeColor(parsing: text) else {
                         overrides.warnings.append("theme.\(key) ignored: expected a color as #rgb or #rrggbb.")
                         continue
@@ -168,68 +181,21 @@ extension ThemeService {
             return overrides
         }
 
-        static let colorKeys: Set<String> = [
-            "windowBackground", "surface", "surfaceRaised", "surfaceSunken", "surfaceOverlay", "textPrimary",
-            "textSecondary", "textDisabled", "separator", "border", "accent", "accentText", "statusGreen",
-            "statusOrange", "statusRed", "statusBlue",
-        ]
-
         func applying(_ overrides: Overrides) -> Tokens {
             var tokens = self
+            // `overrides` only holds validated keys, so the lookups always succeed.
             for (key, color) in overrides.colors {
-                tokens[color: key] = color
+                guard let path = Self.colorKeys[key] else { continue }
+                tokens[keyPath: path] = color
             }
             for (key, value) in overrides.metrics {
-                tokens[metric: key] = value
+                guard let (_, path) = Self.metricKeys[key] else { continue }
+                tokens[keyPath: path] = value
             }
             if let name = overrides.fonts["interfaceFont"] {
                 tokens.interfaceFontName = name
             }
             return tokens
-        }
-
-        private subscript(color key: String) -> ThemeColor? {
-            get { nil }
-            set {
-                guard let newValue else { return }
-                switch key {
-                case "windowBackground": windowBackground = newValue
-                case "surface": surface = newValue
-                case "surfaceRaised": surfaceRaised = newValue
-                case "surfaceSunken": surfaceSunken = newValue
-                case "surfaceOverlay": surfaceOverlay = newValue
-                case "textPrimary": textPrimary = newValue
-                case "textSecondary": textSecondary = newValue
-                case "textDisabled": textDisabled = newValue
-                case "separator": separator = newValue
-                case "border": border = newValue
-                case "accent": accent = newValue
-                case "accentText": accentText = newValue
-                case "statusGreen": statusGreen = newValue
-                case "statusOrange": statusOrange = newValue
-                case "statusRed": statusRed = newValue
-                case "statusBlue": statusBlue = newValue
-                default: break
-                }
-            }
-        }
-
-        private subscript(metric key: String) -> Double? {
-            get { nil }
-            set {
-                guard let newValue else { return }
-                switch key {
-                case "islandRadius": islandRadius = newValue
-                case "gutter": gutter = newValue
-                case "toolbarGap": toolbarGap = newValue
-                case "barHeight": barHeight = newValue
-                case "rowHeight": rowHeight = newValue
-                case "contentInset": contentInset = newValue
-                case "interfaceFontSize": interfaceFontSize = newValue
-                case "readingFontSize": readingFontSize = newValue
-                default: break
-                }
-            }
         }
     }
 }
