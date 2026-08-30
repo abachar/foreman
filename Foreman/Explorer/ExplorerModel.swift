@@ -14,6 +14,8 @@ final class ExplorerModel {
     private(set) var loading: Set<String> = []
     /// explorer R11: relative paths, persisted.
     var expanded: Set<String> = []
+    /// explorer R23: an expanded folder whose content is a single-folder chain → its last segment.
+    private(set) var chains: [String: String] = [:]
     /// explorer R5: persisted.
     var hidesExcluded = false
     /// explorer R14: persisted.
@@ -63,6 +65,39 @@ final class ExplorerModel {
         expanded = Set(state.expanded)
         hidesExcluded = state.hidesExcluded
         followsActiveTab = state.followsActiveTab
+    }
+
+    /// explorer R23: the folder a row really lists; the row itself when nothing is folded.
+    func chain(of relativePath: String) -> String {
+        chains[relativePath] ?? relativePath
+    }
+
+    /// explorer R23: the single folder a level folds into; `nil` when the chain stops here.
+    ///
+    /// It stops at a level that holds anything else than one folder, at a file, at a link, and at
+    /// a greyed folder (R4), which is never folded into a chain.
+    nonisolated static func foldTarget(_ nodes: [FileNode], isGreyed: (FileNode) -> Bool) -> FileNode? {
+        guard nodes.count == 1, let only = nodes.first, only.kind == .directory, !only.isUnreadable,
+            !isGreyed(only)
+        else { return nil }
+        return only
+    }
+
+    /// explorer R23: the segments a chain crosses, `src/main` then `src/main/java` for `src`.
+    nonisolated static func chainSegments(from row: String, to chain: String) -> [String] {
+        guard chain.hasPrefix(row + "/") else { return [] }
+        let rest = chain.dropFirst(row.count + 1).split(separator: "/")
+        return rest.indices.map { row + "/" + rest[...$0].joined(separator: "/") }
+    }
+
+    /// explorer R23: the folded rows whose chain crosses `path`, to recompute after a refresh (R9).
+    nonisolated static func rowsFolding(through path: String, in chains: [String: String]) -> Set<String> {
+        Set(chains.keys.filter { path == $0 || path.hasPrefix($0 + "/") })
+    }
+
+    /// explorer R4: greyed, so R23 never folds it into a chain.
+    func isGreyed(_ node: FileNode) -> Bool {
+        node.isExcluded || isGitIgnored(node.relativePath)
     }
 
     /// explorer R14: the folders to expand, root first, to reach `path`; `nil` outside the root.
@@ -214,25 +249,51 @@ final class ExplorerModel {
         levels[relativePath]?.visibleNodes(hidingExcluded: hidesExcluded)
     }
 
-    /// Reads (or re-reads) one folder, off the main actor.
+    /// Reads (or re-reads) one folder, off the main actor, then the chain it folds into (R23).
     ///
     /// `all` lifts the 5 000 entries cap (explorer R8). Concurrent calls for the same folder are
-    /// collapsed into the first one.
+    /// collapsed into the first one. The version moves once, at the end: the tree never shows the
+    /// folder unfolded for a frame.
     func load(_ relativePath: String, all: Bool = false) async {
         guard !loading.contains(relativePath) else { return }
         loading.insert(relativePath)
         defer { loading.remove(relativePath) }
+        guard await read(relativePath, all: all) else { return }
+        // explorer R9, R23: this read may have broken (or made) the chain of the rows above it.
+        for row in Self.rowsFolding(through: relativePath, in: chains).union([relativePath]) {
+            await resolveChain(from: row)
+        }
+        lastLoaded = relativePath
+        version += 1
+    }
+
+    /// One level onto `levels`; `false` when the folder could not be read (explorer R19).
+    private func read(_ relativePath: String, all: Bool = false) async -> Bool {
         do {
-            let level = try await DirectoryLevel.read(
+            levels[relativePath] = try await DirectoryLevel.read(
                 relativePath, root: root, rootIsHome: rootIsHome, limit: all ? nil : DirectoryLevel.limit)
-            levels[relativePath] = level
-            lastLoaded = relativePath
-            version += 1
             error = nil
+            return true
         } catch {
             logger.error("folder not read: \(error.description, privacy: .private)")
             self.error = error
+            return false
         }
+    }
+
+    /// explorer R7, R23: walks the single-child chain down from `relativePath`, one level at a time.
+    ///
+    /// Only ever called from `load`, so nothing is read ahead of the expansion that asked for it.
+    private func resolveChain(from relativePath: String) async {
+        guard !relativePath.isEmpty else { return }
+        var last = relativePath
+        while let next = Self.foldTarget(levels[last]?.nodes ?? [], isGreyed: isGreyed) {
+            if levels[next.relativePath] == nil, await !read(next.relativePath) {
+                break
+            }
+            last = next.relativePath
+        }
+        chains[relativePath] = last == relativePath ? nil : last
     }
 
     /// explorer R19: an operation failed; shown in the panel, the tree untouched.
@@ -247,8 +308,17 @@ final class ExplorerModel {
     }
 
     /// explorer R9: a collapsed folder is read again at its next expansion.
+    ///
+    /// explorer R23: its chain goes with it, so the row gets its own name back.
     func forget(_ relativePath: String) {
-        guard levels.removeValue(forKey: relativePath) != nil else { return }
+        var forgotten = levels.removeValue(forKey: relativePath) != nil
+        if let chain = chains.removeValue(forKey: relativePath) {
+            for segment in Self.chainSegments(from: relativePath, to: chain) {
+                forgotten = levels.removeValue(forKey: segment) != nil || forgotten
+            }
+            forgotten = true
+        }
+        guard forgotten else { return }
         lastLoaded = relativePath
         version += 1
     }

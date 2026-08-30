@@ -145,9 +145,11 @@ struct ExplorerOutlineView: NSViewRepresentable {
         /// The label is editable only for the duration of a rename, so AppKit's click-on-selected-
         /// row editing never fires.
         private func beginRename(row: Int) {
-            guard let outline, node(atRow: row) != nil,
+            guard let outline, let node = node(atRow: row),
                 let cell = outline.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView
             else { return }
+            // explorer R17, R23: a folded row edits its last segment, not the chain it displays.
+            cell.textField?.stringValue = node.name
             cell.textField?.isEditable = true
             outline.editColumn(0, row: row, with: nil, select: true)
         }
@@ -177,7 +179,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
             let row = outline.row(for: sender)
             guard row >= 0, let node = node(atRow: row) else { return }
             let name = sender.stringValue.trimmingCharacters(in: .whitespaces)
-            sender.stringValue = node.name
+            // explorer R23: the row goes back to the chain it displays until the reload.
+            sender.stringValue = displayed(atRow: row)
             guard !name.isEmpty else { return }
             operations.rename(node, to: name)
         }
@@ -185,7 +188,15 @@ struct ExplorerOutlineView: NSViewRepresentable {
         private func node(atRow row: Int) -> FileNode? {
             guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind
             else { return nil }
-            return node
+            return folded(node)
+        }
+
+        /// explorer R23: a folded row *is* its last segment — rename (R17), drop (R22), delete,
+        /// *Copy Path* and the selection all act on `src/main/java`, never on `src`.
+        private func folded(_ node: FileNode) -> FileNode {
+            let chain = model.chain(of: node.relativePath)
+            guard chain != node.relativePath else { return node }
+            return model.node(at: chain) ?? node
         }
 
         // MARK: - Drag and drop (explorer R22)
@@ -196,7 +207,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
         {
             guard let item = item as? OutlineItem, case .node(let node) = item.kind else { return nil }
             let pasteboardItem = NSPasteboardItem()
-            pasteboardItem.setString(node.relativePath, forType: Self.dragType)
+            pasteboardItem.setString(folded(node).relativePath, forType: Self.dragType)
             return pasteboardItem
         }
 
@@ -226,9 +237,11 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
         /// The folder a drop on `item` targets: the item's own folder for a file, the root for `nil`.
         private func dropFolder(_ item: Any?) -> (item: Any?, node: FileNode?, path: String, isFolder: Bool) {
-            guard let item = item as? OutlineItem, case .node(let node) = item.kind else {
+            guard let item = item as? OutlineItem, case .node(let unfolded) = item.kind else {
                 return (nil, nil, "", item == nil)
             }
+            // explorer R22, R23: a drop on a folded row lands in its last segment.
+            let node = folded(unfolded)
             if node.kind == .directory {
                 return (item, node, node.relativePath, true)
             }
@@ -295,7 +308,9 @@ struct ExplorerOutlineView: NSViewRepresentable {
                     if model.level(folder) == nil {
                         await model.load(folder)
                     }
-                    guard let item = items[folder] else { return }
+                    // explorer R23: a segment inside a chain has no row of its own; its parent
+                    // opened it already.
+                    guard let item = items[folder] else { continue }
                     outline?.expandItem(item)
                 }
                 guard let self, let outline, let item = items[path] else { return }
@@ -340,7 +355,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
         /// explorer R11: the persisted folders open once their parent is read.
         private func restoreExpansion(under folder: String) {
-            guard let outline, let children = model.children(of: folder) else { return }
+            guard let outline, let children = model.children(of: model.chain(of: folder)) else { return }
             for node in children where model.isRestoredExpanded(node) {
                 outline.expandItem(item(for: node))
             }
@@ -370,11 +385,13 @@ struct ExplorerOutlineView: NSViewRepresentable {
             return node.id
         }
 
+        /// explorer R23: a folded row lists the children of the last segment of its chain.
         private func rows(of folder: String) -> [OutlineItem] {
-            guard let level = model.level(folder) else { return [] }
+            let listed = model.chain(of: folder)
+            guard let level = model.level(listed) else { return [] }
             var rows = level.visibleNodes(hidingExcluded: hidesExcluded).map(item(for:))
             if level.truncatedCount > 0 {
-                rows.append(moreItem(folder: folder, count: level.truncatedCount))
+                rows.append(moreItem(folder: listed, count: level.truncatedCount))
             }
             return rows
         }
@@ -415,7 +432,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
             case .node(let node):
                 cell.textField?.isEditable = false
                 cell.textField?.font = theme.interfaceFont()
-                cell.textField?.stringValue = node.name
+                cell.textField?.stringValue = Self.label(of: node, chain: model.chain(of: node.relativePath))
                 // explorer R4, R15: greyed when excluded or gitignored, colored by git status.
                 let isGreyed = node.isExcluded || model.isGitIgnored(node.relativePath)
                 let status = isGreyed ? nil : model.gitStatus(of: node)
@@ -457,7 +474,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
         func outlineViewSelectionDidChange(_ notification: Notification) {
             guard let outline else { return }
-            model.selection = path(of: outline.item(atRow: outline.selectedRow))
+            model.selection = path(of: outline.item(atRow: outline.selectedRow)).map { model.chain(of: $0) }
         }
 
         func outlineViewItemWillExpand(_ notification: Notification) {
@@ -515,6 +532,19 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
             return cell
+        }
+
+        /// What the row shows: its chain when it is folded (R23), its name otherwise.
+        private func displayed(atRow row: Int) -> String {
+            guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind
+            else { return "" }
+            return Self.label(of: node, chain: model.chain(of: node.relativePath))
+        }
+
+        /// explorer R23: `java` alone on a plain row, `main/java` on a row folded from `src`.
+        nonisolated static func label(of node: FileNode, chain: String) -> String {
+            guard chain.hasPrefix(node.relativePath + "/") else { return node.name }
+            return node.name + "/" + chain.dropFirst(node.relativePath.count + 1)
         }
 
         private static func fileIcon(for node: FileNode, isExpanded: Bool) -> NSImage? {

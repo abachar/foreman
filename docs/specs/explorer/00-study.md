@@ -30,7 +30,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 - R8 — The first level is read when the panel is shown (`layout` R4), off the main actor, and rendered as soon as it is available. A folder with more than 5,000 entries is shown truncated ("… and N more") with a button to load everything.
 - R9 — Refreshing through `FSWatchService` (the single FSEvents stream, `architecture.md`): on an event on a path, only the parent folder concerned is reloaded (`reloadItem(_:reloadChildren:)`), and only if it is expanded (a collapsed folder is re-read at its next expansion). The subscription is only active while the panel is visible; on reactivation, the expanded folders are reloaded once.
 - R10 — Reloading a folder keeps the expanded state, the selection and the scroll for the items still present; that is `NSOutlineView`'s behaviour with items that have a stable identity (the relative path), nothing to merge by hand.
-- R11 — The expanded state is persisted in `state.json` (a list of relative paths) and restored; greyed-out folders (R4) are never restored expanded. A folded row (R23) is persisted under the path of its last segment.
+- R11 — The expanded state is persisted in `state.json` (a list of relative paths) and restored; greyed-out folders (R4) are never restored expanded. A folded row (R23) is persisted under **its own path** (`src`), not under its chain: the chain is read again at the next expansion and may have changed meanwhile (R23), so storing it would restore a row that no longer exists.
 
 ### Opening
 

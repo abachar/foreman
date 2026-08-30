@@ -104,3 +104,131 @@ struct ExplorerRevealTests {
         #expect(state.hidesExcluded)
     }
 }
+
+/// explorer R23: the single-child chain a folded row shows, and how it is persisted (R11).
+@MainActor
+struct ExplorerFoldedChainTests {
+    private let root: URL
+
+    init() throws {
+        root = FileManager.default.temporaryDirectory
+            .appending(path: "ExplorerFoldedChainTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+
+    private func make(directories: [String] = [], files: [String] = []) throws {
+        for directory in directories {
+            try FileManager.default.createDirectory(
+                at: root.appending(path: directory), withIntermediateDirectories: true)
+        }
+        for file in files {
+            try Data().write(to: root.appending(path: file))
+        }
+    }
+
+    private func node(_ path: String, kind: FileNode.Kind = .directory, isExcluded: Bool = false) -> FileNode {
+        FileNode(relativePath: path, kind: kind, isExcluded: isExcluded, isUnreadable: false)
+    }
+
+    // MARK: - Where the chain stops (pure)
+
+    @Test func foldsIntoTheSingleFolderOfALevel() {
+        #expect(ExplorerModel.foldTarget([node("src/main")], isGreyed: { _ in false })?.relativePath == "src/main")
+    }
+
+    @Test func stopsAtTwoChildren() {
+        let nodes = [node("src/main"), node("src/test")]
+
+        #expect(ExplorerModel.foldTarget(nodes, isGreyed: { _ in false }) == nil)
+    }
+
+    @Test func stopsAtAFileAndAtALink() {
+        #expect(ExplorerModel.foldTarget([node("src/a.swift", kind: .file)], isGreyed: { _ in false }) == nil)
+        #expect(
+            ExplorerModel.foldTarget([node("src/link", kind: .symlink(toDirectory: true))], isGreyed: { _ in false })
+                == nil)
+    }
+
+    @Test func stopsAtAGreyedFolder() {
+        let excluded = [node("src/node_modules", isExcluded: true)]
+
+        #expect(ExplorerModel.foldTarget(excluded, isGreyed: { $0.isExcluded }) == nil)
+        #expect(ExplorerModel.foldTarget([node("src/build")], isGreyed: { $0.relativePath == "src/build" }) == nil)
+    }
+
+    @Test func stopsAtAnEmptyFolder() {
+        #expect(ExplorerModel.foldTarget([], isGreyed: { _ in false }) == nil)
+    }
+
+    // MARK: - The chain on a real folder (explorer R7: read at the expansion)
+
+    @Test func readsTheWholeChainAtTheExpansionAndListsItsLastSegment() async throws {
+        try make(directories: ["src/main/java"], files: ["src/main/java/Foo.java", "README.md"])
+        let model = ExplorerModel(root: root)
+
+        await model.load("")
+        #expect(model.chain(of: "src") == "src")
+
+        await model.load("src")
+        #expect(model.chain(of: "src") == "src/main/java")
+        #expect(model.children(of: model.chain(of: "src"))?.map(\.name) == ["Foo.java"])
+    }
+
+    @Test func aCollapsedRowReadsItsOwnNameAgain() async throws {
+        try make(directories: ["src/main/java"], files: ["src/main/java/Foo.java"])
+        let model = ExplorerModel(root: root)
+        await model.load("")
+        await model.load("src")
+
+        model.forget("src")
+
+        #expect(model.chain(of: "src") == "src")
+        #expect(model.level("src") == nil)
+        #expect(model.level("src/main") == nil)
+    }
+
+    @Test func aSecondChildAppearingBreaksTheChain() async throws {
+        try make(directories: ["src/main/java"], files: ["src/main/java/Foo.java"])
+        let model = ExplorerModel(root: root)
+        await model.load("")
+        await model.load("src")
+        #expect(model.chain(of: "src") == "src/main/java")
+
+        try make(directories: ["src/main/kotlin"])
+        await model.load("src/main")
+
+        #expect(model.chain(of: "src") == "src/main")
+    }
+
+    @Test func aFoldedRowIsPersistedUnderItsOwnPath() async throws {
+        try make(directories: ["src/main/java"], files: ["src/main/java/Foo.java"])
+        let model = ExplorerModel(root: root)
+        await model.load("")
+        await model.load("src")
+
+        model.setExpanded("src", true)
+
+        #expect(model.persisted.expanded == ["src"])
+        #expect(model.isRestoredExpanded(try #require(model.node(at: "src"))))
+    }
+
+    @Test func namesTheRowAfterTheChainItShows() {
+        let row = node("src")
+
+        #expect(ExplorerOutlineView.Coordinator.label(of: row, chain: "src/main/java") == "src/main/java")
+        #expect(ExplorerOutlineView.Coordinator.label(of: row, chain: "src") == "src")
+    }
+
+    @Test func namesTheSegmentsAChainCrosses() {
+        #expect(ExplorerModel.chainSegments(from: "src", to: "src/main/java") == ["src/main", "src/main/java"])
+        #expect(ExplorerModel.chainSegments(from: "src", to: "src").isEmpty)
+    }
+
+    @Test func recomputesTheRowsWhoseChainCrossesARefreshedFolder() {
+        let chains = ["src": "src/main/java", "docs": "docs/specs"]
+
+        #expect(ExplorerModel.rowsFolding(through: "src/main", in: chains) == ["src"])
+        #expect(ExplorerModel.rowsFolding(through: "src", in: chains) == ["src"])
+        #expect(ExplorerModel.rowsFolding(through: "elsewhere", in: chains).isEmpty)
+    }
+}
