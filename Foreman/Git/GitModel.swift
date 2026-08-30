@@ -110,6 +110,10 @@ final class GitModel {
     }
 
     private(set) var sections: [Section] = []
+    /// git R23: the repo whose branch sheet is open, and the list the sheet shows.
+    private(set) var branchSheetRepo: String?
+    private(set) var branches: [GitBranch] = []
+    private(set) var isLoadingBranches = false
     /// git R28: `git` missing or too old; the feature is inert while it is set.
     private(set) var banner: String?
     /// `true` between the panel's activation and the end of repo discovery.
@@ -208,6 +212,20 @@ final class GitModel {
 
     func toggleStashList(_ id: String) {
         update(id) { $0.isStashListExpanded.toggle() }
+    }
+
+    // MARK: - Branch sheet (git R23)
+
+    /// Opens the sheet on `id` with an empty list to load, or closes it with `nil`.
+    func setBranchSheet(_ id: String?) {
+        branchSheetRepo = id
+        branches = []
+        isLoadingBranches = id != nil
+    }
+
+    func setBranches(_ branches: [GitBranch]) {
+        self.branches = branches
+        isLoadingBranches = false
     }
 
     // MARK: - Refresh (git R4)

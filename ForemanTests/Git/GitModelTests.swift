@@ -100,6 +100,26 @@ struct GitModelTests {
         #expect(GitModel.Section.isCollapsed(manually: true, hasChanges: true))
     }
 
+    // MARK: - git R23
+
+    /// The sheet is presented off the observed model, so opening it and its async load both invalidate.
+    @Test @MainActor func theBranchSheetStateLivesOnTheObservedModel() {
+        let model = GitModel()
+        let main = GitBranch(name: "main", ref: "refs/heads/main", upstream: nil, isCurrent: true)
+        #expect(model.branchSheetRepo == nil)
+        model.setBranchSheet(".")
+        #expect(model.branchSheetRepo == ".")
+        #expect(model.isLoadingBranches)
+        #expect(model.branches.isEmpty)
+        model.setBranches([main])
+        #expect(model.branches == [main])
+        #expect(!model.isLoadingBranches)
+        model.setBranchSheet(nil)
+        #expect(model.branchSheetRepo == nil)
+        #expect(model.branches.isEmpty)
+        #expect(!model.isLoadingBranches)
+    }
+
     @Test func roundtripsTheManualCollapsesAndKeepsThemAcrossRediscovery() async throws {
         let model = await GitModel()
         await model.restore(GitState(collapsed: ["libs/core"]))

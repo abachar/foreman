@@ -38,10 +38,10 @@ struct GitChangesPanelView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { feature.branchSheetRepo != nil }, set: { if !$0 { feature.branchSheetRepo = nil } })
+                get: { model.branchSheetRepo != nil }, set: { if !$0 { feature.closeBranchSheet() } })
         ) {
-            if let repo = feature.branchSheetRepo {
-                GitBranchesSheet(repo: repo, feature: feature, theme: theme)
+            if let repo = model.branchSheetRepo {
+                GitBranchesSheet(repo: repo, model: model, feature: feature, theme: theme)
             }
         }
     }
@@ -50,13 +50,14 @@ struct GitChangesPanelView: View {
 /// git R23: local and remote branches with a search field, and the branch actions.
 struct GitBranchesSheet: View {
     let repo: String
+    let model: GitModel
     let feature: GitFeature
     let theme: ThemeService
     @State private var query = ""
     @Environment(\.dismiss) private var dismiss
 
     private var shown: [GitBranch] {
-        Self.filter(feature.branches, query: query)
+        Self.filter(model.branches, query: query)
     }
 
     nonisolated static func filter(_ branches: [GitBranch], query: String) -> [GitBranch] {
@@ -68,34 +69,11 @@ struct GitBranchesSheet: View {
         VStack(spacing: 8) {
             TextField("Search branches", text: $query)
                 .textFieldStyle(.roundedBorder)
-            List(shown) { branch in
-                HStack(spacing: 6) {
-                    Image(
-                        systemName: branch.isCurrent
-                            ? "checkmark" : (branch.isRemote ? "cloud" : "arrow.triangle.branch")
-                    )
-                    .frame(width: 14)
-                    .foregroundStyle(.secondary)
-                    Text(branch.name)
-                    if let upstream = branch.upstream {
-                        Text("\u{2192} \(upstream)")
-                            .font(theme.font(.small))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2) { feature.checkout(branch, in: repo) }
-                .contextMenu {
-                    Button("Checkout") { feature.checkout(branch, in: repo) }
-                        .disabled(branch.isCurrent)
-                    if !branch.isRemote {
-                        Button("Rename\u{2026}") { feature.renameBranch(branch, in: repo) }
-                        Button("Set Upstream\u{2026}") { feature.setUpstream(of: branch, in: repo) }
-                        Button("Delete") { feature.deleteBranch(branch, in: repo) }
-                            .disabled(branch.isCurrent)
-                    }
-                }
+            if model.isLoadingBranches {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                branchList
             }
             HStack {
                 Button("New Branch from HEAD\u{2026}") { feature.newBranch(in: repo) }
@@ -109,6 +87,38 @@ struct GitBranchesSheet: View {
         }
         .padding(12)
         .frame(width: 420, height: 380)
+    }
+
+    private var branchList: some View {
+        List(shown) { branch in
+            HStack(spacing: 6) {
+                Image(
+                    systemName: branch.isCurrent
+                        ? "checkmark" : (branch.isRemote ? "cloud" : "arrow.triangle.branch")
+                )
+                .frame(width: 14)
+                .foregroundStyle(.secondary)
+                Text(branch.name)
+                if let upstream = branch.upstream {
+                    Text("\u{2192} \(upstream)")
+                        .font(theme.font(.small))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { feature.checkout(branch, in: repo) }
+            .contextMenu {
+                Button("Checkout") { feature.checkout(branch, in: repo) }
+                    .disabled(branch.isCurrent)
+                if !branch.isRemote {
+                    Button("Rename\u{2026}") { feature.renameBranch(branch, in: repo) }
+                    Button("Set Upstream\u{2026}") { feature.setUpstream(of: branch, in: repo) }
+                    Button("Delete") { feature.deleteBranch(branch, in: repo) }
+                        .disabled(branch.isCurrent)
+                }
+            }
+        }
     }
 }
 

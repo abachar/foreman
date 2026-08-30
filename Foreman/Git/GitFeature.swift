@@ -39,9 +39,6 @@ final class GitFeature {
     private var coalescer = RefreshCoalescer()
     private var commitTasks: [String: Task<Void, Never>] = [:]
     private var remoteOperations = RemoteOperations()
-    /// git R23: the repo whose branch sheet is open.
-    var branchSheetRepo: String?
-    private(set) var branches: [GitBranch] = []
     private var isActive = false
     private var activation: Task<Void, Never>?
     private var arePanelsShown = false
@@ -369,28 +366,33 @@ final class GitFeature {
     /// git R23: the sheet, with the list loaded fresh.
     func showBranches(in id: String) {
         guard let client = clients[id] else { return }
-        branches = []
-        branchSheetRepo = id
+        model.setBranchSheet(id)
         Task { [weak self] in
-            guard let output = try? await client.run(GitCommand.branches) else { return }
-            self?.branches = RefParser.branches(output.stdout)
+            let output = try? await client.run(GitCommand.branches)
+            // The sheet may have been closed, or reopened on another repo, while git ran.
+            guard let self, model.branchSheetRepo == id else { return }
+            model.setBranches(output.map { RefParser.branches($0.stdout) } ?? [])
         }
     }
 
+    func closeBranchSheet() {
+        model.setBranchSheet(nil)
+    }
+
     func checkout(_ branch: GitBranch, in id: String) {
-        branchSheetRepo = nil
+        model.setBranchSheet(nil)
         write([GitCommand.checkout(branch)], in: id)
     }
 
     func newBranch(in id: String) {
-        branchSheetRepo = nil
+        model.setBranchSheet(nil)
         askText("New Branch from HEAD", placeholder: "branch-name") { [weak self] name in
             self?.write([GitCommand.newBranch(name)], in: id)
         }
     }
 
     func renameBranch(_ branch: GitBranch, in id: String) {
-        branchSheetRepo = nil
+        model.setBranchSheet(nil)
         askText("Rename \u{201c}\(branch.name)\u{201d}", placeholder: branch.name, button: "Rename") {
             [weak self] name in
             self?.write([GitCommand.renameBranch(branch.name, to: name)], in: id)
@@ -399,7 +401,7 @@ final class GitFeature {
 
     /// git R23: `-d`; when git refuses (not merged), `-D` is offered with the name.
     func deleteBranch(_ branch: GitBranch, in id: String) {
-        branchSheetRepo = nil
+        model.setBranchSheet(nil)
         guard let client = clients[id] else { return }
         Task { [weak self] in
             do throws(GitError) {
@@ -415,7 +417,7 @@ final class GitFeature {
     }
 
     func setUpstream(of branch: GitBranch, in id: String) {
-        branchSheetRepo = nil
+        model.setBranchSheet(nil)
         askText("Upstream of \u{201c}\(branch.name)\u{201d}", placeholder: "origin/\(branch.name)", button: "Set") {
             [weak self] upstream in self?.write([GitCommand.setUpstream(of: branch.name, to: upstream)], in: id)
         }
