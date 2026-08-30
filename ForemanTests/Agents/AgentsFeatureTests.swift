@@ -98,6 +98,14 @@ struct AgentSendTests {
         #expect(AgentMention.literal("abc1234").text(relativeTo: cwd) == "@abc1234 ")
     }
 
+    /// agents R10a: a name may legally hold a newline; it must never submit the pending prompt.
+    @Test func controlCharactersNeverReachTheAgent() {
+        let file = URL(filePath: "/ws/app/we\u{0a}ird\u{1b}[31m.txt")
+        #expect(AgentMention.path(file, lines: nil, isDirectory: false).text(relativeTo: cwd) == "@weird[31m.txt ")
+        #expect(AgentMention.literal("ab\u{0d}c").text(relativeTo: cwd) == "@abc ")
+        #expect(AgentMention.path(file, lines: 3...3, isDirectory: false).text(relativeTo: cwd) == "@weird[31m.txt:3 ")
+    }
+
     @Test func activeAgentIsTheLastActivatedLiveTab() {
         let first = TabID()
         let last = TabID()

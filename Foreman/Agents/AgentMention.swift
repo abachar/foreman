@@ -13,11 +13,11 @@ nonisolated enum AgentMention: Equatable, Sendable {
     func text(relativeTo cwd: URL) -> String {
         switch self {
         case .literal(let text):
-            return "@\(text) "
+            return "@\(Self.oneLine(text)) "
         case .url(let url):
-            return "\(url.absoluteString) "
+            return "\(Self.oneLine(url.absoluteString)) "
         case .path(let url, let lines, let isDirectory):
-            var path = Self.relativePath(of: url, to: cwd)
+            var path = Self.oneLine(Self.relativePath(of: url, to: cwd))
             if isDirectory, !path.hasSuffix("/") {
                 path += "/"
             }
@@ -27,6 +27,17 @@ nonisolated enum AgentMention: Equatable, Sendable {
             case let range?: return "@\(path):\(range.lowerBound)-\(range.upperBound) "
             }
         }
+    }
+
+    /// agents R10a: the mention is one line, and it is typed into a PTY.
+    ///
+    /// A name may legally hold a newline (APFS), which would submit the prompt the user is still
+    /// writing, or an escape, which the terminal would read as a sequence. Such a name cannot be
+    /// mentioned faithfully anyway, so its control characters are dropped rather than sent.
+    private static func oneLine(_ text: String) -> String {
+        let controls = CharacterSet.controlCharacters
+        guard text.unicodeScalars.contains(where: controls.contains) else { return text }
+        return String(String.UnicodeScalarView(text.unicodeScalars.filter { !controls.contains($0) }))
     }
 
     private static func relativePath(of url: URL, to cwd: URL) -> String {
