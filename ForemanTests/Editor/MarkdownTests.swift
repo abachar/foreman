@@ -78,3 +78,66 @@ struct MarkdownTests {
         #expect(blocks[5] == .image(URL(filePath: "/ws/docs/guide/logo.png"), alt: "logo"))
     }
 }
+
+/// design R6 (amended 2026-08-30): what M16 16.4 took from GitHub — the depth markers and the
+/// spacing derived from the reading size.
+struct MarkdownGitHubTests {
+    @Test func bulletsCycleByDepthAsCSSDoes() {
+        #expect(MarkdownBlocks.bullet(depth: 0) == "\u{25CF}")
+        #expect(MarkdownBlocks.bullet(depth: 1) == "\u{25CB}")
+        #expect(MarkdownBlocks.bullet(depth: 2) == "\u{25AA}")
+        // CSS restarts the cycle past the third level, and so do we.
+        #expect(MarkdownBlocks.bullet(depth: 3) == MarkdownBlocks.bullet(depth: 0))
+        #expect(MarkdownBlocks.bullet(depth: -1) == MarkdownBlocks.bullet(depth: 0))
+    }
+
+    @Test func orderedMarkersAreDecimalThenRomanThenAlpha() {
+        #expect(MarkdownBlocks.number(4, depth: 0) == "4")
+        #expect(MarkdownBlocks.number(4, depth: 1) == "iv")
+        #expect(MarkdownBlocks.number(4, depth: 2) == "d")
+        #expect(MarkdownBlocks.number(4, depth: 3) == "4")
+    }
+
+    @Test(arguments: [(1, "i"), (4, "iv"), (9, "ix"), (14, "xiv"), (40, "xl"), (2026, "mmxxvi")])
+    func romanNumerals(value: Int, expected: String) {
+        #expect(MarkdownBlocks.roman(value) == expected)
+    }
+
+    @Test(arguments: [(1, "a"), (26, "z"), (27, "aa"), (52, "az"), (53, "ba")])
+    func alphaCounters(value: Int, expected: String) {
+        #expect(MarkdownBlocks.alpha(value) == expected)
+    }
+
+    /// Neither counter can write these; the decimal is kept rather than an empty marker.
+    @Test func countersOutsideTheirRangeKeepTheDecimal() {
+        #expect(MarkdownBlocks.roman(0) == "0")
+        #expect(MarkdownBlocks.roman(4000) == "4000")
+        #expect(MarkdownBlocks.alpha(0) == "0")
+    }
+
+    /// design R6: GitHub's numbers at the default reading size of 16.
+    @Test func metricsMatchGitHubAtTheDefaultReadingSize() {
+        let metrics = MarkdownMetrics(readingFontSize: 16)
+        #expect(metrics.blockSpacing == 16)
+        // 24 in total above a heading, of which the stack already gives `blockSpacing`.
+        #expect(metrics.headingTop + metrics.blockSpacing == 24)
+        #expect(metrics.listIndent == 32)
+        #expect(metrics.itemSpacing == 4)
+        #expect(metrics.itemBlockSpacing == 16)
+        #expect(metrics.codePadding == 16)
+        #expect(metrics.quoteGap == 16)
+        #expect(metrics.cellPadding == (vertical: 6, horizontal: 13))
+        // `.3em` of the heading's own size, so the rule sits further from a bigger heading.
+        #expect(metrics.headingRuleGap(size: 32) == 10)
+        #expect(metrics.headingRuleGap(size: 24) == 7)
+    }
+
+    /// The whole layout follows the reading size: nothing is a constant in points.
+    @Test func metricsScaleWithTheReadingSize() {
+        let metrics = MarkdownMetrics(readingFontSize: 24)
+        #expect(metrics.blockSpacing == 24)
+        #expect(metrics.listIndent == 48)
+        #expect(metrics.itemSpacing == 6)
+        #expect(metrics.codePadding == 24)
+    }
+}

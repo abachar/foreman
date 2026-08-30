@@ -22,6 +22,58 @@ nonisolated indirect enum MarkdownBlock: Equatable, Sendable {
 }
 
 nonisolated enum MarkdownBlocks {
+    /// design R6 (2026-08-30): the bullet of a list at `depth`, GitHub's disc → circle → square,
+    /// cycling beyond the third level as CSS does.
+    static func bullet(depth: Int) -> String {
+        ["\u{25CF}", "\u{25CB}", "\u{25AA}"][max(depth, 0) % 3]
+    }
+
+    /// design R6 (2026-08-30): the number of an ordered item at `depth`, GitHub's decimal →
+    /// lower-roman → lower-alpha, cycling beyond the third level.
+    static func number(_ value: Int, depth: Int) -> String {
+        switch max(depth, 0) % 3 {
+        case 1:
+            return roman(value)
+        case 2:
+            return alpha(value)
+        default:
+            return String(value)
+        }
+    }
+
+    /// A lower-case Roman numeral: `1 → i`, `4 → iv`, `2026 → mmxxvi`.
+    ///
+    /// Outside what Roman numerals can write, the decimal is kept.
+    static func roman(_ value: Int) -> String {
+        guard value > 0, value < 4000 else { return String(value) }
+        let numerals: [(Int, String)] = [
+            (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"), (50, "l"), (40, "xl"),
+            (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+        ]
+        var rest = value
+        var result = ""
+        for (amount, numeral) in numerals {
+            while rest >= amount {
+                result += numeral
+                rest -= amount
+            }
+        }
+        return result
+    }
+
+    /// `1 → a`, `26 → z`, `27 → aa`, as CSS `lower-alpha` counts.
+    static func alpha(_ value: Int) -> String {
+        guard value > 0 else { return String(value) }
+        var rest = value
+        var result = ""
+        while rest > 0 {
+            let index = (rest - 1) % 26
+            result = String(UnicodeScalar(UInt8(97 + index))) + result
+            rest = (rest - 1) / 26
+        }
+        return result
+    }
+
     /// Parses `text` for the file at `file` (links and images resolve relative to it).
     @concurrent
     static func make(_ text: String, file: URL, root: URL) async -> [MarkdownBlock] {
