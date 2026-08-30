@@ -26,11 +26,11 @@ struct SchemaDDLTests {
             ])
         #expect(
             ddl == """
-                CREATE TABLE public."order" (
-                    id integer NOT NULL,
+                CREATE TABLE "public"."order" (
+                    "id" integer NOT NULL,
                     "Name" character varying(255) DEFAULT 'x'::text,
-                    CONSTRAINT order_pkey PRIMARY KEY (id),
-                    CONSTRAINT order_user_fkey FOREIGN KEY (user_id) REFERENCES users(id)
+                    CONSTRAINT "order_pkey" PRIMARY KEY (id),
+                    CONSTRAINT "order_user_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
                 );
                 CREATE INDEX order_name_idx ON public."order" USING btree ("Name");
                 """)
@@ -39,9 +39,9 @@ struct SchemaDDLTests {
     @Test func viewWrapsTheServerDefinition() {
         #expect(
             SchemaDDL.view(schema: "public", name: "v", isMaterialized: false, definition: " SELECT 1;\n")
-                == "CREATE OR REPLACE VIEW public.v AS\nSELECT 1;")
+                == "CREATE OR REPLACE VIEW \"public\".\"v\" AS\nSELECT 1;")
         #expect(
             SchemaDDL.view(schema: "public", name: "m", isMaterialized: true, definition: "SELECT 1")
-                == "CREATE MATERIALIZED VIEW public.m AS\nSELECT 1;")
+                == "CREATE MATERIALIZED VIEW \"public\".\"m\" AS\nSELECT 1;")
     }
 }

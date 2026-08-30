@@ -82,7 +82,7 @@ struct SchemaQueriesTests {
         #expect(column.staticChildren == nil)
     }
 
-    @Test func selectAllQuotesTheRelationOnly() {
+    @Test func selectAllQuotesTheRelation() {
         let table = SchemaNode(
             id: "t", kind: .relation(schema: "My Schema", name: "order", kind: .table), title: "order")
         #expect(SchemaQueries.selectAll(table) == "SELECT * FROM \"My Schema\".\"order\" LIMIT 500")
@@ -94,7 +94,7 @@ struct SchemaQueriesTests {
         #expect(SchemaNode(id: "s", kind: .schema("Public"), title: "").qualifiedName == "\"Public\"")
         #expect(
             SchemaNode(id: "f", kind: .function(schema: "public", name: "f", arguments: "integer"), title: "")
-                .qualifiedName == "public.f")
+                .qualifiedName == "\"public\".\"f\"")
         #expect(SchemaNode(id: "d", kind: .database, title: "").qualifiedName == nil)
     }
 

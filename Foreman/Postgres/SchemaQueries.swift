@@ -213,11 +213,14 @@ nonisolated enum SchemaQueries {
                 return SchemaNode(
                     id: "\(parent.id)/\(name)", kind: .detail, title: name, subtitle: try row[1].decode(String.self))
             case .incomingForeignKeys:
-                let table = SQLIdentifier.qualified(try row[0].decode(String.self), try row[1].decode(String.self))
+                let schema = try row[0].decode(String.self)
+                let table = try row[1].decode(String.self)
                 let name = try row[2].decode(String.self)
+                // The row shows the table to the user, so the plain name; the id keeps the
+                // quoted one, which cannot be ambiguous.
                 return SchemaNode(
-                    id: "\(parent.id)/\(table)/\(name)", kind: .detail, title: "\(table) \(name)",
-                    subtitle: try row[3].decode(String.self))
+                    id: "\(parent.id)/\(SQLIdentifier.qualified(schema, table))/\(name)", kind: .detail,
+                    title: "\(schema).\(table) \(name)", subtitle: try row[3].decode(String.self))
             case .definition:
                 let definition = try row[0].decode(String.self)
                 return SchemaNode(id: "\(parent.id)/definition", kind: .detail, title: definition)
