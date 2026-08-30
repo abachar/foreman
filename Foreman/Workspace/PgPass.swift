@@ -25,20 +25,25 @@ nonisolated enum PgPass {
     /// The password for the connection read from `file`, or `nil`.
     ///
     /// `nil` when the file is missing or has no matching line. A file readable by group or others
-    /// is ignored, like `libpq` does, and said in `warnings`.
+    /// is ignored, like `libpq` does, and said in `warnings`. The permissions are checked on the
+    /// opened descriptor, so what is read is exactly what was checked.
     static func password(
         in file: URL, host: String, port: Int, database: String, user: String, warnings: inout [String]
     ) -> String? {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: file.path(percentEncoded: false))
-        else { return nil }
-        let mode = (attributes[.posixPermissions] as? Int) ?? 0
+        guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
+        defer { try? handle.close() }
+        var status = stat()
+        guard fstat(handle.fileDescriptor, &status) == 0 else { return nil }
+        let mode = Int(status.st_mode) & 0o777
         guard isSecure(mode: mode) else {
             warnings.append(
                 "\(file.lastPathComponent) ignored: permissions should be u=rw (0600), not \(String(mode, radix: 8))."
             )
             return nil
         }
-        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+        guard let data = try? (handle.readToEnd() ?? Data()), let text = String(data: data, encoding: .utf8) else {
+            return nil
+        }
         return password(in: parse(text), host: host, port: port, database: database, user: user)
     }
 
@@ -49,11 +54,13 @@ nonisolated enum PgPass {
 
     /// Lines with fewer than five fields and `#` comments are skipped; `\:` and `\\` are
     /// unescaped inside a field.
+    ///
+    /// Only line breaks separate entries: `libpq` trims nothing else, so a password keeps its
+    /// leading and trailing spaces.
     static func parse(_ text: String) -> [Entry] {
         text.split(omittingEmptySubsequences: true, whereSeparator: \.isNewline).compactMap { line in
-            let line = line.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty, !line.hasPrefix("#") else { return nil }
-            let fields = split(line)
+            guard !line.hasPrefix("#") else { return nil }
+            let fields = split(String(line))
             guard fields.count >= 5 else { return nil }
             return Entry(
                 host: fields[0], port: fields[1], database: fields[2], user: fields[3],
