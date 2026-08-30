@@ -30,7 +30,10 @@ nonisolated struct ThemeColor: Equatable, Sendable {
         if digits.count == 3 {
             digits = digits.map { "\($0)\($0)" }.joined()
         }
-        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        // `UInt32(_:radix:)` alone would accept a leading `+` (e.g. "#+ABCDE").
+        guard digits.count == 6, digits.allSatisfy(\.isHexDigit), let value = UInt32(digits, radix: 16) else {
+            return nil
+        }
         self.init(value)
     }
 
