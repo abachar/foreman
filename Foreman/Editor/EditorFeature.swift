@@ -524,6 +524,14 @@ final class EditorFeature {
         Task { _ = await save(id, tab) }
     }
 
+    /// editor R34: writes every pending scratch draft now, for the quit path (`cmd+q` chains no
+    /// confirmation, so the debounced write of the last second would be lost).
+    func flushScratches() async {
+        for tab in tabs.values where tab.isScratch {
+            await tab.writeScratch()
+        }
+    }
+
     /// editor R8: `cmd+opt+s`.
     private func saveAll() {
         prune()
