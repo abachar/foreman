@@ -68,18 +68,15 @@ nonisolated struct WorkspaceState: Sendable, Equatable {
         }
     }
 
-    /// Writes the state atomically: a temporary file next to it, then `replaceItemAt`.
+    /// Writes the state atomically (`.atomic` is Foundation's own temporary-then-rename).
     ///
     /// `.foreman/` is created on the first write (config R1).
     @concurrent
     static func write(_ state: WorkspaceState, root: URL) async throws {
         let file = file(under: root)
-        let folder = file.deletingLastPathComponent()
-        let fileManager = FileManager.default
-        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
-        let temporary = folder.appending(path: "state.json.tmp")
-        try state.data().write(to: temporary)
-        _ = try fileManager.replaceItemAt(file, withItemAt: temporary)
+        try FileManager.default.createDirectory(
+            at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try state.data().write(to: file, options: [.atomic])
     }
 
     private static func parse(_ data: Data, file: URL) throws -> WorkspaceState {
