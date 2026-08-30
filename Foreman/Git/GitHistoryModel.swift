@@ -38,7 +38,6 @@ final class GitHistoryModel {
         isLoading = true
         let query = query
         loading = Task { [weak self] in
-            defer { self?.isLoading = false }
             do throws(GitError) {
                 let pages = try await Self.fetch(query, client: client)
                 guard !Task.isCancelled, let self else { return }
@@ -47,8 +46,13 @@ final class GitHistoryModel {
                 hasMore = pages.contains { $0.commits.count >= GitLogQuery.pageSize }
                 error = nil
             } catch {
+                // A load `reload` superseded: the newer one owns the panel's state, error and
+                // spinner included.
+                guard !Task.isCancelled else { return }
                 self?.error = error
             }
+            guard !Task.isCancelled else { return }
+            self?.isLoading = false
         }
     }
 
