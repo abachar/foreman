@@ -15,6 +15,18 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     /// (bug: the second window crashed, 2026-08-27).
     private let toolbar = NSToolbar(identifier: "dev.crafters.foreman.toolbar.\(UUID().uuidString)")
     private var menuItemsByMenu: [ObjectIdentifier: String] = [:]
+    /// The image each item is showing and what it was drawn from, so an update that moved none of
+    /// it hands the button the very same image and leaves it alone.
+    private var images: [String: (key: ImageKey, image: NSImage?)] = [:]
+
+    /// Everything an item's image is made of (layout R30, R31; design R15).
+    private struct ImageKey: Equatable {
+        let icon: String
+        let badge: ToolbarBadge
+        /// A badge is drawn with the theme's colors baked in; a plain icon is tinted by the button.
+        let tint: NSColor?
+        let dot: NSColor?
+    }
 
     init(layout: LayoutManager, theme: ThemeService) {
         self.layout = layout
@@ -44,18 +56,38 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             for (index, identifier) in wanted.enumerated() {
                 toolbar.insertItem(withItemIdentifier: identifier, at: index)
             }
+            images = images.filter { layout.toolbarItem($0.key) != nil }
         }
         let tokens = theme.tokens
+        let font = theme.interfaceFont()
         for item in toolbar.items.flatMap({ ($0 as? NSToolbarItemGroup)?.subitems ?? [$0] }) {
             guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue),
                 let button = item.view as? ToolbarButton ?? item.view?.subviews.first as? ToolbarButton
             else { continue }
-            button.tokens = tokens
-            button.font = theme.interfaceFont()
-            button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+            // Every assignment below repaints the button and its width is measured again: this
+            // runs on every update of the window, so only what moved is handed over.
+            let image = image(of: descriptor)
             // design R15: a toggle whose panel is visible is outlined.
-            button.isOutlined = LayoutManager.panelID(ofToggle: descriptor.id).map(layout.panels.isVisible) ?? false
-            button.fit()
+            let isOutlined = LayoutManager.panelID(ofToggle: descriptor.id).map(layout.panels.isVisible) ?? false
+            var hasChanged = false
+            if button.tokens != tokens {
+                button.tokens = tokens
+                hasChanged = true
+            }
+            if button.font != font {
+                button.font = font
+                hasChanged = true
+            }
+            if button.isOutlined != isOutlined {
+                button.isOutlined = isOutlined
+            }
+            if button.image !== image {
+                button.image = image
+                hasChanged = true
+            }
+            if hasChanged {
+                button.fit()
+            }
         }
     }
 
@@ -132,7 +164,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         button.title = LayoutManager.panelID(ofToggle: descriptor.id) == nil ? descriptor.title : ""
         button.tokens = theme.tokens
         button.font = theme.interfaceFont()
-        button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
+        button.image = image(of: descriptor)
         button.target = self
         button.action = #selector(performButton(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -230,6 +262,25 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     }
 
     // MARK: - Images
+
+    /// The item's image, drawn again only when the icon, the badge or the colors it bakes moved.
+    private func image(of descriptor: ToolbarItemDescriptor) -> NSImage? {
+        let badge = layout.badge(of: descriptor.id)
+        let colors: (tint: NSColor, dot: NSColor)?
+        switch badge {
+        case .none:
+            colors = nil
+        case .dot(let color):
+            colors = (theme.tokens.textPrimary.nsColor, theme.tokens.status(color).nsColor)
+        }
+        let key = ImageKey(icon: descriptor.icon, badge: badge, tint: colors?.tint, dot: colors?.dot)
+        if let cached = images[descriptor.id], cached.key == key {
+            return cached.image
+        }
+        let image = image(descriptor.icon, badge: badge)
+        images[descriptor.id] = (key, image)
+        return image
+    }
 
     /// The icon, with a colored dot in its corner when the item carries a badge (layout R31);
     /// design R15: the dot is a state token, the icon is tinted by the button.
