@@ -116,8 +116,11 @@ final class ExplorerModel {
         let known = levels.keys.sorted()
         activation = Task { [weak self] in
             for folder in known.isEmpty ? [""] : known {
+                // Hiding the panel mid-activation must stop the reads, not run them all to the end.
+                guard !Task.isCancelled else { return }
                 await self?.load(folder)
             }
+            guard !Task.isCancelled else { return }
             self?.activation = nil
         }
         guard let fsWatch, watch == nil else { return }
@@ -253,12 +256,12 @@ final class ExplorerModel {
     ///
     /// `all` lifts the 5 000 entries cap (explorer R8). Concurrent calls for the same folder are
     /// collapsed into the first one. The version moves once, at the end: the tree never shows the
-    /// folder unfolded for a frame.
+    /// folder unfolded for a frame. A cancelled caller stops the reads it asked for.
     func load(_ relativePath: String, all: Bool = false) async {
-        guard !loading.contains(relativePath) else { return }
+        guard !loading.contains(relativePath), !Task.isCancelled else { return }
         loading.insert(relativePath)
         defer { loading.remove(relativePath) }
-        guard await read(relativePath, all: all) else { return }
+        guard await read(relativePath, all: all), !Task.isCancelled else { return }
         // explorer R9, R23: this read may have broken (or made) the chain of the rows above it.
         for row in Self.rowsFolding(through: relativePath, in: chains).union([relativePath]) {
             await resolveChain(from: row)
@@ -288,6 +291,7 @@ final class ExplorerModel {
         guard !relativePath.isEmpty else { return }
         var last = relativePath
         while let next = Self.foldTarget(levels[last]?.nodes ?? [], isGreyed: isGreyed) {
+            guard !Task.isCancelled else { return }
             if levels[next.relativePath] == nil, await !read(next.relativePath) {
                 break
             }

@@ -56,6 +56,25 @@ struct ExplorerModelTests {
         #expect(model.children(of: "") != nil)
         #expect(model.lastLoaded == "a")
     }
+
+    /// explorer R8, R9: hiding the panel mid-activation stops the reads it started.
+    @Test func aCancelledLoadReadsNothing() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "ExplorerCancelTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: root.appending(path: "a"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ExplorerModel(root: root)
+
+        let load = Task { await model.load("") }
+        load.cancel()
+        await load.value
+
+        #expect(model.children(of: "") == nil)
+        #expect(model.loading.isEmpty)
+
+        await model.load("")
+        #expect(model.children(of: "")?.map(\.name) == ["a"])
+    }
 }
 
 /// explorer R9: which loaded folders a batch of FSEvents paths makes the explorer read again.
