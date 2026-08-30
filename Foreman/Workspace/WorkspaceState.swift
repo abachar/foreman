@@ -56,13 +56,16 @@ nonisolated struct WorkspaceState: Sendable, Equatable {
                 "state.json not read (\(path, privacy: .private)): \(error.localizedDescription, privacy: .public)")
             return .empty
         }
-        guard let state = try? parse(data) else {
+        do {
+            return try parse(data, file: file)
+        } catch {
+            logger.warning(
+                "state.json set aside as state.json.bak: \(String(describing: error), privacy: .public)")
             let backup = file.appendingPathExtension("bak")
             try? FileManager.default.removeItem(at: backup)
             try? FileManager.default.moveItem(at: file, to: backup)
             return .empty
         }
-        return state
     }
 
     /// Writes the state atomically: a temporary file next to it, then `replaceItemAt`.
@@ -79,11 +82,12 @@ nonisolated struct WorkspaceState: Sendable, Equatable {
         _ = try fileManager.replaceItemAt(file, withItemAt: temporary)
     }
 
-    private static func parse(_ data: Data) throws -> WorkspaceState {
+    private static func parse(_ data: Data, file: URL) throws -> WorkspaceState {
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
             object.removeValue(forKey: "version") as? Int == version
         else {
-            throw WorkspaceError.invalidJSON(file: URL(filePath: "state.json"), line: nil, message: "Unknown version.")
+            throw WorkspaceError.invalidJSON(
+                file: file, line: nil, message: "The top level must be an object with \"version\" \(version).")
         }
         var sections: [String: Data] = [:]
         for (name, value) in object {
