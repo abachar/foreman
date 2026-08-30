@@ -8,6 +8,7 @@ Foreman is a native macOS app written in Swift 6, developed entirely by AI agent
 2. `docs/coding-rules.md` — code conventions.
 3. `docs/specs/<domain>/` — what to build (`00-study.md`), what was decided (`decisions.md`), what is still open (`questions.md`). `docs/config.md` lists every key of `config.json`; a task that adds or changes a key updates it in the same commit.
 4. `docs/backlog/<milestone>.md` — the task you are implementing: rules covered, library/native component to use, tests expected. Update its status in your PR.
+5. `docs/audits/` — the full reads of the codebase, kept verbatim. When your task cites a finding id (`audit C3`, `M9a`, `W7`…), the audit is where it is written down; the backlog says what is being done about it.
 
 No code for a domain without its `00-study.md`. A behaviour change updates the spec in the same commit.
 
