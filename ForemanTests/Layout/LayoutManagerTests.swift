@@ -118,6 +118,47 @@ struct LayoutManagerTests {
         #expect(layout.badge(of: "agent.claude") == .none)
     }
 
+    /// audit L1: `cmd+w` pressed twice must not stack two dialogs on the same tab.
+    @Test func aSecondCloseOfTheSameTabAsksNothing() async {
+        let layout = LayoutManager()
+        nonisolated(unsafe) var asked = 0
+        layout.register(
+            tabKind: CenterTabDescriptor(
+                kind: "editor.file", makeView: { _, payload in AnyView(Text(payload)) }, serialize: { _ in nil },
+                confirmClose: { _ in
+                    asked += 1
+                    // Long enough that the second close starts while this one is still open.
+                    try? await Task.sleep(for: .milliseconds(50))
+                    return true
+                }))
+        guard let tab = layout.openTab(kind: "editor.file", title: "a", payload: "a") else {
+            Issue.record("tab not opened")
+            return
+        }
+        layout.update(tab, title: "a", isDirty: true)
+
+        async let first: Void = layout.closeTab(tab)
+        async let second: Void = layout.closeTab(tab)
+        _ = await (first, second)
+
+        #expect(asked == 1)
+        #expect(layout.model.active.tabs.isEmpty)
+    }
+
+    /// audit L5: a replaced section obeys the same duplicate-id rule as a registered entry.
+    @Test func replacedHomeEntriesRefuseADuplicateID() {
+        let layout = LayoutManager()
+        layout.register(
+            homeEntry: HomeEntry(id: "recent.a", title: "a", icon: "doc", section: .recent, action: {}))
+        layout.replaceHomeEntries(
+            in: .recent,
+            with: [
+                HomeEntry(id: "recent.b", title: "b", icon: "doc", section: .recent, action: {}),
+                HomeEntry(id: "recent.b", title: "b again", icon: "doc", section: .recent, action: {}),
+            ])
+        #expect(layout.homeEntries.filter { $0.section == .recent }.map(\.id) == ["recent.b"])
+    }
+
     // MARK: - layout R35
 
     @Test func closesTheSelectionInBarOrderAndStopsAtARefusal() async {

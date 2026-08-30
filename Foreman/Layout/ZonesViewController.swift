@@ -147,7 +147,13 @@ final class ZonesViewController: GutterSplitViewController {
             }
         }
         applyRoom()
-        applyFocus(configuration.focus)
+        // Only when the model actually moved the focus: `apply` runs on every SwiftUI update, and
+        // re-asserting an unchanged target pulled the keyboard back out of whatever the user had
+        // clicked into — a theme change was enough to do it mid-typing (audit M11).
+        if appliedFocus != configuration.focus {
+            appliedFocus = configuration.focus
+            applyFocus(configuration.focus)
+        }
     }
 
     /// design R2: an island's corners, cut at the layer.
@@ -229,6 +235,9 @@ final class ZonesViewController: GutterSplitViewController {
     }
 
     // MARK: - Focus
+
+    /// The focus this controller last asserted; `nil` until the first one.
+    private var appliedFocus: FocusTarget?
 
     /// layout R6: a shown panel takes the keyboard focus, the center takes it back.
     private func applyFocus(_ focus: FocusTarget) {

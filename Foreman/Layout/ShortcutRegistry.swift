@@ -226,9 +226,14 @@ final class ShortcutRegistry {
         let layoutShortcuts = Set(
             actions.filter(\.isLayout).compactMap { $0.defaultShortcut.flatMap(Shortcut.init(parsing:)) })
 
+        // An action the user moved elsewhere never asks for its default, so that default cannot
+        // clash with the layout. Only a *valid* override counts: an unparsable one falls back on
+        // the default, which must still be checked (audit L2).
+        let moved = Set(overrides.filter { Shortcut(parsing: $0.value) != nil }.keys)
+
         for action in actions {
             guard let text = action.defaultShortcut, let shortcut = Shortcut(parsing: text) else { continue }
-            if !action.isLayout, layoutShortcuts.contains(shortcut) {
+            if !action.isLayout, layoutShortcuts.contains(shortcut), !moved.contains(action.id) {
                 problems.append(.reservedByLayout(shortcut, id: action.id))
                 continue
             }
@@ -245,7 +250,6 @@ final class ShortcutRegistry {
                 continue
             }
             requested.removeAll { $0.action.id == id }
-            problems.removeAll { $0 == .reservedByLayout(shortcut, id: id) }
             requested.append((action, shortcut))
         }
 

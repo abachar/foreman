@@ -14,7 +14,6 @@ final class Palette {
     nonisolated static let limit = 50
 
     let theme: ThemeService
-    private(set) var query = ""
     private(set) var results = PaletteSource.Results(items: [])
     private(set) var selectedIndex = 0
     private(set) var source: PaletteSource?
@@ -33,7 +32,6 @@ final class Palette {
     func present(_ source: PaletteSource, over window: NSWindow) {
         dismiss()
         self.source = source
-        query = ""
         results = PaletteSource.Results(items: [])
         selectedIndex = 0
         let panel = PalettePanel(
@@ -119,7 +117,6 @@ final class Palette {
     }
 
     func update(query: String) {
-        self.query = query
         selectedIndex = 0
         search?.cancel()
         guard let source else { return }

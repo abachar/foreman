@@ -197,6 +197,9 @@ private struct TabButton: View {
     let close: () -> Void
 
     private static let minimumWidth: CGFloat = 120
+    /// layout R16: past this a title is truncated, so one long name cannot take the whole bar
+    /// and hide every other tab (audit L7).
+    private static let maximumWidth: CGFloat = 240
 
     @State private var isHovered = false
 
@@ -226,7 +229,7 @@ private struct TabButton: View {
             .opacity(isHovered ? 1 : 0)
         }
         .padding(.horizontal, 12)
-        .frame(minWidth: Self.minimumWidth, maxHeight: .infinity)
+        .frame(minWidth: Self.minimumWidth, maxWidth: Self.maximumWidth, maxHeight: .infinity)
         .background(isActive ? tokens.surface.color : .clear)
         .overlay(alignment: .bottom) {
             (isActive ? tokens.accent.color : .clear).frame(height: 2)

@@ -36,6 +36,8 @@ final class LayoutManager {
 
     var tabKinds: [String: CenterTabDescriptor] = [:]
     var tabViews: [TabID: AnyView] = [:]
+    /// The tabs a `closeTab` is already working on, so a second one waits for no second dialog.
+    private var closing: Set<TabID> = []
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "layout")
 
     init() {
@@ -86,11 +88,14 @@ final class LayoutManager {
         tabKinds[descriptor.kind] = descriptor
     }
 
-    /// layout R33: same rules as toolbar items, a duplicated id is refused.
     /// layout R33: a section whose entries change over time (recent files, editor R19).
+    ///
+    /// Same rule as `register(homeEntry:)`: a duplicated id is refused, here silently — the
+    /// entries come from a feature's own list, not from a registration mistake (audit L5).
     func replaceHomeEntries(in section: HomeEntry.Section, with entries: [HomeEntry]) {
         homeEntries.removeAll { $0.section == section }
-        homeEntries.append(contentsOf: entries)
+        var seen = Set(homeEntries.map(\.id))
+        homeEntries.append(contentsOf: entries.filter { seen.insert($0.id).inserted })
     }
 
     func register(homeEntry: HomeEntry) {
@@ -196,6 +201,10 @@ final class LayoutManager {
     func closeTab(_ id: TabID) async {
         guard let owner = model.owner(of: id), let tab = model[group: owner]?.tabs.first(where: { $0.id == id })
         else { return }
+        // layout R15: one confirmation per tab. `cmd+w` pressed twice starts two closes of the
+        // same tab, and the second used to raise a second dialog over the first (audit L1).
+        guard closing.insert(id).inserted else { return }
+        defer { closing.remove(id) }
         if tab.isDirty, let descriptor = tabKinds[tab.kind], !(await descriptor.confirmClose(id)) {
             return
         }

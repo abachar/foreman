@@ -89,6 +89,32 @@ struct ShortcutRegistryTests {
         #expect(registry.problems.isEmpty)
     }
 
+    /// audit L2: the banner must go when the user moves the action off the layout's key.
+    @Test func anActionMovedElsewhereStopsBeingReportedAgainstTheLayout() {
+        registry.register(action("layout.split.vertical", "cmd+d", isLayout: true))
+        registry.register(action("pg.schema", "cmd+d"))
+        #expect(registry.problems.count == 1)
+
+        // Not swapped with the layout action — moved to a key of its own.
+        registry.apply(overrides: ["pg.schema": "cmd+shift+p"])
+
+        #expect(registry.problems.isEmpty)
+        #expect(resolve("cmd+shift+p") == "pg.schema")
+        #expect(resolve("cmd+d") == "layout.split.vertical")
+    }
+
+    /// An override that does not parse falls back on the default, which is still the layout's.
+    @Test func anOverrideThatDoesNotParseLeavesTheDefaultReported() {
+        registry.register(action("layout.split.vertical", "cmd+d", isLayout: true))
+        registry.register(action("pg.schema", "cmd+d"))
+
+        registry.apply(overrides: ["pg.schema": "not a shortcut"])
+
+        #expect(registry.problems.contains(.reservedByLayout(Shortcut(parsing: "cmd+d")!, id: "pg.schema")))
+        #expect(registry.problems.contains(.invalidOverride(id: "pg.schema", text: "not a shortcut")))
+        #expect(resolve("cmd+d") == "layout.split.vertical")
+    }
+
     /// layout R24: the two halves of an override fail apart, and the message names the right one.
     @Test func reportsAnOverrideThatDoesNotParseApartFromOneThatNamesNoAction() {
         registry.register(action("git.status", "cmd+shift+g"))
