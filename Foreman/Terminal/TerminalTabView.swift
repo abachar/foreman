@@ -25,7 +25,7 @@ struct TerminalTabView: View {
             }
             // design R13: the surface's colors are the island's; the appearance is the theme's.
             TerminalSurfaceRepresentable(
-                id: id, service: service, font: service.theme.editorFont, palette: service.theme.terminalPalette
+                id: id, service: service, font: service.font(for: tab), palette: service.theme.terminalPalette
             )
             // One native view per tab and per process: two terminal tabs are views of the same
             // type, SwiftUI would otherwise update the first surface instead of making the second.
@@ -82,7 +82,7 @@ private struct TerminalSurfaceRepresentable: NSViewRepresentable {
         return surface
     }
 
-    /// terminal R14: config reload or appearance change.
+    /// terminal R12, R14: config reload, appearance change, or a zoom step.
     func updateNSView(_ view: NSView, context: Context) {
         (view as? TerminalSurfaceView)?.apply(palette, font: font)
     }

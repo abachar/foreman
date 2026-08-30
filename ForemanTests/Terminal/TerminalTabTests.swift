@@ -56,6 +56,29 @@ struct TerminalTabTests {
         #expect(tab.generation == 0)
     }
 
+    /// terminal R12: the zoom is the tab's, over the theme's size, and stays readable.
+    @Test func zoomAccumulatesOverTheThemeSizeAndStaysBounded() {
+        let tab = tab()
+        #expect(tab.zoomOffset == 0)
+
+        tab.zoom(by: 1, base: 13)
+        tab.zoom(by: 1, base: 13)
+        #expect(tab.zoomOffset == 2)
+
+        for _ in 0..<50 {
+            tab.zoom(by: 1, base: 13)
+        }
+        #expect(tab.zoomOffset == TerminalTab.fontSizeRange.upperBound - 13)
+        // One step back leaves the bound, it does not have to be pressed fifty times.
+        tab.zoom(by: -1, base: 13)
+        #expect(tab.zoomOffset == TerminalTab.fontSizeRange.upperBound - 14)
+
+        for _ in 0..<50 {
+            tab.zoom(by: -1, base: 13)
+        }
+        #expect(tab.zoomOffset == TerminalTab.fontSizeRange.lowerBound - 13)
+    }
+
     @Test func keepsTheProcessTitleAsASubtitleOnly() {
         let tab = tab()
         tab.didSetTitle("vim README.md")

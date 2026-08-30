@@ -180,13 +180,20 @@ final class TerminalService {
 
     // MARK: - Surfaces
 
+    /// terminal R12, R14: the theme's editor font at the tab's zoom, the only place it is derived.
+    func font(for tab: TerminalTab) -> NSFont {
+        let base = theme.editorFont
+        guard tab.zoomOffset != 0 else { return base }
+        return NSFont(descriptor: base.fontDescriptor, size: base.pointSize + tab.zoomOffset) ?? base
+    }
+
     /// The SwiftTerm view of a tab, created on first display; a new one after each relaunch.
     func surface(for id: TabID) -> TerminalSurfaceView? {
-        guard tabs[id] != nil else { return nil }
+        guard let tab = tabs[id] else { return nil }
         if let surface = surfaces[id] {
             return surface
         }
-        let surface = TerminalSurfaceView(font: theme.editorFont)
+        let surface = TerminalSurfaceView(font: font(for: tab))
         surface.processDelegate = self
         surface.onBell = { [weak self] in self?.bell(id) }
         surfaces[id] = surface
@@ -257,24 +264,28 @@ final class TerminalService {
     // MARK: - Shortcuts (terminal R12)
 
     private func registerActions() {
-        let actions: [(String, String, String, (TerminalSurfaceView) -> Void)] = [
-            ("terminal.clear", "Clear Scrollback", "cmd+k", { $0.clearScrollback() }),
-            ("terminal.zoomIn", "Zoom In", "cmd+=", { Self.zoom($0, by: 1) }),
-            ("terminal.zoomOut", "Zoom Out", "cmd+-", { Self.zoom($0, by: -1) }),
+        let actions: [(String, String, String, (TerminalService, TabID) -> Void)] = [
+            ("terminal.clear", "Clear Scrollback", "cmd+k", { $0.clearScrollback($1) }),
+            ("terminal.zoomIn", "Zoom In", "cmd+=", { $0.zoom($1, by: 1) }),
+            ("terminal.zoomOut", "Zoom Out", "cmd+-", { $0.zoom($1, by: -1) }),
         ]
         for (id, title, shortcut, perform) in actions {
             layout.shortcuts.register(
                 ShortcutAction(id: id, title: title, scope: .terminal, defaultShortcut: shortcut) { [weak self] in
-                    guard let self, let active = layout.model.active.active?.id, let surface = surfaces[active]
-                    else { return }
-                    perform(surface)
+                    guard let self, let active = layout.model.active.active?.id else { return }
+                    perform(self, active)
                 })
         }
     }
 
-    private static func zoom(_ surface: TerminalSurfaceView, by step: CGFloat) {
-        let size = min(max(surface.font.pointSize + step, 8), 32)
-        surface.font = NSFont(descriptor: surface.font.fontDescriptor, size: size) ?? surface.font
+    /// terminal R14: only the surface holds the scrollback.
+    private func clearScrollback(_ id: TabID) {
+        surfaces[id]?.clearScrollback()
+    }
+
+    /// terminal R12: the zoom is the tab's state; the view derives the font from it and the theme.
+    private func zoom(_ id: TabID, by step: CGFloat) {
+        tabs[id]?.zoom(by: step, base: theme.editorFont.pointSize)
     }
 }
 

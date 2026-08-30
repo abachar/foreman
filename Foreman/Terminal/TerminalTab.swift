@@ -23,6 +23,14 @@ final class TerminalTab {
     private(set) var isCwdMissing: Bool
     /// Incremented on every new process, so the view swaps its surface (terminal R8).
     private(set) var generation = 0
+    /// terminal R12: points added to the theme's font size by `cmd+=` / `cmd+-`.
+    ///
+    /// The zoom lives here rather than on the surface: the view re-applies the theme's font on
+    /// every update (a config reload, an appearance change), which would silently undo it.
+    private(set) var zoomOffset: CGFloat = 0
+
+    /// terminal R12: a zoomed surface stays readable.
+    static let fontSizeRange: ClosedRange<CGFloat> = 8...32
 
     init(kind: String, title: String, command: String, cwd: URL, env: [String: String] = [:]) {
         self.kind = kind
@@ -70,6 +78,12 @@ final class TerminalTab {
 
     func didSetTitle(_ title: String) {
         subtitle = title.isEmpty ? nil : title
+    }
+
+    /// terminal R12: one step of the zoom shortcuts, over the theme's `base` size.
+    func zoom(by step: CGFloat, base: CGFloat) {
+        let size = min(max(base + zoomOffset + step, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
+        zoomOffset = size - base
     }
 
     /// terminal R8: same command, same folder, a new PTY; refused while the folder is missing.
