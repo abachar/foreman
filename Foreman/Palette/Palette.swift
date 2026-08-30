@@ -174,19 +174,34 @@ final class PalettePanel: NSPanel {
         flags.contains(.option) ? .secondary : .return(newGroup: flags.contains(.command))
     }
 
-    override func sendEvent(_ event: NSEvent) {
-        guard event.type == .keyDown else { return super.sendEvent(event) }
-        switch event.keyCode {
-        case 126:
-            onKey(.up)
-        case 125:
-            onKey(.down)
-        case 36, 76:
-            onKey(Self.returnKey(event.modifierFlags))
-        case 53:
-            onKey(.escape)
-        default:
-            super.sendEvent(event)
+    /// What a key event asks the palette for, `nil` for a key that belongs to the field.
+    ///
+    /// The keys are read by meaning, not by their position on an ANSI keyboard, and a modified
+    /// arrow or escape is the field's: `shift+↑↓` selects its text, `cmd+↑↓` moves in it and
+    /// `opt+escape` completes a word. Both return keys choose, with their modifiers (R17, run R6).
+    nonisolated static func key(
+        for special: NSEvent.SpecialKey?, characters: String?, modifiers: NSEvent.ModifierFlags
+    ) -> Key? {
+        // `enter` is the keypad's, `carriageReturn` the main one.
+        if special == .carriageReturn || special == .enter {
+            return returnKey(modifiers)
         }
+        guard modifiers.intersection([.command, .shift, .option, .control]).isEmpty else { return nil }
+        if special == .upArrow {
+            return .up
+        }
+        if special == .downArrow {
+            return .down
+        }
+        // AppKit names no special key for escape; the character it sends is the same everywhere.
+        return characters == "\u{1B}" ? .escape : nil
+    }
+
+    override func sendEvent(_ event: NSEvent) {
+        guard event.type == .keyDown,
+            let key = Self.key(
+                for: event.specialKey, characters: event.charactersIgnoringModifiers, modifiers: event.modifierFlags)
+        else { return super.sendEvent(event) }
+        onKey(key)
     }
 }
