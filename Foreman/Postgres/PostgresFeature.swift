@@ -107,8 +107,10 @@ final class PostgresFeature {
         layout.register(
             panel: PanelDescriptor(
                 id: Self.schemaPanelID, title: "Schema", side: .right, icon: "cylinder", defaultShortcut: "cmd+shift+b",
-                makeView: { [unowned self] in
-                    AnyView(PostgresSchemaPanelView(model: schema, connection: model, feature: self, theme: theme))
+                makeView: { [weak self] in
+                    guard let self else { return AnyView(EmptyView()) }
+                    return AnyView(
+                        PostgresSchemaPanelView(model: schema, connection: model, feature: self, theme: theme))
                 },
                 activate: { [weak self] in self?.panelActivated() },
                 deactivate: { [weak self] in self?.panelDeactivated() }))
