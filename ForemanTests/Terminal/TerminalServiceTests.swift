@@ -31,6 +31,15 @@ struct TerminalServiceTests {
         #expect(service.tab(id)?.isCwdMissing == false)
     }
 
+    /// terminal R16: a tab with no live process is told, not silently written to.
+    @Test func writingToARestoredTabIsRefused() {
+        let id = TabID()
+        _ = service.restore(id, kind: "agent.claude", title: "Claude", command: "claude", cwd: URL(filePath: "/tmp"))
+
+        #expect(throws: TerminalError.notRunning) { try service.write(Array("@x ".utf8), to: id) }
+        #expect(throws: TerminalError.noSuchTab) { try service.write(Array("@x ".utf8), to: TabID()) }
+    }
+
     @Test func restoredTabInAMissingFolderCannotRelaunch() {
         let id = TabID()
         _ = service.restore(

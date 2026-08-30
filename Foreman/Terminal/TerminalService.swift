@@ -110,9 +110,13 @@ final class TerminalService {
     }
 
     /// terminal R16: raw input, for a feature that must type into the process.
+    ///
+    /// A restored tab has no process until it is relaunched, and an ended one has a dead PTY:
+    /// dropping the bytes there would lose them without a word, so the caller is told instead.
     func write(_ bytes: [UInt8], to id: TabID) throws(TerminalError) {
-        _ = try known(id)
-        surfaces[id]?.send(bytes)
+        let tab = try known(id)
+        guard tab.isRunning, let surface = surfaces[id] else { throw .notRunning }
+        surface.send(bytes)
     }
 
     /// terminal R7: the view reports that its tab is shown.

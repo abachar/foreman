@@ -16,7 +16,7 @@ The user reads a file, a diff or the tree, and wants to tell the agent "look at 
 
 ## Functional rules
 
-- R10 — **Active agent** = the `agent.*` tab most recently activated in the window (the `activated` event of `terminal` R16), whatever its state; with none ever activated, the first agent tab of the window in bar order. No agent tab → the entries are disabled and the shortcut does nothing (a `debug` log). Foreman never launches an agent to send it text.
+- R10 — **Active agent** = the `agent.*` tab most recently activated in the window (the `activated` event of `terminal` R16) **whose process is running** (**amended 2026-08-30**: a tab holding no process takes nothing — see the edge cases; until then "whatever its state"); with none ever activated, the first such tab of the window in bar order. No such tab → the entries are disabled and the shortcut does nothing (a `debug` log). Foreman never launches an agent to send it text.
 - R10a — The text written: `@<path>` for a file or a folder (a folder keeps its trailing `/`), `@<path>:<line>` for one line, `@<path>:<from>-<to>` for a selection spanning several lines; a trailing space; never a newline (the user submits). The path is relative to the agent tab's cwd when the file is under it, absolute otherwise. It is written as is through `TerminalService.write` (`terminal` R16), no bracketed-paste, no quoting: a path with spaces is the user's problem, as in the agents' own prompts.
 - R10b — Sources and their entry points:
   - editor tab (`editor.file`): `cmd+e` (`editor.sendToAgent`, scope `tab(editor.file)`) — the selection's line range when it is not empty, the file otherwise;
@@ -29,7 +29,7 @@ The user reads a file, a diff or the tree, and wants to tell the agent "look at 
 
 ## Edge cases
 
-- The active agent tab has `exited`: the text is written to a dead PTY — refused: R10 skips exited tabs and falls back to the next most recent one; all exited → the entries are disabled.
+- The active agent tab has `exited`: the text is written to a dead PTY — refused: R10 skips exited tabs and falls back to the next most recent one; all exited → the entries are disabled. A restored tab (`00-study.md` R8) is `idle` with no PTY at all and is skipped the same way (2026-08-30); `TerminalService.write` refuses both (`TerminalError.notRunning`) instead of dropping the bytes.
 - A selection whose end is at column 0 of the next line does not include that line.
 - The diff of a whole commit (`git show <sha>`) has no single path: `cmd+e` sends `<sha>`; the line menu still sends `path:line`.
 

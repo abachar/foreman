@@ -447,7 +447,7 @@ final class AgentsFeature {
     /// agents R10a–R10c: the mention written into the active agent's PTY, its tab shown.
     func send(_ mention: AgentMention) {
         guard let id = activeAgentTab, let tab = terminal.tab(id) else {
-            logger.debug("nothing sent: no agent tab")
+            logger.debug("nothing sent: no running agent tab")
             return
         }
         do {
@@ -468,8 +468,12 @@ final class AgentsFeature {
             candidates: candidates.map { ($0, layout.model.owner(of: $0) != nil ? terminal.tab($0)?.state : nil) })
     }
 
-    /// agents R10: the last activated tab when it is still open and not exited, else the first
+    /// agents R10: the last activated tab when it is still open and running, else the first
     /// candidate in that state (`candidates` in bar order, `nil` state = gone).
+    ///
+    /// A tab with no process takes nothing: an exited one has a dead PTY, and a restored idle one
+    /// (agents R8) has none at all. R10 never launches an agent to send it text, so both are
+    /// skipped and the entries grey out when no agent is running.
     nonisolated static func activeAgentTab(
         lastActivated: TabID?, candidates: [(id: TabID, state: TerminalState?)]
     )
@@ -477,8 +481,8 @@ final class AgentsFeature {
     {
         func isLive(_ state: TerminalState?) -> Bool {
             switch state {
-            case .idle, .running: return true
-            case .exited, nil: return false
+            case .running: return true
+            case .idle, .exited, nil: return false
             }
         }
         if let lastActivated, let last = candidates.first(where: { $0.id == lastActivated }), isLive(last.state) {

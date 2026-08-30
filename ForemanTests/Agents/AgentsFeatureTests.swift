@@ -101,7 +101,9 @@ struct AgentSendTests {
     @Test func activeAgentIsTheLastActivatedLiveTab() {
         let first = TabID()
         let last = TabID()
-        let candidates: [(id: TabID, state: TerminalState?)] = [(first, .idle), (last, .running(pid: 1))]
+        let candidates: [(id: TabID, state: TerminalState?)] = [
+            (first, .running(pid: 1)), (last, .running(pid: 2)),
+        ]
         #expect(AgentsFeature.activeAgentTab(lastActivated: last, candidates: candidates) == last)
         #expect(AgentsFeature.activeAgentTab(lastActivated: nil, candidates: candidates) == first)
         #expect(AgentsFeature.activeAgentTab(lastActivated: TabID(), candidates: candidates) == first)
@@ -112,9 +114,19 @@ struct AgentSendTests {
         let gone = TabID()
         let live = TabID()
         let candidates: [(id: TabID, state: TerminalState?)] = [
-            (exited, .exited(.code(0))), (gone, nil), (live, .idle),
+            (exited, .exited(.code(0))), (gone, nil), (live, .running(pid: 1)),
         ]
         #expect(AgentsFeature.activeAgentTab(lastActivated: exited, candidates: candidates) == live)
         #expect(AgentsFeature.activeAgentTab(lastActivated: nil, candidates: [(exited, .exited(.code(1)))]) == nil)
+    }
+
+    /// agents R10 (2026-08-30): a restored tab has no process, and R10 never launches one.
+    @Test func aRestoredTabIsNotSentTo() {
+        let restored = TabID()
+        let running = TabID()
+        #expect(AgentsFeature.activeAgentTab(lastActivated: restored, candidates: [(restored, .idle)]) == nil)
+        #expect(
+            AgentsFeature.activeAgentTab(
+                lastActivated: restored, candidates: [(restored, .idle), (running, .running(pid: 1))]) == running)
     }
 }
