@@ -18,7 +18,11 @@ final class PostgresModel {
     /// R11: per session, never persisted.
     private(set) var allowWrites = false
 
-    func apply(_ outcome: PostgresConfig.Outcome) {
+    /// R1, R2 — what the section now says, the header's label or the reason there is none, and
+    /// the config warnings.
+    ///
+    /// The live session is left exactly as it is.
+    func setConfig(_ outcome: PostgresConfig.Outcome) {
         switch outcome {
         case .configured(let config, let warnings):
             label = config.label
@@ -29,6 +33,12 @@ final class PostgresModel {
             configMessage = message
             warnings = []
         }
+    }
+
+    /// R2, R11: the connection itself is being replaced, so the session starts over —
+    /// disconnected, no error, read-only again.
+    func apply(_ outcome: PostgresConfig.Outcome) {
+        setConfig(outcome)
         state = .disconnected
         error = nil
         allowWrites = false

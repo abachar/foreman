@@ -84,7 +84,10 @@ final class PostgresFeature {
         // R2 (2026-08-29), layout R36: the panel and the global shortcuts exist only with a section.
         show(decoded != nil)
         guard decoded != config || client == nil else {
-            model.apply(outcome)
+            // R2: nothing about the connection changed, so only what the section says is
+            // refreshed. Resetting the model here made the dot show "disconnected" and the
+            // pencil show read-only over a session that was still open and still writable.
+            model.setConfig(outcome)
             return
         }
         config = decoded
