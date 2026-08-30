@@ -51,8 +51,13 @@ struct ZonesView: NSViewControllerRepresentable {
                 toolbar.attach(to: window)
                 // layout R25: a terminal surface has the focus when it is the active tab and the
                 // center has the keyboard.
-                layout.shortcuts.startMonitoring(window: window) {
-                    (
+                // AppKit keeps the monitor's closure, and with it this one, until the monitor is
+                // removed: held strongly, the layout of a closed window would never be released.
+                layout.shortcuts.startMonitoring(window: window) { [weak layout] in
+                    guard let layout else {
+                        return (activeTabKind: nil, isTerminalFocused: false, isPanelFocused: false)
+                    }
+                    return (
                         activeTabKind: layout.model.active.active?.kind,
                         isTerminalFocused: layout.isTerminalTabActive && layout.panels.focus == .center,
                         isPanelFocused: layout.panels.focus != .center

@@ -78,14 +78,14 @@ final class ShortcutRegistry {
     private var bindings: [ShortcutScope: [Shortcut: String]] = [:]
     private var overrides: [String: String] = [:]
     private var monitor: Any?
+    /// The window's close, watched to take the monitor back down with it.
+    private var closeObserver: (any NSObjectProtocol)?
     /// What has the focus, as the monitor sees it; menus validate against the same context (R37).
     private var context: (() -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool))?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "layout")
 
     isolated deinit {
-        if let monitor {
-            NSEvent.removeMonitor(monitor)
-        }
+        stopMonitoring()
     }
 
     func register(_ action: ShortcutAction) {
@@ -190,6 +190,25 @@ final class ShortcutRegistry {
             action.perform()
             return nil
         }
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.stopMonitoring() }
+        }
+    }
+
+    /// The window is gone: AppKit holds the monitor's closure until `removeMonitor`, and that
+    /// closure holds the context — with it, everything the context reads of a closed window.
+    func stopMonitoring() {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        monitor = nil
+        if let closeObserver {
+            NotificationCenter.default.removeObserver(closeObserver)
+        }
+        closeObserver = nil
+        context = nil
     }
 
     // MARK: - Table
