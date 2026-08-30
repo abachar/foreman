@@ -108,3 +108,26 @@ struct GitCLITests {
         #expect(GitCLI.resolveExecutable(inPath: path, override: first.appending(path: "git").path()) == nil)
     }
 }
+
+/// git R26: what a run does with a real git, on a throwaway repo (like `GitSnapshotTests`).
+struct GitCLIRunTests {
+    /// The pipes are drained while git runs: an output past the 64 KB pipe buffer would otherwise
+    /// wedge git on a full pipe, and the run would only end on its time bound.
+    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: GitSnapshotTests.git.path())))
+    func readsAnOutputLargerThanThePipeBuffer() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "GitCLIRunTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = GitCLI(executable: GitSnapshotTests.git, repo: root, loginEnvironment: ["PATH": "/usr/bin:/bin"])
+        _ = try await client.run(["init", "-q"], kind: .write)
+        let content = String(repeating: "line of text\n", count: 20_000)
+        try content.write(to: root.appending(path: "big.txt"), atomically: true, encoding: .utf8)
+        _ = try await client.run(["add", "big.txt"], kind: .write)
+        _ = try await client.run(
+            ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "big"], kind: .write)
+
+        let output = try await client.run(["show", "HEAD:big.txt"])
+        #expect(output.stdout.count == content.utf8.count)
+        #expect(output.stderr.isEmpty)
+    }
+}
