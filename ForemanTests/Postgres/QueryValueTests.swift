@@ -79,6 +79,18 @@ struct QueryValueTests {
         #expect(result.countText == "1200 rows (3 pages of 500)")
     }
 
+    /// Edge cases: between -99 and -1 cents the sign lives nowhere but in the string —
+    /// `cents / 100` truncates to 0 and the remainder is taken in absolute value.
+    @Test func formatsMoneyKeepingTheSignOfSmallNegativeAmounts() {
+        #expect(QueryValue.money(cents: 0) == "0.00")
+        #expect(QueryValue.money(cents: -1) == "-0.01")
+        #expect(QueryValue.money(cents: -50) == "-0.50")
+        #expect(QueryValue.money(cents: -100) == "-1.00")
+        #expect(QueryValue.money(cents: -150) == "-1.50")
+        #expect(QueryValue.money(cents: 1_234) == "12.34")
+        #expect(QueryValue.money(cents: .min) == "-92233720368547758.08")
+    }
+
     @Test func formatsTimeAndInterval() {
         #expect(QueryValue.timeOfDay(microseconds: 0) == "00:00:00")
         #expect(QueryValue.timeOfDay(microseconds: 13 * 3_600_000_000 + 5 * 60_000_000 + 7_250_000) == "13:05:07.25")
@@ -94,6 +106,9 @@ struct QueryValueTests {
         var money = ByteBuffer()
         money.writeInteger(Int64(-1234))
         #expect(QueryValue.decode(type: .money, buffer: &money) == .raw("-12.34"))
+        var cents = ByteBuffer()
+        cents.writeInteger(Int64(-50))
+        #expect(QueryValue.decode(type: .money, buffer: &cents) == .raw("-0.50"))
         var inet = ByteBuffer()
         inet.writeBytes([2, 24, 0, 4, 10, 0, 0, 1])
         #expect(QueryValue.decode(type: .inet, buffer: &inet) == .raw("10.0.0.1/24"))

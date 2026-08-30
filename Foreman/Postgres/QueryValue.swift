@@ -59,8 +59,7 @@ nonisolated enum QueryValue: Equatable, Sendable {
         case .numeric:
             return .raw(try Decimal(from: &buffer, type: type, format: .binary, context: context).description)
         case .money:
-            let cents = try readInteger(&buffer, as: Int64.self)
-            return .raw(String(format: "%lld.%02lld", cents / 100, abs(cents % 100)))
+            return .raw(money(cents: try readInteger(&buffer, as: Int64.self)))
         case .text, .varchar, .name, .bpchar, .char:
             return .text(try String(from: &buffer, type: type, format: .binary, context: context))
         case .uuid:
@@ -146,6 +145,16 @@ nonisolated enum QueryValue: Equatable, Sendable {
     private static func readInteger<T: FixedWidthInteger>(_ buffer: inout ByteBuffer, as type: T.Type) throws -> T {
         guard let value = buffer.readInteger(as: type) else { throw PostgresDecodingError.Code.missingData }
         return value
+    }
+
+    /// `money` travels as a whole number of cents at the server's `lc_monetary` scale (2 here).
+    ///
+    /// The sign is carried by the string: between -99 and -1 cents the truncated quotient is 0,
+    /// so it is the only thing left to tell -0.50 from 0.50. `magnitude` also keeps `Int64.min`
+    /// in range, which negating would not.
+    static func money(cents: Int64) -> String {
+        let magnitude = cents.magnitude
+        return (cents < 0 ? "-" : "") + "\(magnitude / 100)." + String(format: "%02llu", magnitude % 100)
     }
 
     static func timeOfDay(microseconds: Int64) -> String {
