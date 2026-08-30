@@ -83,6 +83,17 @@ final class BrowserTab: NSObject {
         }
     }
 
+    /// browser R5, security: a scheme the system handles leaves Foreman only on a link the user
+    /// clicked in the main frame.
+    ///
+    /// `NSWorkspace.open` starts whatever app claims the scheme. Taking every `.system` decision
+    /// meant a page — or a hidden iframe on it, or a redirect it never showed — could launch a
+    /// registered app with a URL of its choosing, with no gesture and no prompt (audit M7). The
+    /// user still confirms afterwards; this only says when the question may be asked at all.
+    nonisolated static func mayLeaveTheApp(navigationType: WKNavigationType, isMainFrame: Bool) -> Bool {
+        isMainFrame && navigationType == .linkActivated
+    }
+
     /// browser R3: created at the first show, kept for the tab's life.
     var webView: WKWebView {
         if let webViewStorage { return webViewStorage }
@@ -163,7 +174,20 @@ extension BrowserTab: WKNavigationDelegate {
             banner = nil
             return .allow
         case .system:
-            NSWorkspace.shared.open(url)
+            guard
+                Self.mayLeaveTheApp(
+                    navigationType: navigationAction.navigationType,
+                    isMainFrame: navigationAction.targetFrame?.isMainFrame ?? false)
+            else {
+                banner = "This page tried to open \(url.scheme ?? "a link") outside Foreman."
+                return .cancel
+            }
+            if await dialog(
+                "Open “\(url.absoluteString)” in another app?", buttons: ["Open", "Cancel"])
+                == .alertFirstButtonReturn
+            {
+                NSWorkspace.shared.open(url)
+            }
             return .cancel
         case .refuse(let reason):
             banner = reason
@@ -222,11 +246,27 @@ extension BrowserTab: WKUIDelegate {
         return response == .alertFirstButtonReturn ? field.stringValue : nil
     }
 
+    /// browser R8: `<input type="file">`, as a sheet over the tab's window.
+    func webView(
+        _ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters,
+        initiatedByFrame frame: WKFrameInfo
+    ) async -> [URL]? {
+        guard let window else { return nil }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = parameters.allowsDirectories
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        return await panel.beginSheetModal(for: window) == .OK ? panel.urls : nil
+    }
+
     private func dialog(
         _ message: String, buttons: [String], accessory: NSView? = nil
     ) async
         -> NSApplication.ModalResponse
     {
+        // A page whose tab has no window on screen gets no dialog at all: `runModal()` would
+        // block every window of the app on something the user cannot even see (audit T4).
+        guard let window else { return .alertSecondButtonReturn }
         let alert = NSAlert()
         alert.messageText = url.host() ?? "Browser"
         alert.informativeText = message
@@ -234,7 +274,6 @@ extension BrowserTab: WKUIDelegate {
         for button in buttons {
             alert.addButton(withTitle: button)
         }
-        guard let window else { return alert.runModal() }
         return await alert.beginSheetModal(for: window)
     }
 }

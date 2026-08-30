@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WebKit
 
 @testable import Foreman
 
@@ -30,6 +31,17 @@ struct BrowserTests {
         #expect(
             BrowserTab.policy(for: try #require(URL(string: "javascript:alert(1)")))
                 == .refuse("This link cannot be opened."))
+    }
+
+    /// audit M7: a scheme only leaves Foreman on a link the user clicked in the main frame.
+    @Test func onlyAClickedMainFrameLinkMayLeaveTheApp() {
+        #expect(BrowserTab.mayLeaveTheApp(navigationType: .linkActivated, isMainFrame: true))
+        // A hidden iframe is the whole point of the finding.
+        #expect(!BrowserTab.mayLeaveTheApp(navigationType: .linkActivated, isMainFrame: false))
+        // Nothing the page starts on its own: a redirect, a form it submits, a reload.
+        #expect(!BrowserTab.mayLeaveTheApp(navigationType: .other, isMainFrame: true))
+        #expect(!BrowserTab.mayLeaveTheApp(navigationType: .formSubmitted, isMainFrame: true))
+        #expect(!BrowserTab.mayLeaveTheApp(navigationType: .reload, isMainFrame: true))
     }
 
     @Test func titleFallsBackToTheHost() throws {
