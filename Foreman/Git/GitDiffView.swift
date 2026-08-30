@@ -170,7 +170,9 @@ struct GitDiffView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cellBackground(cell?.kind))
         .contextMenu {
-            if let line = cell.flatMap({ Int($0.number) }) {
+            // The left cell numbers the old file: a removed line is nowhere in the file the agent
+            // would open, so only a line the file still has is offered (agents R10b).
+            if let line = cell?.newNumber {
                 Button("Send to Agent") { sendLine(path, line) }
             }
         }
