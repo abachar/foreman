@@ -85,15 +85,14 @@ nonisolated struct QueryHistory: Codable, Equatable, Sendable {
         return history
     }
 
-    /// A temporary file next to it, then `replaceItemAt`; `.foreman/` created if needed.
+    /// Written atomically (`.atomic` is Foundation's own temporary-then-rename, under a name it
+    /// picks per write); `.foreman/` created if needed.
     @concurrent
     static func write(_ history: QueryHistory, root: URL) async throws {
         let file = file(under: root)
-        let folder = file.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let temporary = folder.appending(path: "postgres-history.json.tmp")
-        try encoder.encode(history).write(to: temporary)
-        _ = try FileManager.default.replaceItemAt(file, withItemAt: temporary)
+        try FileManager.default.createDirectory(
+            at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try encoder.encode(history).write(to: file, options: [.atomic])
     }
 
     private static var encoder: JSONEncoder {
