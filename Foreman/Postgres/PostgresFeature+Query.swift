@@ -110,7 +110,7 @@ extension PostgresFeature {
                 tab.fail(classified, cursor: classified.isServerError ? cursor : nil)
                 self?.record(statement.sql, duration: clock.now - started, rowCount: nil, error: classified.description)
                 if case .authenticationFailed = classified {
-                    self?.invalidatePasswordIfAsked()
+                    await self?.invalidatePasswordIfAsked()
                 }
             }
         }
