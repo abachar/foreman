@@ -86,6 +86,9 @@ nonisolated enum FormatterLaunch {
             kill(pid, SIGTERM)
             if (try? await Task.sleep(for: killDelay)) != nil {
                 kill(pid, SIGKILL)
+                // A child of the formatter may keep the pipes open: closing them ends the reads.
+                try? output.fileHandleForReading.close()
+                try? errors.fileHandleForReading.close()
             }
             return true
         }
@@ -106,20 +109,42 @@ nonisolated enum FormatterLaunch {
             stderr: String(decoding: diagnostics, as: UTF8.self), original: text)
     }
 
-    /// Blocking, on its own thread (like `Workspace.resolveLoginEnvironment`): `FileHandle.bytes`
-    /// stalled a 260 KB round trip through `cat`.
+    /// The whole pipe, accumulated without parking a pool thread (like
+    /// `Workspace.resolveLoginEnvironment`); safe because stdout, stderr and stdin all move
+    /// concurrently — a full buffer on one never wedges the others.
     @concurrent
     private static func read(_ handle: FileHandle) async -> Data {
-        (try? handle.readToEnd()) ?? Data()
+        var data = Data()
+        do {
+            for try await byte in handle.bytes {
+                data.append(byte)
+            }
+        } catch {
+            // The reaper closed the pipe: what was read so far is all there is.
+        }
+        return data
     }
 
-    @concurrent
+    /// DispatchIO writes without parking a pool thread on a formatter slow to drink its input;
+    /// closing the handle afterwards is the formatter's EOF.
     private static func write(_ data: Data, to handle: FileHandle) async {
-        do {
-            try handle.write(contentsOf: data)
-        } catch {
-            // EPIPE: the formatter exited first; its status and stderr tell the story.
+        guard !data.isEmpty else {
+            try? handle.close()
+            return
         }
-        try? handle.close()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let queue = DispatchQueue.global()
+            let channel = DispatchIO(type: .stream, fileDescriptor: handle.fileDescriptor, queue: queue) { _ in
+                try? handle.close()
+                continuation.resume()
+            }
+            channel.write(0, data: data.withUnsafeBytes { DispatchData(bytes: $0) }, queue: queue) { done, _, _ in
+                // An error (EPIPE: the formatter exited before reading) also arrives with `done`;
+                // the status and stderr tell the story.
+                if done {
+                    channel.close()
+                }
+            }
+        }
     }
 }
