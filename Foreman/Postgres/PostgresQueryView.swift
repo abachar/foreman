@@ -112,7 +112,14 @@ struct PostgresQueryView: View {
                 grid(result)
                 statusBar(result)
             } else if let result = tab.result, !tab.isRunning, tab.error == nil {
-                ContentUnavailableView("OK", systemImage: "checkmark.circle", description: Text("No result set."))
+                // R17: a query that matched nothing is not a command tag; the leading keyword is
+                // what tells them apart, PostgresNIO exposing neither of the two.
+                if tab.returnsRows {
+                    ContentUnavailableView(
+                        "No Rows", systemImage: "tablecells", description: Text("The query matched nothing."))
+                } else {
+                    ContentUnavailableView("OK", systemImage: "checkmark.circle", description: Text("No result set."))
+                }
                 statusBar(result)
             } else if tab.isRunning {
                 ProgressView()
@@ -131,7 +138,7 @@ struct PostgresQueryView: View {
     /// R17: `N rows · 42 ms · user@database`.
     private func statusBar(_ result: QueryResult) -> some View {
         HStack(spacing: 6) {
-            Text(result.columns.isEmpty ? "OK" : result.countText)
+            Text(result.columns.isEmpty && !tab.returnsRows ? "OK" : result.countText)
             if result.isTruncated {
                 Label(
                     "truncated at \(PostgresFeature.rowLimit) rows, add a LIMIT",

@@ -28,6 +28,37 @@ nonisolated enum QueryExecution {
         return min(sent.location + sql, textLength)
     }
 
+    /// R17: whether the statement comes back with a result set at all, so an empty one is shown
+    /// as `0 rows` and not as the `OK` of a command tag.
+    ///
+    /// PostgresNIO exposes neither the row description nor the command tag (decision
+    /// 2026-08-27), so the leading keyword is all there is to go on. Nothing else of the
+    /// statement is read and it is never rewritten (R15): a statement whose keyword is hidden
+    /// behind an unterminated comment, and an `INSERT … RETURNING`, still read as commands.
+    static func returnsRows(_ sql: String) -> Bool {
+        rowReturningKeywords.contains(leadingKeyword(of: sql))
+    }
+
+    /// The first word of `sql`, past leading whitespace, opening parentheses and comments.
+    private static func leadingKeyword(of sql: String) -> String {
+        var rest = Substring(sql)
+        while true {
+            rest = rest.drop { $0.isWhitespace || $0 == "(" }
+            if rest.hasPrefix("--") {
+                rest = rest.drop { !$0.isNewline }
+            } else if rest.hasPrefix("/*") {
+                guard let end = rest.range(of: "*/") else { return "" }
+                rest = rest[end.upperBound...]
+            } else {
+                return rest.prefix { $0.isLetter }.lowercased()
+            }
+        }
+    }
+
+    private static let rowReturningKeywords: Set<String> = [
+        "explain", "fetch", "select", "show", "table", "values", "with",
+    ]
+
     /// R10, R11: what the banner adds under a server error the user can act on.
     static func hint(sqlState: String?) -> String? {
         switch sqlState {
