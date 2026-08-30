@@ -42,7 +42,17 @@ struct AgentCatalogTests {
     }
 
     @Test func parsesTheNulSeparatedEnvironment() {
-        let data = Data("PATH=/a:/b\u{0}MULTI=line1\nline2\u{0}NOEQ\u{0}".utf8)
+        let data = Data("\(Workspace.environmentSentinel)\u{0}PATH=/a:/b\u{0}MULTI=line1\nline2\u{0}NOEQ\u{0}".utf8)
         #expect(Workspace.parseEnvironment(data) == ["PATH": "/a:/b", "MULTI": "line1\nline2"])
+    }
+
+    @Test func discardsProfileNoiseBeforeTheSentinel() {
+        let noisy = Data("Last login: today\nagent pid 42\(Workspace.environmentSentinel)\u{0}PATH=/a\u{0}".utf8)
+        #expect(Workspace.parseEnvironment(noisy) == ["PATH": "/a"])
+    }
+
+    @Test func trustsNothingWithoutTheSentinel() {
+        #expect(Workspace.parseEnvironment(Data("PATH=/a\u{0}HOME=/b\u{0}".utf8)) == [:])
+        #expect(Workspace.parseEnvironment(Data()) == [:])
     }
 }
