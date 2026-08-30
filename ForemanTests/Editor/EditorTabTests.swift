@@ -60,6 +60,22 @@ struct EditorTabTests {
         #expect(tab.diskState == .current)
     }
 
+    /// A closed tab must free its whole text stack: the coordinator holds the tab weakly, so the
+    /// pair deallocates once the feature drops the tab.
+    @Test func aReleasedTabAndItsCoordinatorDeallocate() {
+        weak var weakTab: EditorTab?
+        weak var weakCoordinator: EditorTextView.Coordinator?
+        var tab: EditorTab? = EditorTab(path: "a.txt", url: URL(filePath: "/tmp/a.txt"), isPinned: true)
+        var coordinator: EditorTextView.Coordinator? = tab.map { EditorTextView.Coordinator(tab: $0) }
+        tab?.textCoordinator = coordinator
+        weakTab = tab
+        weakCoordinator = coordinator
+        coordinator = nil
+        tab = nil
+        #expect(weakTab == nil)
+        #expect(weakCoordinator == nil)
+    }
+
     /// editor R34: a tab is untitled because of where its file is, so the save that moves the file
     /// out of the scratches is all it takes to become an ordinary one — highlighting (R11) included.
     @Test func aSavedScratchTabBecomesAnOrdinaryFileTab() {
