@@ -24,5 +24,6 @@ Breakdown and progress of the implementation, one file per milestone. The specs 
 | M15 — Usage, first round | [m15-usage.md](m15-usage.md) | terminal (R7), git (R6b), explorer (R23), layout (R24, R37), config (R4), product (R8) | 🟢 (2026-08-30) |
 | M16 — New file, and the markdown viewer against GitHub | [m16-new-file-markdown.md](m16-new-file-markdown.md) | editor (R1, R8 amended, new R34), explorer (R3), layout (new R38), design (R6 amended) | 🟢 (2026-08-30) |
 | M17 — Audit follow-up | [m17-audit.md](m17-audit.md) | every domain: the findings of [`audit-2026-08-30.md`](../audits/audit-2026-08-30.md) | 🟢 (2026-08-30; M15a left open with its reason, R4–R6, R8, W4, T6, L6 closed without a change, E8 sent to `questions.md`) |
+| M18 — LSP: diagnostics, hover, go-to-definition | [m18-lsp.md](m18-lsp.md) | editor ([`03-study-lsp.md`](../specs/editor/03-study-lsp.md) R35–R46, [`04-study-selectors.md`](../specs/editor/04-study-selectors.md) R47–R49) | ⚪ (opened 2026-08-31; asked by the testers, completion excluded on purpose) |
 
 Each file contains: the scope, the task table (rules covered, **library / native component used**, tests, size, status, PR), the definition of done, the decisions to take during the milestone. One task = one PR. The status is updated in the PR that finishes the task.

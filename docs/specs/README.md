@@ -10,7 +10,7 @@ One folder per domain, **in implementation order** (each row depends only on the
 | 2 | [config](config/) | `.foreman/config.json`, `state.json`, Keychain, hot reload | product | M0 |
 | 3 | [layout](layout/) | zones, splits, tab groups, PanelManager, ShortcutRegistry, toolbar, home screen | config | M0 |
 | 4 | [explorer](explorer/) | file tree, FSEvents, CRUD, git badges | layout | M1 |
-| 5 | [editor](editor/) | viewer/editor, `Highlight`, markdown, quick open, search; formatting (`01-study-formatter.md`) | explorer, `Palette`, `Highlight` | M1, M7 |
+| 5 | [editor](editor/) | viewer/editor, `Highlight`, markdown, quick open, search; formatting (`01-study-formatter.md`), folding (`02-study-folding.md`), LSP diagnostics/hover/definition (`03-study-lsp.md`), go to selector (`04-study-selectors.md`) | explorer, `Palette`, `Highlight` | M1, M7, M18 |
 | 6 | [terminal](terminal/) | PTY owned by Foreman + SwiftTerm surface, `TerminalService` (one tab = one process, no shell) | layout | M2 |
 | 7 | [agents](agents/) | CLI agents (Claude Code, Antigravity, OpenCode): toolbar buttons, one tab per agent | terminal | M2 |
 | 8 | [run](run/) | workspace commands → terminal surface, `cmd+r` palette, ▶ Run button | terminal, `Palette` | M3 |
