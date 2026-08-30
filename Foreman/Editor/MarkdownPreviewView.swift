@@ -14,6 +14,7 @@ struct MarkdownPreviewView: View {
     let onOpenFile: (URL) -> Void
 
     @State private var blocks: [MarkdownBlock] = []
+    @State private var images = MarkdownImageCache()
 
     /// design R6: every space in the preview is a multiple of the reading size.
     private var metrics: MarkdownMetrics {
@@ -27,7 +28,8 @@ struct MarkdownPreviewView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: metrics.blockSpacing) {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                    MarkdownBlockView(block: block, theme: theme, highlighter: highlighter, metrics: metrics)
+                    MarkdownBlockView(
+                        block: block, theme: theme, highlighter: highlighter, metrics: metrics, images: images)
                 }
             }
             .padding(20)
@@ -74,6 +76,7 @@ private struct MarkdownBlockView: View {
     let theme: ThemeService
     let highlighter: Highlighter
     let metrics: MarkdownMetrics
+    let images: MarkdownImageCache
     /// design R6: how many lists deep this block sits, for the marker (0 at the top level).
     var depth = 0
 
@@ -141,7 +144,7 @@ private struct MarkdownBlockView: View {
                             ForEach(Array(item.blocks.enumerated()), id: \.offset) { _, child in
                                 MarkdownBlockView(
                                     block: child, theme: theme, highlighter: highlighter, metrics: metrics,
-                                    depth: depth + 1)
+                                    images: images, depth: depth + 1)
                             }
                         }
                     }
@@ -153,7 +156,8 @@ private struct MarkdownBlockView: View {
                 VStack(alignment: .leading, spacing: metrics.blockSpacing) {
                     ForEach(Array(blocks.enumerated()), id: \.offset) { _, child in
                         MarkdownBlockView(
-                            block: child, theme: theme, highlighter: highlighter, metrics: metrics, depth: depth)
+                            block: child, theme: theme, highlighter: highlighter, metrics: metrics, images: images,
+                            depth: depth)
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -184,16 +188,23 @@ private struct MarkdownBlockView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         case .image(let url, let alt):
-            if let image = NSImage(contentsOf: url) {
+            // The file is read off the main actor (coding rules: no IO in a `body`); a quiet
+            // frame keeps the block's place until the bytes arrive.
+            if let image = images.image(at: url) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: 800, alignment: .leading)
                     .accessibilityLabel(alt)
-            } else {
+            } else if images.hasFailed(url) {
                 Text("[\(alt.isEmpty ? url.lastPathComponent : alt)]")
                     .font(Font(theme.readingFont(scale: 0.875)))
                     .foregroundStyle(.secondary)
+            } else {
+                theme.tokens.surfaceSunken.color
+                    .frame(maxWidth: 800, alignment: .leading)
+                    .frame(height: 120)
+                    .onAppear { images.load(url) }
             }
         case .html(let raw):
             Text(raw)
@@ -256,5 +267,44 @@ private struct CodeBlockView: View {
             else { return }
             highlighted = await highlighter.highlight(code, language: language)
         }
+    }
+}
+
+/// editor R14: the preview's images, one read per URL for the life of the view. The blocks only
+/// ever carry workspace files (`MarkdownLinks.image`), never a remote resource.
+@MainActor
+@Observable
+private final class MarkdownImageCache {
+    private var images: [URL: NSImage] = [:]
+    /// URLs whose file read or decode produced nothing: the alt text shows instead.
+    private var failed: Set<URL> = []
+    @ObservationIgnored private var loading: Set<URL> = []
+
+    func image(at url: URL) -> NSImage? {
+        images[url]
+    }
+
+    func hasFailed(_ url: URL) -> Bool {
+        failed.contains(url)
+    }
+
+    /// Reads `url` off the main actor once; the observed dictionaries re-render the blocks.
+    func load(_ url: URL) {
+        guard images[url] == nil, !failed.contains(url), !loading.contains(url) else { return }
+        loading.insert(url)
+        Task {
+            let data = await Self.read(url)
+            loading.remove(url)
+            if let image = data.flatMap(NSImage.init(data:)) {
+                images[url] = image
+            } else {
+                failed.insert(url)
+            }
+        }
+    }
+
+    @concurrent
+    private static func read(_ url: URL) async -> Data? {
+        try? Data(contentsOf: url)
     }
 }
