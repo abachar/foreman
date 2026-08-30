@@ -83,8 +83,10 @@ final class EditorFeature {
             placeholder: "Open file…",
             results: { [weak self] query in await self?.quickOpenResults(query) ?? PaletteSource.Results(items: []) },
             select: { [weak self] item, newGroup in
-                guard let self else { return }
-                open(Workspace.url(forPersistedPath: item.id, root: workspace.root), preview: false, newGroup: newGroup)
+                guard let self, let url = Workspace.url(forPersistedPath: item.id, root: workspace.root) else {
+                    return
+                }
+                open(url, preview: false, newGroup: newGroup)
             })
         palette.present(source, over: window)
     }
@@ -92,9 +94,9 @@ final class EditorFeature {
     private func quickOpenResults(_ query: String) async -> PaletteSource.Results {
         if query.isEmpty {
             // editor R19: no query, the recent files.
-            let existing = recentPaths.filter {
-                FileManager.default.fileExists(
-                    atPath: Workspace.url(forPersistedPath: $0, root: workspace.root).path(percentEncoded: false))
+            let existing = recentPaths.filter { path in
+                guard let url = Workspace.url(forPersistedPath: path, root: workspace.root) else { return false }
+                return FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
             }
             return PaletteSource.Results(
                 items: existing.map {
@@ -125,8 +127,10 @@ final class EditorFeature {
                     icon: FileIcon.name(for: (path as NSString).lastPathComponent),
                     section: .recent
                 ) { [weak self] in
-                    guard let self else { return }
-                    open(Workspace.url(forPersistedPath: path, root: workspace.root), preview: false)
+                    guard let self, let url = Workspace.url(forPersistedPath: path, root: workspace.root) else {
+                        return
+                    }
+                    open(url, preview: false)
                 }
             })
     }
@@ -667,9 +671,9 @@ final class EditorFeature {
             tabs[id] = tab
         } else {
             guard let data = payload.data(using: .utf8),
-                let decoded = try? JSONDecoder().decode(EditorTab.Payload.self, from: data)
+                let decoded = try? JSONDecoder().decode(EditorTab.Payload.self, from: data),
+                let url = Workspace.url(forPersistedPath: decoded.path, root: workspace.root)
             else { return nil }
-            let url = Workspace.url(forPersistedPath: decoded.path, root: workspace.root)
             // editor R4: a file gone since is not restored (product, edge cases).
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
             tab = EditorTab(

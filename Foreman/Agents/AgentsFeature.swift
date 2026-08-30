@@ -162,9 +162,10 @@ final class AgentsFeature {
         guard agent.icon.contains("/") || agent.icon.hasSuffix(".svg") || agent.icon.hasSuffix(".png") else {
             return agent.icon
         }
-        let file = Workspace.url(forPersistedPath: agent.icon, root: workspace.root).standardizedFileURL
-        let path = file.path(percentEncoded: false)
-        return path.hasPrefix(workspace.root.standardizedFileURL.path(percentEncoded: false)) ? path : agent.icon
+        guard let file = Workspace.url(forPersistedPath: agent.icon, root: workspace.root),
+            Workspace.contains(file, under: workspace.root)
+        else { return agent.icon }
+        return file.path(percentEncoded: false)
     }
 
     private func agent(_ id: String) -> Agent? {
@@ -303,10 +304,9 @@ final class AgentsFeature {
         guard await alert.beginSheetModal(for: window) == .alertFirstButtonReturn else { return }
         await layout.closeTab(tab)
         guard layout.model.owner(of: tab) == nil else { return }
+        guard let repo = Workspace.url(forPersistedPath: worktree.repo, root: workspace.root) else { return }
         do {
-            try await git.removeWorktree(
-                in: Workspace.url(forPersistedPath: worktree.repo, root: workspace.root),
-                folder: URL(filePath: worktree.folder))
+            try await git.removeWorktree(in: repo, folder: URL(filePath: worktree.folder))
         } catch {
             report("Worktree not removed", error.description)
         }
@@ -380,7 +380,8 @@ final class AgentsFeature {
         }
         // agents R8: restored idle in its folder, with today's command, never run by itself.
         guard let agent = agent(agentID), let data = payload.data(using: .utf8),
-            let decoded = try? JSONDecoder().decode(Payload.self, from: data)
+            let decoded = try? JSONDecoder().decode(Payload.self, from: data),
+            let cwd = Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root)
         else { return nil }
         agentOfTab[id] = agentID
         if primaryTabs[agentID] == nil {
@@ -391,7 +392,7 @@ final class AgentsFeature {
         return terminal.restore(
             id, kind: Self.kind(of: agentID),
             title: decoded.worktree.map { Self.title(agent.title, branch: $0.branch) } ?? agent.title,
-            command: agent.command, cwd: Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root))
+            command: agent.command, cwd: cwd)
     }
 
     private func serialize(_ id: TabID, agentID: String) -> String? {

@@ -676,11 +676,16 @@ final class GitFeature {
     /// A restored tab is pinned; the client comes lazily, once the toolchain is resolved.
     private func diffView(_ id: TabID, payload: String) -> AnyView? {
         guard let decoded = GitDiffPayload.decode(payload) else { return nil }
-        let repo =
-            model.section(decoded.repo)?.repo
-            ?? GitRepo(
-                id: decoded.repo,
-                url: Workspace.url(forPersistedPath: decoded.repo == "." ? "" : decoded.repo, root: workspace.root))
+        let repo: GitRepo
+        if let known = model.section(decoded.repo)?.repo {
+            repo = known
+        } else if let url = Workspace.url(
+            forPersistedPath: decoded.repo == "." ? "" : decoded.repo, root: workspace.root)
+        {
+            repo = GitRepo(id: decoded.repo, url: url)
+        } else {
+            return nil
+        }
         let diffModel = GitDiffModel(
             payload: decoded, client: { [weak self] in await self?.client(for: repo) }, repo: repo,
             highlighter: highlighter, theme: theme, statusChanges: decoded.source.isImmutable ? nil : statusChanges())

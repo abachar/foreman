@@ -72,6 +72,26 @@ struct WorkspaceStateTests {
         #expect(Workspace.url(forPersistedPath: "/etc/hosts", root: root) == URL(filePath: "/etc/hosts"))
     }
 
+    /// architecture, security: a relative path from `state.json` never resolves outside the root.
+    @Test func rejectsPersistedPathsThatEscapeTheRoot() {
+        let root = URL(filePath: "/Users/tester/code", directoryHint: .isDirectory)
+
+        #expect(Workspace.url(forPersistedPath: "../secrets", root: root) == nil)
+        #expect(Workspace.url(forPersistedPath: "src/../../codex/a", root: root) == nil)
+        #expect(Workspace.url(forPersistedPath: "src/../main.swift", root: root) == root.appending(path: "main.swift"))
+    }
+
+    @Test func checksContainmentOnStandardizedPaths() {
+        let root = URL(filePath: "/Users/tester/code", directoryHint: .isDirectory)
+
+        #expect(Workspace.contains(URL(filePath: "/Users/tester/code/src/a.swift"), under: root))
+        #expect(Workspace.contains(URL(filePath: "/Users/tester/code"), under: root))
+        #expect(Workspace.contains(URL(filePath: "/Users/tester/code/src/../b.swift"), under: root))
+        #expect(!Workspace.contains(URL(filePath: "/Users/tester/codex/a"), under: root))
+        #expect(!Workspace.contains(URL(filePath: "/Users/tester/code/../other"), under: root))
+        #expect(!Workspace.contains(URL(filePath: "/etc/hosts"), under: root))
+    }
+
     @Test @MainActor func writesOnceAfterABurstOfChanges() async throws {
         defer { remove() }
         let workspace = Workspace(

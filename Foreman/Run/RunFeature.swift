@@ -411,12 +411,13 @@ final class RunFeature {
         }
         // run R13: restored idle in its folder, with today's command, never run by itself.
         guard let command = command(commandID), let data = payload.data(using: .utf8),
-            let decoded = try? JSONDecoder().decode(Payload.self, from: data)
+            let decoded = try? JSONDecoder().decode(Payload.self, from: data),
+            let cwd = Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root)
         else { return nil }
         adopt(id, commandID: commandID)
         return terminal.restore(
             id, kind: Self.kind(of: commandID), title: commandID, command: command.command,
-            cwd: Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root), env: command.env)
+            cwd: cwd, env: command.env)
     }
 
     private func adopt(_ id: TabID, commandID: String) {
