@@ -599,7 +599,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
 /// `NSOutlineView` that hands a few keys to its owner (explorer R21) before its own handling.
 final class KeyboardOutlineView: NSOutlineView {
-    enum Key {
+    enum Key: Equatable {
         case open
         case rename
         case commandDelete
@@ -613,19 +613,26 @@ final class KeyboardOutlineView: NSOutlineView {
 
     var onKey: (Key) -> Bool = { _ in false }
 
-    override func keyDown(with event: NSEvent) {
-        let key: Key?
-        if event.keyCode == 36 || event.keyCode == 76 {
-            key = .open
-        } else if event.keyCode == 97, event.modifierFlags.contains(.shift) {
-            // explorer R21: `shift+F6`, IntelliJ's rename.
-            key = .rename
-        } else if event.keyCode == 51, event.modifierFlags.contains(.command) {
-            key = .commandDelete
-        } else {
-            key = nil
+    /// explorer R21: what a key press asks for, read from the key's meaning rather than from its
+    /// position, which moves with the keyboard layout.
+    nonisolated static func key(for special: NSEvent.SpecialKey?, modifiers: NSEvent.ModifierFlags) -> Key? {
+        // `enter` is the keypad's, `carriageReturn` the main one; both open (R12).
+        if special == .carriageReturn || special == .enter {
+            return .open
         }
-        if let key, onKey(key) {
+        // explorer R21: `shift+F6`, IntelliJ's rename.
+        if special == .f6, modifiers.contains(.shift) {
+            return .rename
+        }
+        // `delete` is the key above the return key, which sends the delete character on macOS.
+        if special == .delete, modifiers.contains(.command) {
+            return .commandDelete
+        }
+        return nil
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let key = Self.key(for: event.specialKey, modifiers: event.modifierFlags), onKey(key) {
             return
         }
         super.keyDown(with: event)
