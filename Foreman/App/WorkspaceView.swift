@@ -52,6 +52,14 @@ struct WorkspaceView: View {
                 let editor = EditorFeature(
                     layout: layout, workspace: workspace, theme: theme, palette: palette, highlighter: highlighter)
                 self.editor = editor
+                // config R8, editor R34: quitting flushes what this window still has pending.
+                // The local binding is what the closure holds weakly: capturing the `@State`
+                // property directly would capture the view strongly with it.
+                let workspace = workspace
+                appDelegate.registerFlush(for: workspace) { [weak workspace, weak editor] in
+                    await editor?.flushScratches()
+                    await workspace?.flushState()
+                }
                 let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor, theme: theme)
                 // architecture: the Keychain store is created once here and injected (postgres R3).
                 // design R15: the toolbar's toggles follow the panels' registration order — Database
@@ -86,6 +94,7 @@ struct WorkspaceView: View {
                 }
             }
             .onDisappear {
+                appDelegate.unregisterFlush(for: workspace)
                 // config R8: whatever is still pending is written when the window closes.
                 Task { await workspace.flushState() }
             }

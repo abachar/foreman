@@ -32,6 +32,9 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @ObservationIgnored private var openWindow: OpenWindowAction?
+    /// config R8, editor R34: what each open window must write before the app may quit, keyed by
+    /// its workspace so a closing window withdraws its own entry.
+    @ObservationIgnored private var pendingFlushes: [ObjectIdentifier: @MainActor () async -> Void] = [:]
     @ObservationIgnored private var pendingFolders: [URL] = []
     @ObservationIgnored private var hasTakenLaunchFolder = false
     @ObservationIgnored private var launchedOnHome: Date?
@@ -109,6 +112,31 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
         panel.message = "Choose the folder to open as a workspace."
         guard panel.runModal() == .OK else { return nil }
         return panel.url
+    }
+
+    /// Registers what the window of `workspace` still owes when the app quits.
+    ///
+    /// That is its pending state and its scratch drafts (config R8, editor R34).
+    func registerFlush(for workspace: Workspace, _ flush: @escaping @MainActor () async -> Void) {
+        pendingFlushes[ObjectIdentifier(workspace)] = flush
+    }
+
+    func unregisterFlush(for workspace: Workspace) {
+        pendingFlushes[ObjectIdentifier(workspace)] = nil
+    }
+
+    /// config R8, editor R34: `cmd+q` chains no confirmation, so the debounced state and scratch
+    /// writes of the last second must be flushed before the app goes away.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let flushes = Array(pendingFlushes.values)
+        guard !flushes.isEmpty else { return .terminateNow }
+        Task {
+            for flush in flushes {
+                await flush()
+            }
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     /// Called by the first window: from now on the app opens windows by itself.
