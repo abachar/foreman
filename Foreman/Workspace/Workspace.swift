@@ -36,6 +36,9 @@ final class Workspace {
     private var pendingStateWrite: Task<Void, Never>?
     private var isPersistenceDisabled = false
     private var configWatch: Task<Void, Never>?
+    /// config R6: bumped by every `reloadConfig`; a reload that is no longer the latest when its
+    /// reads come back never installs what it read.
+    private var configEpoch = 0
     /// terminal R3: resolved once, see `Workspace+LoginEnvironment`.
     var loginEnvironmentTask: Task<[String: String], Never>?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "workspace")
@@ -109,17 +112,13 @@ final class Workspace {
     /// Warnings are logged; a file that does not parse keeps the last valid version of *that* file
     /// and is reported on its own (config R7), so a broken global never hides the workspace's.
     func reloadConfig() async {
+        configEpoch += 1
+        let epoch = configEpoch
         var errors: [WorkspaceError] = []
-        var read = false
+        var read: [(file: URL, sections: [String: Data])] = []
         for file in [globalConfigFile, WorkspaceConfig.file(under: root)] {
             do {
-                let sections = try await WorkspaceConfig.readSections(file)
-                if file == globalConfigFile {
-                    globalSections = sections
-                } else {
-                    workspaceSections = sections
-                }
-                read = true
+                read.append((file: file, sections: try await WorkspaceConfig.readSections(file)))
             } catch let error as WorkspaceError {
                 logger.error("config rejected: \(error.description, privacy: .public)")
                 errors.append(error)
@@ -128,8 +127,18 @@ final class Workspace {
                 errors.append(.invalidJSON(file: file, line: nil, message: error.localizedDescription))
             }
         }
+        // A newer reload started while this one was reading: only the latest installs its result,
+        // whichever read finishes first.
+        guard epoch == configEpoch else { return }
         configErrors = errors
-        guard read else { return }
+        guard !read.isEmpty else { return }
+        for (file, sections) in read {
+            if file == globalConfigFile {
+                globalSections = sections
+            } else {
+                workspaceSections = sections
+            }
+        }
         let merged = WorkspaceConfig.make(
             WorkspaceConfig.merge(global: globalSections, workspace: workspaceSections), root: root)
         for warning in merged.warnings {
