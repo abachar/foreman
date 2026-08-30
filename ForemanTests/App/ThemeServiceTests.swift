@@ -11,13 +11,26 @@ struct ThemeServiceTests {
     private let fixture = ConfigFixture()
 
     private func settings(_ json: String?) async throws -> ThemeService.Settings {
-        ThemeService.Settings.decode(from: try await fixture.load(after: json))
+        var warnings: [String] = []
+        return ThemeService.Settings.decode(from: try await fixture.load(after: json), warnings: &warnings)
     }
 
     @Test func missingSectionIsTheDefault() async throws {
         defer { fixture.remove() }
-        #expect(try await settings(nil) == .defaults)
-        #expect(try await settings(#"{ "terminal": "nope" }"#) == .defaults)
+        var warnings: [String] = []
+        let config = try await fixture.load(after: nil)
+        #expect(ThemeService.Settings.decode(from: config, warnings: &warnings) == .defaults)
+        #expect(warnings.isEmpty)
+    }
+
+    /// config R7: a section of the wrong shape defaults, but says so instead of staying silent.
+    @Test func malformedSectionIsTheDefaultAndWarns() async throws {
+        defer { fixture.remove() }
+        var warnings: [String] = []
+        let config = try await fixture.load(after: #"{ "terminal": "nope" }"#)
+        #expect(ThemeService.Settings.decode(from: config, warnings: &warnings) == .defaults)
+        #expect(warnings.count == 1)
+        #expect(warnings[0].contains("terminal"))
     }
 
     @Test func codeFontDefaultsToJetBrainsMonoAndSurvivesAPartialSection() async throws {

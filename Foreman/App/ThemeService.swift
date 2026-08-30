@@ -35,10 +35,20 @@ final class ThemeService {
             var theme: String?
         }
 
-        /// Decodes the section; a missing or invalid section is the defaults, each field falls
+        /// Decodes the section; a missing or invalid one is the defaults, each field falling
         /// back on its own (config R5, R7: nothing here breaks the workspace).
-        static func decode(from config: WorkspaceConfig) -> Settings {
-            guard let section = try? config.section("terminal", as: Section.self) else { return defaults }
+        ///
+        /// A section of the wrong shape also defaults, but is reported in `warnings` like a bad
+        /// theme key.
+        static func decode(from config: WorkspaceConfig, warnings: inout [String]) -> Settings {
+            let section: Section?
+            do {
+                section = try config.section("terminal", as: Section.self)
+            } catch {
+                warnings.append("\"terminal\" ignored: expected an object (font, fontSize, theme).")
+                return defaults
+            }
+            guard let section else { return defaults }
             var settings = defaults
             if let font = section.font, !font.isEmpty {
                 settings.fontName = font
@@ -89,7 +99,11 @@ final class ThemeService {
 
     /// config R6: called at startup and on every accepted reload.
     func apply(_ config: WorkspaceConfig) {
-        let decoded = Settings.decode(from: config)
+        var terminalWarnings: [String] = []
+        let decoded = Settings.decode(from: config, warnings: &terminalWarnings)
+        for warning in terminalWarnings {
+            logger.warning("\(warning, privacy: .public)")
+        }
         if decoded != settings {
             settings = decoded
             editorFont = Self.font(for: decoded)
