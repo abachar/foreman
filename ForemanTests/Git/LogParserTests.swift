@@ -62,6 +62,12 @@ struct LogParserTests {
         #expect(query.fields == [.subject, .author])
         #expect(query.arguments(field: .subject).contains("--grep=ada"))
         #expect(query.arguments(field: .author).contains("--author=ada"))
+        // git R18: the text is matched literally, on both fields.
+        #expect(query.arguments(field: .subject).contains("--fixed-strings"))
+        #expect(query.arguments(field: .author).contains("--fixed-strings"))
+        query.filter = "fix: [x] (y)"
+        #expect(query.arguments(field: .subject).contains("--grep=fix: [x] (y)"))
+        #expect(!query.arguments(field: nil).contains("--fixed-strings"))
         query.path = "src/a.swift"
         #expect(query.arguments(field: nil).suffix(3) == ["--follow", "--", "src/a.swift"])
     }
