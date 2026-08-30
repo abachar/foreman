@@ -172,17 +172,11 @@ extension PostgresFeature {
             let clock = ContinuousClock()
             let started = clock.now
             var answered = false
+            // The cancel runs on its own task: past the limit the connection is dropped, but the
+            // server is still being asked to stop the statement.
             let cancel = Task { try await client.cancelRunning() }
             do {
-                try await withThrowingTaskGroup(of: Void.self) { group in
-                    group.addTask { try await cancel.value }
-                    group.addTask {
-                        try await Task.sleep(for: QueryExecution.cancelLimit)
-                        throw PostgresError.timeout(QueryExecution.cancelLimit)
-                    }
-                    try await group.next()
-                    group.cancelAll()
-                }
+                try await PostgresDeadline.run(within: QueryExecution.cancelLimit) { try await cancel.value }
                 answered = true
             } catch {
                 answered = false
