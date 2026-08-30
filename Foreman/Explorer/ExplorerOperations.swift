@@ -14,11 +14,13 @@ nonisolated enum ExplorerOperations {
         }
     }
 
-    /// explorer R19 and security: `url` is the root or below it.
+    /// explorer R19 and security: `url` is the root or below it, symlinks resolved.
+    ///
+    /// The tree follows symlinks when it expands a folder (`DirectoryLevel.read`), so comparing
+    /// the paths as written would let an operation on a child of a link leave the root. The root
+    /// is resolved too: it is often reached through one itself (`/tmp`, `/var`).
     static func isInside(_ url: URL, root: URL) -> Bool {
-        let target = url.standardizedFileURL.path(percentEncoded: false)
-        let base = root.standardizedFileURL.path(percentEncoded: false)
-        return target == base || target.hasPrefix(base.hasSuffix("/") ? base : base + "/")
+        Workspace.contains(url.resolvingSymlinksInPath(), under: root.resolvingSymlinksInPath())
     }
 
     /// explorer R16: the folder a new entry goes to — the selected folder, the parent of the

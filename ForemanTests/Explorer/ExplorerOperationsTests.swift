@@ -54,6 +54,30 @@ struct ExplorerOperationsTests {
         #expect(left.sorted() == ["a.txt", "b.txt"])
     }
 
+    /// explorer R19 and security: an expanded symlink out of the root is still out of the root.
+    @Test func refusesToActThroughASymlinkOutOfTheRoot() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "ExplorerSymlinkTests-\(UUID().uuidString)")
+        let root = base.appending(path: "ws")
+        let outside = base.appending(path: "outside")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let secret = outside.appending(path: "secret.txt")
+        try "x".write(to: secret, atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(at: root.appending(path: "link"), withDestinationURL: outside)
+
+        let through = root.appending(path: "link/secret.txt")
+        #expect(!ExplorerOperations.isInside(through, root: root))
+        #expect(ExplorerOperations.isInside(root.appending(path: "a.txt"), root: root))
+        await #expect(throws: ExplorerError.self) {
+            _ = try await ExplorerOperations.rename(through, to: "gone.txt", root: root)
+        }
+        await #expect(throws: ExplorerError.self) {
+            try await ExplorerOperations.trash(through, root: root)
+        }
+        #expect(FileManager.default.fileExists(atPath: secret.path(percentEncoded: false)))
+    }
+
     @Test func createsRenamesAndRefusesOutsideTheRoot() async throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "ExplorerOperationsTests-\(UUID().uuidString)")
