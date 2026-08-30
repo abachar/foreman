@@ -87,6 +87,19 @@ struct GitRemoteTests {
         #expect(auth.copyText == "cd /work/repo && git push -u origin main")
     }
 
+    /// git R22: the banner's command is pasted into a shell; a name holding shell syntax must run
+    /// as the name it is.
+    @Test func theCommandQuotesAnArgumentTheShellWouldReadAsCode() {
+        let auth = GitAuthRequired(
+            arguments: ["push", "-u", "origin", "feat/x; rm -rf ~"], cwd: URL(filePath: "/work/my repo"))
+        #expect(auth.command == "git push -u origin 'feat/x; rm -rf ~'")
+        #expect(auth.copyText == "cd '/work/my repo' && git push -u origin 'feat/x; rm -rf ~'")
+        let apostrophe = GitAuthRequired(arguments: ["stash", "push", "-m", "it's a wip"], cwd: URL(filePath: "/w"))
+        #expect(apostrophe.command == #"git stash push -m 'it'\''s a wip'"#)
+        #expect(GitAuthRequired.quoted("") == "''")
+        #expect(GitAuthRequired.quoted("--set-upstream-to=origin/feat/x") == "--set-upstream-to=origin/feat/x")
+    }
+
     @Test func theBranchSheetFiltersCaseInsensitively() {
         let branches = [
             GitBranch(name: "main", ref: "refs/heads/main", upstream: nil, isCurrent: true),

@@ -85,10 +85,22 @@ nonisolated struct GitAuthRequired: Equatable, Sendable {
 
     /// The exact command, for the terminal or an agent.
     var command: String {
-        "git " + arguments.joined(separator: " ")
+        (["git"] + arguments.map(Self.quoted)).joined(separator: " ")
     }
 
     var copyText: String {
-        "cd \(cwd.path(percentEncoded: false)) && \(command)"
+        "cd \(Self.quoted(cwd.path(percentEncoded: false))) && \(command)"
     }
+
+    /// A word as it stands when the shell reads it that way, single-quoted otherwise.
+    ///
+    /// A branch or stash name may hold a space, a `$`, a `;` or a quote: pasted raw, the copied
+    /// command would run something else than the one that failed.
+    static func quoted(_ word: String) -> String {
+        guard word.isEmpty || word.contains(where: { !safeCharacters.contains($0) }) else { return word }
+        return "'" + word.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    private static let safeCharacters = Set(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_./=:+@,")
 }
