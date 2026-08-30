@@ -22,16 +22,15 @@ final class GitHistoryModel {
     func reload(with client: GitCLI?) {
         loading?.cancel()
         commits = []
-        query.skip = 0
+        query.rewind()
         hasMore = false
         guard let client else { return }
         load(client, append: false)
     }
 
-    /// git R18: the next page, by `--skip`.
+    /// git R18: the next page of every query, each from its own `--skip`.
     func loadMore(with client: GitCLI?) {
         guard let client, hasMore, !isLoading else { return }
-        query.skip = commits.count
         load(client, append: true)
     }
 
@@ -43,9 +42,10 @@ final class GitHistoryModel {
             do throws(GitError) {
                 let pages = try await Self.fetch(query, client: client)
                 guard !Task.isCancelled, let self else { return }
-                let merged = GitLogQuery.merge(pages)
+                let merged = GitLogQuery.merge(pages.map(\.commits))
                 commits = append ? GitLogQuery.merge([commits, merged]) : merged
-                hasMore = pages.contains { $0.count >= GitLogQuery.pageSize }
+                self.query.advance(pages)
+                hasMore = pages.contains { $0.commits.count >= GitLogQuery.pageSize }
                 error = nil
             } catch {
                 self?.error = error
@@ -54,10 +54,11 @@ final class GitHistoryModel {
     }
 
     @concurrent
-    private static func fetch(_ query: GitLogQuery, client: GitCLI) async throws(GitError) -> [[GitCommit]] {
-        var pages: [[GitCommit]] = []
+    private static func fetch(_ query: GitLogQuery, client: GitCLI) async throws(GitError) -> [GitLogQuery.Page] {
+        var pages: [GitLogQuery.Page] = []
         for field in query.fields {
-            pages.append(LogParser.parse(try await client.run(query.arguments(field: field)).stdout))
+            let output = try await client.run(query.arguments(field: field))
+            pages.append(GitLogQuery.Page(field: field, commits: LogParser.parse(output.stdout)))
         }
         return pages
     }

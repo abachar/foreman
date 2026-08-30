@@ -11,6 +11,11 @@ struct LogParserTests {
         [sha, short, author, date, refs, subject].joined(separator: "\u{1f}")
     }
 
+    private func commit(_ sha: String, _ seconds: TimeInterval = 0) -> GitCommit {
+        GitCommit(
+            sha: sha, shortSha: sha, author: "", date: Date(timeIntervalSince1970: seconds), refs: [], subject: "")
+    }
+
     @Test func readsRecordsFieldsRefsAndDates() throws {
         let data = Data(
             (record(
@@ -54,20 +59,41 @@ struct LogParserTests {
             ])
         #expect(query.fields == [nil])
         query.filter = "ada"
-        query.skip = 200
         #expect(query.fields == [.subject, .author])
         #expect(query.arguments(field: .subject).contains("--grep=ada"))
         #expect(query.arguments(field: .author).contains("--author=ada"))
-        #expect(query.arguments(field: .author).contains("--skip=200"))
         query.path = "src/a.swift"
         #expect(query.arguments(field: nil).suffix(3) == ["--follow", "--", "src/a.swift"])
     }
 
-    @Test func mergesPagesBySha() {
-        func commit(_ sha: String, _ seconds: TimeInterval) -> GitCommit {
-            GitCommit(
-                sha: sha, shortSha: sha, author: "", date: Date(timeIntervalSince1970: seconds), refs: [], subject: "")
+    /// git R18: a commit matching both fields is one row, so the merged count is smaller than what
+    /// the two `log` runs consumed; skipping the merged count would drop the difference.
+    @Test func eachFilteredQueryPaginatesOnItsOwnCount() {
+        func page(_ field: GitLogQuery.Field, _ shas: [String]) -> GitLogQuery.Page {
+            GitLogQuery.Page(field: field, commits: shas.map { commit($0) })
         }
+        var query = GitLogQuery()
+        query.filter = "ada"
+        #expect(query.arguments(field: .subject).contains("--skip=0"))
+        #expect(query.arguments(field: .author).contains("--skip=0"))
+
+        let subjects = (0..<200).map { "s\($0)" }
+        // The author page repeats three of them and brings 197 of its own.
+        let authors = ["s0", "s1", "s2"] + (0..<197).map { "a\($0)" }
+        let pages = [page(.subject, subjects), page(.author, authors)]
+        query.advance(pages)
+        #expect(GitLogQuery.merge(pages.map(\.commits)).count == 397)
+        #expect(query.arguments(field: .subject).contains("--skip=200"))
+        #expect(query.arguments(field: .author).contains("--skip=200"))
+
+        query.advance([page(.subject, ["s200"]), page(.author, [])])
+        #expect(query.arguments(field: .subject).contains("--skip=201"))
+        #expect(query.arguments(field: .author).contains("--skip=200"))
+        query.rewind()
+        #expect(query.arguments(field: .subject).contains("--skip=0"))
+    }
+
+    @Test func mergesPagesBySha() {
         let merged = GitLogQuery.merge([[commit("a", 30), commit("b", 20)], [commit("b", 20), commit("c", 25)]])
         #expect(merged.map(\.sha) == ["a", "c", "b"])
     }

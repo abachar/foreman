@@ -51,17 +51,28 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
     var filter = ""
     /// git R20: a file's history, `log --follow`.
     var path: String?
-    var skip = 0
+    /// git R18: how many commits each query already brought back.
+    ///
+    /// The pages are merged by sha, so a commit matching both the subject and the author is one
+    /// row and the merged count is not what either `log` consumed: each paginates on its own.
+    private(set) var consumed: [Field?: Int] = [:]
 
     enum Field: Sendable, CaseIterable {
         case subject
         case author
     }
 
+    /// One query's answer, next to the field it filtered on.
+    struct Page: Sendable {
+        let field: Field?
+        let commits: [GitCommit]
+    }
+
     /// git R27: `--first-parent`, machine format, one page; the filter on one field at a time.
     func arguments(field: Field?) -> [String] {
         var arguments = [
-            "log", "--first-parent", "--format=\(LogParser.format)", "-z", "-n", "\(Self.pageSize)", "--skip=\(skip)",
+            "log", "--first-parent", "--format=\(LogParser.format)", "-z", "-n", "\(Self.pageSize)",
+            "--skip=\(consumed[field] ?? 0)",
         ]
         if !filter.isEmpty, let field {
             switch field {
@@ -82,6 +93,18 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
     /// The queries to run: one without a filter, or one per field with it.
     var fields: [Field?] {
         filter.isEmpty ? [nil] : Field.allCases
+    }
+
+    /// The next page of each query starts where that query stopped.
+    mutating func advance(_ pages: [Page]) {
+        for page in pages {
+            consumed[page.field, default: 0] += page.commits.count
+        }
+    }
+
+    /// Back to the first page of every query (a new repo, filter or path).
+    mutating func rewind() {
+        consumed = [:]
     }
 
     /// The pages merged: by sha, newest first, git's order kept for equal dates.
