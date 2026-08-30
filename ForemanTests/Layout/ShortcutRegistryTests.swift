@@ -251,10 +251,16 @@ struct MenuBarModelTests {
         #expect(tree(model()).suffix(3) == ["Tools", "  Agents >", "    Claude"])
     }
 
-    /// layout R37: the same action three times, one per scope, is not three menu entries.
-    @Test func leavesOutWhatTheMapDoesNotName() {
+    /// layout R37: the same action written once per scope is **one** entry.
+    @Test func foldsAnActionWrittenOncePerScopeIntoOneEntry() {
         register("editor.sendToAgent", "Send to Agent", "cmd+e", scope: .tab(kind: "editor.file"))
         register("explorer.sendToAgent", "Send to Agent", "cmd+e", scope: .panel)
+
+        #expect(tree(model()).suffix(2) == ["Tools", "  Send to Agent · cmd+e"])
+    }
+
+    @Test func leavesOutWhatTheMapDoesNotName() {
+        register("editor.keepOpen", "Keep Open", "cmd+k", scope: .tab(kind: "editor.file"))
 
         // Only *File* is left, and only for its recent folders.
         #expect(tree(model()) == ["File (standard)", "  Open Recent > (recent folders)"])

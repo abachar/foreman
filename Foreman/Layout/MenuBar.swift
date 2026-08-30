@@ -15,6 +15,9 @@ nonisolated enum MenuBarLayout {
     indirect enum Entry {
         /// An action of the registry; `title` overrides the one it registered under.
         case action(String, title: String? = nil)
+        /// One entry for the same action written once per scope (`…sendToAgent`): the first id
+        /// registered gives the shortcut, and the one in scope acts.
+        case anyOf([String], title: String)
         /// Every action whose id starts with the prefix, in registration order (`agents.`).
         case actions(prefix: String)
         /// product R8: the workspaces opened before; the app, not the registry, provides them.
@@ -100,6 +103,10 @@ nonisolated enum MenuBarLayout {
             title: "Tools", isStandard: false,
             entries: [
                 .submenu("Agents", [.actions(prefix: "agents.")]),
+                .anyOf(
+                    [
+                        "editor.sendToAgent", "explorer.sendToAgent", "git.sendToAgent", "browser.sendToAgent",
+                    ], title: "Send to Agent"),
                 .separator,
                 .submenu("Git", [.action("git.changes"), .action("git.history")]),
                 .submenu(
@@ -129,7 +136,8 @@ nonisolated enum MenuBarLayout {
 /// layout R37: the bar as the registry fills the map in, before any AppKit object exists.
 nonisolated struct MenuBarModel: Equatable {
     struct Item: Equatable {
-        let id: String
+        /// The actions this entry stands for; more than one only for `anyOf` (R37).
+        let ids: [String]
         let title: String
         /// `nil` for an action no shortcut reaches: a menu offers it all the same.
         let shortcut: Shortcut?
@@ -174,12 +182,17 @@ nonisolated struct MenuBarModel: Equatable {
             case .action(let id, let title):
                 guard let action = actions.first(where: { $0.id == id }) else { continue }
                 placed.insert(id)
-                resolved.append(.item(Item(id: id, title: title ?? action.title, shortcut: shortcut(id))))
+                resolved.append(.item(Item(ids: [id], title: title ?? action.title, shortcut: shortcut(id))))
+            case .anyOf(let ids, let title):
+                let known = ids.filter { id in actions.contains { $0.id == id } }
+                guard !known.isEmpty else { continue }
+                placed.formUnion(known)
+                resolved.append(.item(Item(ids: known, title: title, shortcut: known.compactMap(shortcut).first)))
             case .actions(let prefix):
                 for action in actions where action.id.hasPrefix(prefix) && !placed.contains(action.id) {
                     placed.insert(action.id)
                     resolved.append(
-                        .item(Item(id: action.id, title: action.title, shortcut: shortcut(action.id))))
+                        .item(Item(ids: [action.id], title: action.title, shortcut: shortcut(action.id))))
                 }
             case .submenu(let title, let children):
                 let children = resolve(children, actions: actions, shortcut: shortcut, placed: &placed)
@@ -280,7 +293,8 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
         guard let action = menuItem.representedObject as? MenuAction, let shortcuts = keyWindowShortcuts else {
             return true
         }
-        return shortcuts.shortcut(for: action.id) == nil || shortcuts.isAvailable(action.id)
+        // An entry standing for several scopes is offered as soon as one of them can act.
+        return action.ids.contains { shortcuts.shortcut(for: $0) == nil || shortcuts.isAvailable($0) }
     }
 
     @objc private func performItem(_ sender: NSMenuItem) {
@@ -360,8 +374,10 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
                     title: entry.title, action: #selector(performItem(_:)), keyEquivalent: equivalent?.key ?? "")
                 item.keyEquivalentModifierMask = equivalent?.modifiers ?? []
                 item.target = self
-                item.representedObject = MenuAction(id: entry.id) { [weak shortcuts] in
-                    shortcuts?.actions.first { $0.id == entry.id }?.perform()
+                item.representedObject = MenuAction(ids: entry.ids) { [weak shortcuts] in
+                    guard let shortcuts else { return }
+                    let id = entry.ids.first { shortcuts.isAvailable($0) } ?? entry.ids[0]
+                    shortcuts.actions.first { $0.id == id }?.perform()
                 }
             }
             return item
@@ -371,11 +387,11 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
 
 /// What a generated menu item stands for: the action's id, to validate it, and how to run it.
 private final class MenuAction {
-    let id: String
+    let ids: [String]
     let perform: () -> Void
 
-    init(id: String, perform: @escaping () -> Void) {
-        self.id = id
+    init(ids: [String], perform: @escaping () -> Void) {
+        self.ids = ids
         self.perform = perform
     }
 }
