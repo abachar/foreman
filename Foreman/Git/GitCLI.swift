@@ -156,12 +156,16 @@ actor GitCLI {
 
     /// git R30: a tree of the whole working tree (tracked, modified, untracked; ignored left out),
     /// written through a temporary index so the user's index is never touched (R29).
+    ///
+    /// Both commands run as writes: they hash the whole dirty worktree into new objects, which on
+    /// a large repo takes far longer than a read's budget and has no business running beside
+    /// another write on the same repo.
     func snapshotTree() async throws(GitError) -> String {
         let index = FileManager.default.temporaryDirectory.appending(path: "foreman-index-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: index) }
         let environment = ["GIT_INDEX_FILE": index.path(percentEncoded: false)]
-        _ = try await run(["add", "-A", "--", "."], environment: environment)
-        return try await run(["write-tree"], environment: environment).text
+        _ = try await run(["add", "-A", "--", "."], kind: .write, environment: environment)
+        return try await run(["write-tree"], kind: .write, environment: environment).text
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
