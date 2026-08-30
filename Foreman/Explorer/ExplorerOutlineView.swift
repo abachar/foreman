@@ -355,6 +355,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 self.version = version
                 outline.reloadData()
                 restoreExpansion(under: "")
+                prune()
                 return
             }
             guard version != self.version else { return }
@@ -364,6 +365,17 @@ struct ExplorerOutlineView: NSViewRepresentable {
             self.version = version
             outline.reloadItem(path.isEmpty ? nil : items[path], reloadChildren: true)
             restoreExpansion(under: path)
+            prune()
+        }
+
+        /// The rows of a level the model dropped (explorer R9: a collapsed folder is forgotten).
+        ///
+        /// Their identity is only worth keeping while the outline can ask for them again, which is
+        /// while their folder is still read; without this an hour of browsing keeps one item per
+        /// path ever displayed. The reload above has already released them on the outline's side.
+        private func prune() {
+            items = items.filter { model.level(ExplorerOperations.parentPath(of: $0.key)) != nil }
+            moreItems = moreItems.filter { model.level($0.key) != nil }
         }
 
         /// explorer R11: the persisted folders open once their parent is read.
