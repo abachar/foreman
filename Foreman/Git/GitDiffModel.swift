@@ -99,8 +99,12 @@ final class GitDiffModel {
                 binarySizes = await Self.sizes(of: loaded, payload: payload, client: client, repo: repo)
                 await render(loaded)
             } catch {
+                // A load the next one superseded: its cancellation is not a failure to show, and
+                // the spinner it would clear is the one the load that replaced it put up.
+                guard !Task.isCancelled else { return }
                 self.error = error
             }
+            guard !Task.isCancelled else { return }
             isLoading = false
         }
     }
