@@ -658,7 +658,8 @@ final class EditorFeature {
         else { return }
         noteRecent(path)
         if let replaced {
-            tabs[replaced.id] = nil
+            // Through the layout, so the close hooks run: the tab is forgotten, its coordinator
+            // dropped, and a replaced scratch preview removes its file (R34).
             Task { await layout.closeTab(replaced.id) }
         }
         retitle(group: layout.model.activeGroup)
