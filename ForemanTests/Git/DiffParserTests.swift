@@ -138,6 +138,65 @@ struct DiffParserTests {
         #expect(GitDiffModel.binaryText(old: 0, new: 2048).hasPrefix("binary, "))
     }
 
+    /// Real `git -c core.quotepath=false diff --cached --no-color --no-ext-diff -M` output (git
+    /// 2.43) on a repo holding an accented file name under `sp ace/` and a rename of `we"ird.txt`:
+    /// git leaves the non-ASCII path raw, still quotes the one holding a quote, and closes a path
+    /// with a space with a tab on `---`/`+++`.
+    @Test func readsPathsWithSpacesQuotesAndNonASCIIBytes() {
+        let text = """
+            diff --git "a/we\\"ird.txt" b/renamed \u{e9}.txt
+            similarity index 100%
+            rename from "we\\"ird.txt"
+            rename to renamed \u{e9}.txt
+            diff --git a/sp ace/\u{e9} file.txt b/sp ace/\u{e9} file.txt
+            index 814f4a4..879de50 100644
+            --- a/sp ace/\u{e9} file.txt\t
+            +++ b/sp ace/\u{e9} file.txt\t
+            @@ -1,2 +1,2 @@
+             one
+            -two
+            +TWO
+            """
+        let diff = DiffParser.parse(text)
+        #expect(diff.files.count == 2)
+        #expect(diff.files[0].oldPath == "we\"ird.txt")
+        #expect(diff.files[0].newPath == "renamed \u{e9}.txt")
+        #expect(diff.files[0].isRename)
+        #expect(diff.files[1].oldPath == "sp ace/\u{e9} file.txt")
+        #expect(diff.files[1].newPath == "sp ace/\u{e9} file.txt")
+        #expect(diff.files[1].hunks.first?.lines.map(\.text) == ["one", "two", "TWO"])
+    }
+
+    /// The same repo without the flag: git octal-escapes every non-ASCII byte of a quoted path.
+    @Test func readsTheOctalEscapesOfADiffMadeWithQuotepathOn() {
+        let text = """
+            diff --git "a/sp ace/\\303\\251 file.txt" "b/sp ace/\\303\\251 file.txt"
+            index 814f4a4..879de50 100644
+            --- "a/sp ace/\\303\\251 file.txt"\t
+            +++ "b/sp ace/\\303\\251 file.txt"\t
+            @@ -1,2 +1,2 @@
+             one
+            -two
+            +TWO
+            """
+        let diff = DiffParser.parse(text)
+        #expect(diff.files.map(\.path) == ["sp ace/\u{e9} file.txt"])
+        #expect(diff.files[0].oldPath == "sp ace/\u{e9} file.txt")
+        #expect(diff.files[0].hunks.first?.lines.count == 3)
+    }
+
+    /// A binary file names its paths on the `diff --git` line only: nothing else can correct them.
+    @Test func readsABinaryPathHoldingASpace() {
+        let text = """
+            diff --git a/bin ary.dat b/bin ary.dat
+            index 0f49c4a..e9abda7 100644
+            Binary files a/bin ary.dat and b/bin ary.dat differ
+            """
+        let diff = DiffParser.parse(text)
+        #expect(diff.files.map(\.path) == ["bin ary.dat"])
+        #expect(diff.files[0].isBinary)
+    }
+
     @Test func skipsTheCommitHeaderOfShow() {
         let text = "feat: subject\n\n" + simple
         #expect(DiffParser.parse(text).files.map(\.path) == ["src/app.swift"])
@@ -171,7 +230,7 @@ struct DiffParserTests {
         #expect(session.title == "Claude · session")
         #expect(
             session.arguments(currentTree: "cafe") == [
-                "diff", "--no-color", "--no-ext-diff", "-M", "deadbeef", "cafe", "--",
+                "-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M", "deadbeef", "cafe", "--",
             ])
         #expect(!session.source.isImmutable)
         let file = FileDiff.added(path: "a.swift", content: "x")
@@ -180,16 +239,22 @@ struct DiffParserTests {
         #expect(GitDiffPayload.decode(session.encoded()) == session)
         #expect(
             GitDiffPayload(repo: ".", source: .workingTree(path: "-weird")).arguments()
-                == ["diff", "--no-color", "--no-ext-diff", "-M", "--", "-weird"])
+                == ["-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M", "--", "-weird"])
         #expect(
             GitDiffPayload(repo: ".", source: .staged(path: "a")).arguments()
-                == ["diff", "--cached", "--no-color", "--no-ext-diff", "-M", "--", "a"])
+                == ["-c", "core.quotepath=false", "diff", "--cached", "--no-color", "--no-ext-diff", "-M", "--", "a"])
         #expect(
             GitDiffPayload(repo: ".", source: .commit(sha: "abc", subject: "s")).arguments()
-                == ["show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc", "--"])
+                == [
+                    "-c", "core.quotepath=false", "show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc",
+                    "--",
+                ])
         #expect(
             GitDiffPayload(repo: ".", source: .commitFile(sha: "abc", subject: "s", path: "p")).arguments()
-                == ["show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc", "--", "p"])
+                == [
+                    "-c", "core.quotepath=false", "show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc",
+                    "--", "p",
+                ])
     }
 
     @Test func roundtripsThePayloadAndRefusesAMalformedOne() {

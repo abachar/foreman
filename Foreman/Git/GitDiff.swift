@@ -222,9 +222,9 @@ nonisolated enum DiffParser {
             } else if line.hasPrefix("+++ ") {
                 current?.newPath = filePath(line.dropFirst(4))
             } else if line.hasPrefix("rename from ") {
-                current?.oldPath = String(line.dropFirst("rename from ".count))
+                current?.oldPath = unquoted(line.dropFirst("rename from ".count))
             } else if line.hasPrefix("rename to ") {
-                current?.newPath = String(line.dropFirst("rename to ".count))
+                current?.newPath = unquoted(line.dropFirst("rename to ".count))
             } else if line.hasPrefix("old mode ") {
                 current?.oldMode = String(line.dropFirst("old mode ".count))
             } else if line.hasPrefix("new mode ") {
@@ -241,30 +241,86 @@ nonisolated enum DiffParser {
         return GitDiff(files: files)
     }
 
-    /// `a/x b/y` of the `diff --git` line; a path with spaces is read from `---`/`+++` afterwards.
+    /// The `a/x b/y` of a `diff --git` line, whether or not either side is quoted.
+    ///
+    /// Neither side is delimited: an unquoted path may hold spaces, so the split is a ` b/` that
+    /// leaves an `a/` behind, and the pair naming the same path twice wins — everything but a
+    /// rename does. `---`/`+++`, which end at a tab, correct whatever stays ambiguous.
     private static func gitPaths(_ rest: Substring) -> (old: String, new: String) {
-        let parts = rest.split(separator: " ")
-        guard parts.count == 2 else { return (String(rest), String(rest)) }
-        return (stripped(parts[0]), stripped(parts[1]))
+        // A quoted second path starts at the ` "` that opens the trailing quote; a quote inside a
+        // path is written `\"`, never after a space.
+        if rest.hasSuffix("\""), let separator = rest.range(of: " \"", options: .backwards) {
+            return (stripped(rest[..<separator.lowerBound]), stripped(rest[separator.lowerBound...].dropFirst()))
+        }
+        var candidates: [(old: String, new: String)] = []
+        var start = rest.startIndex
+        while let separator = rest.range(of: " b/", range: start..<rest.endIndex) {
+            let left = rest[..<separator.lowerBound]
+            if left.hasPrefix("a/") || left.hasPrefix("\"a/") {
+                candidates.append((stripped(left), stripped(rest[separator.lowerBound...].dropFirst())))
+            }
+            start = separator.upperBound
+        }
+        return candidates.first { $0.old == $0.new } ?? candidates.first ?? (old: String(rest), new: String(rest))
     }
 
-    /// `a/path`, `b/path`, or `/dev/null`; a quoted path keeps its quotes off.
+    /// `a/path`, `b/path`, or `/dev/null`; git ends the line with a tab when the path has a space.
     private static func filePath(_ rest: Substring) -> String? {
         let text = rest.split(separator: "\t", maxSplits: 1).first.map(String.init) ?? String(rest)
         guard text != "/dev/null" else { return nil }
         return stripped(Substring(text))
     }
 
+    /// One side of a `diff --git` line: the quoting off, then the `a/`/`b/` prefix.
     private static func stripped(_ path: Substring) -> String {
-        var text = path
-        if text.hasPrefix("\""), text.hasSuffix("\""), text.count >= 2 {
-            text = text.dropFirst().dropLast()
-        }
-        if text.hasPrefix("a/") || text.hasPrefix("b/") {
-            text = text.dropFirst(2)
-        }
-        return String(text)
+        let text = unquoted(path)
+        return text.hasPrefix("a/") || text.hasPrefix("b/") ? String(text.dropFirst(2)) : text
     }
+
+    /// A path as git prints it (git R27).
+    ///
+    /// It is wrapped in quotes and C-escaped as soon as it holds a quote, a backslash or a control
+    /// character — and, while `core.quotepath` is on, every non-ASCII byte as `\###` octals. The
+    /// read commands turn that option off; the octal case stays for a diff produced elsewhere.
+    private static func unquoted(_ path: Substring) -> String {
+        guard path.count >= 2, path.hasPrefix("\""), path.hasSuffix("\"") else { return String(path) }
+        let escaped = Array(path.dropFirst().dropLast().utf8)
+        var bytes: [UInt8] = []
+        var index = escaped.startIndex
+        while index < escaped.endIndex {
+            let byte = escaped[index]
+            index += 1
+            guard byte == UInt8(ascii: "\\"), index < escaped.endIndex else {
+                bytes.append(byte)
+                continue
+            }
+            let escape = escaped[index]
+            index += 1
+            if let literal = literalEscapes[escape] {
+                bytes.append(literal)
+            } else if octalDigits.contains(escape) {
+                // Three octal digits at most, one byte of the path's UTF-8.
+                var value = Int(escape - UInt8(ascii: "0"))
+                var digits = 1
+                while digits < 3, index < escaped.endIndex, octalDigits.contains(escaped[index]) {
+                    value = value * 8 + Int(escaped[index] - UInt8(ascii: "0"))
+                    index += 1
+                    digits += 1
+                }
+                bytes.append(UInt8(truncatingIfNeeded: value))
+            } else {
+                // `\\` and `\"`, and anything git may add later, stand for themselves.
+                bytes.append(escape)
+            }
+        }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    private static let literalEscapes: [UInt8: UInt8] = [
+        UInt8(ascii: "a"): 0x07, UInt8(ascii: "b"): 0x08, UInt8(ascii: "f"): 0x0c, UInt8(ascii: "n"): 0x0a,
+        UInt8(ascii: "r"): 0x0d, UInt8(ascii: "t"): 0x09, UInt8(ascii: "v"): 0x0b,
+    ]
+    private static let octalDigits = UInt8(ascii: "0")...UInt8(ascii: "7")
 
     /// `@@ -a[,b] +c[,d] @@[ heading]`.
     private static func hunkHeader(_ line: String) -> Hunk? {
@@ -335,13 +391,16 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
     /// git R14, R27, R31: the command; `show` prints the subject on its first line (read by the
     /// model); a session diff compares its base with `currentTree`, rebuilt by the model.
     func arguments(currentTree: String? = nil) -> [String] {
+        // git R27: `core.quotepath=false` keeps a non-ASCII path as its own bytes instead of octal
+        // escapes. It says how git writes what it is asked to read, never what git does to the repo.
+        let config = ["-c", "core.quotepath=false"]
         let options = ["--no-color", "--no-ext-diff", "-M"]
         switch source {
-        case .workingTree(let path): return ["diff"] + options + ["--", path]
-        case .staged(let path): return ["diff", "--cached"] + options + ["--", path]
-        case .commit(let sha, _): return ["show", "--format=%s"] + options + [sha, "--"]
-        case .commitFile(let sha, _, let path): return ["show", "--format=%s"] + options + [sha, "--", path]
-        case .session(let base, _): return ["diff"] + options + [base, currentTree ?? base, "--"]
+        case .workingTree(let path): return config + ["diff"] + options + ["--", path]
+        case .staged(let path): return config + ["diff", "--cached"] + options + ["--", path]
+        case .commit(let sha, _): return config + ["show", "--format=%s"] + options + [sha, "--"]
+        case .commitFile(let sha, _, let path): return config + ["show", "--format=%s"] + options + [sha, "--", path]
+        case .session(let base, _): return config + ["diff"] + options + [base, currentTree ?? base, "--"]
         }
     }
 
