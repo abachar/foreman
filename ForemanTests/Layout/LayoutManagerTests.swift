@@ -104,6 +104,34 @@ struct LayoutManagerTests {
         #expect(!layout.isTerminalTabActive)
     }
 
+    /// layout R15: `cmd+w` twice on a dirty tab put two confirmations on the screen — the tab is
+    /// still in the model while its owner is being asked.
+    @Test func asksOnceWhileTheCloseOfATabIsAlreadyBeingConfirmed() async {
+        let layout = LayoutManager()
+        nonisolated(unsafe) var asked = 0
+        layout.register(
+            tabKind: CenterTabDescriptor(
+                kind: "editor.file", makeView: { _, payload in AnyView(Text(payload)) }, serialize: { _ in nil },
+                confirmClose: { id in
+                    asked += 1
+                    // The user presses `cmd+w` again while the question is on the screen.
+                    if asked == 1 {
+                        await layout.closeTab(id)
+                    }
+                    return true
+                }))
+        guard let id = layout.openTab(kind: "editor.file", title: "a", payload: "a") else {
+            Issue.record("tab not opened")
+            return
+        }
+        layout.update(id, title: "a", isDirty: true)
+
+        await layout.closeTab(id)
+
+        #expect(asked == 1)
+        #expect(layout.model.active.tabs.isEmpty)
+    }
+
     @Test func removesAToolbarItemWithItsBadge() {
         let layout = LayoutManager()
         layout.register(

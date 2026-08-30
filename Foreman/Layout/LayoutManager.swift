@@ -31,6 +31,8 @@ final class LayoutManager {
     /// The last state handed over, so an observation that fires without changing anything the
     /// state holds does not schedule a write (layout R27).
     @ObservationIgnored var persistedState: LayoutState?
+    /// layout R15: the tabs whose owner is being asked to confirm; a tab is only asked about once.
+    @ObservationIgnored private var closing: Set<TabID> = []
 
     /// layout R18 (amended 2026-08-28): one persisted thickness per panel.
     private(set) var panelSizes: [PanelID: CGFloat] = [:]
@@ -198,11 +200,18 @@ final class LayoutManager {
     }
 
     /// layout R15: a dirty tab is closed only once its owner confirmed.
+    ///
+    /// The tab stays in the model while the question is on the screen, so a second `cmd+w` came
+    /// straight back here and asked it again: a close already waiting for its answer is refused.
     func closeTab(_ id: TabID) async {
-        guard let owner = model.owner(of: id), let tab = model[group: owner]?.tabs.first(where: { $0.id == id })
+        guard !closing.contains(id), let owner = model.owner(of: id),
+            let tab = model[group: owner]?.tabs.first(where: { $0.id == id })
         else { return }
-        if tab.isDirty, let descriptor = tabKinds[tab.kind], !(await descriptor.confirmClose(id)) {
-            return
+        if tab.isDirty, let descriptor = tabKinds[tab.kind] {
+            closing.insert(id)
+            let isConfirmed = await descriptor.confirmClose(id)
+            closing.remove(id)
+            guard isConfirmed else { return }
         }
         model.close(id)
         tabViews[id] = nil
