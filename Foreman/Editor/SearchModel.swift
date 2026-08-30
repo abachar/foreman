@@ -42,6 +42,8 @@ final class SearchModel {
                     guard !Task.isCancelled else { return }
                     add(match)
                 }
+            } catch let error as EditorError {
+                self.error = error.description
             } catch {
                 self.error = error.localizedDescription
             }

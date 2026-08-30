@@ -55,6 +55,38 @@ struct ContentSearchTests {
         #expect(word == [NSRange(location: 7, length: 3)])
     }
 
+    /// editor R21: exit 1 is "no matches" for both tools; only a real error becomes one.
+    @Test func mapsExitStatusesToTypedFailures() {
+        #expect(ContentSearch.failure(status: 0, tool: rg, stderr: "") == nil)
+        #expect(ContentSearch.failure(status: 1, tool: rg, stderr: "") == nil)
+        #expect(ContentSearch.failure(status: 1, tool: grep, stderr: "") == nil)
+        #expect(
+            ContentSearch.failure(status: 2, tool: rg, stderr: "regex parse error:\n  unclosed group\n")
+                == .searchFailed("regex parse error: unclosed group"))
+        #expect(
+            ContentSearch.failure(status: 2, tool: grep, stderr: "")
+                == .searchFailed("Search tool exited with status 2"))
+    }
+
+    /// editor R21: an invalid regex must surface as an error, not as "No results".
+    @Test func surfacesAGrepFailureInsteadOfNoResults() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ContentSearchTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data("some text\n".utf8).write(to: root.appending(path: "a.txt"))
+        var thrown: EditorError?
+        do {
+            let options = ContentSearch.Options(query: "(", isRegex: true)
+            for try await _ in ContentSearch.run(options, tool: grep, root: root) {}
+        } catch let error as EditorError {
+            thrown = error
+        }
+        guard case .searchFailed = thrown else {
+            Issue.record("expected a searchFailed error, got \(String(describing: thrown))")
+            return
+        }
+    }
+
     @Test func runsGrepAndStopsAtTheCap() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "ContentSearchTests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(
