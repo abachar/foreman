@@ -116,15 +116,19 @@ final class GitFeature {
             panel: PanelDescriptor(
                 id: Self.panelID, title: "Changes", side: .right, icon: "arrow.triangle.branch",
                 defaultShortcut: "cmd+shift+g",
-                makeView: { [unowned self] in AnyView(GitChangesPanelView(model: model, feature: self, theme: theme)) },
+                makeView: { [weak self] in
+                    guard let self else { return AnyView(EmptyView()) }
+                    return AnyView(GitChangesPanelView(model: model, feature: self, theme: theme))
+                },
                 activate: { [weak self] in self?.activate() },
                 deactivate: { [weak self] in self?.deactivate() }))
         let history = history
         layout.register(
             panel: PanelDescriptor(
                 id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
-                makeView: { [unowned self] in
-                    AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))
+                makeView: { [weak self] in
+                    guard let self else { return AnyView(EmptyView()) }
+                    return AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))
                 },
                 activate: { [weak self] in self?.activateHistory() },
                 deactivate: { [weak self] in self?.history.reload(with: nil) }))
