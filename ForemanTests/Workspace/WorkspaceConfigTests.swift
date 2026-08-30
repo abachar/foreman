@@ -82,6 +82,17 @@ struct WorkspaceConfigTests {
         #expect(try config.section("repos", as: [String].self) == nil)
     }
 
+    @Test func dropsDeclaredReposOutsideTheRoot() async throws {
+        defer { fixture.remove() }
+        try fixture.makeFolder("backend")
+        try fixture.writeWorkspace(#"{ "repos": ["backend", "../outside"] }"#)
+
+        let config = try await fixture.load()
+
+        #expect(config.repos == [fixture.root.appending(path: "backend", directoryHint: .isDirectory)])
+        #expect(config.warnings == ["Repository \"../outside\" ignored: outside the workspace root."])
+    }
+
     @Test func throwsWhenASectionHasTheWrongShape() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace(#"{ "postgres": { "host": 5 } }"#)

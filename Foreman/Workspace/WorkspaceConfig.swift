@@ -13,8 +13,8 @@ nonisolated struct WorkspaceConfig: Sendable {
 
     /// Repositories declared in `repos`, resolved under the root.
     ///
-    /// Declared folders missing on disk are dropped and reported in `warnings` (config, edge cases).
-    /// Empty when `repos` is absent.
+    /// Declared folders missing on disk or escaping the root are dropped and reported in
+    /// `warnings` (config, edge cases). Empty when `repos` is absent.
     let repos: [URL]
 
     /// What was ignored while loading, one message each (config R11, edge cases).
@@ -138,6 +138,11 @@ nonisolated struct WorkspaceConfig: Sendable {
         }
         return paths.compactMap { path in
             let folder = root.appending(path: path, directoryHint: .isDirectory)
+            // architecture, security: a declared path never resolves outside the workspace root.
+            guard Workspace.contains(folder, under: root) else {
+                warnings.append("Repository \"\(path)\" ignored: outside the workspace root.")
+                return nil
+            }
             guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else {
                 warnings.append("Repository \"\(path)\" ignored: folder not found.")
                 return nil
