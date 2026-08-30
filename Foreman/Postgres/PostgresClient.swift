@@ -108,6 +108,10 @@ actor PostgresClient {
 
     /// R11, R12: the session is read-only and bounded from its first statement; values go
     /// through `set_config` binds, never into the SQL text (R15).
+    ///
+    /// The read-only setting is a guard against an accidental write, not a permission: a
+    /// statement is free to set `default_transaction_read_only` off itself. Only the server's
+    /// own grants can stop a deliberate write, and the toggle's help text says as much.
     private func applySession(on connection: PostgresConnection) async throws {
         let readOnly = allowWrites ? "off" : "on"
         try await connection.query(
