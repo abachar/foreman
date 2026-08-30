@@ -19,7 +19,7 @@ Left panel `explorer.tree`: the workspace's file tree, lazy, refreshed by FSEven
 
 - R1 — The root of the tree is the workspace root; it is not shown as a node, its children are the first level.
 - R2 — Sorting: folders first, then files, each by case-insensitive name (`localizedStandardCompare` order, so `file2 < file10`).
-- R3 — Everything is visible except `.git/` (and `.foreman/state.json`, `.DS_Store`). Dotfiles are shown.
+- R3 — Everything is visible except `.git/` (and `.foreman/state.json`, `.foreman/scratches/`, `.DS_Store`). Dotfiles are shown. **Amended 2026-08-30**: `.foreman/scratches/` holds the untitled tabs' drafts (`editor` R34), Foreman's files and not the workspace's, so the tree never shows them — the same reason `state.json` is hidden.
 - R4 — Entries **ignored by git** (information received from `git`, R15) are greyed out. Folders on the shared exclusion list (`architecture.md`: `node_modules`, `target`, `.build`…) are greyed out even without git information, and never expanded automatically (R11).
 - R5 — A "hide ignored files" toggle (the panel menu, persisted in `state.json`) hides the greyed-out entries. Default: visible.
 - R6 — Symlinks: shown with a dedicated icon, expandable when they point to a folder, never followed during a recursive operation (deletion, refresh).

@@ -42,7 +42,8 @@ final class EditorFeature {
                 showsFileIcon: true,
                 makeView: { [weak self] id, payload in self?.restore(id, payload: payload) },
                 serialize: { [weak self] id in self?.serialize(id) },
-                confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true }))
+                confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true },
+                onClose: { [weak self] id in self?.tabClosed(id) }))
         registerActions()
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()
@@ -174,12 +175,74 @@ final class EditorFeature {
         }
     }
 
+    // MARK: - Untitled tabs (editor R34)
+
+    /// editor R34: opens an untitled tab — an ordinary file tab on a new, empty scratch file.
+    func newFile(newGroup: Bool = false) async {
+        do {
+            open(try await Scratch.create(root: workspace.root), preview: false, newGroup: newGroup)
+        } catch {
+            logger.error("scratch not created: \(error.description, privacy: .public)")
+        }
+    }
+
+    /// editor R34, R8: `cmd+s` on an untitled tab asks where to write it, the workspace root by
+    /// default; the file is named here and nowhere else (decision 2026-08-30).
+    private func saveScratch(_ id: TabID, _ tab: EditorTab) async -> Bool {
+        guard let window = tab.textView?.window else { return false }
+        let panel = NSSavePanel()
+        panel.directoryURL = workspace.root
+        panel.nameFieldStringValue = tab.url.lastPathComponent
+        panel.canCreateDirectories = true
+        panel.message = "Save the file in the workspace."
+        guard await panel.beginSheetModal(for: window) == .OK, let destination = panel.url else { return false }
+        return await saveScratch(id, to: destination)
+    }
+
+    /// editor R34: the draft is written, the scratch moved to `destination`, and the tab becomes an
+    /// ordinary file tab — title (R5), highlighting (R11) and recent files (R19) follow the path.
+    ///
+    /// Apart from the panel, so the transformation is tested without AppKit.
+    @discardableResult
+    func saveScratch(_ id: TabID, to destination: URL) async -> Bool {
+        guard let tab = tabs[id], tab.isScratch else { return false }
+        await tab.writeScratch()
+        do {
+            try await Scratch.move(tab.url, to: destination)
+        } catch {
+            logger.error("scratch not saved: \(error.description, privacy: .public)")
+            tab.message = error.description
+            return false
+        }
+        let path = Workspace.persistedPath(for: destination, root: workspace.root)
+        tab.fileRenamed(to: destination, path: path)
+        // The document was read from the scratch: reading the file again is what makes the tab
+        // clean and its modification date the saved one (editor R10).
+        await tab.reload()
+        syncDirty(id)
+        if let owner = layout.model.owner(of: id) {
+            layout.update(id, title: destination.lastPathComponent, isDirty: false, isPreview: !tab.isPinned)
+            retitle(group: owner)
+        }
+        noteRecent(path)
+        return true
+    }
+
+    /// editor R34: the scratch goes with its tab (layout R15 already asked, R8 already offered to
+    /// name it); a scratch saved away is no longer one.
+    private func tabClosed(_ id: TabID) {
+        guard let tab = tabs.removeValue(forKey: id), tab.isScratch else { return }
+        Task { await Scratch.remove(tab.url) }
+    }
+
     /// editor R19: `path` becomes the most recent; the list is capped and persisted.
     nonisolated static func pushRecent(_ path: String, into recent: [String]) -> [String] {
         Array(([path] + recent.filter { $0 != path }).prefix(50))
     }
 
     private func noteRecent(_ path: String) {
+        // editor R34: a scratch is not a file the user opened; it has no place in the recents.
+        guard !Scratch.isScratch(path: path) else { return }
         recentPaths = Self.pushRecent(path, into: recentPaths)
         workspace.setState("editor", to: State(recent: recentPaths))
         publishRecents()
@@ -463,6 +526,10 @@ final class EditorFeature {
     /// overwriting, an IO error is shown.
     private func save(_ id: TabID, _ tab: EditorTab, force: Bool = false) async -> Bool {
         guard let window = tab.textView?.window else { return false }
+        // editor R34: an untitled tab has no name yet; saving is where it gets one.
+        if tab.isScratch {
+            return await saveScratch(id, tab)
+        }
         if tab.document?.isReadOnly == true {
             let alert = NSAlert()
             alert.messageText = "\(tab.url.lastPathComponent) is read-only"

@@ -100,6 +100,14 @@ final class EditorTab {
         Language.forFile(url)
     }
 
+    /// editor R34: an untitled tab, read off its path — nothing is persisted for it, so a restored
+    /// tab is a scratch again for the same reason it was one before (editor R4).
+    var isScratch: Bool {
+        Scratch.isScratch(path: path)
+    }
+
+    private var scratchWrite: Task<Void, Never>?
+
     var payload: Payload {
         Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock)
     }
@@ -242,6 +250,34 @@ final class EditorTab {
         isDirty = true
         message = nil
         refreshFolds()
+        if isScratch {
+            scheduleScratchWrite()
+        }
+    }
+
+    // MARK: - Scratch (editor R34)
+
+    /// editor R34: the draft reaches its scratch a little after the last keystroke, so quitting
+    /// the app (`cmd+q`, which chains no confirmation) brings it back at the next launch.
+    ///
+    /// `isDirty` is deliberately left set: the file on disk is Foreman's, not a name the user
+    /// chose, so closing the tab must still ask (layout R15) and `cmd+s` must still name it (R8).
+    private func scheduleScratchWrite(after delay: Duration = .seconds(1)) {
+        scratchWrite?.cancel()
+        scratchWrite = Task { [weak self] in
+            guard (try? await Task.sleep(for: delay)) != nil else { return }
+            await self?.writeScratch()
+        }
+    }
+
+    /// editor R34: writes the draft now, and takes the new modification date with it — Foreman's
+    /// own write must not come back through FSEvents as a "modified on disk" banner (editor R9).
+    func writeScratch() async {
+        scratchWrite?.cancel()
+        scratchWrite = nil
+        guard isScratch, let document else { return }
+        guard let written = try? await FileDocument.write(currentText, to: url, as: document) else { return }
+        content = .text(written)
     }
 
     /// editor R30: `false` when a formatting is already running; `endFormatting` releases.

@@ -35,4 +35,65 @@ struct EditorFeatureTests {
         #expect(editor.openTabCount == 1)
         #expect(layout.model.active.active?.isPreview == false)
     }
+
+    /// editor R34: `cmd+s` on an untitled tab names the file, moves the scratch there and leaves an
+    /// ordinary file tab behind — title (R5) and path included.
+    @Test func savingAnUntitledTabTurnsItIntoAnOrdinaryFileTab() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorFeatureTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (layout, editor) = Self.feature(root: root)
+
+        await editor.newFile()
+        let id = try #require(layout.model.active.active?.id)
+        #expect(editor.path(of: id) == ".foreman/scratches/Untitled")
+        #expect(layout.model.active.active?.title == "Untitled")
+        // editor R19: a draft is not a file the user opened.
+        #expect(editor.recentPaths.isEmpty)
+
+        let scratch = Scratch.folder(root: root).appending(path: "Untitled")
+        let destination = root.appending(path: "notes.md")
+        #expect(await editor.saveScratch(id, to: destination))
+        #expect(editor.path(of: id) == "notes.md")
+        #expect(layout.model.active.active?.title == "notes.md")
+        #expect(editor.recentPaths == ["notes.md"])
+        #expect(FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)))
+        #expect(!FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)))
+    }
+
+    /// editor R34: the scratch goes with the tab it belonged to.
+    @Test func closingAnUntitledTabRemovesItsScratch() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorFeatureTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (layout, editor) = Self.feature(root: root)
+
+        await editor.newFile()
+        let id = try #require(layout.model.active.active?.id)
+        let scratch = Scratch.folder(root: root).appending(path: "Untitled")
+        #expect(FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)))
+
+        await layout.closeTab(id)
+        #expect(editor.openTabCount == 0)
+        // The removal is off the main actor; it is a file deletion, not a second of work.
+        for _ in 0..<50 where FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(!FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)))
+        // The folder and its `.gitignore` stay: the next draft reuses them.
+        let ignore = Scratch.folder(root: root).appending(path: ".gitignore")
+        #expect(FileManager.default.fileExists(atPath: ignore.path(percentEncoded: false)))
+    }
+
+    private static func feature(root: URL) -> (layout: LayoutManager, editor: EditorFeature) {
+        let layout = LayoutManager()
+        let workspace = Workspace(root: root, globalConfigFile: root.appending(path: "no-global.json"))
+        let theme = ThemeService()
+        return (
+            layout,
+            EditorFeature(
+                layout: layout, workspace: workspace, theme: theme, palette: Palette(theme: theme),
+                highlighter: Highlighter(theme: theme))
+        )
+    }
 }

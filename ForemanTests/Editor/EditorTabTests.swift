@@ -59,4 +59,40 @@ struct EditorTabTests {
         #expect(tab.reloadVersion == 1)
         #expect(tab.diskState == .current)
     }
+
+    /// editor R34: a tab is untitled because of where its file is, so the save that moves the file
+    /// out of the scratches is all it takes to become an ordinary one — highlighting (R11) included.
+    @Test func aSavedScratchTabBecomesAnOrdinaryFileTab() {
+        let root = URL(filePath: "/tmp/EditorTabTests")
+        let tab = EditorTab(
+            path: ".foreman/scratches/Untitled", url: Scratch.folder(root: root).appending(path: "Untitled"),
+            isPinned: true)
+        #expect(tab.isScratch)
+        #expect(tab.language == nil)
+
+        tab.fileRenamed(to: root.appending(path: "docs/notes.md"), path: "docs/notes.md")
+
+        #expect(!tab.isScratch)
+        #expect(tab.language == .markdown)
+        #expect(tab.url.lastPathComponent == "notes.md")
+        #expect(tab.payload.path == "docs/notes.md")
+    }
+
+    /// editor R34: the draft reaches disk without the tab losing its unsaved marker — closing it
+    /// still asks (layout R15) and `cmd+s` still names it (R8).
+    @Test func writingAScratchKeepsTheTabDirty() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorTabTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = try await Scratch.create(root: root)
+        let tab = EditorTab(path: ".foreman/scratches/Untitled", url: url, isPinned: true)
+        await tab.load()
+        tab.textDidChange()
+
+        await tab.writeScratch()
+
+        #expect(tab.isDirty)
+        // editor R9: the write is Foreman's own, so the tab must not see the file as changed.
+        #expect(tab.document?.isStale(at: url) == false)
+    }
 }

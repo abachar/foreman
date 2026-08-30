@@ -79,8 +79,10 @@ nonisolated struct DirectoryLevel: Hashable, Sendable {
         nodes.reserveCapacity(urls.count)
         for url in urls {
             let name = url.lastPathComponent
-            // explorer R3: `.git/`, `.DS_Store` and `.foreman/state.json` are not shown at all.
-            guard name != ".git", name != ".DS_Store", !(relativePath == ".foreman" && name == "state.json")
+            // explorer R3: `.git/`, `.DS_Store`, `.foreman/state.json` and `.foreman/scratches/`
+            // (editor R34: Foreman's drafts, not the workspace's files) are not shown at all.
+            guard name != ".git", name != ".DS_Store",
+                !(relativePath == ".foreman" && (name == "state.json" || name == "scratches"))
             else { continue }
             let values = try? url.resourceValues(forKeys: keys)
             let kind: FileNode.Kind
