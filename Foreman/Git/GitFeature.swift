@@ -221,6 +221,11 @@ final class GitFeature {
             clients[repo.id] = GitCLI(
                 executable: toolchain.executable, repo: repo.url, loginEnvironment: toolchain.environment)
         }
+        // git R1: a repo that left `config.repos` or the disk leaves its client behind. A diff tab
+        // still open on one keeps it, since the instance is what serialises that repo's writes
+        // (decision 2026-08-27); anything else is created again on demand.
+        let kept = Set(repos.map(\.id)).union(diffModels.values.map(\.payload.repo))
+        clients = clients.filter { kept.contains($0.key) }
         gitDirectories = await Self.externalGitDirectories(of: repos)
         watch(repos)
         for repo in repos {
