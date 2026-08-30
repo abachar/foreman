@@ -59,12 +59,16 @@ final class BrowserTab: NSObject {
     /// browser R5: the last refusal, cleared by the next navigation.
     private(set) var banner: String?
     private let store: WKWebsiteDataStore
+    /// The window a sheet attaches to before the page is on screen; `NSApp.keyWindow` is the wrong
+    /// one with several workspaces open (layout).
+    private let hostWindow: () -> NSWindow?
     private var observations: [NSKeyValueObservation] = []
     private var webViewStorage: WKWebView?
 
-    init(url: URL, store: WKWebsiteDataStore) {
+    init(url: URL, store: WKWebsiteDataStore, hostWindow: @escaping () -> NSWindow?) {
         self.url = url
         self.store = store
+        self.hostWindow = hostWindow
     }
 
     /// browser R1: the page's title, else its host.
@@ -170,7 +174,7 @@ final class BrowserTab: NSObject {
     }
 
     private var window: NSWindow? {
-        webViewStorage?.window ?? NSApp.keyWindow
+        webViewStorage?.window ?? hostWindow() ?? NSApp.keyWindow
     }
 }
 
@@ -269,6 +273,19 @@ extension BrowserTab: WKUIDelegate {
         return response == .alertFirstButtonReturn ? field.stringValue : nil
     }
 
+    /// browser R8: `<input type="file">`, which only the host can draw.
+    func webView(
+        _ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo
+    ) async -> [URL]? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        // `webkitdirectory` asks for a folder; a file is always a valid answer.
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = parameters.allowsDirectories
+        guard let window else { return nil }
+        return await panel.beginSheetModal(for: window) == .OK ? panel.urls : nil
+    }
+
     private func dialog(
         _ message: String, buttons: [String], accessory: NSView? = nil
     ) async
@@ -281,7 +298,9 @@ extension BrowserTab: WKUIDelegate {
         for button in buttons {
             alert.addButton(withTitle: button)
         }
-        guard let window else { return alert.runModal() }
+        // With no window at all the page is not on screen and nobody can answer: the dialog is
+        // dismissed rather than run app-modally, which would freeze every window of the app.
+        guard let window else { return .alertSecondButtonReturn }
         return await alert.beginSheetModal(for: window)
     }
 }

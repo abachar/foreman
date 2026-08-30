@@ -108,7 +108,7 @@ final class BrowserFeature {
             layout.activate(tabID, in: owner)
             return
         }
-        tab = BrowserTab(url: url, store: store)
+        tab = makeTab(url)
         tabID = layout.openTab(kind: Self.tabKind, title: url.host() ?? "Browser", payload: "{}")
         watchTitle()
     }
@@ -119,11 +119,16 @@ final class BrowserFeature {
             return AnyView(BrowserTabView(tab: tab, theme: theme))
         }
         guard tabID == nil || layout.model.owner(of: tabID ?? id) == nil, let url else { return nil }
-        let tab = BrowserTab(url: url, store: store)
+        let tab = makeTab(url)
         self.tab = tab
         tabID = id
         watchTitle()
         return AnyView(BrowserTabView(tab: tab, theme: theme))
+    }
+
+    /// browser R8, layout: the page's sheets belong to this window, not to the key one.
+    private func makeTab(_ url: URL) -> BrowserTab {
+        BrowserTab(url: url, store: store, hostWindow: { [weak self] in self?.layout.window })
     }
 
     /// browser R1: the tab's title follows the page.
