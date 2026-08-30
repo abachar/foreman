@@ -14,8 +14,8 @@ struct PostgresQueryView: View {
             theme.tokens.separator.color.frame(height: 1)
             VSplitView {
                 SQLEditorView(
-                    tab: tab, theme: theme, highlighter: feature.highlighter, onRun: { feature.run(tab) },
-                    onStop: { feature.stop() }
+                    tab: tab, pending: tab.pending, theme: theme, highlighter: feature.highlighter,
+                    onRun: { feature.run(tab) }, onStop: { feature.stop() }
                 )
                 .frame(maxWidth: .infinity, minHeight: 80)
                 results
@@ -78,7 +78,7 @@ struct PostgresQueryView: View {
         ) {
             PostgresHistoryView(model: feature.history, theme: theme) { entry in
                 feature.history.presentedFor = nil
-                tab.pendingReplacement = entry.text
+                tab.requestReplacement(entry.text)
             }
         }
     }

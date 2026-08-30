@@ -19,16 +19,28 @@ final class PostgresQueryTab: Identifiable {
         }
     }
 
+    /// What the view must still do to the buffer (postgres R8, R19, R20).
+    ///
+    /// A version rather than fields the view clears: a `NSViewRepresentable` may not write back
+    /// to observed state while SwiftUI is updating it, so the request stays here and the
+    /// coordinator remembers the last version it applied.
+    nonisolated struct PendingEdit: Equatable, Sendable {
+        var version = 0
+        /// R20: a history entry replacing the whole buffer.
+        var replacement: String?
+        /// R8: a name inserted at the cursor.
+        var insertion: String?
+        /// R19: where the cursor must go.
+        var cursor: Int?
+    }
+
     let id: TabID
     let title: String
     /// R9: persisted through the payload; the view mirrors it.
     var text: String
-    /// R19: where the view must place the cursor, consumed by the view.
-    var requestedCursor: Int?
-    /// R8: text the view must insert at the cursor, consumed by the view.
-    var pendingInsertion: String?
-    /// R20: a history entry replacing the buffer, consumed by the view.
-    var pendingReplacement: String?
+    /// R8, R19, R20: the last request made to the view; applied once, never cleared from a view
+    /// update.
+    private(set) var pending = PendingEdit()
     var selection = NSRange(location: 0, length: 0)
     private(set) var isRunning = false
     private(set) var result: QueryResult?
@@ -40,8 +52,9 @@ final class PostgresQueryTab: Identifiable {
     var gridSelection: Set<Int> = []
     private(set) var error: String?
     private(set) var hint: String?
-    /// The text view, set by `SQLEditorView` for the commands.
-    weak var textView: NSTextView?
+    /// The text view, set by `SQLEditorView` for the commands; not observed, since the view
+    /// assigns it from its own update pass.
+    @ObservationIgnored weak var textView: NSTextView?
 
     init(id: TabID, title: String, text: String) {
         self.id = id
@@ -51,6 +64,23 @@ final class PostgresQueryTab: Identifiable {
 
     var payload: Payload {
         Payload(title: title, text: text)
+    }
+
+    // MARK: - Requests to the view (R8, R19, R20)
+
+    /// R20: a history entry replaces the whole buffer.
+    func requestReplacement(_ text: String) {
+        pending = PendingEdit(version: pending.version + 1, replacement: text)
+    }
+
+    /// R8: a schema name is inserted at the cursor.
+    func requestInsertion(_ text: String) {
+        pending = PendingEdit(version: pending.version + 1, insertion: text)
+    }
+
+    /// R19: the cursor goes to the server's error position.
+    func requestCursor(_ location: Int) {
+        pending = PendingEdit(version: pending.version + 1, cursor: location)
     }
 
     func start() {
@@ -83,7 +113,9 @@ final class PostgresQueryTab: Identifiable {
         if case .server(_, let state, _) = error {
             hint = QueryExecution.hint(sqlState: state)
         }
-        requestedCursor = cursor
+        if let cursor {
+            requestCursor(cursor)
+        }
         isRunning = false
     }
 
