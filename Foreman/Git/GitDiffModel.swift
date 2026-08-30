@@ -3,6 +3,12 @@ import Foundation
 import Observation
 import SwiftUI
 
+/// The two grounds a diff line can have, read from the theme once per render.
+nonisolated struct DiffTint: Sendable {
+    let added: Color
+    let removed: Color
+}
+
 /// A column of text with its gutter, as the view draws it (git R13).
 nonisolated struct RenderedColumn: Sendable {
     let numbers: String
@@ -170,19 +176,30 @@ final class GitDiffModel {
 
     /// Highlights each file once (the grammar from its name, editor R12), then colors the lines.
     private func render(_ diff: GitDiff) async {
+        // The theme is read once, here, so the slicing below needs nothing from the main actor.
+        let tint = DiffTint(
+            added: Color(nsColor: theme.diffLineBackground(added: true)),
+            removed: Color(nsColor: theme.diffLineBackground(added: false)))
         var rendered: [String: [RenderedHunk]] = [:]
         for file in diff.files where !file.isBinary {
             let code = file.hunks.flatMap(\.lines).map(\.text).joined(separator: "\n")
             let language = Language.forFile(URL(filePath: file.path))
             let highlighted = language == nil ? nil : await highlighter.highlight(code, language: language ?? .json)
             guard !Task.isCancelled else { return }
-            rendered[file.id] = Self.render(file, highlighted: highlighted, theme: theme)
+            rendered[file.id] = await Self.render(file, highlighted: highlighted, tint: tint)
         }
         self.rendered = rendered
     }
 
     /// The highlighted text sliced back per line, the `+`/`−` tint, then both layouts.
-    private static func render(_ file: FileDiff, highlighted: AttributedString?, theme: ThemeService) -> [RenderedHunk]
+    ///
+    /// Off the main actor: a large diff builds an `AttributedString` per line, twice — inline and
+    /// side by side — and that ran between the user and every frame (audit M3b).
+    @concurrent
+    private static func render(
+        _ file: FileDiff, highlighted: AttributedString?, tint: DiffTint
+    ) async
+        -> [RenderedHunk]
     {
         var cursor = highlighted?.startIndex
         var result: [RenderedHunk] = []
@@ -199,8 +216,8 @@ final class GitDiffModel {
                 }
                 switch line.kind {
                 case .context: break
-                case .added: piece.backgroundColor = Color(nsColor: theme.diffLineBackground(added: true))
-                case .removed: piece.backgroundColor = Color(nsColor: theme.diffLineBackground(added: false))
+                case .added: piece.backgroundColor = tint.added
+                case .removed: piece.backgroundColor = tint.removed
                 }
                 if line.hasNoNewline {
                     piece.append(AttributedString(" \u{23CE}\u{0338}"))
@@ -237,7 +254,7 @@ final class GitDiffModel {
         return result
     }
 
-    private static func column(
+    nonisolated private static func column(
         _ lines: [DiffLine], pieces: [AttributedString], number: KeyPath<DiffLine, Int?>
     )
         -> RenderedColumn

@@ -33,9 +33,20 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         sync()
     }
 
+    /// The icons already built, keyed by the icon and its badge; dropped when the theme changes.
+    ///
+    /// `sync` runs on every SwiftUI update and used to resolve, tint and redraw every item's
+    /// image each time — an SF Symbol lookup or a file read per item per update (audit M15).
+    private var images: [String: NSImage] = [:]
+    private var imagesTokens: ThemeService.Tokens?
+
     /// Items and visibility as the manager says; called on every SwiftUI update.
     func sync() {
         toolbar.isVisible = layout.isToolbarVisible
+        if imagesTokens != theme.tokens {
+            imagesTokens = theme.tokens
+            images.removeAll()
+        }
         let wanted = identifiers
         if toolbar.items.map(\.itemIdentifier) != wanted {
             while !toolbar.items.isEmpty {
@@ -234,6 +245,14 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     /// The icon, with a colored dot in its corner when the item carries a badge (layout R31);
     /// design R15: the dot is a state token, the icon is tinted by the button.
     private func image(_ icon: String, badge: ToolbarBadge) -> NSImage? {
+        let key = "\(icon)|\(badge)"
+        if let cached = images[key] { return cached }
+        guard let built = build(icon, badge: badge) else { return nil }
+        images[key] = built
+        return built
+    }
+
+    private func build(_ icon: String, badge: ToolbarBadge) -> NSImage? {
         guard let base = IconImage.resolve(icon) else { return nil }
         guard case .dot(let color) = badge else { return base }
         let tint = theme.tokens.textPrimary.nsColor

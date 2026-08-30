@@ -11,8 +11,11 @@ enum IconImage {
             return symbol
         }
         let image: NSImage
-        if let asset = NSImage(named: icon) {
-            image = asset
+        // `NSImage(named:)` hands back the instance it caches for the whole app: setting
+        // `isTemplate` and `size` on it changed that shared image everywhere it is drawn, at
+        // whatever size the last caller wanted (audit M15).
+        if let asset = NSImage(named: icon), let copy = asset.copy() as? NSImage {
+            image = copy
         } else if icon.hasPrefix("/"), let file = NSImage(contentsOfFile: icon) {
             image = file
         } else {

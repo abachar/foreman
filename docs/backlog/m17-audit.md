@@ -27,7 +27,7 @@ Each task depends only on the previous ones. One task = one PR.
 | 17.7 | **The browser stops opening arbitrary schemes**: every non-web scheme goes to `NSWorkspace.open` with no prompt and no user-gesture requirement, iframes included; `<input type="file">` is dead and the `dialog` fallback blocks app-modally | M7, T4 | `WKUIDelegate.runOpenPanelWith…` | `decidePolicyFor` on a `.system` scheme from a subframe | S | 🟢 | |
 | 17.8 | **Layout focus and shortcuts**: `PanelManager.focusPanel` has no caller while `ZonesViewController.apply` re-asserts modelled focus on every update — a theme change yanks the keyboard out of a panel being typed in. With it, the layout minors: double confirm-close, the stale "reserved by layout" banner, write-only `Palette.query`, the missing duplicate-id guard, the tab button without a maximum width | M11, L1, L2, L4, L5, L7 | — | the banner after an override to another key; one confirmation per double `⌘W` | M | 🟢 | |
 | 17.9 | **Explorer, terminal, run, agents**: a case-only rename safe against a crash and a collision, terminal zoom surviving the next `updateNSView`, the explorer activation loop honouring cancellation, bounded outline caches, control characters sanitised out of a mention before the PTY, an out-of-root symlink caught by the root check, a mention no longer swallowed by an idle tab, and the two catalog slips | M12, T1–T3, T5, T7, T8, A1, A2, R11 | `DateFormatter` with a fixed format | the sanitised mention, a symlinked operation contained, `AgentCatalog.isValid` | M | 🟢 | |
-| 17.10 | **Render budget**: the layout snapshot JSON-encoded on every root body pass, the toolbar re-resolving every icon on every update, `IconImage.resolve` mutating the shared `NSImage(named:)` instance, and the full diff rendered to `AttributedString` on the main actor | M15, M3b | a dirty flag, `NSImage.copy()`, `@concurrent` | the snapshot encoded once per real change | M | ⚪ | |
+| 17.10 | **Render budget**: the layout snapshot JSON-encoded on every root body pass, the toolbar re-resolving every icon on every update, `IconImage.resolve` mutating the shared `NSImage(named:)` instance, and the full diff rendered to `AttributedString` on the main actor | M15, M3b | a dirty flag, `NSImage.copy()`, `@concurrent` | the snapshot encoded once per real change | M | 🟢 | |
 | 17.11 | **The wheels still standing**: the greedy fuzzy-highlight walker disagreeing with the ranking while FuzzyMatch's own ranges are computed then discarded, raw key-code interception, and the divider-drag heuristic through `NSApp.currentEvent` | R4, R5, R6 | `control(_:textView:doCommandBy:)`, `NSSplitViewDelegate` | the highlight matches the ranking | M | ⚪ | |
 | 17.12 | **Two points kept from the second review**: `isDirectory` spawns a `Task.detached` for one `getattrlist` — no cancellation from the parent `.task`, no inherited priority — where `@concurrent` does it structurally. And `KeychainSecretStore` sets no `kSecAttrAccessible`: prospective only, since on macOS the attribute binds in the data protection keychain and the default is already `WhenUnlocked` — set it in the write attributes, never in the search query | — | `@concurrent`, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | a write then a read still finds the item | S | 🟢 | |
 | 17.13 | **The two methodology gaps**: fixtures encode our assumptions instead of the tools' real output, and nothing checks deallocation. Golden tests drive the **real `git`** on a scratch repo and round-trip every parser; deallocation tests cover the tab, the layout and the Postgres feature; containment, editor concurrency, and rates and bounds get theirs | audit §4 | Swift Testing | the tests themselves | M | ⚪ | |
@@ -48,6 +48,16 @@ to need amending:
 | `offset:` label on `DispatchIO.write` | 17.2, `cc4d803` | the call does not compile |
 | a local binding before `[weak workspace]` | 17.1, `93e0631` | a `@State` property captured weakly conflicts with the implicit strong capture of the view |
 | eleven `///` summaries split in two | 17.1–17.4 | `swift format lint --strict` is blocking in CI and fails on the run as pushed |
+
+## Still open after 17.10
+
+- **M15a — the layout snapshot is serialised on every root body pass.** `.onChange(of:
+  layout.snapshot())` calls each feature's `serialize` on every evaluation. The two other halves of
+  M15 are fixed (the toolbar's icons, the shared `NSImage`), but this one needs a change signal the
+  manager does not have: a structural key over the tree, tabs and panels would skip the payload
+  edits that must be persisted — a query tab's SQL is a payload and nothing else moves when it is
+  typed. To be done with an explicit "the state changed" call from the features that own a mutable
+  payload, not with a cheaper comparison.
 
 ## Findings closed without a fix
 
