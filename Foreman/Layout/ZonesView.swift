@@ -35,6 +35,14 @@ struct ZonesView: NSViewControllerRepresentable {
             center: AnyView(IslandView(theme: theme) { CenterView(layout: layout, theme: theme) }),
             panelView: { id in layout.panels.view(for: id).map { view in AnyView(IslandView(theme: theme) { view }) } },
             onPanelResized: { layout.setPanelSize($1, for: $0) },
+            onFocusMoved: { target in
+                switch target {
+                case .center:
+                    layout.panels.focusCenter()
+                case .panel(let id):
+                    layout.panels.focusPanel(id)
+                }
+            },
             onFirstFrame: onFirstFrame,
             onWindow: { [toolbar = context.coordinator] window in
                 if let frame = layout.windowFrame {

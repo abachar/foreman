@@ -15,6 +15,9 @@ final class ZonesViewController: GutterSplitViewController {
         var center: AnyView
         var panelView: (PanelID) -> AnyView?
         var onPanelResized: (PanelSide, CGFloat) -> Void
+        /// layout R6: the keyboard moved on its own (a click into a panel, into the center); the
+        /// model follows what it did instead of pulling it back.
+        var onFocusMoved: (FocusTarget) -> Void
         var onFirstFrame: () -> Void
         /// The window is known: the shortcut monitor can be installed (layout, options).
         var onWindow: (NSWindow) -> Void
@@ -43,6 +46,10 @@ final class ZonesViewController: GutterSplitViewController {
     private var hasShownFirstFrame = false
     private var frameObservations: [Task<Void, Never>] = []
     private var titlebarObservation: NSKeyValueObservation?
+    private var firstResponderObservation: NSKeyValueObservation?
+    /// Where the keyboard is, as this controller last saw it: what the model asks for is applied
+    /// when it differs, never on every update (layout R6).
+    private var appliedFocus: FocusTarget?
 
     /// A controller given its own split view must hold its items before the view loads: an empty
     /// one asserts in `viewDidLoad` (checked on macOS 26, 2026-08-27), so everything is built here.
@@ -88,6 +95,10 @@ final class ZonesViewController: GutterSplitViewController {
             titlebarObservation = window.observe(\.titlebarAppearsTransparent, options: [.new]) {
                 [weak self] _, _ in
                 MainActor.assumeIsolated { self?.assertGround() }
+            }
+            firstResponderObservation = window.observe(\.firstResponder, options: [.new]) {
+                [weak self] window, _ in
+                MainActor.assumeIsolated { self?.reportFocus(of: window) }
             }
             DispatchQueue.main.async { [weak self] in
                 self?.configuration?.onFirstFrame()
@@ -147,7 +158,11 @@ final class ZonesViewController: GutterSplitViewController {
             }
         }
         applyRoom()
-        applyFocus(configuration.focus)
+        // layout R6: the model moves the keyboard when it changes, and only then — re-asserting it
+        // on every update took the keyboard out of a panel the user was typing in.
+        if configuration.focus != appliedFocus {
+            applyFocus(configuration.focus)
+        }
     }
 
     /// design R2: an island's corners, cut at the layer.
@@ -231,19 +246,44 @@ final class ZonesViewController: GutterSplitViewController {
     // MARK: - Focus
 
     /// layout R6: a shown panel takes the keyboard focus, the center takes it back.
+    ///
+    /// `appliedFocus` is only written where the focus could actually be given: a window that is not
+    /// there yet, or a panel view not built yet, is retried at the next update.
     private func applyFocus(_ focus: FocusTarget) {
         guard let window = view.window else { return }
         let responder = window.firstResponder as? NSView
         switch focus {
         case .center:
+            appliedFocus = focus
             guard !Self.isFocused(center.view, responder) else { return }
             window.makeFirstResponder(center.view)
         case .panel(let id):
-            guard let slot = slots.values.first(where: { $0.panelID == id }), let hosted = slot.hosted,
-                !Self.isFocused(hosted.view, responder)
-            else { return }
+            guard let slot = slots.values.first(where: { $0.panelID == id }), let hosted = slot.hosted else { return }
+            appliedFocus = focus
+            guard !Self.isFocused(hosted.view, responder) else { return }
             window.makeFirstResponder(hosted.view)
         }
+    }
+
+    /// layout R6, R23: the keyboard is the truth — clicking into a panel or into the center moves
+    /// it without the model being asked, and the model has to follow: it decides where `escape`
+    /// applies (R23) and which scope a shortcut resolves in (R22b).
+    private func reportFocus(of window: NSWindow) {
+        guard let configuration, let responder = window.firstResponder as? NSView else { return }
+        let panel = slots.values.first { slot in
+            slot.hosted.map { Self.isFocused($0.view, responder) } == true
+        }
+        let target: FocusTarget?
+        if Self.isFocused(center.view, responder) {
+            target = .center
+        } else if let id = panel?.panelID {
+            target = .panel(id)
+        } else {
+            target = nil
+        }
+        guard let target, target != appliedFocus else { return }
+        appliedFocus = target
+        configuration.onFocusMoved(target)
     }
 
     private static func isFocused(_ view: NSView, _ responder: NSView?) -> Bool {

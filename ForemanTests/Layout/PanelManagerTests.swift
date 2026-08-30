@@ -113,6 +113,23 @@ struct PanelManagerTests {
         #expect(manager.visible == [.left: "git.status"])
     }
 
+    /// layout R6: a click into a visible panel moves the keyboard there and the model follows it,
+    /// or `escape` and the panel-scoped shortcuts would answer for the center (R22b, R23).
+    @Test func focusFollowsAClickIntoAVisiblePanel() {
+        manager.register(panel("explorer.tree", side: .left))
+        manager.register(panel("git.status", side: .right))
+        manager.toggle("explorer.tree")
+        manager.focusCenter()
+
+        manager.focusPanel("explorer.tree")
+        #expect(manager.focus == .panel("explorer.tree"))
+
+        // A panel of an empty slot, and one nobody registered, have no focus to take.
+        manager.focusPanel("git.status")
+        manager.focusPanel("nope")
+        #expect(manager.focus == .panel("explorer.tree"))
+    }
+
     @Test func refusesADuplicatedID() {
         #expect(manager.register(panel("git.status", side: .left)))
         #expect(!manager.register(panel("git.status", side: .right)))
