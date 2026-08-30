@@ -47,7 +47,9 @@ nonisolated enum ShortcutProblem: Equatable, Sendable, CustomStringConvertible {
     case conflict(Shortcut, ids: [String])
     /// A feature declared a layout shortcut as its default: the feature action is not bound.
     case reservedByLayout(Shortcut, id: String)
-    /// `config.shortcuts` names an action that does not exist, or a shortcut that does not parse.
+    /// `config.shortcuts` names an action no feature registered.
+    case unknownAction(id: String)
+    /// `config.shortcuts` gives an action a shortcut that does not parse.
     case invalidOverride(id: String, text: String)
 
     var description: String {
@@ -56,6 +58,8 @@ nonisolated enum ShortcutProblem: Equatable, Sendable, CustomStringConvertible {
             return "\(shortcut) is bound to \(ids.joined(separator: " and ")): neither is active."
         case .reservedByLayout(let shortcut, let id):
             return "\(shortcut) belongs to the layout: \(id) is not bound."
+        case .unknownAction(let id):
+            return "shortcuts.\(id) names no action."
         case .invalidOverride(let id, let text):
             return "shortcuts.\(id) = \"\(text)\" is not a valid shortcut."
         }
@@ -190,7 +194,12 @@ final class ShortcutRegistry {
             requested.append((action, shortcut))
         }
         for (id, text) in overrides.sorted(by: { $0.key < $1.key }) {
-            guard let action = actions.first(where: { $0.id == id }), let shortcut = Shortcut(parsing: text) else {
+            // layout R24: the two halves of the line fail apart, so the message names the right one.
+            guard let action = actions.first(where: { $0.id == id }) else {
+                problems.append(.unknownAction(id: id))
+                continue
+            }
+            guard let shortcut = Shortcut(parsing: text) else {
                 problems.append(.invalidOverride(id: id, text: text))
                 continue
             }

@@ -88,13 +88,19 @@ struct ShortcutRegistryTests {
         #expect(registry.problems.isEmpty)
     }
 
-    @Test func reportsAnOverrideThatDoesNotParseOrNameAnAction() {
+    /// layout R24: the two halves of an override fail apart, and the message names the right one.
+    @Test func reportsAnOverrideThatDoesNotParseApartFromOneThatNamesNoAction() {
         registry.register(action("git.status", "cmd+shift+g"))
 
         registry.apply(overrides: ["git.status": "cmd+", "nope": "cmd+n"])
 
         #expect(resolve("cmd+shift+g") == "git.status")
-        #expect(registry.problems.count == 2)
+        #expect(
+            registry.problems == [.invalidOverride(id: "git.status", text: "cmd+"), .unknownAction(id: "nope")])
+        #expect(
+            registry.problems.map(\.description) == [
+                "shortcuts.git.status = \"cmd+\" is not a valid shortcut.", "shortcuts.nope names no action.",
+            ])
     }
 
     @Test func aFocusedTerminalKeepsEverythingButCommandShortcuts() {
