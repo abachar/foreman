@@ -62,7 +62,7 @@ struct WorkspaceView: View {
                 // design R15: the toolbar's toggles follow the panels' registration order — Database
                 // before Git and History.
                 postgres = PostgresFeature(
-                    layout: layout, workspace: workspace, secrets: KeychainSecretStore(), theme: theme,
+                    layout: layout, workspace: workspace, secrets: .keychain(), theme: theme,
                     highlighter: highlighter)
                 let git = GitFeature(
                     layout: layout, workspace: workspace, editor: editor, explorer: explorer, theme: theme,

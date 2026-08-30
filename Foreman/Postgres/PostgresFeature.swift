@@ -33,7 +33,7 @@ final class PostgresFeature {
     /// postgres R9: the shared highlighter, on the `sql` grammar (2026-08-28).
     let highlighter: Highlighter
     private let workspace: Workspace
-    private let secrets: any SecretStore
+    private let secrets: SecretStore
     private(set) var config: PostgresConfig?
     private(set) var client: PostgresClient?
     private var visiblePanels = 0
@@ -45,7 +45,7 @@ final class PostgresFeature {
     private let logger = os.Logger(subsystem: "dev.crafters.foreman", category: "postgres")
 
     init(
-        layout: LayoutManager, workspace: Workspace, secrets: any SecretStore, theme: ThemeService,
+        layout: LayoutManager, workspace: Workspace, secrets: SecretStore, theme: ThemeService,
         highlighter: Highlighter
     ) {
         self.highlighter = highlighter
@@ -173,7 +173,7 @@ final class PostgresFeature {
         mustAsk = false
         if answer.saveToKeychain {
             do {
-                try secrets.write(answer.password, for: account)
+                try secrets.write(answer.password, account)
             } catch {
                 model.addWarning("Password not saved: \(error.description)")
             }
@@ -181,7 +181,7 @@ final class PostgresFeature {
         return answer.password
     }
 
-    private nonisolated static func stored(in secrets: any SecretStore, account: String) -> String? {
+    private nonisolated static func stored(in secrets: SecretStore, account: String) -> String? {
         do {
             return try secrets.read(account)
         } catch {
