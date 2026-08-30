@@ -182,11 +182,16 @@ final class AgentsFeature {
 
     // MARK: - Button (agents R4–R6)
 
-    /// agents R4, R6: the primary tab is activated, relaunched when its process ended, or created.
+    /// agents R4, R6, R8: the primary tab is activated while it runs, relaunched when it holds no
+    /// process — ended, or restored after a quit — and created when there is none.
+    ///
+    /// A restored tab is `idle`, not `exited` (`terminal` R6): reading only `exited` left every
+    /// agent tab brought back by a relaunch a dead terminal with nothing to start it, against R8
+    /// (audit C4).
     nonisolated static func buttonAction(primary: TabID?, state: TerminalState?) -> ButtonAction {
         guard let primary, let state else { return .spawn }
-        if case .exited = state { return .relaunch(primary) }
-        return .activate(primary)
+        if case .running = state { return .activate(primary) }
+        return .relaunch(primary)
     }
 
     private func buttonClicked(_ id: String) {

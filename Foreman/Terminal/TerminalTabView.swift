@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// The content of a terminal tab: the surface, a banner when its folder is gone, and the
-/// status line with `Relaunch` once the process ended (terminal R8, edge cases).
+/// The content of a terminal tab: the surface, a banner when its folder is gone, and the status
+/// line with `Relaunch` whenever the tab holds no process (terminal R8, edge cases).
 struct TerminalTabView: View {
     let id: TabID
     let service: TerminalService
@@ -31,10 +31,10 @@ struct TerminalTabView: View {
             // type, SwiftUI would otherwise update the first surface instead of making the second.
             .id("\(id.uuid)-\(tab.generation)")
             .help(tab.subtitle ?? "")
-            if case .exited(let exit) = tab.state {
+            if let label = Self.relaunchLabel(for: tab.state) {
                 service.theme.tokens.separator.color.frame(height: 1)
                 HStack {
-                    Text("exited · \(exit.label)")
+                    Text(label)
                         .font(service.theme.font())
                         .foregroundStyle(service.theme.tokens.textSecondary.color)
                     Spacer()
@@ -52,6 +52,17 @@ struct TerminalTabView: View {
 
     private func banner(_ text: String, symbol: String) -> some View {
         BannerView(text: text, icon: symbol, tone: .error, theme: service.theme)
+    }
+    /// terminal R8, agents R8, run R13: the bar over a surface with no process, and what it says.
+    ///
+    /// A tab restored after a quit is `idle`, never `exited`: rendering the bar for `exited` only
+    /// left restored agent and run tabs frozen with no way to start them (audit C4).
+    nonisolated static func relaunchLabel(for state: TerminalState) -> String? {
+        switch state {
+        case .running: return nil
+        case .idle: return "not started"
+        case .exited(let exit): return "exited · \(exit.label)"
+        }
     }
 }
 

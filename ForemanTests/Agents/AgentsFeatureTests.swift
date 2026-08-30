@@ -9,7 +9,8 @@ struct AgentsFeatureTests {
         let tab = TabID()
         #expect(AgentsFeature.buttonAction(primary: nil, state: nil) == .spawn)
         #expect(AgentsFeature.buttonAction(primary: tab, state: nil) == .spawn)
-        #expect(AgentsFeature.buttonAction(primary: tab, state: .idle) == .activate(tab))
+        // agents R8: a tab restored after a quit comes back idle and must be startable.
+        #expect(AgentsFeature.buttonAction(primary: tab, state: .idle) == .relaunch(tab))
         #expect(AgentsFeature.buttonAction(primary: tab, state: .running(pid: 1)) == .activate(tab))
         #expect(AgentsFeature.buttonAction(primary: tab, state: .exited(.code(0))) == .relaunch(tab))
     }

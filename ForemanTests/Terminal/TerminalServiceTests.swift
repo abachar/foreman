@@ -95,3 +95,13 @@ struct TerminalAttentionTests {
         #expect(!TerminalService.shouldRequestAttention(event: .closed(id), isAppActive: false))
     }
 }
+
+/// terminal R8, agents R8, run R13: the relaunch bar shows whenever the tab holds no process.
+struct RelaunchBarTests {
+    @Test func aTabWithNoProcessOffersRelaunch() {
+        // A tab restored after a quit is idle, not exited: it used to show nothing at all.
+        #expect(TerminalTabView.relaunchLabel(for: .idle) == "not started")
+        #expect(TerminalTabView.relaunchLabel(for: .exited(.code(2))) == "exited · code 2")
+        #expect(TerminalTabView.relaunchLabel(for: .running(pid: 42)) == nil)
+    }
+}
