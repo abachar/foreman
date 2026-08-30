@@ -160,30 +160,39 @@ final class PostgresFeature {
         }
         let account = config.keychainAccount
         if !mustAsk {
-            if let secret = Self.stored(in: secrets, account: account) {
-                return secret
-            }
-            var warnings: [String] = []
-            let fromFile = PgPass.password(
-                in: PgPass.defaultFile(), host: config.host, port: config.port, database: config.database,
-                user: config.user, warnings: &warnings)
-            for warning in warnings {
+            let stored = await Self.storedPassword(secrets, for: config)
+            for warning in stored.warnings {
                 model.addWarning(warning)
             }
-            if let fromFile {
-                return fromFile
+            if let password = stored.password {
+                return password
             }
         }
         guard let answer = await askPassword(label: config.label) else { throw PostgresError.passwordRequired }
         mustAsk = false
-        if answer.saveToKeychain {
-            do {
-                try secrets.write(answer.password, account)
-            } catch {
-                model.addWarning("Password not saved: \(error.description)")
-            }
+        if answer.saveToKeychain, let error = await Self.save(answer.password, account: account, in: secrets) {
+            model.addWarning("Password not saved: \(error.description)")
         }
         return answer.password
+    }
+
+    /// R3: the Keychain entry, then `~/.pgpass`, off the main actor.
+    ///
+    /// `SecItemCopyMatching` blocks on `securityd` — for as long as the unlock panel stays up
+    /// when the login keychain is locked — and `.pgpass` is a file read: on the main actor the
+    /// window froze for the whole wait (coding rules: no blocking IO on it).
+    @concurrent
+    private static func storedPassword(
+        _ secrets: SecretStore, for config: PostgresConfig
+    ) async -> (password: String?, warnings: [String]) {
+        if let secret = stored(in: secrets, account: config.keychainAccount) {
+            return (password: secret, warnings: [])
+        }
+        var warnings: [String] = []
+        let fromFile = PgPass.password(
+            in: PgPass.defaultFile(), host: config.host, port: config.port, database: config.database,
+            user: config.user, warnings: &warnings)
+        return (password: fromFile, warnings: warnings)
     }
 
     private nonisolated static func stored(in secrets: SecretStore, account: String) -> String? {
@@ -191,6 +200,19 @@ final class PostgresFeature {
             return try secrets.read(account)
         } catch {
             return nil
+        }
+    }
+
+    /// R3: the answer kept for the next launch; the Keychain write blocks just like the read.
+    @concurrent
+    private static func save(
+        _ password: String, account: String, in secrets: SecretStore
+    ) async -> SecretStoreError? {
+        do {
+            try secrets.write(password, account)
+            return nil
+        } catch {
+            return error
         }
     }
 
@@ -256,7 +278,7 @@ final class PostgresFeature {
             return rows
         } catch .authenticationFailed where config.password == nil {
             // A password written in the config is the user's: refused stays refused (R3).
-            invalidatePassword(config)
+            await invalidatePassword(config)
             let rows = try await client.rows(query)
             model.error = nil
             return rows
@@ -267,17 +289,26 @@ final class PostgresFeature {
     }
 
     /// R3 for the query path: a refused config password is not invalidated.
-    func invalidatePasswordIfAsked() {
+    func invalidatePasswordIfAsked() async {
         guard let config, config.password == nil else { return }
-        invalidatePassword(config)
+        await invalidatePassword(config)
     }
 
-    private func invalidatePassword(_ config: PostgresConfig) {
+    private func invalidatePassword(_ config: PostgresConfig) async {
         mustAsk = true
-        do {
-            try secrets.delete(config.keychainAccount)
-        } catch {
+        if let error = await Self.forget(account: config.keychainAccount, in: secrets) {
             logger.warning("keychain entry not removed: \(error.description, privacy: .public)")
+        }
+    }
+
+    /// R3: the refused entry dropped, off the main actor like every other Keychain call.
+    @concurrent
+    private static func forget(account: String, in secrets: SecretStore) async -> SecretStoreError? {
+        do {
+            try secrets.delete(account)
+            return nil
+        } catch {
+            return error
         }
     }
 
