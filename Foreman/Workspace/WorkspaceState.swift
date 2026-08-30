@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// The persisted UI state of a workspace, `<root>/.foreman/state.json` (config R8, R9).
 ///
@@ -9,6 +10,7 @@ import Foundation
 nonisolated struct WorkspaceState: Sendable, Equatable {
     static let version = 1
     static let empty = WorkspaceState(sections: [:])
+    private static let logger = Logger(subsystem: "dev.crafters.foreman", category: "workspace")
 
     /// Top-level sections, each kept as the JSON of its value.
     private var sections: [String: Data]
@@ -37,11 +39,23 @@ nonisolated struct WorkspaceState: Sendable, Equatable {
 
     /// Reads `state.json`; the default state when it is missing, unreadable or of another version.
     ///
-    /// An unreadable file is moved to `state.json.bak` so nothing is lost (config R9).
+    /// An invalid file is moved to `state.json.bak` so nothing is lost (config R9). A file that
+    /// exists but cannot be read (permissions, IO) also defaults, but says so: it must not pass
+    /// for a fresh workspace.
     @concurrent
     static func load(root: URL) async -> WorkspaceState {
         let file = file(under: root)
-        guard let data = try? Data(contentsOf: file) else { return .empty }
+        let data: Data
+        do {
+            data = try Data(contentsOf: file)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return .empty
+        } catch {
+            let path = file.path(percentEncoded: false)
+            logger.warning(
+                "state.json not read (\(path, privacy: .private)): \(error.localizedDescription, privacy: .public)")
+            return .empty
+        }
         guard let state = try? parse(data) else {
             let backup = file.appendingPathExtension("bak")
             try? FileManager.default.removeItem(at: backup)

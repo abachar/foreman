@@ -6,6 +6,8 @@ nonisolated enum WorkspaceError: Error {
     case invalidJSON(file: URL, line: Int?, message: String)
     /// A feature could not decode its section of `config.json` or `state.json`.
     case invalidSection(String, underlying: Error)
+    /// The file exists but could not be read (permissions, IO); a missing file is not an error.
+    case unreadable(file: URL, message: String)
 }
 
 extension WorkspaceError: CustomStringConvertible {
@@ -16,6 +18,8 @@ extension WorkspaceError: CustomStringConvertible {
             return line.map { "\(name):\($0): \(message)" } ?? "\(name): \(message)"
         case .invalidSection(let name, let underlying):
             return "Section \"\(name)\": \(underlying)"
+        case .unreadable(let file, let message):
+            return "\(Self.name(of: file)) not readable: \(message)"
         }
     }
 
