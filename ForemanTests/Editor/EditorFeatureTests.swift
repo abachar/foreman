@@ -13,7 +13,7 @@ struct EditorFeatureTests {
         try Data("a".utf8).write(to: root.appending(path: "a.txt"))
         try Data("b".utf8).write(to: root.appending(path: "b.txt"))
         let layout = LayoutManager()
-        let workspace = Workspace(root: root)
+        let workspace = Workspace(root: root, globalConfigFile: root.appending(path: "no-global.json"))
         let theme = ThemeService()
         let editor = EditorFeature(
             layout: layout, workspace: workspace, theme: theme, palette: Palette(theme: theme),

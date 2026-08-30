@@ -103,8 +103,9 @@ struct WorkspaceView: View {
         if isFolderReachable {
             let tokens = theme.tokens
             VStack(spacing: 0) {
-                // config R7: the last valid config stays active, the error is shown with its line.
-                if let error = workspace.configError {
+                // config R7: the last valid config stays active, the error is shown with its line;
+                // config R4: one per file, so a broken global never hides the workspace's.
+                ForEach(workspace.configErrors, id: \.description) { error in
                     BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
                 }
                 ForEach(layout.shortcuts.problems, id: \.description) { problem in

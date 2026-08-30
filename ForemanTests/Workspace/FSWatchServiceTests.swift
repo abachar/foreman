@@ -47,7 +47,7 @@ struct FSWatchServiceTests {
         let file = WorkspaceConfig.file(under: root)
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let workspace = Workspace(root: root)
+        let workspace = Workspace(root: root, globalConfigFile: root.appending(path: "no-global.json"))
         workspace.watchConfig()
         try await Task.sleep(for: .milliseconds(300))
 
@@ -57,7 +57,7 @@ struct FSWatchServiceTests {
 
         try Data("{ broken".utf8).write(to: file)
         try await Task.sleep(for: .seconds(1))
-        #expect(workspace.configError != nil)
+        #expect(!workspace.configErrors.isEmpty)
         #expect(try workspace.config.section("theme", as: String.self) == "dark")
     }
 

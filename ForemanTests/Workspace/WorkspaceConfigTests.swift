@@ -96,21 +96,132 @@ struct WorkspaceConfigTests {
     @Test @MainActor func workspaceKeepsTheLastValidConfigOnError() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace(#"{ "theme": "dark" }"#)
-        let workspace = Workspace(root: fixture.root)
+        let workspace = Workspace(root: fixture.root, globalConfigFile: fixture.globalFile)
 
         await workspace.reloadConfig()
         try fixture.writeWorkspace("{ oops")
         await workspace.reloadConfig()
 
         #expect(try workspace.config.section("theme", as: String.self) == "dark")
-        #expect(workspace.configError != nil)
-        #expect(workspace.configError?.description.hasPrefix("config.json:1:") == true)
+        #expect(workspace.configErrors.count == 1)
+        #expect(workspace.configErrors.first?.description.hasPrefix("config.json:1:") == true)
 
         try fixture.writeWorkspace(#"{ "theme": "light" }"#)
         await workspace.reloadConfig()
 
         #expect(try workspace.config.section("theme", as: String.self) == "light")
-        #expect(workspace.configError == nil)
+        #expect(workspace.configErrors.isEmpty)
+    }
+}
+
+/// config R4 (amended 2026-08-30): the global file, its path and how it merges under the workspace.
+struct GlobalConfigTests {
+    private let fixture = Fixture()
+
+    // MARK: - Where it lives
+
+    @Test func livesUnderXdgConfigHomeWhenItIsAnAbsolutePath() {
+        let file = WorkspaceConfig.globalFile(
+            environment: ["XDG_CONFIG_HOME": "/tmp/xdg"], home: URL(filePath: "/Users/x"))
+
+        #expect(file.path(percentEncoded: false) == "/tmp/xdg/foreman/config.json")
+    }
+
+    @Test func fallsBackToTheHomeWithoutXdgConfigHomeOrWithARelativeOne() {
+        let home = URL(filePath: "/Users/x")
+
+        #expect(
+            WorkspaceConfig.globalFile(environment: [:], home: home).path(percentEncoded: false)
+                == "/Users/x/.config/foreman/config.json")
+        #expect(
+            WorkspaceConfig.globalFile(environment: ["XDG_CONFIG_HOME": "relative"], home: home)
+                .path(percentEncoded: false) == "/Users/x/.config/foreman/config.json")
+    }
+
+    // MARK: - The merge (config R4)
+
+    private func merged(global: String, workspace: String) throws -> [String: String] {
+        let sections = WorkspaceConfig.merge(
+            global: try sections(global), workspace: try sections(workspace))
+        return sections.mapValues { String(decoding: $0, as: UTF8.self) }
+    }
+
+    private func sections(_ json: String) throws -> [String: Data] {
+        var sections: [String: Data] = [:]
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        for (name, value) in object {
+            sections[name] = try JSONSerialization.data(
+                withJSONObject: value, options: [.sortedKeys, .fragmentsAllowed])
+        }
+        return sections
+    }
+
+    @Test func mergesAnObjectSectionKeyByKeyAndTheWorkspaceWins() throws {
+        let merged = try merged(
+            global: #"{ "agents": { "claude": { "command": "claude" }, "pi": { "command": "pi" } } }"#,
+            workspace: #"{ "agents": { "claude": { "command": "claude --continue" } } }"#)
+
+        #expect(
+            merged["agents"]
+                == #"{"claude":{"command":"claude --continue"},"pi":{"command":"pi"}}"#)
+    }
+
+    @Test func keepsASectionOnlyOneFileDeclares() throws {
+        let merged = try merged(global: #"{ "theme": { "accent": "blue" } }"#, workspace: #"{ "repos": ["."] }"#)
+
+        #expect(merged["theme"] == #"{"accent":"blue"}"#)
+        #expect(merged["repos"] == #"["."]"#)
+    }
+
+    @Test func replacesAValueThatIsNotAnObjectWhole() throws {
+        let merged = try merged(
+            global: #"{ "repos": ["a", "b"], "theme": "dark", "terminal": { "fontSize": 13 } }"#,
+            workspace: #"{ "repos": ["c"], "theme": "light", "terminal": 3 }"#)
+
+        #expect(merged["repos"] == #"["c"]"#)
+        #expect(merged["theme"] == #""light""#)
+        #expect(merged["terminal"] == "3")
+    }
+
+    @Test func mergingOnlyGoesOneLevelDeep() throws {
+        let merged = try merged(
+            global: #"{ "commands": { "root": { "build": "make", "test": "make test" } } }"#,
+            workspace: #"{ "commands": { "root": { "build": "xcodebuild" } } }"#)
+
+        // `root` is a value of the `commands` section, so the workspace's replaces it whole.
+        #expect(merged["commands"] == #"{"root":{"build":"xcodebuild"}}"#)
+    }
+
+    // MARK: - Through the workspace
+
+    @Test func theWorkspaceReadsBothFiles() async throws {
+        defer { fixture.remove() }
+        try fixture.writeGlobal(#"{ "shortcuts": { "git.changes": "cmd+shift+g", "editor.save": "cmd+s" } }"#)
+        try fixture.writeWorkspace(#"{ "shortcuts": { "editor.save": "cmd+opt+s" } }"#)
+
+        let config = try await fixture.load()
+
+        #expect(
+            try config.section("shortcuts", as: [String: String].self)
+                == ["git.changes": "cmd+shift+g", "editor.save": "cmd+opt+s"])
+    }
+
+    @Test @MainActor func anInvalidGlobalKeepsItsLastValidVersionAndNamesItself() async throws {
+        defer { fixture.remove() }
+        try fixture.writeGlobal(#"{ "theme": "dark" }"#)
+        try fixture.writeWorkspace(#"{ "repos": ["."] }"#)
+        let workspace = Workspace(root: fixture.root, globalConfigFile: fixture.globalFile)
+        await workspace.reloadConfig()
+
+        try fixture.writeGlobal("{ oops")
+        try fixture.writeWorkspace(#"{ "browser": { "url": "http://localhost" } }"#)
+        await workspace.reloadConfig()
+
+        // The broken global keeps its last valid version, and the workspace still went through.
+        #expect(try workspace.config.section("theme", as: String.self) == "dark")
+        #expect(try workspace.config.section("browser", as: [String: String].self) == ["url": "http://localhost"])
+        #expect(workspace.configErrors.count == 1)
+        #expect(workspace.configErrors.first?.description.contains("foreman/config.json:1:") == true)
     }
 }
 
@@ -123,12 +234,21 @@ private struct Fixture {
             .appending(path: "WorkspaceConfigTests-\(UUID().uuidString)", directoryHint: .isDirectory)
     }
 
+    /// config R4: the global file of this fixture alone, never the developer's own.
+    var globalFile: URL {
+        root.appending(components: "global", "foreman", "config.json")
+    }
+
     func load() async throws -> WorkspaceConfig {
-        try await WorkspaceConfig.load(root: root)
+        try await WorkspaceConfig.load(root: root, globalFile: globalFile)
     }
 
     func writeWorkspace(_ json: String) throws {
         try write(json, to: root.appending(components: ".foreman", "config.json"))
+    }
+
+    func writeGlobal(_ json: String) throws {
+        try write(json, to: globalFile)
     }
 
     func makeFolder(_ name: String) throws {

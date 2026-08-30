@@ -74,7 +74,8 @@ struct WorkspaceStateTests {
 
     @Test @MainActor func writesOnceAfterABurstOfChanges() async throws {
         defer { remove() }
-        let workspace = Workspace(root: root, stateWriteDelay: .milliseconds(200))
+        let workspace = Workspace(
+            root: root, stateWriteDelay: .milliseconds(200), globalConfigFile: root.appending(path: "no-global.json"))
 
         workspace.setState("layout", to: Layout(activeTab: "first", panels: []))
         workspace.setState("layout", to: Layout(activeTab: "second", panels: []))
@@ -90,7 +91,8 @@ struct WorkspaceStateTests {
 
     @Test @MainActor func flushWritesImmediately() async throws {
         defer { remove() }
-        let workspace = Workspace(root: root, stateWriteDelay: .seconds(10))
+        let workspace = Workspace(
+            root: root, stateWriteDelay: .seconds(10), globalConfigFile: root.appending(path: "no-global.json"))
 
         workspace.setState("layout", to: Layout(activeTab: "now", panels: []))
         await workspace.flushState()
@@ -103,7 +105,8 @@ struct WorkspaceStateTests {
         defer { remove() }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try Data("not a folder".utf8).write(to: root.appending(path: ".foreman"))
-        let workspace = Workspace(root: root, stateWriteDelay: .zero)
+        let workspace = Workspace(
+            root: root, stateWriteDelay: .zero, globalConfigFile: root.appending(path: "no-global.json"))
 
         workspace.setState("layout", to: Layout(activeTab: "x", panels: []))
         await workspace.flushState()
