@@ -38,6 +38,8 @@ nonisolated enum MenuBarLayout {
         Menu(
             title: "File", isStandard: true,
             entries: [
+                .action("editor.newFile"),
+                .separator,
                 .recentFolders("Open Recent"),
                 .separator,
                 .action("editor.quickOpen", title: "Quick Open…"),

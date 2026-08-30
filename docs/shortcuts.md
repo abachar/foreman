@@ -34,6 +34,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
+| `cmd+n` | `editor.newFile` | New untitled tab (`editor` R34; also *File ▸ New File* and a double click on the tab bar or the home screen, `layout` R38) | global | 🟢 (2026-08-30) |
 | `cmd+p` | `editor.quickOpen` | Quick open | global | 🟢 |
 | `cmd+shift+f` | `editor.search` | Content search (bottom panel) | global | 🟢 |
 | `cmd+s` / `cmd+opt+s` | `editor.save` / `.saveAll` | Save / save all | tab(editor.file) | 🟢 |
@@ -104,7 +105,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 ## Free
 
-`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+n` (freed on 2026-08-30: *New Window* did the same as *File ▸ Open…*), `cmd+shift+1…9`, `cmd+g`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
+`cmd+t` (no shell, `product` R4), `cmd+shift+n` (freed on 2026-08-30: *New Window* did the same as *File ▸ Open…*; `cmd+n` was taken by `editor.newFile` the same day), `cmd+shift+1…9`, `cmd+g`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
 
 ## Verified on the author's machine (M6 task 6.2, 2026-08-27)
 

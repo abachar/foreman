@@ -81,7 +81,7 @@ struct TabGroupView: View {
             // opened, 2026-08-28). The id makes a switch a rebuild, as it is meant to be.
             view.id(tab.id)
         } else {
-            HomeView(layout: layout, theme: theme)
+            HomeView(layout: layout, theme: theme, groupID: groupID)
         }
     }
 }
@@ -92,6 +92,9 @@ struct TabBarView: View {
     let theme: ThemeService
     let group: TabGroup
     let isActiveGroup: Bool
+
+    /// layout R38: the width the bar has, so the empty part after the tabs is a view of its own.
+    @State private var width: CGFloat = 0
 
     var body: some View {
         let tokens = theme.tokens
@@ -121,7 +124,17 @@ struct TabBarView: View {
                             }
                         }
                     }
+                    // layout R38: the empty part of the bar. It is a sibling of the tabs, not a
+                    // layer under them, so a double click on a tab can never reach it.
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) { layout.newTab(in: group.id) }
+                        .onTapGesture { layout.activateGroup(group.id) }
                 }
+                // Without a minimum the row is exactly as wide as its tabs and there is no empty
+                // part to click; with it, `Color.clear` takes the slack the tabs leave.
+                .frame(minWidth: width, alignment: .leading)
             }
             .onChange(of: group.activeTab, initial: true) { _, active in
                 guard let active else { return }
@@ -130,6 +143,11 @@ struct TabBarView: View {
         }
         .frame(height: tokens.barHeight)
         .background(tokens.surfaceRaised.color)
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
     }
 }
 

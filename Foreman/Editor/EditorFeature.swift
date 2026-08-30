@@ -45,6 +45,9 @@ final class EditorFeature {
                 confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true },
                 onClose: { [weak self] id in self?.tabClosed(id) }))
         registerActions()
+        // layout R38: the double click of the tab bar and of the home screen; the layout has
+        // already activated the group when this runs.
+        layout.onNewTab = { [weak self] in Task { await self?.newFile() } }
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()
         watchDisk()
@@ -285,6 +288,11 @@ final class EditorFeature {
         layout.shortcuts.register(
             ShortcutAction(id: "editor.quickOpen", title: "Quick Open", defaultShortcut: "cmd+p") { [weak self] in
                 self?.quickOpen()
+            })
+        // editor R34: an untitled tab opens from anywhere, the home screen of an empty group included.
+        layout.shortcuts.register(
+            ShortcutAction(id: "editor.newFile", title: "New File", defaultShortcut: "cmd+n") { [weak self] in
+                Task { await self?.newFile() }
             })
     }
 

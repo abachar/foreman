@@ -85,6 +85,34 @@ struct EditorFeatureTests {
         #expect(FileManager.default.fileExists(atPath: ignore.path(percentEncoded: false)))
     }
 
+    /// layout R38, editor R34: the action exists under its shortcut, and the group the double
+    /// click names is the one the untitled tab lands in.
+    @Test func newFileIsRegisteredAndOpensInTheGroupAskedFor() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorFeatureTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data("a".utf8).write(to: root.appending(path: "a.txt"))
+        try Data("b".utf8).write(to: root.appending(path: "b.txt"))
+        let (layout, editor) = Self.feature(root: root)
+        #expect(layout.shortcuts.shortcut(for: "editor.newFile")?.description == "cmd+n")
+
+        editor.open(root.appending(path: "a.txt"), preview: false)
+        let first = layout.model.activeGroup
+        editor.open(root.appending(path: "b.txt"), preview: false, newGroup: true)
+        let second = layout.model.activeGroup
+        #expect(first != second)
+
+        layout.newTab(in: first)
+
+        // The scratch is created off the main actor before the tab exists.
+        for _ in 0..<50 where layout.model[group: first]?.tabs.count == 1 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(layout.model.activeGroup == first)
+        #expect(layout.model[group: first]?.tabs.map(\.title) == ["a.txt", "Untitled"])
+        #expect(layout.model[group: second]?.tabs.map(\.title) == ["b.txt"])
+    }
+
     private static func feature(root: URL) -> (layout: LayoutManager, editor: EditorFeature) {
         let layout = LayoutManager()
         let workspace = Workspace(root: root, globalConfigFile: root.appending(path: "no-global.json"))

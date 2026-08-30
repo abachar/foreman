@@ -15,6 +15,39 @@ struct LayoutManagerTests {
         return layout
     }
 
+    /// layout R38: the double click names the group; the tab must not land in whichever one
+    /// happened to be active.
+    @Test func newTabOpensInTheGroupItWasAskedFor() {
+        let layout = manager()
+        layout.openTab(kind: "editor.file", title: "a", payload: "a")
+        let first = layout.model.activeGroup
+        layout.openTab(kind: "editor.file", title: "b", payload: "b", newGroup: true)
+        let second = layout.model.activeGroup
+        #expect(first != second)
+        var opened = 0
+        layout.onNewTab = {
+            opened += 1
+            layout.openTab(kind: "editor.file", title: "Untitled", payload: "u")
+        }
+
+        layout.newTab(in: first)
+
+        #expect(opened == 1)
+        #expect(layout.model.activeGroup == first)
+        #expect(layout.model[group: first]?.tabs.map(\.title) == ["a", "Untitled"])
+        #expect(layout.model[group: second]?.tabs.map(\.title) == ["b"])
+    }
+
+    /// layout R38: nothing owns untitled tabs in this window, so the double click does nothing.
+    @Test func newTabDoesNothingWhenNoFeatureOwnsIt() {
+        let layout = manager()
+        layout.openTab(kind: "editor.file", title: "a", payload: "a")
+
+        layout.newTab(in: layout.model.activeGroup)
+
+        #expect(layout.model.active.tabs.count == 1)
+    }
+
     @Test func newGroupOpensTheTabInASiblingOnTheRight() {
         let layout = manager()
         layout.openTab(kind: "editor.file", title: "a", payload: "a")

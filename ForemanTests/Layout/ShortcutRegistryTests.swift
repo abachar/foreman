@@ -244,6 +244,18 @@ struct MenuBarModelTests {
             ])
     }
 
+    /// layout R38: *New File* leads *File*, where a Mac app puts it.
+    @Test func newFileLeadsTheFileMenu() {
+        register("editor.newFile", "New File", "cmd+n")
+        register("editor.save", "Save", "cmd+s")
+
+        #expect(
+            tree(model()) == [
+                "File (standard)", "  New File · cmd+n", "  -", "  Open Recent > (recent folders)", "  -",
+                "  Save · cmd+s",
+            ])
+    }
+
     /// layout R37: a menu is a map, so an action with no shortcut belongs in it all the same.
     @Test func keepsAnActionNoShortcutReaches() {
         register("agents.claude", "Claude", nil)

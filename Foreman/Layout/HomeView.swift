@@ -8,6 +8,8 @@ import SwiftUI
 struct HomeView: View {
     let layout: LayoutManager
     let theme: ThemeService
+    /// layout R38: the group this screen fills, so a double click opens the tab in it.
+    let groupID: GroupID
 
     private static let columnWidth: CGFloat = 360
 
@@ -30,6 +32,10 @@ struct HomeView: View {
         // design R19: the same tokens, no illustration.
         .foregroundStyle(theme.tokens.textPrimary.color)
         .background(theme.tokens.surface.color)
+        // layout R38: a double click on the empty group opens an untitled tab in it. The rows are
+        // buttons and take their own clicks, so a row's single-click action is untouched.
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { layout.newTab(in: groupID) }
     }
 
     /// layout R33: the whole table, by feature, in registration order; a row performs the action.

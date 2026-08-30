@@ -175,6 +175,20 @@ final class LayoutManager {
         panels.focusCenter()
     }
 
+    /// layout R38: what the double click of the tab bar and of the home screen opens, set by the
+    /// feature that owns untitled tabs (`editor` R34).
+    ///
+    /// The layout does not know what an untitled tab is, exactly as it knows no home entry inline
+    /// (R33): unset, the double click does nothing.
+    var onNewTab: (() -> Void)?
+
+    /// layout R38: an untitled tab in `group` — the group takes the focus first, so the tab opens
+    /// where it was asked for and not in the one that happened to be active.
+    func newTab(in group: GroupID) {
+        activateGroup(group)
+        onNewTab?()
+    }
+
     /// layout R15: a dirty tab is closed only once its owner confirmed.
     func closeTab(_ id: TabID) async {
         guard let owner = model.owner(of: id), let tab = model[group: owner]?.tabs.first(where: { $0.id == id })
