@@ -57,6 +57,25 @@ struct WorkspaceStateTests {
         #expect(backup == content)
     }
 
+    /// An unreadable file is not an invalid one: it stays in place, nothing is set aside.
+    @Test func defaultsWithoutABackupWhenTheFileCannotBeRead() async throws {
+        defer { remove() }
+        try write(#"{ "version": 1 }"#)
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o600], ofItemAtPath: file.path(percentEncoded: false))
+        }
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o000], ofItemAtPath: file.path(percentEncoded: false))
+
+        let state = await WorkspaceState.load(root: root)
+
+        #expect(state == .empty)
+        #expect(FileManager.default.fileExists(atPath: file.path(percentEncoded: false)))
+        #expect(
+            !FileManager.default.fileExists(atPath: file.appendingPathExtension("bak").path(percentEncoded: false)))
+    }
+
     @Test func persistsPathsRelativeToTheRootWhenInside() {
         let root = URL(filePath: "/Users/tester/code", directoryHint: .isDirectory)
 

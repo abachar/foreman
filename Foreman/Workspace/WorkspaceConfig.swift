@@ -115,8 +115,18 @@ nonisolated struct WorkspaceConfig: Sendable {
     }
 
     /// The top-level object of `file`, or `[:]` when the file does not exist (config R2).
+    ///
+    /// A file that exists but cannot be read (permissions, IO) throws instead: defaulting would
+    /// silently drop the user's config.
     private static func read(_ file: URL) throws -> [String: Any] {
-        guard let data = try? Data(contentsOf: file) else { return [:] }
+        let data: Data
+        do {
+            data = try Data(contentsOf: file)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return [:]
+        } catch {
+            throw WorkspaceError.unreadable(file: file, message: error.localizedDescription)
+        }
         let object: Any
         do {
             object = try JSONSerialization.jsonObject(with: data)

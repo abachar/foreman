@@ -50,6 +50,24 @@ struct WorkspaceConfigTests {
         }
     }
 
+    /// A file that exists but cannot be read is an error, not an empty config (config R2 only
+    /// covers a missing file).
+    @Test func reportsAnExistingFileItCannotRead() async throws {
+        defer { fixture.remove() }
+        try fixture.writeWorkspace(#"{ "theme": "dark" }"#)
+        let file = fixture.root.appending(components: ".foreman", "config.json")
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o600], ofItemAtPath: file.path(percentEncoded: false))
+        }
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o000], ofItemAtPath: file.path(percentEncoded: false))
+
+        await #expect(throws: WorkspaceError.self) {
+            try await fixture.load()
+        }
+    }
+
     @Test func rejectsAFileWhoseTopLevelIsNotAnObject() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace("[1, 2]")
