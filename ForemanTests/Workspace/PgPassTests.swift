@@ -21,6 +21,13 @@ struct PgPassTests {
             ])
     }
 
+    /// `libpq` strips only the line break, so spaces around a password are part of it.
+    @Test func preservesSpacesInsideAPassword() {
+        let entries = PgPass.parse("localhost:5432:db:user: pass word \n")
+        #expect(entries.first?.password == " pass word ")
+        #expect(entries.first?.host == "localhost")
+    }
+
     @Test func unescapesColonsAndBackslashes() {
         let entries = PgPass.parse(#"host\:with\:colons:5432:db:user:p\\a\:ss"#)
         #expect(entries.first?.host == "host:with:colons")
