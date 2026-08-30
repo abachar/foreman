@@ -45,7 +45,7 @@ struct LogParserTests {
         #expect(LogParser.parse(Data("garbage\0".utf8)).isEmpty)
     }
 
-    @Test func relativeDates() {
+    @Test @MainActor func relativeDates() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         #expect(!LogParser.relativeText(now.addingTimeInterval(-90), now: now).isEmpty)
         #expect(LogParser.relativeText(nil, now: now).isEmpty)
