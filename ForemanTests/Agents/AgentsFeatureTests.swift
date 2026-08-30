@@ -113,4 +113,27 @@ struct AgentSendTests {
         #expect(AgentsFeature.activeAgentTab(lastActivated: exited, candidates: candidates) == live)
         #expect(AgentsFeature.activeAgentTab(lastActivated: nil, candidates: [(exited, .exited(.code(1)))]) == nil)
     }
+
+    /// audit T5: a filename's control characters would be typed straight into the agent's PTY.
+    @Test func aControlCharacterNeverReachesTheTerminal() {
+        let cwd = URL(filePath: "/ws")
+        let sneaky = URL(filePath: "/ws/note\u{0A}rm -rf ~\u{1B}[1m.txt")
+        let text = AgentMention.path(sneaky, lines: nil, isDirectory: false).text(relativeTo: cwd)
+        // "note" + "rm" once the newline is gone, and the escape byte dropped from "\u{1B}[1m".
+        #expect(text == "@noterm -rf ~[1m.txt ")
+        #expect(!text.contains("\u{0A}"))
+        #expect(!text.contains("\u{1B}"))
+        #expect(AgentMention.literal("a\u{0A}b").text(relativeTo: cwd) == "@ab ")
+    }
+
+    /// audit A1: the worktree stamp does not follow the user's locale or calendar.
+    @Test func aWorktreeNameStampsTheDateInAFixedFormat() {
+        let date = Date(timeIntervalSince1970: 1_756_500_000)
+        let name = AgentsFeature.worktreeName(agent: "claude", date: date)
+        #expect(name.hasPrefix("claude-"))
+        let stamp = name.dropFirst("claude-".count)
+        #expect(stamp.count == 13)
+        #expect(stamp.contains("-"))
+        #expect(stamp.allSatisfy { $0.isNumber || $0 == "-" })
+    }
 }

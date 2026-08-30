@@ -110,9 +110,13 @@ final class TerminalService {
     }
 
     /// terminal R16: raw input, for a feature that must type into the process.
+    ///
+    /// A tab with no surface — restored, or ended — has nothing to type into: that is an error,
+    /// not a silent no-op, or a mention sent to it vanishes with no trace (audit T8).
     func write(_ bytes: [UInt8], to id: TabID) throws(TerminalError) {
         _ = try known(id)
-        surfaces[id]?.send(bytes)
+        guard let surface = surfaces[id] else { throw .noProcess }
+        surface.send(bytes)
     }
 
     /// terminal R7: the view reports that its tab is shown.
@@ -268,9 +272,12 @@ final class TerminalService {
         }
     }
 
+    /// The zoom is remembered on the surface, so the next `apply` keeps it (audit T1).
     private static func zoom(_ surface: TerminalSurfaceView, by step: CGFloat) {
-        let size = min(max(surface.font.pointSize + step, 8), 32)
-        surface.font = NSFont(descriptor: surface.font.fontDescriptor, size: size) ?? surface.font
+        let zoomed = TerminalSurfaceView.zoomed(surface.font, by: step)
+        guard zoomed.pointSize != surface.font.pointSize else { return }
+        surface.zoomOffset += zoomed.pointSize - surface.font.pointSize
+        surface.font = zoomed
     }
 }
 

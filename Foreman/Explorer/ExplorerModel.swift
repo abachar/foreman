@@ -116,6 +116,8 @@ final class ExplorerModel {
         let known = levels.keys.sorted()
         activation = Task { [weak self] in
             for folder in known.isEmpty ? [""] : known {
+                // A panel hidden again mid-walk stops the reads (coding rules, concurrency).
+                guard !Task.isCancelled else { return }
                 await self?.load(folder)
             }
             self?.activation = nil

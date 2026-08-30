@@ -14,10 +14,14 @@ nonisolated enum ExplorerOperations {
         }
     }
 
-    /// explorer R19 and security: `url` is the root or below it.
+    /// explorer R19 and security: `url` is the root or below it, symlinks followed.
+    ///
+    /// `standardizedFileURL` resolves `..` but not links, so a link inside the workspace pointing
+    /// outside passed the check and every operation followed it out (audit T7). Both sides are
+    /// resolved, the root included — it is often a link itself (`/tmp`).
     static func isInside(_ url: URL, root: URL) -> Bool {
-        let target = url.standardizedFileURL.path(percentEncoded: false)
-        let base = root.standardizedFileURL.path(percentEncoded: false)
+        let target = url.standardizedFileURL.resolvingSymlinksInPath().path(percentEncoded: false)
+        let base = root.standardizedFileURL.resolvingSymlinksInPath().path(percentEncoded: false)
         return target == base || target.hasPrefix(base.hasSuffix("/") ? base : base + "/")
     }
 
@@ -73,9 +77,17 @@ nonisolated enum ExplorerOperations {
         let fileManager = FileManager.default
         do {
             if url.lastPathComponent.lowercased() == name.lowercased(), url.lastPathComponent != name {
+                // Two moves, so a failure on the second must undo the first: on a case-sensitive
+                // volume the target can already exist, and the file was left stranded under an
+                // invisible `.x.foreman-rename` name with no way back (audit M12).
                 let temporary = url.deletingLastPathComponent().appending(path: ".\(name).foreman-rename")
                 try fileManager.moveItem(at: url, to: temporary)
-                try fileManager.moveItem(at: temporary, to: target)
+                do {
+                    try fileManager.moveItem(at: temporary, to: target)
+                } catch {
+                    try? fileManager.moveItem(at: temporary, to: url)
+                    throw error
+                }
             } else {
                 guard !fileManager.fileExists(atPath: target.path(percentEncoded: false)) else {
                     throw ExplorerError.io(name, underlying: CocoaError(.fileWriteFileExists))

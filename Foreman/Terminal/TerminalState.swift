@@ -64,4 +64,6 @@ nonisolated enum TerminalError: Error, Equatable, Sendable {
     case noSuchTab
     /// Edge cases: the persisted folder is gone; `Relaunch` stays disabled.
     case cwdMissing
+    /// terminal R16: the tab exists but holds no process to write to.
+    case noProcess
 }

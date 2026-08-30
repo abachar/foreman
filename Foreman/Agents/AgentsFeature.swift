@@ -231,11 +231,18 @@ final class AgentsFeature {
 
     // MARK: - Worktrees (agents R12–R13)
 
+    /// The stamp of a worktree name: a fixed format, so it does not follow the user's locale.
+    private nonisolated static let worktreeStamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyyMMdd-HHmm"
+        return formatter
+    }()
+
     /// agents R12: `<agent>-<yyyyMMdd-HHmm>`; the branch is `foreman/` + name.
     nonisolated static func worktreeName(agent: String, date: Date) -> String {
-        let parts = Calendar(identifier: .gregorian).dateComponents(in: .current, from: date)
-        func two(_ value: Int?) -> String { String(format: "%02d", value ?? 0) }
-        return "\(agent)-\(parts.year ?? 0)\(two(parts.month))\(two(parts.day))-\(two(parts.hour))\(two(parts.minute))"
+        "\(agent)-\(worktreeStamp.string(from: date))"
     }
 
     /// agents R12a: `~/Library/Application Support/Foreman/worktrees/<workspace>/<name>`.
@@ -456,6 +463,9 @@ final class AgentsFeature {
             try terminal.write(Array(mention.text(relativeTo: tab.cwd).utf8), to: id)
         } catch {
             logger.error("send failed: \(String(describing: error), privacy: .public)")
+            // The tab holds no process: showing it is what tells the user, its Relaunch bar
+            // being right there. Swallowing the mention told them nothing at all (audit T8).
+            activate(id)
             return
         }
         activate(id)

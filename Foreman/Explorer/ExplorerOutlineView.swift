@@ -353,6 +353,7 @@ struct ExplorerOutlineView: NSViewRepresentable {
             if hidesExcluded != self.hidesExcluded {
                 self.hidesExcluded = hidesExcluded
                 self.version = version
+                forgetItems()
                 outline.reloadData()
                 restoreExpansion(under: "")
                 return
@@ -360,10 +361,36 @@ struct ExplorerOutlineView: NSViewRepresentable {
             guard version != self.version else { return }
             // Several levels may have changed since the last update (explorer R9, a burst):
             // then everything is reloaded; items keep their identity so nothing is lost (R10).
-            let path = version - self.version == 1 ? model.lastLoaded ?? "" : ""
+            let isFullReload = version - self.version != 1
+            let path = isFullReload ? "" : model.lastLoaded ?? ""
             self.version = version
-            outline.reloadItem(path.isEmpty ? nil : items[path], reloadChildren: true)
+            let reloaded = path.isEmpty ? nil : items[path]
+            if isFullReload {
+                forgetItems()
+            } else {
+                forgetItems(goneUnder: path)
+            }
+            outline.reloadItem(reloaded, reloadChildren: true)
             restoreExpansion(under: path)
+        }
+
+        /// The caches only exist to give the outline stable items across a reload, so what is no
+        /// longer shown is dropped: keyed by path and never pruned, they grew for the life of the
+        /// window as folders were renamed, deleted or simply visited (audit T3).
+        private func forgetItems() {
+            items.removeAll()
+            moreItems.removeAll()
+        }
+
+        /// Drops the direct children of `folder` the model no longer lists.
+        private func forgetItems(goneUnder folder: String) {
+            guard let children = model.children(of: model.chain(of: folder)) else { return }
+            let live = Set(children.map(\.id))
+            let prefix = folder.isEmpty ? "" : folder + "/"
+            items = items.filter { id, _ in
+                guard id.hasPrefix(prefix), !id.dropFirst(prefix.count).contains("/") else { return true }
+                return live.contains(id)
+            }
         }
 
         /// explorer R11: the persisted folders open once their parent is read.

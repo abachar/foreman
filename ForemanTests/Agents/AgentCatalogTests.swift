@@ -55,4 +55,14 @@ struct AgentCatalogTests {
         #expect(Workspace.parseEnvironment(Data("PATH=/a\u{0}HOME=/b\u{0}".utf8)) == [:])
         #expect(Workspace.parseEnvironment(Data()) == [:])
     }
+
+    /// audit A2: the first character rule is "digit", and A–F are not digits.
+    @Test func anIDStartsWithALowercaseLetterOrADigit() {
+        #expect(AgentCatalog.isValid(id: "claude"))
+        #expect(AgentCatalog.isValid(id: "2fa-agent"))
+        #expect(!AgentCatalog.isValid(id: "Agent"))
+        #expect(!AgentCatalog.isValid(id: "-agent"))
+        #expect(!AgentCatalog.isValid(id: "_agent"))
+        #expect(!AgentCatalog.isValid(id: ""))
+    }
 }
