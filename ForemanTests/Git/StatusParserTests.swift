@@ -62,6 +62,21 @@ struct StatusParserTests {
             ])
     }
 
+    /// A rename record git wrote whole, minus its `R100` field: the origin record that follows is
+    /// still the origin, and reading it as a record of its own desynchronises everything after it.
+    @Test func aRenameRecordFailingItsFieldsStillConsumesItsOrigin() {
+        let hash = "587be6b4c3f93f93c489c0111bba5596147a26cb"
+        let status = parse([
+            "# branch.oid 3a4e778f901173b004afe7724101db7fedaa3600", "# branch.head main",
+            "2 R. N... 100644 100644 100644 \(hash) \(hash) 2020/new.txt",
+            // The origin path of a file whose name starts like an untracked record.
+            "? 2020/old.txt",
+            "? untracked.txt",
+        ])
+        #expect(status.entries.map(\.path) == ["untracked.txt"])
+        #expect(status.head == .branch("main"))
+    }
+
     @Test func keepsANewlineInAPathAndSurvivesBytesThatAreNotUTF8() {
         var data = Data("# branch.oid (initial)\0# branch.head main\0? a\nb.txt\0? caf".utf8)
         data.append(contentsOf: [0xE9, 0x2E, 0x74, 0x78, 0x74, 0])

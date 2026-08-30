@@ -162,7 +162,12 @@ nonisolated enum StatusParser {
                 guard let (xy, path) = fields(record, pathAfterSpaces: 8) else { continue }
                 status.entries.append(GitStatusEntry(path: path, index: xy.0, worktree: xy.1))
             case UInt8(ascii: "2"):
-                guard let (xy, path) = fields(record, pathAfterSpaces: 9) else { continue }
+                // The origin record belongs to this one whatever it is worth: left in the stream,
+                // a path starting with a record letter would be read as the next record.
+                guard let (xy, path) = fields(record, pathAfterSpaces: 9) else {
+                    _ = records.next()
+                    continue
+                }
                 let origin = records.next().map { decode($0) }
                 status.entries.append(GitStatusEntry(path: path, originalPath: origin, index: xy.0, worktree: xy.1))
             case UInt8(ascii: "u"):
