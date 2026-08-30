@@ -189,10 +189,12 @@ struct WorkspaceView: View {
     }
 
     /// Reading the folder is disk IO, so it runs off the main actor (coding rules, concurrency).
+    ///
+    /// `@concurrent` and not a detached task: the call is structured, so it is cancelled with the
+    /// `.task` that awaits it and inherits its priority. Not synchronous either — the folder can
+    /// be on a network volume, where the first `stat` blocks for seconds.
+    @concurrent
     private static func isDirectory(_ folder: URL) async -> Bool {
-        let check = Task.detached {
-            (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
-        }
-        return await check.value
+        (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
     }
 }

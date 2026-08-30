@@ -57,9 +57,13 @@ nonisolated extension SecretStore {
             write: { secret, account throws(SecretStoreError) in
                 var attributes = keychainQuery(service: service, account: account)
                 attributes[kSecValueData as String] = Data(secret.utf8)
+                attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
                 let status = SecItemAdd(attributes as CFDictionary, nil)
                 if status == errSecDuplicateItem {
-                    let update = [kSecValueData as String: Data(secret.utf8)]
+                    let update: [String: Any] = [
+                        kSecValueData as String: Data(secret.utf8),
+                        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                    ]
                     let updated = SecItemUpdate(
                         keychainQuery(service: service, account: account) as CFDictionary, update as CFDictionary)
                     guard updated == errSecSuccess else { throw .keychain(updated) }
@@ -83,6 +87,11 @@ nonisolated extension SecretStore {
             delete: { account in secrets.withLock { $0[account] = nil } })
     }
 
+    /// What identifies the item, and nothing more.
+    ///
+    /// `kSecAttrAccessible` is deliberately absent here and set only in the write attributes: in a
+    /// search dictionary it filters, so adding it would stop `SecItemCopyMatching`, `SecItemUpdate`
+    /// and `SecItemDelete` from finding the items already stored without it.
     private static func keychainQuery(service: String, account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
