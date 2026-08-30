@@ -4,13 +4,10 @@ import Testing
 
 /// postgres R15: `quote_ident` on the client.
 struct SQLIdentifierTests {
-    @Test(arguments: ["users", "order_items", "_tmp", "t1", "a$b"])
-    func plainLowercaseNamesStayBare(name: String) {
-        #expect(SQLIdentifier.quote(name) == name)
-    }
-
-    @Test(arguments: ["select", "user", "table", "order", "int", "varchar"])
-    func keywordsAreQuoted(name: String) {
+    /// Every name is quoted, keyword or not: `"users"` and `users` name the same object, so the
+    /// only thing an exception would buy is a keyword list to maintain.
+    @Test(arguments: ["users", "order_items", "_tmp", "t1", "a$b", "select", "user", "table", "int"])
+    func everyNameIsQuoted(name: String) {
         #expect(SQLIdentifier.quote(name) == "\"\(name)\"")
     }
 
@@ -24,10 +21,11 @@ struct SQLIdentifierTests {
 
     @Test func doubleQuotesAreDoubled() {
         #expect(SQLIdentifier.quote("a\"b") == "\"a\"\"b\"")
+        #expect(SQLIdentifier.quote("x\"y'; DROP TABLE t; --") == "\"x\"\"y'; DROP TABLE t; --\"")
     }
 
     @Test func qualifiedNameQuotesEachPart() {
-        #expect(SQLIdentifier.qualified("public", "users") == "public.users")
+        #expect(SQLIdentifier.qualified("public", "users") == "\"public\".\"users\"")
         #expect(SQLIdentifier.qualified("My Schema", "order") == "\"My Schema\".\"order\"")
     }
 }
