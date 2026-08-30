@@ -91,34 +91,14 @@ extension PostgresFeature {
                 self?.executionTask = nil
             }
             do {
-                let sequence = try await client.execute(PostgresQuery(unsafeSQL: statement.sql))
-                var page: [QueryResult.Row] = []
-                var count = 0
-                var isTruncated = false
-                for try await row in sequence {
-                    if count == 0 {
-                        tab.setColumns(QueryResult.columns(of: row))
-                    }
-                    page.append(QueryResult.Row(id: count, values: row.map(QueryValue.decode)))
-                    count += 1
-                    if page.count == QueryResult.pageSize {
-                        tab.append(page)
-                        page = []
-                    }
-                    if count >= Self.rowLimit {
-                        // R12: the task stops reading and the server is told to stop too (R13).
-                        isTruncated = true
-                        break
-                    }
-                }
-                tab.append(page)
-                if isTruncated {
+                let stream = try await Self.stream(statement.sql, into: tab, on: client)
+                if stream.isTruncated {
                     try? await client.cancelRunning()
                 }
                 let duration = clock.now - started
-                tab.finish(duration: duration, isTruncated: isTruncated)
+                tab.finish(duration: duration, isTruncated: stream.isTruncated)
                 self?.model.error = nil
-                self?.record(statement.sql, duration: duration, rowCount: count, error: nil)
+                self?.record(statement.sql, duration: duration, rowCount: stream.count, error: nil)
             } catch {
                 let classified = PostgresError.classify(error)
                 var position: Int?
@@ -134,6 +114,43 @@ extension PostgresFeature {
                 }
             }
         }
+    }
+
+    /// R10, R12: the rows of `sql` streamed into `tab`, page by page.
+    ///
+    /// R4: the client is told the stream is over whichever way it ends, so its inactivity timer
+    /// runs from the end of the query and never closes the connection under a long statement.
+    private static func stream(
+        _ sql: String, into tab: PostgresQueryTab, on client: PostgresClient
+    ) async throws(PostgresError) -> (count: Int, isTruncated: Bool) {
+        let sequence = try await client.execute(PostgresQuery(unsafeSQL: sql))
+        var page: [QueryResult.Row] = []
+        var count = 0
+        var isTruncated = false
+        do {
+            for try await row in sequence {
+                if count == 0 {
+                    tab.setColumns(QueryResult.columns(of: row))
+                }
+                page.append(QueryResult.Row(id: count, values: row.map(QueryValue.decode)))
+                count += 1
+                if page.count == QueryResult.pageSize {
+                    tab.append(page)
+                    page = []
+                }
+                if count >= rowLimit {
+                    // R12: the task stops reading and the server is told to stop too (R13).
+                    isTruncated = true
+                    break
+                }
+            }
+        } catch {
+            await client.finished()
+            throw PostgresError.classify(error)
+        }
+        await client.finished()
+        tab.append(page)
+        return (count: count, isTruncated: isTruncated)
     }
 
     /// R20: the text, the connection, the outcome; never the result.

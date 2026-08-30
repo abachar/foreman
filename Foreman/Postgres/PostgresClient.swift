@@ -29,8 +29,15 @@ actor PostgresClient {
     private(set) var backendPID: Int32?
     /// R11: per session, never persisted.
     private(set) var allowWrites = false
-    /// R4: the last time a query started.
+    /// R4: the last time a query started or ended.
     private(set) var lastActivity = ContinuousClock.now
+    /// R4: how many queries are streaming right now; a busy connection is never closed by the
+    /// inactivity timer, however long the statement runs (`statementTimeout` goes up to an hour).
+    private(set) var activeQueries = 0
+
+    var isBusy: Bool {
+        activeQueries > 0
+    }
 
     private let password: @Sendable () async throws(PostgresError) -> String
     private let stateContinuation: AsyncStream<State>.Continuation
@@ -164,12 +171,16 @@ actor PostgresClient {
 
     // MARK: - Queries (R7, R12, R15)
 
-    /// Runs `query` on the connection, streaming its rows; the caller consumes the sequence.
+    /// Runs `query` on the connection, streaming its rows; the caller consumes the sequence and
+    /// calls `finished()` when it is drained or has failed (R4: the connection stays busy until
+    /// then).
     func execute(_ query: PostgresQuery) async throws(PostgresError) -> PostgresRowSequence {
         let connection = try await connect()
         touch()
         do {
-            return try await connection.query(query, logger: nioLogger)
+            let sequence = try await connection.query(query, logger: nioLogger)
+            activeQueries += 1
+            return sequence
         } catch {
             let classified = PostgresError.classify(error)
             if connection.isClosed {
@@ -179,6 +190,13 @@ actor PostgresClient {
         }
     }
 
+    /// R4: the sequence of an `execute` is over, whatever its outcome; the inactivity timer
+    /// counts from here, so the 10 minutes start when the query ends and not when it started.
+    func finished() {
+        activeQueries = max(0, activeQueries - 1)
+        touch()
+    }
+
     /// Every row of a Foreman-generated query, within `timeout` (R7: catalog queries are bounded).
     func rows(
         _ query: PostgresQuery, timeout: Duration = PostgresClient.catalogTimeout
@@ -186,7 +204,7 @@ actor PostgresClient {
         let result = await withTaskGroup(of: Result<[PostgresRow], PostgresError>?.self) { group in
             group.addTask {
                 do {
-                    return .success(try await self.execute(query).collect())
+                    return .success(try await self.collect(query))
                 } catch {
                     return .failure(PostgresError.classify(error))
                 }
@@ -202,13 +220,31 @@ actor PostgresClient {
         return try result.get()
     }
 
-    /// R4: the inactivity timer, re-armed at every query.
+    /// Collects the whole sequence, releasing the busy count whatever happens.
+    private func collect(_ query: PostgresQuery) async throws(PostgresError) -> [PostgresRow] {
+        let sequence = try await execute(query)
+        defer { finished() }
+        do {
+            return try await sequence.collect()
+        } catch {
+            throw PostgresError.classify(error)
+        }
+    }
+
+    /// R4: the inactivity timer, re-armed at the start and at the end of every query.
     private func touch() {
         lastActivity = .now
         idleClose?.cancel()
         idleClose = Task { [weak self] in
             guard (try? await Task.sleep(for: ConnectionLifecycle.idleLimit)) != nil else { return }
-            await self?.close()
+            await self?.closeIfIdle()
         }
+    }
+
+    /// R4: the timer fired. A query still streaming keeps the connection — `finished()` arms the
+    /// timer again when the last one ends, so a long statement is never cut mid-stream.
+    private func closeIfIdle() async {
+        guard !isBusy else { return }
+        await close()
     }
 }
