@@ -51,8 +51,15 @@ nonisolated enum Folding {
         return hidden
     }
 
+    /// Pre-order, on an explicit stack: a pathologically nested tree must not overflow the
+    /// call stack.
     private static func visit(_ node: Node, _ body: (Node) -> Void) {
-        body(node)
-        node.enumerateChildren { visit($0, body) }
+        var stack = [node]
+        while let current = stack.popLast() {
+            body(current)
+            var children: [Node] = []
+            current.enumerateChildren { children.append($0) }
+            stack.append(contentsOf: children.reversed())
+        }
     }
 }

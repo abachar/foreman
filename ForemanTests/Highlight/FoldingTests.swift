@@ -48,6 +48,16 @@ struct FoldingTests {
             ])
     }
 
+    /// editor R26: a pathologically nested document walks on an explicit stack, not the call one.
+    @Test func survivesPathologicalNesting() {
+        let depth = 10_000
+        let text = String(repeating: "[\n", count: depth) + String(repeating: "]\n", count: depth)
+        let regions = Folding.regions(in: text, language: .json)
+        // The innermost array opens and closes on adjacent lines: nothing of it to hide.
+        #expect(regions.count == depth - 1)
+        #expect(regions.first == FoldRegion(first: 1, last: 2 * depth - 1))
+    }
+
     @Test func innermostRegionAndHiddenLines() {
         let regions = [FoldRegion(first: 1, last: 10), FoldRegion(first: 3, last: 5), FoldRegion(first: 12, last: 14)]
         #expect(Folding.innermost(regions, containing: 4) == regions[1])
