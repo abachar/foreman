@@ -33,7 +33,8 @@ struct QueryGridView: View {
                 detail = row
             }
         }
-        .copyable([tab.copyText])
+        // R16: the payload carries the rows, not the joined text: `body` runs on every click.
+        .copyable([tab.clipboard])
         .sheet(item: $detail) { row in
             rowSheet(row)
         }

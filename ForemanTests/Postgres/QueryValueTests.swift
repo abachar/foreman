@@ -46,6 +46,18 @@ struct QueryValueTests {
         #expect(QueryResult.tsv(columns: columns, rows: rows) == "id\tn\n1\tx\\ty\n2\t")
     }
 
+    /// R16: `cmd+c` carries the rows and the selection; the TSV is joined by the export, so
+    /// this is what the clipboard ends up with.
+    @Test func theClipboardJoinsTheSelectionOrEverything() {
+        let columns = [QueryResult.Column(name: "id", type: "int4"), QueryResult.Column(name: "n", type: "text")]
+        let rows = [
+            QueryResult.Row(id: 0, values: [.int(1), .text("a")]), QueryResult.Row(id: 1, values: [.int(2), .null]),
+        ]
+        #expect(QueryClipboard(columns: columns, rows: rows, selection: []).text == "id\tn\n1\ta\n2\t")
+        #expect(QueryClipboard(columns: columns, rows: rows, selection: [1]).text == "id\tn\n2\t")
+        #expect(QueryClipboard(columns: [], rows: [], selection: []).text == "")
+    }
+
     @Test func sortsNumericallyStablyWithNullLast() {
         let rows = [
             QueryResult.Row(id: 0, values: [.int(10)]), QueryResult.Row(id: 1, values: [.null]),
