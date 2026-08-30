@@ -120,10 +120,11 @@ final class Workspace {
             do {
                 read.append((file: file, sections: try await WorkspaceConfig.readSections(file)))
             } catch let error as WorkspaceError {
-                logger.error("config rejected: \(error.description, privacy: .public)")
+                // The descriptions name files and folders, so they follow the paths rule.
+                logger.error("config rejected: \(error.description, privacy: .private)")
                 errors.append(error)
             } catch {
-                logger.error("config rejected: \(error.localizedDescription, privacy: .public)")
+                logger.error("config rejected: \(error.localizedDescription, privacy: .private)")
                 errors.append(.invalidJSON(file: file, line: nil, message: error.localizedDescription))
             }
         }
@@ -142,7 +143,8 @@ final class Workspace {
         let merged = WorkspaceConfig.make(
             WorkspaceConfig.merge(global: globalSections, workspace: workspaceSections), root: root)
         for warning in merged.warnings {
-            logger.warning("\(warning, privacy: .public)")
+            // Warnings quote the declared repo paths, so they follow the paths rule.
+            logger.warning("\(warning, privacy: .private)")
         }
         config = merged
         for continuation in configSubscribers.values {
@@ -216,8 +218,9 @@ final class Workspace {
         } catch {
             guard isStatePersisted else { return }
             isStatePersisted = false
+            // The description names the file and its folder, so it follows the paths rule.
             logger.error(
-                "state.json not written, running without persistence: \(error.localizedDescription, privacy: .public)")
+                "state.json not written, running without persistence: \(error.localizedDescription, privacy: .private)")
         }
     }
 }
