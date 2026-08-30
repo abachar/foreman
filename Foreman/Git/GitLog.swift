@@ -22,24 +22,33 @@ nonisolated enum LogParser {
     static let format = "%H%x1f%h%x1f%an%x1f%aI%x1f%D%x1f%s"
 
     static func parse(_ data: Data) -> [GitCommit] {
-        data.split(separator: 0, omittingEmptySubsequences: true).compactMap { record in
+        // One formatter for the whole page instead of one per commit; `%aI` writes the offset with
+        // a colon, which is what this formatter reads and what the panel's fixtures pin.
+        let dates = ISO8601DateFormatter()
+        return data.split(separator: 0, omittingEmptySubsequences: true).compactMap { record in
             let fields = String(decoding: record, as: UTF8.self).split(
                 separator: "\u{1f}", maxSplits: 5, omittingEmptySubsequences: false)
             guard fields.count == 6, !fields[0].isEmpty else { return nil }
             return GitCommit(
                 sha: String(fields[0]), shortSha: String(fields[1]), author: String(fields[2]),
-                date: ISO8601DateFormatter().date(from: String(fields[3])),
+                date: dates.date(from: String(fields[3])),
                 refs: fields[4].split(separator: ", ").map { String($0).trimmingCharacters(in: .whitespaces) },
                 subject: String(fields[5]).trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
 
-    /// git R18: "3 minutes ago", "yesterday"…; a missing date reads as empty.
-    static func relativeText(_ date: Date?, now: Date) -> String {
-        guard let date else { return "" }
+    /// The panel draws one row per commit and a formatter is expensive to build; it is kept on the
+    /// main actor, which is where the rows are drawn.
+    @MainActor private static let relativeDates: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: now)
+        return formatter
+    }()
+
+    /// git R18: "3 minutes ago", "yesterday"…; a missing date reads as empty.
+    @MainActor static func relativeText(_ date: Date?, now: Date) -> String {
+        guard let date else { return "" }
+        return relativeDates.localizedString(for: date, relativeTo: now)
     }
 }
 
