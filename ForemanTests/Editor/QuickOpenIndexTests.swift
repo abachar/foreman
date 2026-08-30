@@ -50,6 +50,24 @@ struct QuickOpenIndexTests {
         #expect(await index.search("new", limit: 5).paths == ["docs/new.md"])
     }
 
+    /// editor R18: a cancelled walk stops early and leaves the index unbuilt for the next caller.
+    @Test func aCancelledBuildLeavesTheIndexUnbuilt() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        for number in 0..<1200 {
+            try Data().write(to: root.appending(path: "docs/f\(number).txt"))
+        }
+        let index = QuickOpenIndex(root: root)
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            await index.build()
+        }
+        await cancelled.value
+        #expect(await index.count == 0)
+
+        await index.build()
+        #expect(await index.count == 1204)
+    }
+
     @Test func subsequencePrefilterIsCaseInsensitiveAndOrdered() {
         let needle = QuickOpenIndex.lowered("WSV")
         #expect(QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("Foreman/App/WorkspaceView.swift")))

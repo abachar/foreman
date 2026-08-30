@@ -34,7 +34,9 @@ actor QuickOpenIndex {
     }
 
     /// Walks the workspace once, skipping the shared exclusion list; a second call is a no-op.
-    func build() {
+    /// The walk yields regularly — a 200,000-file scan must not monopolise a pool thread — and a
+    /// cancelled walk leaves the index unbuilt for the next caller.
+    func build() async {
         guard !isBuilt else { return }
         isBuilt = true
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
@@ -42,7 +44,18 @@ actor QuickOpenIndex {
             let enumerator = FileManager.default.enumerator(
                 at: root, includingPropertiesForKeys: Array(keys), options: [.producesRelativePathURLs])
         else { return }
+        var visited = 0
         while let url = enumerator.nextObject() as? URL {
+            visited += 1
+            if visited.isMultiple(of: 512) {
+                await Task.yield()
+                if Task.isCancelled {
+                    paths = [:]
+                    isTruncated = false
+                    isBuilt = false
+                    return
+                }
+            }
             let path = url.relativePath
             if Self.isSkipped(path, rootIsHome: rootIsHome) || Self.isIgnored(path, in: ignored) {
                 enumerator.skipDescendants()
@@ -106,8 +119,8 @@ actor QuickOpenIndex {
     /// fzf does, a cheap subsequence test keeps only the paths that can match, and at most
     /// `scoringCap` of them are scored: those whose file name matches first (R17: the name wins),
     /// the shortest paths first among them.
-    func search(_ query: String, limit: Int) -> Search {
-        build()
+    func search(_ query: String, limit: Int) async -> Search {
+        await build()
         let needle = Self.lowered(query).filter { $0 != UInt8(ascii: " ") }
         var named: [String] = []
         var others: [String] = []
