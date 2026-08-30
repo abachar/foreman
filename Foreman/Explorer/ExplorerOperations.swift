@@ -64,8 +64,17 @@ nonisolated enum ExplorerOperations {
         return url
     }
 
+    /// explorer R17: whether `name` is already another entry of the folder.
+    ///
+    /// Asking the file system whether the target exists cannot answer for a case-only rename: on a
+    /// case-insensitive volume it says yes, the match being the source itself. The folder's own
+    /// names are what tells `Readme` → `README` apart from a real collision on a case-sensitive one.
+    static func isTaken(_ name: String, siblings: [String], source: String) -> Bool {
+        name != source && siblings.contains(name)
+    }
+
     /// explorer R17 and edge cases: a rename that only changes the case goes through a temporary
-    /// name, APFS being case-insensitive by default.
+    /// name, APFS being case-insensitive by default; a failed second move puts the file back.
     @concurrent
     static func rename(_ url: URL, to name: String, root: URL) async throws(ExplorerError) -> URL {
         let target = try destination(name, in: url.deletingLastPathComponent(), root: root, allowsSlash: false)
@@ -73,9 +82,20 @@ nonisolated enum ExplorerOperations {
         let fileManager = FileManager.default
         do {
             if url.lastPathComponent.lowercased() == name.lowercased(), url.lastPathComponent != name {
-                let temporary = url.deletingLastPathComponent().appending(path: ".\(name).foreman-rename")
+                let folder = url.deletingLastPathComponent()
+                let siblings = try fileManager.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
+                guard !isTaken(name, siblings: siblings, source: url.lastPathComponent) else {
+                    throw ExplorerError.io(name, underlying: CocoaError(.fileWriteFileExists))
+                }
+                let temporary = folder.appending(path: ".\(name).foreman-rename")
                 try fileManager.moveItem(at: url, to: temporary)
-                try fileManager.moveItem(at: temporary, to: target)
+                do {
+                    try fileManager.moveItem(at: temporary, to: target)
+                } catch {
+                    // Nothing may stay behind under the invisible temporary name.
+                    try? fileManager.moveItem(at: temporary, to: url)
+                    throw ExplorerError.io(name, underlying: error)
+                }
             } else {
                 guard !fileManager.fileExists(atPath: target.path(percentEncoded: false)) else {
                     throw ExplorerError.io(name, underlying: CocoaError(.fileWriteFileExists))

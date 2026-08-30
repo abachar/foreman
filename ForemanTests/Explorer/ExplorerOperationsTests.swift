@@ -30,6 +30,30 @@ struct ExplorerOperationsTests {
         #expect(path(ExplorerOperations.targetFolder(forSelection: file, root: root)) == "/ws/src")
     }
 
+    /// explorer R17: a case-only rename is not a collision with itself, another name is.
+    @Test func aCaseOnlyRenameOnlyCollidesWithADifferentEntry() {
+        #expect(!ExplorerOperations.isTaken("README", siblings: ["Readme", "src"], source: "Readme"))
+        #expect(ExplorerOperations.isTaken("README", siblings: ["Readme", "README"], source: "Readme"))
+        #expect(!ExplorerOperations.isTaken("Readme", siblings: ["Readme"], source: "Readme"))
+    }
+
+    @Test func keepsTheFileWhenARenameIsRefused() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ExplorerRenameTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appending(path: "a.txt")
+        try "x".write(to: source, atomically: true, encoding: .utf8)
+        try "y".write(to: root.appending(path: "b.txt"), atomically: true, encoding: .utf8)
+
+        await #expect(throws: ExplorerError.self) {
+            _ = try await ExplorerOperations.rename(source, to: "b.txt", root: root)
+        }
+
+        #expect(try String(contentsOf: source, encoding: .utf8) == "x")
+        let left = try FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false))
+        #expect(left.sorted() == ["a.txt", "b.txt"])
+    }
+
     @Test func createsRenamesAndRefusesOutsideTheRoot() async throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "ExplorerOperationsTests-\(UUID().uuidString)")
