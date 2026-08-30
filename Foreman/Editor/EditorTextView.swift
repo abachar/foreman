@@ -50,7 +50,7 @@ struct EditorTextView: NSViewRepresentable {
         tab.textView = textView
         // editor R6: the gutter.
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
-        ruler.onToggleFold = { [tab] line in tab.toggleFold(atLine: line) }
+        ruler.onToggleFold = { [weak tab] line in tab?.toggleFold(atLine: line) }
         scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
@@ -58,9 +58,10 @@ struct EditorTextView: NSViewRepresentable {
         Self.paint(textView, ruler: ruler, tokens: theme.tokens)
         if document.isHighlightable, let language = tab.language {
             // The grammar comes when it is ready (M6 6.5): plain text until then, no freeze.
-            context.coordinator.attaching = Task { [highlighter, weak textView, coordinator = context.coordinator] in
+            context.coordinator.attaching = Task {
+                [highlighter, weak textView, weak coordinator = context.coordinator] in
                 guard let textView, let attached = await highlighter.attach(to: textView, language: language),
-                    !Task.isCancelled
+                    !Task.isCancelled, let coordinator
                 else { return }
                 coordinator.highlighter = attached
                 attached.invalidate(.all)
@@ -75,9 +76,11 @@ struct EditorTextView: NSViewRepresentable {
         scroll.contentView.postsBoundsChangedNotifications = true
         context.coordinator.scrollObserver = NotificationCenter.default.addObserver(
             forName: NSView.boundsDidChangeNotification, object: scroll.contentView, queue: .main
-        ) { [tab, weak scroll, coordinator = context.coordinator] _ in
+        ) { [weak tab, weak scroll, weak coordinator = context.coordinator] _ in
             MainActor.assumeIsolated {
-                guard let scroll, coordinator.isScrollRestored else { return }
+                // Weak: NotificationCenter keeps this block until `removeObserver`, which runs
+                // in the coordinator's deinit — a strong capture would make that unreachable.
+                guard let tab, let scroll, let coordinator, coordinator.isScrollRestored else { return }
                 tab.scroll = scroll.contentView.bounds.origin.y
             }
         }
@@ -155,7 +158,9 @@ struct EditorTextView: NSViewRepresentable {
         /// editor R4: bounds changes count only once the saved position was restored.
         var isScrollRestored = false
         var reloadVersion = 0
-        private let tab: EditorTab
+        /// Weak: the tab owns the coordinator (`textCoordinator`); a strong back reference would
+        /// keep both — and the whole text stack — alive after the tab closes.
+        private weak var tab: EditorTab?
         /// editor R26: the characters of the hidden lines, as laid out.
         private var hiddenCharacters = IndexSet()
         private var appliedFolds: (regions: [FoldRegion], folded: Set<Int>) = ([], [])
@@ -172,11 +177,11 @@ struct EditorTextView: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
-            tab.textDidChange()
+            tab?.textDidChange()
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
+            guard let textView = notification.object as? NSTextView, let tab else { return }
             tab.cursor = textView.selectedRange().location
             // editor R28: the cursor inside a fold (an edit, a search hit) opens it.
             if !hiddenCharacters.isEmpty, hiddenCharacters.contains(textView.selectedRange().location) {
@@ -248,6 +253,7 @@ struct EditorTextView: NSViewRepresentable {
 
         /// editor R6: `tab` inserts the file's indent unit, `enter` keeps the line's indent.
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            guard let tab else { return false }
             let text = textView.string as NSString
             let selection = textView.selectedRange()
             switch selector {

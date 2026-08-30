@@ -238,7 +238,9 @@ final class EditorFeature {
     /// editor R34: the scratch goes with its tab (layout R15 already asked, R8 already offered to
     /// name it); a scratch saved away is no longer one.
     private func tabClosed(_ id: TabID) {
-        guard let tab = tabs.removeValue(forKey: id), tab.isScratch else { return }
+        guard let tab = tabs.removeValue(forKey: id) else { return }
+        tab.textCoordinator = nil
+        guard tab.isScratch else { return }
         Task { await Scratch.remove(tab.url) }
     }
 
@@ -666,6 +668,9 @@ final class EditorFeature {
     /// Forgets the tabs the layout closed (`cmd+w` does not tell the owner).
     private func prune() {
         let open = Set(layout.model.tree.groups.flatMap { layout.model[group: $0]?.tabs.map(\.id) ?? [] })
+        for (id, tab) in tabs where !open.contains(id) {
+            tab.textCoordinator = nil
+        }
         tabs = tabs.filter { open.contains($0.key) }
     }
 
