@@ -395,11 +395,15 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         // escapes. It says how git writes what it is asked to read, never what git does to the repo.
         let config = ["-c", "core.quotepath=false"]
         let options = ["--no-color", "--no-ext-diff", "-M"]
+        // A merge commit has no diff of its own: `show` prints a combined `diff --cc`, which is not
+        // a unified diff. `-m --first-parent` asks for what the merge brought to the branch it was
+        // made on, in the ordinary format; on a commit with one parent it changes nothing.
+        let show = ["show", "-m", "--first-parent", "--format=%s"]
         switch source {
         case .workingTree(let path): return config + ["diff"] + options + ["--", path]
         case .staged(let path): return config + ["diff", "--cached"] + options + ["--", path]
-        case .commit(let sha, _): return config + ["show", "--format=%s"] + options + [sha, "--"]
-        case .commitFile(let sha, _, let path): return config + ["show", "--format=%s"] + options + [sha, "--", path]
+        case .commit(let sha, _): return config + show + options + [sha, "--"]
+        case .commitFile(let sha, _, let path): return config + show + options + [sha, "--", path]
         case .session(let base, _): return config + ["diff"] + options + [base, currentTree ?? base, "--"]
         }
     }

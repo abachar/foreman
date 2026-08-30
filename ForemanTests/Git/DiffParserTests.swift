@@ -197,6 +197,36 @@ struct DiffParserTests {
         #expect(diff.files[0].isBinary)
     }
 
+    /// Real `git show -m --first-parent --format=%s --no-color --no-ext-diff -M <merge> --` output
+    /// (git 2.43): the ordinary format, where the same merge without `-m --first-parent` prints a
+    /// combined `diff --cc` no unified-diff reader can use.
+    @Test func readsAMergeCommitShownAgainstItsFirstParent() {
+        let text = """
+            merge side
+
+            diff --git a/f.txt b/f.txt
+            index 4f213f7..4484d91 100644
+            --- a/f.txt
+            +++ b/f.txt
+            @@ -1,3 +1,3 @@
+             A
+            -b
+            +B
+             c
+            diff --git a/s.txt b/s.txt
+            new file mode 100644
+            index 0000000..2299c37
+            --- /dev/null
+            +++ b/s.txt
+            @@ -0,0 +1 @@
+            +side
+            """
+        let diff = DiffParser.parse(text)
+        #expect(diff.files.map(\.path) == ["f.txt", "s.txt"])
+        #expect(diff.files[0].hunks.first?.lines.map(\.kind) == [.context, .removed, .added, .context])
+        #expect(diff.files[1].oldPath == nil)
+    }
+
     @Test func skipsTheCommitHeaderOfShow() {
         let text = "feat: subject\n\n" + simple
         #expect(DiffParser.parse(text).files.map(\.path) == ["src/app.swift"])
@@ -246,14 +276,14 @@ struct DiffParserTests {
         #expect(
             GitDiffPayload(repo: ".", source: .commit(sha: "abc", subject: "s")).arguments()
                 == [
-                    "-c", "core.quotepath=false", "show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc",
-                    "--",
+                    "-c", "core.quotepath=false", "show", "-m", "--first-parent", "--format=%s", "--no-color",
+                    "--no-ext-diff", "-M", "abc", "--",
                 ])
         #expect(
             GitDiffPayload(repo: ".", source: .commitFile(sha: "abc", subject: "s", path: "p")).arguments()
                 == [
-                    "-c", "core.quotepath=false", "show", "--format=%s", "--no-color", "--no-ext-diff", "-M", "abc",
-                    "--", "p",
+                    "-c", "core.quotepath=false", "show", "-m", "--first-parent", "--format=%s", "--no-color",
+                    "--no-ext-diff", "-M", "abc", "--", "p",
                 ])
     }
 
