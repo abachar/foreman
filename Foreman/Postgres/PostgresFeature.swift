@@ -223,7 +223,6 @@ final class PostgresFeature {
 
     /// R3: a sheet with a secure field and *Save to the Keychain* checked by default.
     private func askPassword(label: String) async -> PasswordAnswer? {
-        guard let window = NSApp.keyWindow else { return nil }
         let alert = NSAlert()
         alert.messageText = "Password for \(label)"
         alert.informativeText = "Foreman keeps it in your login keychain when the box is checked."
@@ -238,7 +237,15 @@ final class PostgresFeature {
         alert.addButton(withTitle: "Connect")
         alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = field
-        let response = await alert.beginSheetModal(for: window)
+        // The sheet belongs to the window this feature's panels live in, which is not always the
+        // key one when several workspaces are open; with no window at all it runs modally, so the
+        // prompt is never silently dropped and the connection never fails for want of a question.
+        let response: NSApplication.ModalResponse
+        if let window = layout.window ?? NSApp.keyWindow {
+            response = await alert.beginSheetModal(for: window)
+        } else {
+            response = alert.runModal()
+        }
         guard response == .alertFirstButtonReturn else { return nil }
         return PasswordAnswer(password: field.stringValue, saveToKeychain: checkbox.state == .on)
     }
