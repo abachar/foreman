@@ -146,6 +146,25 @@ struct LayoutManagerTests {
         #expect(layout.badge(of: "agent.claude") == .none)
     }
 
+    /// layout R33: a recents entry colliding with a registered id gave the home screen two rows
+    /// of the same identity.
+    @Test func replacingASectionRefusesAnIDAlreadyTaken() {
+        let layout = LayoutManager()
+        let entry = { (id: String, section: HomeEntry.Section) in
+            HomeEntry(id: id, title: id, icon: "circle", section: section, action: {})
+        }
+        layout.register(homeEntry: entry("agents.claude", .agents))
+
+        layout.replaceHomeEntries(
+            in: .recent, with: [entry("agents.claude", .recent), entry("editor.recent.a", .recent)])
+
+        #expect(layout.homeEntries.map(\.id) == ["agents.claude", "editor.recent.a"])
+        #expect(layout.homeEntries.map(\.section) == [.agents, .recent])
+
+        layout.replaceHomeEntries(in: .recent, with: [entry("editor.recent.b", .recent)])
+        #expect(layout.homeEntries.map(\.id) == ["agents.claude", "editor.recent.b"])
+    }
+
     // MARK: - layout R35
 
     @Test func closesTheSelectionInBarOrderAndStopsAtARefusal() async {

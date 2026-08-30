@@ -93,13 +93,19 @@ final class LayoutManager {
         tabKinds[descriptor.kind] = descriptor
     }
 
-    /// layout R33: same rules as toolbar items, a duplicated id is refused.
     /// layout R33: a section whose entries change over time (recent files, editor R19).
+    ///
+    /// The entries go through the registration, so an id already taken is refused here too: the
+    /// home screen lists them by id and two rows of one identity is a broken list (coding rules,
+    /// UI: stable identities).
     func replaceHomeEntries(in section: HomeEntry.Section, with entries: [HomeEntry]) {
         homeEntries.removeAll { $0.section == section }
-        homeEntries.append(contentsOf: entries)
+        for entry in entries {
+            register(homeEntry: entry)
+        }
     }
 
+    /// layout R33: same rules as toolbar items, a duplicated id is refused.
     func register(homeEntry: HomeEntry) {
         guard !homeEntries.contains(where: { $0.id == homeEntry.id }) else {
             logger.fault("home entry \(homeEntry.id, privacy: .public) registered twice, second refused")
