@@ -98,4 +98,23 @@ struct ExplorerMoveTests {
                 root.appending(path: "lib"), into: root.appending(path: "lib"), root: root)
         }
     }
+
+    /// audit T7: a link inside the workspace pointing outside is not inside the workspace.
+    @Test func containmentFollowsLinks() throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "Containment-\(UUID().uuidString)")
+        let root = base.appending(path: "workspace")
+        let outside = base.appending(path: "outside")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        try "secret\n".write(to: outside.appending(path: "keys.txt"), atomically: true, encoding: .utf8)
+        let link = root.appending(path: "escape")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+
+        #expect(ExplorerOperations.isInside(root.appending(path: "src/main.swift"), root: root))
+        #expect(ExplorerOperations.isInside(root, root: root))
+        #expect(!ExplorerOperations.isInside(outside.appending(path: "keys.txt"), root: root))
+        // The path that used to pass: standardizing resolves `..`, never a link.
+        #expect(!ExplorerOperations.isInside(link.appending(path: "keys.txt"), root: root))
+    }
 }
