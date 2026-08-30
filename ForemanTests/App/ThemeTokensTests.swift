@@ -16,6 +16,8 @@ struct ThemeTokensTests {
         #expect(ThemeColor(parsing: "#xyz") == nil)
         #expect(ThemeColor(parsing: "4C8DF6") == nil)
         #expect(ThemeColor(parsing: "#4C8DF") == nil)
+        #expect(ThemeColor(parsing: "#+ABCDE") == nil)
+        #expect(ThemeColor(parsing: "#-ABCDE") == nil)
         #expect(ThemeColor(parsing: "") == nil)
     }
 
