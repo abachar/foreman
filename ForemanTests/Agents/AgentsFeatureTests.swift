@@ -47,12 +47,20 @@ struct AgentsFeatureTests {
 
 /// agents R12–R13: naming and the payload of a worktree tab.
 struct AgentWorktreeTests {
-    @Test func nameCarriesTheAgentAndTheMinute() throws {
+    private func moment(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) throws -> Date {
         var components = DateComponents()
-        (components.year, components.month, components.day, components.hour, components.minute) = (2026, 8, 28, 14, 5)
+        (components.year, components.month, components.day, components.hour, components.minute) =
+            (year, month, day, hour, minute)
         components.timeZone = .current
-        let date = try #require(Calendar(identifier: .gregorian).date(from: components))
+        return try #require(Calendar(identifier: .gregorian).date(from: components))
+    }
+
+    @Test func nameCarriesTheAgentAndTheMinute() throws {
+        let date = try moment(2026, 8, 28, 14, 5)
         #expect(AgentsFeature.worktreeName(agent: "claude", date: date) == "claude-20260828-1405")
+        // Every field is padded, and the hour is the 24-hour one whatever the user's locale says.
+        #expect(try AgentsFeature.worktreeName(agent: "pi", date: moment(2026, 1, 5, 0, 7)) == "pi-20260105-0007")
+        #expect(try AgentsFeature.worktreeName(agent: "pi", date: moment(2026, 12, 31, 23, 59)) == "pi-20261231-2359")
         #expect(
             AgentsFeature.title("Claude Code", branch: "foreman/claude-20260828-1405")
                 == "Claude Code (foreman/claude-20260828-1405)")

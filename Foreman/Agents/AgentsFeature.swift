@@ -230,10 +230,17 @@ final class AgentsFeature {
     // MARK: - Worktrees (agents R12–R13)
 
     /// agents R12: `<agent>-<yyyyMMdd-HHmm>`; the branch is `foreman/` + name.
+    ///
+    /// The stamp names a folder and a branch on disk, so it follows neither the user's locale nor
+    /// their calendar: fixed format, gregorian, POSIX locale, the machine's time zone. A worktree
+    /// is created one at a time, so the formatter is built here rather than kept.
     nonisolated static func worktreeName(agent: String, date: Date) -> String {
-        let parts = Calendar(identifier: .gregorian).dateComponents(in: .current, from: date)
-        func two(_ value: Int?) -> String { String(format: "%02d", value ?? 0) }
-        return "\(agent)-\(parts.year ?? 0)\(two(parts.month))\(two(parts.day))-\(two(parts.hour))\(two(parts.minute))"
+        let stamp = DateFormatter()
+        stamp.calendar = Calendar(identifier: .gregorian)
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.timeZone = .current
+        stamp.dateFormat = "yyyyMMdd-HHmm"
+        return "\(agent)-\(stamp.string(from: date))"
     }
 
     /// agents R12a: `~/Library/Application Support/Foreman/worktrees/<workspace>/<name>`.
