@@ -107,6 +107,20 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
         consumed = [:]
     }
 
+    /// The list to show once `pages` answered, `existing` being what is already on screen.
+    ///
+    /// One query is git's own answer and keeps its order: `--first-parent` puts the branch's
+    /// commits in the order they were merged, which an author date does not — a rebased or
+    /// cherry-picked commit carries an older one and would sink far below HEAD. Two filtered
+    /// queries have no order in common, so there they are merged by sha, newest first.
+    static func combine(_ pages: [Page], after existing: [GitCommit]) -> [GitCommit] {
+        guard pages.count > 1 else {
+            var seen = Set(existing.map(\.sha))
+            return existing + (pages.first?.commits ?? []).filter { seen.insert($0.sha).inserted }
+        }
+        return merge([existing, merge(pages.map(\.commits))])
+    }
+
     /// The pages merged: by sha, newest first, git's order kept for equal dates.
     static func merge(_ pages: [[GitCommit]]) -> [GitCommit] {
         var seen: Set<String> = []

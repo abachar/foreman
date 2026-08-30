@@ -42,8 +42,7 @@ final class GitHistoryModel {
             do throws(GitError) {
                 let pages = try await Self.fetch(query, client: client)
                 guard !Task.isCancelled, let self else { return }
-                let merged = GitLogQuery.merge(pages.map(\.commits))
-                commits = append ? GitLogQuery.merge([commits, merged]) : merged
+                commits = GitLogQuery.combine(pages, after: append ? commits : [])
                 self.query.advance(pages)
                 hasMore = pages.contains { $0.commits.count >= GitLogQuery.pageSize }
                 error = nil
