@@ -7,22 +7,22 @@ struct SecretStoreTests {
     private let account = "foreman.postgres.localhost:5432/ccoe/postgres"
 
     @Test func readsBackWhatWasWritten() throws {
-        let store = InMemorySecretStore()
+        let store = SecretStore.inMemory()
         #expect(try store.read(account) == nil)
-        try store.write("secret", for: account)
+        try store.write("secret", account)
         #expect(try store.read(account) == "secret")
     }
 
     @Test func overwritesAnExistingSecret() throws {
-        let store = InMemorySecretStore()
-        try store.write("old", for: account)
-        try store.write("new", for: account)
+        let store = SecretStore.inMemory()
+        try store.write("old", account)
+        try store.write("new", account)
         #expect(try store.read(account) == "new")
     }
 
     @Test func deleteInvalidatesTheEntryAndIsIdempotent() throws {
-        let store = InMemorySecretStore()
-        try store.write("secret", for: account)
+        let store = SecretStore.inMemory()
+        try store.write("secret", account)
         try store.delete(account)
         #expect(try store.read(account) == nil)
         try store.delete(account)
