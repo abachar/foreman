@@ -13,7 +13,7 @@ final class BrowserTab: NSObject {
     /// browser R5: what a request may do.
     nonisolated enum Policy: Equatable, Sendable {
         case load
-        /// A non-web scheme handed to the system (`mailto:`, `vscode:`).
+        /// A non-web scheme another application handles (`mailto:`, `vscode:`), once the user agrees.
         case system
         case refuse(String)
     }
@@ -74,13 +74,37 @@ final class BrowserTab: NSObject {
     }
 
     /// browser R5: `http`/`https` load, other well-formed schemes go to the system, the rest is refused.
+    ///
+    /// `blob:` is the page's own content under its own origin, so it loads; a top-level `data:`
+    /// navigation is the classic address-bar spoof and is refused, as the other browsers do.
     nonisolated static func policy(for url: URL) -> Policy {
         switch url.scheme?.lowercased() {
-        case "http", "https", "about": return .load
+        case "http", "https", "about", "blob": return .load
         case "file": return .refuse("Local files are not shown here.")
+        case "data": return .refuse("This page cannot be shown.")
         case "javascript", nil: return .refuse("This link cannot be opened.")
         default: return .system
         }
+    }
+
+    /// browser R5 (amended 2026-08-30): whether the system may be asked to open a non-web URL.
+    ///
+    /// Opening one launches another application, so only the top page may ask, and only because
+    /// the user acted: a redirect, a script or an `iframe` navigates with `.other` and is refused.
+    nonisolated static func mayOpenInSystem(isMainFrame: Bool, navigationType: WKNavigationType) -> Bool {
+        guard isMainFrame else { return false }
+        switch navigationType {
+        case .linkActivated, .formSubmitted: return true
+        default: return false
+        }
+    }
+
+    /// browser R5: what the confirmation says — the scheme is what picks the application, and the
+    /// rest of the URL belongs to the page, so it is shown apart and bounded.
+    nonisolated static func openPrompt(for url: URL) -> (title: String, detail: String) {
+        let text = url.absoluteString
+        let detail = text.count > 300 ? String(text.prefix(300)) + "\u{2026}" : text
+        return ("Open a \u{201C}\(url.scheme?.lowercased() ?? "")\u{201D} link in another application?", detail)
     }
 
     /// browser R3: created at the first show, kept for the tab's life.
@@ -163,12 +187,35 @@ extension BrowserTab: WKNavigationDelegate {
             banner = nil
             return .allow
         case .system:
-            NSWorkspace.shared.open(url)
+            // The target frame is `nil` for a new window, so the source says where the click came
+            // from; a subframe must reach neither the system nor a new window it asks for.
+            let isMainFrame =
+                navigationAction.sourceFrame.isMainFrame && navigationAction.targetFrame?.isMainFrame != false
+            guard Self.mayOpenInSystem(isMainFrame: isMainFrame, navigationType: navigationAction.navigationType)
+            else {
+                banner = "Only a link you click can open another application."
+                return .cancel
+            }
+            if await confirmOpen(url) {
+                NSWorkspace.shared.open(url)
+            }
             return .cancel
         case .refuse(let reason):
             banner = reason
             return .cancel
         }
+    }
+
+    /// browser R5: another application is launched only when the user says so, as Safari asks.
+    private func confirmOpen(_ url: URL) async -> Bool {
+        guard let window else { return false }
+        let prompt = Self.openPrompt(for: url)
+        let alert = NSAlert()
+        alert.messageText = prompt.title
+        alert.informativeText = prompt.detail
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+        return await alert.beginSheetModal(for: window) == .alertFirstButtonReturn
     }
 
     /// browser R5: a response the page cannot show is a download — refused.
