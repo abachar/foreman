@@ -238,7 +238,12 @@ final class ShortcutRegistry {
                 continue
             }
             requested.removeAll { $0.action.id == id }
-            problems.removeAll { $0 == .reservedByLayout(shortcut, id: id) }
+            // layout R24: the override replaces the default a reservation was about, so it clears
+            // that reservation — the problem names the default's shortcut, not the chosen one.
+            problems.removeAll { problem in
+                guard case .reservedByLayout(_, let reserved) = problem else { return false }
+                return reserved == id
+            }
             requested.append((action, shortcut))
         }
 

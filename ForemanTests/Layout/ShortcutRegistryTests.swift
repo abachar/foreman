@@ -89,6 +89,20 @@ struct ShortcutRegistryTests {
         #expect(registry.problems.isEmpty)
     }
 
+    /// layout R24: an override to a free key binds the action, and takes the reservation of the
+    /// default it replaces with it — the banner named that default, not the key the user chose.
+    @Test func anOverrideToAFreeKeyClearsTheLayoutReservation() {
+        registry.register(action("layout.split.vertical", "cmd+d", isLayout: true))
+        registry.register(action("pg.schema", "cmd+d"))
+        #expect(registry.problems == [.reservedByLayout(Shortcut(parsing: "cmd+d")!, id: "pg.schema")])
+
+        registry.apply(overrides: ["pg.schema": "cmd+shift+p"])
+
+        #expect(resolve("cmd+shift+p") == "pg.schema")
+        #expect(resolve("cmd+d") == "layout.split.vertical")
+        #expect(registry.problems.isEmpty)
+    }
+
     /// layout R24: the two halves of an override fail apart, and the message names the right one.
     @Test func reportsAnOverrideThatDoesNotParseApartFromOneThatNamesNoAction() {
         registry.register(action("git.status", "cmd+shift+g"))
