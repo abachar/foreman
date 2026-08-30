@@ -225,15 +225,19 @@ final class PostgresFeature {
         visiblePanels += 1
     }
 
-    /// A panel was hidden: with none left, the connection closes.
+    /// A panel was hidden: with none left and nothing running, the connection closes.
     func panelDeactivated() {
         visiblePanels = max(0, visiblePanels - 1)
         guard let client else { return }
-        Task {
+        Task { [weak self] in
             let idle = ContinuousClock.now - (await client.lastActivity)
-            if ConnectionLifecycle.action(visiblePanels: visiblePanels, isBusy: false, idle: idle) == .close {
-                await client.close()
-            }
+            // R4: a query tab still running, or a catalog query still streaming, keeps it.
+            let isBusy = await client.isBusy
+            guard let self,
+                ConnectionLifecycle.action(
+                    visiblePanels: visiblePanels, isBusy: isBusy || execution.isBusy, idle: idle) == .close
+            else { return }
+            await client.close()
         }
     }
 
