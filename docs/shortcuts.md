@@ -15,7 +15,6 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+opt+←→↑↓` | `layout.focus.*` | Focus the neighbouring group | global | 🟢 |
 | `cmd+opt+shift+←→↑↓` | `layout.move.*` | Move the active tab to the neighbouring group | global | 🟢 |
 | `escape` | `layout.focus.center` | Give the focus back to the center | panel | 🟢 |
-| `cmd+shift+n` | `layout.window.new` | New window (open a folder) | global | 🟢 |
 | `cmd+opt+t` | `layout.toolbar.toggle` | Hide / show the toolbar | global | 🟢 |
 | `cmd+o` | — | *File ▸ Open…* | menu | 🟢 |
 
@@ -105,7 +104,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 ## Free
 
-`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+1…9`, `cmd+g`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
+`cmd+t` (no shell, `product` R4), `cmd+n`, `cmd+shift+n` (freed on 2026-08-30: *New Window* did the same as *File ▸ Open…*), `cmd+shift+1…9`, `cmd+g`, `cmd+shift+p` (kept free: it is the command palette elsewhere, postgres decision 2026-08-27), `cmd+opt+l` (free but left to the layout's `cmd+opt+…` family, editor decision 2026-08-27).
 
 ## Verified on the author's machine (M6 task 6.2, 2026-08-27)
 

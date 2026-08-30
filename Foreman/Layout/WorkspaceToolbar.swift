@@ -202,7 +202,11 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         }
         menu.removeAllItems()
         for entry in entries {
-            let item = NSMenuItem(title: entry.title, action: #selector(performEntry(_:)), keyEquivalent: "")
+            // layout R37: the entry writes the shortcut of what it offers.
+            let equivalent = entry.shortcut?.keyEquivalent
+            let item = NSMenuItem(
+                title: entry.title, action: #selector(performEntry(_:)), keyEquivalent: equivalent?.key ?? "")
+            item.keyEquivalentModifierMask = equivalent?.modifiers ?? []
             item.target = self
             item.subtitle = entry.subtitle
             item.representedObject = Entry(perform: entry.perform)

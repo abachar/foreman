@@ -79,6 +79,11 @@ final class ExplorerActions {
         model.selection.flatMap { model.node(at: $0) }
     }
 
+    /// layout R37: what the context menu writes next to an entry the registry knows (R20).
+    func shortcut(_ id: String) -> Shortcut? {
+        layout.shortcuts.shortcut(for: id)
+    }
+
     /// agents R10a: a file or a folder as `@path`.
     func sendToAgent(_ node: FileNode) {
         sendToAgent?(

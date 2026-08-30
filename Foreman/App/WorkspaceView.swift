@@ -91,7 +91,6 @@ struct WorkspaceView: View {
             }
             .onAppear {
                 appDelegate.adopt(openWindow)
-                layout.openFolder = { appDelegate.openFolderFromPanel() }
             }
             .onChange(of: appDelegate.supersededLaunchFolder, initial: true) { _, _ in
                 closeIfSuperseded()
@@ -119,6 +118,8 @@ struct WorkspaceView: View {
                         appDelegate.firstFrame(of: folder)
                     } onWindow: { window in
                         hostWindow = window
+                        // layout R37: the bar follows the key window, the actions being per window.
+                        appDelegate.menuBar.use(layout.shortcuts, for: window)
                         closeIfSuperseded()
                     }
                     // layout R27, config R8: every change of the layout is persisted, debounced.

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -192,5 +193,134 @@ struct PanelScopeTests {
             layout.shortcuts.resolve(
                 escape, activeTabKind: "editor.file", isTerminalFocused: false, isPanelFocused: false) == nil)
         #expect(layout.shortcuts.problems.isEmpty)
+    }
+}
+
+/// layout R37: the map from the registry to the Mac's menus.
+@MainActor
+struct MenuBarModelTests {
+    private let registry = ShortcutRegistry()
+
+    private func register(_ id: String, _ title: String, _ shortcut: String?, scope: ShortcutScope = .global) {
+        registry.register(
+            ShortcutAction(id: id, title: title, scope: scope, defaultShortcut: shortcut, perform: {}))
+    }
+
+    private func model() -> MenuBarModel {
+        MenuBarModel(actions: registry.actions, shortcut: { registry.shortcut(for: $0) })
+    }
+
+    /// The tree as the user reads it: `Menu > Submenu > Item`, a separator as `-`.
+    private func tree(_ model: MenuBarModel) -> [String] {
+        model.menus.flatMap { menu in
+            [menu.title + (menu.isStandard ? " (standard)" : "")] + rows(menu.entries, under: "  ")
+        }
+    }
+
+    private func rows(_ entries: [MenuBarModel.Entry], under indent: String) -> [String] {
+        entries.flatMap { entry -> [String] in
+            switch entry {
+            case .separator: return [indent + "-"]
+            case .item(let item):
+                return [indent + item.title + (item.shortcut.map { " · \($0)" } ?? "")]
+            case .submenu(let title, let children):
+                return [indent + title + " >"] + rows(children, under: indent + "  ")
+            }
+        }
+    }
+
+    /// `Close Tab` is a `layout.tab.` id but belongs to *File*: the family of *View* leaves it alone.
+    @Test func placesEachActionWhereTheMapSaysAndNotUnderItsNamespace() {
+        register("editor.save", "Save", "cmd+s")
+        register("layout.tab.close", "Close Tab", "cmd+w")
+        register("editor.quickOpen", "Quick Open", "cmd+p")
+
+        #expect(
+            tree(model()) == [
+                "File (standard)", "  Quick Open… · cmd+p", "  -", "  Save · cmd+s", "  -", "  Close Tab · cmd+w",
+            ])
+    }
+
+    /// layout R37: a menu is a map, so an action with no shortcut belongs in it all the same.
+    @Test func keepsAnActionNoShortcutReaches() {
+        register("agents.claude", "Claude", nil)
+
+        #expect(tree(model()) == ["Tools", "  Agents >", "    Claude"])
+    }
+
+    /// layout R37: the same action three times, one per scope, is not three menu entries.
+    @Test func leavesOutWhatTheMapDoesNotName() {
+        register("editor.sendToAgent", "Send to Agent", "cmd+e", scope: .tab(kind: "editor.file"))
+        register("explorer.sendToAgent", "Send to Agent", "cmd+e", scope: .panel)
+
+        #expect(model().menus.isEmpty)
+    }
+
+    @Test func dropsASubmenuNoFeatureRegistered() {
+        register("git.changes", "Changes", "cmd+shift+g")
+        register("browser.open", "Browser", "cmd+shift+o")
+
+        // No Postgres in this window, and `git.history` is not registered either.
+        #expect(
+            tree(model()) == [
+                "Tools", "  Git >", "    Changes · cmd+shift+g", "  Browser >", "    Open Browser · cmd+shift+o",
+            ])
+    }
+
+    @Test func writesTheShortcutTheRegistryBoundAndTheTitleTheMapChose() {
+        register("editor.search", "Search", "cmd+shift+f")
+        registry.apply(overrides: ["editor.search": "cmd+opt+shift+f"])
+
+        #expect(tree(model()) == ["Edit (standard)", "  Find in Project… · cmd+shift+opt+f"])
+    }
+
+    @Test func foldsTheFamiliesIntoSubmenusInsteadOfOneEntryEach() {
+        register("layout.tab.previous", "Previous Tab", "cmd+shift+[")
+        for number in 1...3 {
+            register("layout.tab.\(number)", "Tab \(number)", "cmd+\(number)")
+        }
+
+        #expect(
+            tree(model()) == [
+                "View (standard)", "  Tabs >", "    Previous Tab · cmd+shift+[", "    -", "    Tab 1 · cmd+1",
+                "    Tab 2 · cmd+2", "    Tab 3 · cmd+3",
+            ])
+    }
+
+    /// layout R37: the menu offers exactly what the keyboard would do, so nothing fires out of scope.
+    @Test func anItemIsAvailableOnlyWhereItsScopeIs() {
+        register("editor.format", "Format File", "cmd+shift+l", scope: .tab(kind: "editor.file"))
+        register("git.changes", "Changes", "cmd+shift+g")
+
+        #expect(registry.isAvailable("git.changes"))
+        // No window is monitoring, so there is no active tab: the scoped action is not offered.
+        #expect(!registry.isAvailable("editor.format"))
+        #expect(!registry.isAvailable("nope"))
+    }
+}
+
+/// layout R37: what an `NSMenuItem` shows on its right.
+struct ShortcutKeyEquivalentTests {
+    private func equivalent(_ text: String) -> (key: String, modifiers: NSEvent.ModifierFlags) {
+        Shortcut(parsing: text)!.keyEquivalent
+    }
+
+    @Test func writesTheLetterAndItsModifiers() {
+        let (key, modifiers) = equivalent("cmd+shift+g")
+
+        #expect(key == "g")
+        #expect(modifiers == [.command, .shift])
+    }
+
+    @Test func writesEveryModifierName() {
+        #expect(equivalent("cmd+opt+ctrl+shift+k").modifiers == [.command, .option, .control, .shift])
+        #expect(equivalent("alt+k").modifiers == [.option])
+    }
+
+    @Test func turnsANamedKeyIntoTheCharacterAppKitDraws() {
+        #expect(equivalent("escape").key == "\u{1B}")
+        #expect(equivalent("cmd+delete").key == "\u{8}")
+        #expect(equivalent("return").key == "\r")
+        #expect(equivalent("cmd+opt+left").key == Shortcut.character(NSLeftArrowFunctionKey))
     }
 }

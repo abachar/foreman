@@ -74,6 +74,31 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
         modifiers.contains(.command)
     }
 
+    /// layout R37: what an `NSMenuItem` shows on its right.
+    ///
+    /// Shown, never bound: the registry's monitor takes the key event before the main menu's
+    /// `performKeyEquivalent:` (checked 2026-08-30), and a menu item out of scope is disabled.
+    var keyEquivalent: (key: String, modifiers: NSEvent.ModifierFlags) {
+        var flags: NSEvent.ModifierFlags = []
+        if modifiers.contains(.command) { flags.insert(.command) }
+        if modifiers.contains(.shift) { flags.insert(.shift) }
+        if modifiers.contains(.option) { flags.insert(.option) }
+        if modifiers.contains(.control) { flags.insert(.control) }
+        return (Self.equivalentKeys[key] ?? key, flags)
+    }
+
+    /// The characters AppKit draws as ← → ↑ ↓ ⎋ ↩ ⇥ ␣ ⌫.
+    private static let equivalentKeys: [String: String] = [
+        "left": character(NSLeftArrowFunctionKey), "right": character(NSRightArrowFunctionKey),
+        "up": character(NSUpArrowFunctionKey), "down": character(NSDownArrowFunctionKey),
+        "escape": "\u{1B}", "return": "\r", "tab": "\t", "space": " ", "delete": "\u{8}",
+    ]
+
+    /// One of AppKit's `NS…FunctionKey` constants as the string a key equivalent takes.
+    static func character(_ functionKey: Int) -> String {
+        UnicodeScalar(UInt32(functionKey)).map(String.init) ?? ""
+    }
+
     var description: String {
         let names = Self.modifierNames.filter { $0.0 != "alt" && modifiers.contains($0.1) }.map(\.0)
         return (names + [key]).joined(separator: "+")

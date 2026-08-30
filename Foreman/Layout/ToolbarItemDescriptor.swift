@@ -32,6 +32,8 @@ struct ToolbarMenuEntry: Identifiable {
     let title: String
     var subtitle: String?
     var badge: ToolbarBadge = .none
+    /// layout R37: written next to the entry; shown, never bound.
+    var shortcut: Shortcut?
     let perform: () -> Void
 }
 

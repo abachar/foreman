@@ -78,6 +78,8 @@ final class ShortcutRegistry {
     private var bindings: [ShortcutScope: [Shortcut: String]] = [:]
     private var overrides: [String: String] = [:]
     private var monitor: Any?
+    /// What has the focus, as the monitor sees it; menus validate against the same context (R37).
+    private var context: (() -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool))?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "layout")
 
     isolated deinit {
@@ -137,6 +139,18 @@ final class ShortcutRegistry {
         return nil
     }
 
+    /// layout R37: whether the menu offering `id` can act right now.
+    ///
+    /// The same answer the monitor would give to that shortcut, so a menu never offers what the
+    /// keyboard would not do — and a disabled item never fires its key equivalent.
+    func isAvailable(_ id: String) -> Bool {
+        guard let shortcut = shortcut(for: id) else { return false }
+        let focus = context?() ?? (activeTabKind: nil, isTerminalFocused: false, isPanelFocused: false)
+        return resolve(
+            shortcut, activeTabKind: focus.activeTabKind, isTerminalFocused: focus.isTerminalFocused,
+            isPanelFocused: focus.isPanelFocused)?.id == id
+    }
+
     /// layout R22b, R25: the action for `shortcut` in the current context, if any.
     func resolve(
         _ shortcut: Shortcut, activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool = false
@@ -164,6 +178,7 @@ final class ShortcutRegistry {
         context: @escaping () -> (activeTabKind: String?, isTerminalFocused: Bool, isPanelFocused: Bool)
     ) {
         guard monitor == nil else { return }
+        self.context = context
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak window] event in
             guard let self, event.window === window, let shortcut = Shortcut(event: event) else { return event }
             let focus = context()

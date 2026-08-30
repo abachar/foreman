@@ -21,6 +21,9 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
     /// The `$HOME` window created at launch that a folder replaced right away, if any.
     private(set) var supersededLaunchFolder: URL?
 
+    /// layout R37: the bar generated from the key window's `ShortcutRegistry`.
+    @ObservationIgnored let menuBar = MenuBarController()
+
     @ObservationIgnored private var openWindow: OpenWindowAction?
     @ObservationIgnored private var pendingFolders: [URL] = []
     @ObservationIgnored private var hasTakenLaunchFolder = false
@@ -72,12 +75,6 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
         }
         openIntervals[folder] = Perf.signposter.beginInterval("workspace.open", id: Perf.signposter.makeSignpostID())
         return folder
-    }
-
-    /// `cmd+shift+n` (layout R23): the same panel as *File > Open…*.
-    func openFolderFromPanel() {
-        guard let folder = Self.chooseFolder() else { return }
-        open(folder: WorkspaceFolder.canonical(folder))
     }
 
     static func chooseFolder() -> URL? {

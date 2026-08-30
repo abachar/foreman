@@ -30,7 +30,6 @@ final class LayoutManager {
     var centerSize = CGSize(width: 1100, height: 700)
 
     /// `cmd+shift+n` (layout R23): opening a folder is the app's, not the layout's.
-    var openFolder: () -> Void = {}
 
     var tabKinds: [String: CenterTabDescriptor] = [:]
     var tabViews: [TabID: AnyView] = [:]
@@ -273,7 +272,6 @@ final class LayoutManager {
             ),
             ("layout.move.up", "Move Tab Up", "cmd+opt+shift+up", { [weak self] in self?.moveActiveTab(.up) }),
             ("layout.move.down", "Move Tab Down", "cmd+opt+shift+down", { [weak self] in self?.moveActiveTab(.down) }),
-            ("layout.window.new", "New Window", "cmd+shift+n", { [weak self] in self?.openFolder() }),
             (
                 "layout.toolbar.toggle", "Toggle Toolbar", "cmd+opt+t",
                 { [weak self] in self?.isToolbarVisible.toggle() }

@@ -256,27 +256,40 @@ struct ExplorerOutlineView: NSViewRepresentable {
         func menuNeedsUpdate(_ menu: NSMenu) {
             menu.removeAllItems()
             let clicked = outline.flatMap { $0.clickedRow >= 0 ? node(atRow: $0.clickedRow) : nil }
-            menu.addItem(withTitle: "New File", action: #selector(menuNewFile), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "New Folder", action: #selector(menuNewFolder), keyEquivalent: "").target = self
+            add(to: menu, "New File", #selector(menuNewFile))
+            add(to: menu, "New Folder", #selector(menuNewFolder))
             guard clicked != nil else { return }
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Rename", action: #selector(menuRename), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Move to Trash", action: #selector(menuDelete), keyEquivalent: "").target = self
+            // explorer R21, layout R37: `shift+F6` and `cmd+delete` are the outline's own keys.
+            add(to: menu, "Rename", #selector(menuRename), key: KeyboardOutlineView.renameKey)
+            add(to: menu, "Move to Trash", #selector(menuDelete), key: KeyboardOutlineView.deleteKey)
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Reveal in Finder", action: #selector(menuReveal), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Copy Path", action: #selector(menuCopyPath), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Copy Absolute Path", action: #selector(menuCopyAbsolutePath), keyEquivalent: "")
-                .target = self
+            add(to: menu, "Reveal in Finder", #selector(menuReveal))
+            add(to: menu, "Copy Path", #selector(menuCopyPath))
+            add(to: menu, "Copy Absolute Path", #selector(menuCopyAbsolutePath))
             if operations.fileHistory != nil, clicked?.kind == .file {
                 menu.addItem(.separator())
-                menu.addItem(withTitle: "Git History", action: #selector(menuHistory), keyEquivalent: "").target = self
+                add(to: menu, "Git History", #selector(menuHistory))
             }
             // agents R10b: the entry exists once `Agents/` is wired.
             if operations.sendToAgent != nil {
                 menu.addItem(.separator())
-                menu.addItem(withTitle: "Send to Agent", action: #selector(menuSendToAgent), keyEquivalent: "").target =
-                    self
+                add(to: menu, "Send to Agent", #selector(menuSendToAgent), action: "explorer.sendToAgent")
             }
+        }
+
+        /// layout R37: an entry, with the shortcut of what it offers when there is one.
+        ///
+        /// `action` names a registered action, `key` an equivalent the outline handles itself.
+        private func add(
+            to menu: NSMenu, _ title: String, _ selector: Selector, action: String? = nil,
+            key: (key: String, modifiers: NSEvent.ModifierFlags)? = nil
+        ) {
+            let equivalent = key ?? action.flatMap { operations.shortcut($0)?.keyEquivalent }
+            let item = menu.addItem(
+                withTitle: title, action: selector, keyEquivalent: equivalent?.key ?? "")
+            item.keyEquivalentModifierMask = equivalent?.modifiers ?? []
+            item.target = self
         }
 
         private var clickedNode: FileNode? {
@@ -579,6 +592,12 @@ final class KeyboardOutlineView: NSOutlineView {
         case rename
         case commandDelete
     }
+
+    /// layout R37: what the context menu writes next to *Rename* and *Move to Trash* (explorer R21).
+    static let renameKey: (key: String, modifiers: NSEvent.ModifierFlags) = (
+        Shortcut.character(NSF6FunctionKey), [.shift]
+    )
+    static let deleteKey: (key: String, modifiers: NSEvent.ModifierFlags) = ("\u{8}", [.command])
 
     var onKey: (Key) -> Bool = { _ in false }
 

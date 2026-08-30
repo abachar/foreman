@@ -83,7 +83,6 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
   | Focus the neighbouring group | `cmd+opt+←` `→` `↑` `↓` |
   | Move the tab to the neighbouring group | `cmd+opt+shift+←` `→` `↑` `↓` |
   | Give the focus back to the center | `escape` (from a panel only) |
-  | New window (open a folder) | `cmd+shift+n` |
   | Hide / show the toolbar | `cmd+opt+t` |
 
 - R24 — Conflicts: two actions on the same shortcut **after** the overrides are applied → neither is bound, and an error is shown with both ids. A feature cannot redefine a layout shortcut; only the user can, through `config.json`. **Precision 2026-08-30** (the rule has not changed, its second half was never implemented): "shown" means in the window, in the same place as a config error (`config` R7) — at startup and after every rebuild (R26) — and covers the three problems the registry knows: a conflict, an override naming an unknown action, an override that does not parse. The log alone does not satisfy R24.
@@ -111,7 +110,17 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 
 ### Menus
 
-- R37 — **The menu bar is generated from the `ShortcutRegistry`** (2026-08-30, from use): one submenu per feature the action ids are namespaced under (`git`, `explorer`, `editor`…), the same grouping and order as the home screen's table (R33), each item performing its action. Nothing is declared twice: the registry stays the single source (R22). Because the actions belong to a window and the bar belongs to the app, the bar is rebuilt when the key window changes; with no window, only *File ▸ Open…* and *Open Recent* (`product` R8) remain.
+- R37 — **The menu bar is the Mac's, filled from the `ShortcutRegistry`** (2026-08-30, from use; the first wording — one submenu per feature namespace — was tried the same day and dropped: it read as `Layout / Editor / Explorer / Postgres / Git / Terminal / Browser / Run` and overflowed the bar). The bar is `File / Edit / View / Tools / Run`, before the `Window` and `Help` macOS owns; `File`, `Edit` and `View` already exist, so Foreman's entries are **appended** to them under a separator, never a second menu of the same name. The map:
+
+  | Menu | Entries |
+  |---|---|
+  | File | Open… · Open Recent ▸ (`product` R8) · Quick Open… · Save · Save All · Close Tab |
+  | Edit | *(the natives macOS puts there)* · Find · Find and Replace… · Find in Project… · Go to Line… · Toggle Comment · Indent · Outdent · Move Line Up / Down · Format File · Fold / Unfold Region |
+  | View | Explorer · Toggle Toolbar · Toggle Markdown Preview · Tabs ▸ (previous, next, 1…9) · Split ▸ · Focus Group ▸ · Move Tab ▸ · Focus Center · Zoom In / Out |
+  | Tools | Agents ▸ (one per `config.agents`) · Git ▸ · Postgres ▸ · Browser ▸ |
+  | Run | Run Command… · Stop Command · Clear Scrollback |
+
+  Nothing is declared twice: the map names action ids and everything else — title, shortcut, what the action does — comes from the registry (R22). **Having a shortcut is not a reason to be in a menu, and having none is not a reason to be left out**: an agent has no default shortcut and belongs there, *Send to Agent* has one and does not (it is the same action three times, one per scope). An action the map names but no feature registered is dropped, submenus and separators left empty with it: a window without a repo shows no *Git* submenu. The commands of `config.json` stay in the ▶ Run button, not in the menu. Because the actions belong to a window and the bar belongs to the app, the bar is rebuilt when the key window changes.
 - R37b — **Every menu shows the shortcut of the action it offers**: the menu bar, the tab context menu (R35), a toolbar item's secondary menu (R31) and the features' context menus (`explorer` R20). The text comes from `ShortcutRegistry.shortcut(for:)`, so it follows the user's overrides. In the menu bar the key equivalent is **shown, not bound**: the registry's key monitor takes the event first (R25) and an item must never fire a second time — to be verified before the bar is built.
 
 ## Edge cases

@@ -109,9 +109,12 @@ struct TabBarView: View {
                             close: { Task { await layout.closeTab(tab.id) } }
                         )
                         .id(tab.id)
-                        // layout R35: the native menu; an entry with nothing to close is disabled.
+                        // layout R35, R37: the native menu, each entry with its shortcut; an
+                        // entry with nothing to close is disabled.
                         .contextMenu {
+                            let close = layout.shortcuts.shortcut(for: "layout.tab.close")
                             Button("Close") { Task { await layout.closeTab(tab.id) } }
+                                .modifier(MenuShortcut(close))
                             ForEach(TabCloseSelection.allCases, id: \.self) { selection in
                                 Button(selection.title) { Task { await layout.closeTabs(selection, around: tab.id) } }
                                     .disabled(group.tabs(toClose: selection, around: tab.id).isEmpty)
@@ -127,6 +130,37 @@ struct TabBarView: View {
         }
         .frame(height: tokens.barHeight)
         .background(tokens.surfaceRaised.color)
+    }
+}
+
+/// layout R37: writes a shortcut next to a menu entry.
+///
+/// Shown, never bound: the content of a `contextMenu` only exists while the menu is open, and the
+/// registry's monitor takes the event first anyway.
+private struct MenuShortcut: ViewModifier {
+    let shortcut: Shortcut?
+
+    init(_ shortcut: Shortcut?) {
+        self.shortcut = shortcut
+    }
+
+    func body(content: Content) -> some View {
+        if let shortcut, let key = shortcut.keyEquivalent.key.first {
+            content.keyboardShortcut(KeyEquivalent(key), modifiers: EventModifiers(shortcut.modifiers))
+        } else {
+            content
+        }
+    }
+}
+
+extension EventModifiers {
+    /// layout R37: the SwiftUI side of `Shortcut.Modifiers`.
+    init(_ modifiers: Shortcut.Modifiers) {
+        self = []
+        if modifiers.contains(.command) { insert(.command) }
+        if modifiers.contains(.shift) { insert(.shift) }
+        if modifiers.contains(.option) { insert(.option) }
+        if modifiers.contains(.control) { insert(.control) }
     }
 }
 

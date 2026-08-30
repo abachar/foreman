@@ -356,7 +356,11 @@ final class RunFeature {
             return Self.badge(RunState(terminalTab.state), marked: terminalTab.isMarked)
         }
         .map { row in
-            ToolbarMenuEntry(id: row.id, title: row.title, subtitle: row.subtitle, badge: row.badge) { [weak self] in
+            // layout R37: a command the user gave a shortcut says so in the menu (`config.shortcuts`).
+            ToolbarMenuEntry(
+                id: row.id, title: row.title, subtitle: row.subtitle, badge: row.badge,
+                shortcut: layout.shortcuts.shortcut(for: row.id)
+            ) { [weak self] in
                 guard row.isEnabled, let id = self?.commands.first(where: { Self.kind(of: $0.id) == row.id })?.id
                 else { return }
                 self?.launch(id)
