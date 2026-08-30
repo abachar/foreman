@@ -31,9 +31,10 @@ nonisolated enum MarkdownLinks {
         return nil
     }
 
+    /// Symlinks resolved on both sides: a destination leaving the workspace through an
+    /// in-workspace symlink is outside, and a root sitting behind one (`/tmp` on macOS) still
+    /// contains its own files.
     private static func isInside(_ url: URL, root: URL) -> Bool {
-        let target = url.standardizedFileURL.path(percentEncoded: false)
-        let base = root.standardizedFileURL.path(percentEncoded: false)
-        return target == base || target.hasPrefix(base.hasSuffix("/") ? base : base + "/")
+        Workspace.contains(url.resolvingSymlinksInPath(), under: root.resolvingSymlinksInPath())
     }
 }
