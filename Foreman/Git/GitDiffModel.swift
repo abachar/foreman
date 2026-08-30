@@ -11,9 +11,13 @@ nonisolated struct RenderedColumn: Sendable {
 
 /// git R13b: one side of a row; `nil` when nothing faces the other side.
 nonisolated struct RenderedCell: Sendable {
+    /// What the gutter shows: the old file's number on the left, the new one on the right.
     let number: String
     let text: AttributedString
     let kind: DiffLine.Kind
+    /// The line in the file as it is now, `nil` for a removed line: what an agent can be pointed
+    /// at (agents R10b).
+    let newNumber: Int?
 }
 
 /// git R13b: one row of the side-by-side view.
@@ -211,12 +215,16 @@ final class GitDiffModel {
                     id: offset,
                     left: row.left.flatMap { line in
                         indexOf[line].flatMap { pieceOf[$0] }.map {
-                            RenderedCell(number: line.oldNumber.map(String.init) ?? "", text: $0, kind: line.kind)
+                            RenderedCell(
+                                number: line.oldNumber.map(String.init) ?? "", text: $0, kind: line.kind,
+                                newNumber: line.newNumber)
                         }
                     },
                     right: row.right.flatMap { line in
                         indexOf[line].flatMap { pieceOf[$0] }.map {
-                            RenderedCell(number: line.newNumber.map(String.init) ?? "", text: $0, kind: line.kind)
+                            RenderedCell(
+                                number: line.newNumber.map(String.init) ?? "", text: $0, kind: line.kind,
+                                newNumber: line.newNumber)
                         }
                     })
             }
