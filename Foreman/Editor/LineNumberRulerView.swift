@@ -24,6 +24,9 @@ final class LineNumberRulerView: NSRulerView {
     }
     var onToggleFold: ((Int) -> Void)?
     private static let chevronWidth: CGFloat = 14
+    /// The UTF-16 offset where each line starts, line `i + 1` at `lineStarts[i]`: the draw looks
+    /// numbers up here instead of scanning the whole text on every pass.
+    private var lineStarts: [Int] = [0]
 
     init(textView: NSTextView, font: NSFont) {
         self.textView = textView
@@ -34,10 +37,11 @@ final class LineNumberRulerView: NSRulerView {
         // Views no longer clip by default (macOS 14): without this, the ground painted in
         // `draw(_:)` spills over the tab bar and the text (bug: invisible editor, 2026-08-27).
         clipsToBounds = true
+        rebuildLineStarts()
         let center = NotificationCenter.default
         observers.append(
             center.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.needsDisplay = true }
+                MainActor.assumeIsolated { self?.rebuildLineStarts() }
             })
         if let clip = textView.enclosingScrollView?.contentView {
             observers.append(
@@ -68,16 +72,14 @@ final class LineNumberRulerView: NSRulerView {
         guard let textView, let layoutManager = textView.textLayoutManager,
             let contentManager = layoutManager.textContentManager
         else { return }
-        let text = textView.string as NSString
         let visible = textView.visibleRect
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
         let inset = textView.textContainerInset
         let width =
-            max(44, CGFloat(String(max(1, lineCount(text))).count + 2) * font.pointSize * 0.7) + Self.chevronWidth
+            max(44, CGFloat(String(max(1, lineStarts.count)).count + 2) * font.pointSize * 0.7) + Self.chevronWidth
         if abs(ruleThickness - width) > 0.5 {
             ruleThickness = width
         }
-        layoutManager.ensureLayout(for: layoutManager.documentRange)
         var number: Int?
         layoutManager.enumerateTextLayoutFragments(
             from: layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: visible.minY - inset.height))?.rangeInElement
@@ -88,7 +90,7 @@ final class LineNumberRulerView: NSRulerView {
             if number == nil {
                 let offset = contentManager.offset(
                     from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
-                number = lineCount(text.substring(to: offset) as NSString)
+                number = line(at: offset)
             }
             guard let current = number else { return false }
             number = current + 1
@@ -133,21 +135,39 @@ final class LineNumberRulerView: NSRulerView {
         guard let fragment = layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: y)) else { return }
         let offset = contentManager.offset(
             from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
-        let line = lineCount((textView.string as NSString).substring(to: offset) as NSString)
+        let line = line(at: offset)
         guard foldRegions.contains(where: { $0.first == line }) else { return }
         onToggleFold?(line)
     }
 
-    /// 1 + the newlines in `text`: the number of the last paragraph.
-    private func lineCount(_ text: NSString) -> Int {
-        var count = 1
+    /// Re-reads the line starts from the text; the edit observer calls it on every change, and
+    /// the reload path must call it too — a programmatic `string` set posts no notification.
+    func rebuildLineStarts() {
+        guard let text = textView.map({ $0.string as NSString }) else { return }
+        var starts = [0]
         var index = 0
         while index < text.length {
             let range = text.range(of: "\n", options: [], range: NSRange(location: index, length: text.length - index))
             guard range.location != NSNotFound else { break }
-            count += 1
+            starts.append(NSMaxRange(range))
             index = NSMaxRange(range)
         }
-        return count
+        lineStarts = starts
+        needsDisplay = true
+    }
+
+    /// The 1-based line containing the UTF-16 `offset`: the last cached start not past it.
+    private func line(at offset: Int) -> Int {
+        var low = 0
+        var high = lineStarts.count - 1
+        while low < high {
+            let mid = (low + high + 1) / 2
+            if lineStarts[mid] <= offset {
+                low = mid
+            } else {
+                high = mid - 1
+            }
+        }
+        return low + 1
     }
 }

@@ -117,6 +117,8 @@ struct EditorTextView: NSViewRepresentable {
             let origin = scroll.contentView.bounds.origin
             textView.string = document.text
             textView.isEditable = !document.isReadOnly
+            // A programmatic `string` set posts no edit notification: the gutter is told.
+            (scroll.verticalRulerView as? LineNumberRulerView)?.rebuildLineStarts()
             textView.setSelectedRange(
                 NSRange(location: min(selection.location, (document.text as NSString).length), length: 0))
             scroll.contentView.scroll(to: origin)
