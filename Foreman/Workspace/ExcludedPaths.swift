@@ -8,8 +8,8 @@ nonisolated enum ExcludedPaths {
     /// Folder names excluded wherever they appear.
     private static let folderNames: Set<String> = ["node_modules", "target", ".build", "DerivedData"]
 
-    /// Exact relative paths excluded.
-    private static let exactPaths: Set<String> = [".git/objects", ".foreman/state.json", ".DS_Store"]
+    /// Exact relative paths excluded; `.DS_Store` is already an excluded name at any depth.
+    private static let exactPaths: Set<String> = [".git/objects", ".foreman/state.json"]
 
     /// `~/Library` when the workspace is the home folder (explorer, edge cases).
     static func isExcluded(_ relativePath: String, rootIsHome: Bool = false) -> Bool {
@@ -21,9 +21,7 @@ nonisolated enum ExcludedPaths {
         if rootIsHome, components[0] == "Library" {
             return true
         }
-        return exactPaths.contains {
-            let path = components.joined(separator: "/")
-            return path == $0 || path.hasPrefix($0 + "/")
-        }
+        let path = components.joined(separator: "/")
+        return exactPaths.contains { path == $0 || path.hasPrefix($0 + "/") }
     }
 }
