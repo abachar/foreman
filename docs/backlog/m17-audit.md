@@ -28,7 +28,7 @@ Each task depends only on the previous ones. One task = one PR.
 | 17.8 | **Layout focus and shortcuts**: `PanelManager.focusPanel` has no caller while `ZonesViewController.apply` re-asserts modelled focus on every update — a theme change yanks the keyboard out of a panel being typed in. With it, the layout minors: double confirm-close, the stale "reserved by layout" banner, write-only `Palette.query`, the missing duplicate-id guard, the tab button without a maximum width | M11, L1, L2, L4, L5, L7 | — | the banner after an override to another key; one confirmation per double `⌘W` | M | 🟢 | |
 | 17.9 | **Explorer, terminal, run, agents**: a case-only rename safe against a crash and a collision, terminal zoom surviving the next `updateNSView`, the explorer activation loop honouring cancellation, bounded outline caches, control characters sanitised out of a mention before the PTY, an out-of-root symlink caught by the root check, a mention no longer swallowed by an idle tab, and the two catalog slips | M12, T1–T3, T5, T7, T8, A1, A2, R11 | `DateFormatter` with a fixed format | the sanitised mention, a symlinked operation contained, `AgentCatalog.isValid` | M | 🟢 | |
 | 17.10 | **Render budget**: the layout snapshot JSON-encoded on every root body pass, the toolbar re-resolving every icon on every update, `IconImage.resolve` mutating the shared `NSImage(named:)` instance, and the full diff rendered to `AttributedString` on the main actor | M15, M3b | a dirty flag, `NSImage.copy()`, `@concurrent` | the snapshot encoded once per real change | M | 🟢 | |
-| 17.11 | **The wheels still standing**: the greedy fuzzy-highlight walker disagreeing with the ranking while FuzzyMatch's own ranges are computed then discarded, raw key-code interception, and the divider-drag heuristic through `NSApp.currentEvent` | R4, R5, R6 | `control(_:textView:doCommandBy:)`, `NSSplitViewDelegate` | the highlight matches the ranking | M | ⚪ | |
+| 17.11 | **The wheels still standing, examined**: the fuzzy-highlight walker, the raw key-code interception and the divider-drag heuristic — read, checked against the library and the platform, and all three closed without a change. See *Findings closed without a fix* | R4, R5, R6, L3 | — | — | S | 🟢 | |
 | 17.12 | **Two points kept from the second review**: `isDirectory` spawns a `Task.detached` for one `getattrlist` — no cancellation from the parent `.task`, no inherited priority — where `@concurrent` does it structurally. And `KeychainSecretStore` sets no `kSecAttrAccessible`: prospective only, since on macOS the attribute binds in the data protection keychain and the default is already `WhenUnlocked` — set it in the write attributes, never in the search query | — | `@concurrent`, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | a write then a read still finds the item | S | 🟢 | |
 | 17.13 | **The two methodology gaps**: fixtures encode our assumptions instead of the tools' real output, and nothing checks deallocation. Golden tests drive the **real `git`** on a scratch repo and round-trip every parser; deallocation tests cover the tab, the layout and the Postgres feature; containment, editor concurrency, and rates and bounds get theirs | audit §4 | Swift Testing | the tests themselves | M | ⚪ | |
 
@@ -68,6 +68,19 @@ to need amending:
   thirteen query files to replace thirty language-agnostic lines. The audit also overstates the
   cost: `EditorTab.refreshFolds` is debounced and cancels its predecessor, so the parse runs 300 ms
   after the typing stops, not every 300 ms, and it runs `@concurrent`.
+- **R4 / L3 — the fuzzy highlight rebuilt instead of reusing "FuzzyMatch's own ranges".** There are
+  no such ranges: `ScoredMatch` carries a `score` and a `kind`, and nothing in the package's public
+  API exposes matched positions (checked 2026-08-30 against the vendored source). `QuickOpenIndex`
+  therefore discards nothing. Making the bolding agree with the ranking would mean reimplementing
+  Smith-Waterman's alignment to recover the positions the library keeps to itself — the
+  reinvention `AGENTS.md` forbids, for a display detail. The walker was also checked for the
+  Unicode fragility L3 names: Swift's `lowercased()` is context-free per grapheme cluster (`ΑΣ` →
+  `ασ`, no final sigma; `İ` → one cluster either way), so lowercasing the query as a whole and
+  lowercasing it character by character agree. No defect to fix.
+- **R5 — raw key-code interception**, and **R6 — the divider-drag heuristic through
+  `NSApp.currentEvent`.** Working code, in keyboard and mouse paths no test covers; rewriting them
+  on `doCommandBy` and `NSSplitViewDelegate` is a real risk for no user-visible gain. Left as they
+  are, deliberately (author's call, 2026-08-30).
 - **W4 — side-effectful `@State` initial values in `WorkspaceView.init`.** Accepted and documented
   as a trap.
 - **T6 — scattered synchronous `stat` on the main actor.** Accepted on local volumes.
