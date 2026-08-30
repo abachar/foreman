@@ -30,6 +30,11 @@ struct TextEditingTests {
         #expect(outdented.replacement == "a\nb\nc\n")
     }
 
+    @Test func indentsASelectionEndingWithoutANewline() {
+        let edit = TextEditing.indent(NSRange(location: 0, length: 3), in: "a\nb", unit: "  ", outdent: false)
+        #expect(edit.replacement == "  a\n  b")
+    }
+
     @Test func togglesLineComments() {
         let commented = TextEditing.toggleComment(
             NSRange(location: 0, length: 1), in: "  let x\n  let y\n", prefix: "//")

@@ -173,18 +173,15 @@ nonisolated enum TextEditing {
         return min(start + position.column, end)
     }
 
+    /// Each line with its `\n` attached, the last one bare when the text does not end in one, and
+    /// never an empty trailing element.
+    ///
+    /// Splits on the `\n` grapheme only, like the text views.
     private static func splitLines(_ text: String) -> [String] {
-        var lines: [String] = []
-        var current = ""
-        for character in text {
-            current.append(character)
-            if character == "\n" {
-                lines.append(current)
-                current = ""
-            }
-        }
-        if !current.isEmpty {
-            lines.append(current)
+        let parts = text.split(separator: "\n", omittingEmptySubsequences: false)
+        var lines = parts.dropLast().map { String($0) + "\n" }
+        if let last = parts.last, !last.isEmpty {
+            lines.append(String(last))
         }
         return lines
     }
