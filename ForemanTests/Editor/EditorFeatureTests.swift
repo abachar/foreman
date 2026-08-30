@@ -85,6 +85,27 @@ struct EditorFeatureTests {
         #expect(FileManager.default.fileExists(atPath: ignore.path(percentEncoded: false)))
     }
 
+    /// editor R2, R34: replacing the group's preview closes it through the layout, so the close
+    /// hooks still run — a scratch shown as a preview removes its draft file.
+    @Test func aReplacedScratchPreviewRemovesItsFile() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorFeatureTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (_, editor) = Self.feature(root: root)
+        let scratch = try await Scratch.create(root: root)
+        editor.open(scratch, preview: true)
+        try Data("b".utf8).write(to: root.appending(path: "b.txt"))
+
+        editor.open(root.appending(path: "b.txt"), preview: true)
+
+        // The close and the removal are asynchronous; a file deletion, not a second of work.
+        for _ in 0..<50 where FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(!FileManager.default.fileExists(atPath: scratch.path(percentEncoded: false)))
+        #expect(editor.openTabCount == 1)
+    }
+
     /// layout R38, editor R34: the action exists under its shortcut, and the group the double
     /// click names is the one the untitled tab lands in.
     @Test func newFileIsRegisteredAndOpensInTheGroupAskedFor() async throws {
