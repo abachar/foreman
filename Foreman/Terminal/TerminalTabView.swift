@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The content of a terminal tab: the surface, a banner when its folder is gone, and the
-/// status line with `Relaunch` once the process ended (terminal R8, edge cases).
+/// status line with `Relaunch` whenever no process is running (terminal R8, agents R8, edge cases).
 struct TerminalTabView: View {
     let id: TabID
     let service: TerminalService
@@ -31,10 +31,10 @@ struct TerminalTabView: View {
             // type, SwiftUI would otherwise update the first surface instead of making the second.
             .id("\(id.uuid)-\(tab.generation)")
             .help(tab.subtitle ?? "")
-            if case .exited(let exit) = tab.state {
+            if let status = Self.statusLine(tab.state) {
                 service.theme.tokens.separator.color.frame(height: 1)
                 HStack {
-                    Text("exited · \(exit.label)")
+                    Text(status)
                         .font(service.theme.font())
                         .foregroundStyle(service.theme.tokens.textSecondary.color)
                     Spacer()
@@ -52,6 +52,16 @@ struct TerminalTabView: View {
 
     private func banner(_ text: String, symbol: String) -> some View {
         BannerView(text: text, icon: symbol, tone: .error, theme: service.theme)
+    }
+
+    /// terminal R8, agents R8: the status line of a surface holding no process — one whose command
+    /// ended, or a restored tab whose command was never run. `nil` while the process is alive.
+    nonisolated static func statusLine(_ state: TerminalState) -> String? {
+        switch state {
+        case .idle: return "not started"
+        case .running: return nil
+        case .exited(let exit): return "exited · \(exit.label)"
+        }
     }
 }
 

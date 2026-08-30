@@ -9,9 +9,14 @@ struct AgentsFeatureTests {
         let tab = TabID()
         #expect(AgentsFeature.buttonAction(primary: nil, state: nil) == .spawn)
         #expect(AgentsFeature.buttonAction(primary: tab, state: nil) == .spawn)
-        #expect(AgentsFeature.buttonAction(primary: tab, state: .idle) == .activate(tab))
         #expect(AgentsFeature.buttonAction(primary: tab, state: .running(pid: 1)) == .activate(tab))
         #expect(AgentsFeature.buttonAction(primary: tab, state: .exited(.code(0))) == .relaunch(tab))
+    }
+
+    /// agents R8: a restored tab is idle with its command never run — the button must start it.
+    @Test func buttonStartsARestoredTabThatNeverRan() {
+        let tab = TabID()
+        #expect(AgentsFeature.buttonAction(primary: tab, state: .idle) == .relaunch(tab))
     }
 
     @Test func badgeShowsRunningThenMarked() {

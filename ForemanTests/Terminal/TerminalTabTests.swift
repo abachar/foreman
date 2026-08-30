@@ -66,6 +66,19 @@ struct TerminalTabTests {
     }
 }
 
+/// terminal R8, agents R8: what the status line under the surface says.
+struct TerminalStatusLineTests {
+    @Test func namesTheEndOfTheProcess() {
+        #expect(TerminalTabView.statusLine(.exited(.code(0))) == "exited · code 0")
+        #expect(TerminalTabView.statusLine(.exited(.signal(SIGINT))) == "exited · signal SIGINT")
+    }
+
+    @Test func offersTheBarToARestoredTabAndHidesItWhileRunning() {
+        #expect(TerminalTabView.statusLine(.idle) == "not started")
+        #expect(TerminalTabView.statusLine(.running(pid: 1)) == nil)
+    }
+}
+
 /// Decoding of the `wait(2)` status SwiftTerm reports (terminal R6, R8).
 struct TerminalExitTests {
     @Test func decodesExitCodesAndSignals() {
