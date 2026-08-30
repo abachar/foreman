@@ -10,6 +10,9 @@ import SwiftUI
 /// feature's own text area (decision 2026-08-26), ~120 lines, nothing else reused was possible.
 struct SQLEditorView: NSViewRepresentable {
     let tab: PostgresQueryTab
+    /// R8, R19, R20: read by the enclosing body so a new request updates this view; the
+    /// coordinator is what applies it.
+    let pending: PostgresQueryTab.PendingEdit
     let theme: ThemeService
     let highlighter: Highlighter
     let onRun: () -> Void
@@ -65,25 +68,7 @@ struct SQLEditorView: NSViewRepresentable {
             textView.font = theme.editorFont
         }
         EditorTextView.paint(textView, ruler: scroll.verticalRulerView as? LineNumberRulerView, tokens: theme.tokens)
-        if let replacement = tab.pendingReplacement {
-            tab.pendingReplacement = nil
-            textView.insertText(
-                replacement, replacementRange: NSRange(location: 0, length: (textView.string as NSString).length))
-            textView.setSelectedRange(NSRange(location: 0, length: 0))
-            context.coordinator.highlighter?.invalidate(.all)
-        }
-        if let insertion = tab.pendingInsertion {
-            tab.pendingInsertion = nil
-            textView.insertText(insertion, replacementRange: textView.selectedRange())
-        }
-        if let cursor = tab.requestedCursor {
-            // R19: the cursor goes to the error.
-            tab.requestedCursor = nil
-            let location = min(cursor, (textView.string as NSString).length)
-            textView.setSelectedRange(NSRange(location: location, length: 0))
-            textView.scrollRangeToVisible(textView.selectedRange())
-            textView.window?.makeFirstResponder(textView)
-        }
+        context.coordinator.apply(pending, to: textView)
     }
 
     @MainActor
@@ -91,6 +76,9 @@ struct SQLEditorView: NSViewRepresentable {
         /// Kept alive for the life of the tab: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
         var attaching: Task<Void, Never>?
+        /// R8, R19, R20: the version of the last request applied, held here so nothing on the
+        /// tab is written from a view update.
+        private var appliedEdit = 0
         private let tab: PostgresQueryTab
 
         init(tab: PostgresQueryTab) {
@@ -99,6 +87,40 @@ struct SQLEditorView: NSViewRepresentable {
 
         isolated deinit {
             attaching?.cancel()
+        }
+
+        /// R8, R19, R20: the buffer replaced, a name inserted, the cursor moved — each request
+        /// applied exactly once.
+        ///
+        /// The edit itself runs after the update pass: `insertText` comes back through
+        /// `textDidChange`, and writing observed state while SwiftUI is updating the view is
+        /// undefined.
+        func apply(_ pending: PostgresQueryTab.PendingEdit, to textView: SQLTextView) {
+            guard pending.version != appliedEdit else { return }
+            appliedEdit = pending.version
+            Task { [weak self, weak textView] in
+                guard let self, let textView else { return }
+                perform(pending, on: textView)
+            }
+        }
+
+        private func perform(_ pending: PostgresQueryTab.PendingEdit, on textView: SQLTextView) {
+            if let replacement = pending.replacement {
+                let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+                textView.insertText(replacement, replacementRange: whole)
+                textView.setSelectedRange(NSRange(location: 0, length: 0))
+                highlighter?.invalidate(.all)
+            }
+            if let insertion = pending.insertion {
+                textView.insertText(insertion, replacementRange: textView.selectedRange())
+            }
+            if let cursor = pending.cursor {
+                // R19: the cursor goes to the error.
+                let location = min(cursor, (textView.string as NSString).length)
+                textView.setSelectedRange(NSRange(location: location, length: 0))
+                textView.scrollRangeToVisible(textView.selectedRange())
+                textView.window?.makeFirstResponder(textView)
+            }
         }
 
         func textDidChange(_ notification: Notification) {

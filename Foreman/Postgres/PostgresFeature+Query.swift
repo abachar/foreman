@@ -33,7 +33,7 @@ extension PostgresFeature {
         }
         insertIntoEditor = { [weak self] name in
             guard let self, let tab = activeQueryTab ?? newQueryTab() else { return }
-            tab.pendingInsertion = name
+            tab.requestInsertion(name)
         }
     }
 
