@@ -11,7 +11,9 @@ enum IconImage {
             return symbol
         }
         let image: NSImage
-        if let asset = NSImage(named: icon) {
+        // The catalog hands out one instance per name, shared by every consumer of that icon: it
+        // is copied before being templated and fitted. A file is read into a fresh image already.
+        if let asset = NSImage(named: icon)?.copy() as? NSImage {
             image = asset
         } else if icon.hasPrefix("/"), let file = NSImage(contentsOfFile: icon) {
             image = file

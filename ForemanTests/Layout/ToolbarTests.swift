@@ -101,4 +101,17 @@ struct IconImageTests {
         #expect(image.size == NSSize(width: IconImage.pointSize, height: IconImage.pointSize))
         #expect(IconImage.resolve("agent-pi")?.size.width == IconImage.pointSize)
     }
+
+    /// The asset catalog hands out one instance per name: templating and fitting it in place would
+    /// reach every other view showing the same icon.
+    @Test func leavesTheSharedAssetInstanceAlone() throws {
+        let shared = try #require(NSImage(named: "agent-pi"))
+        let size = shared.size
+        let isTemplate = shared.isTemplate
+
+        #expect(IconImage.resolve("agent-pi") !== shared)
+
+        #expect(shared.size == size)
+        #expect(shared.isTemplate == isTemplate)
+    }
 }
