@@ -21,8 +21,15 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
     /// The `$HOME` window created at launch that a folder replaced right away, if any.
     private(set) var supersededLaunchFolder: URL?
 
-    /// layout R37: the bar generated from the key window's `ShortcutRegistry`.
+    /// layout R37: the bar filled from the key window's `ShortcutRegistry`.
     @ObservationIgnored let menuBar = MenuBarController()
+
+    override init() {
+        super.init()
+        // product R8: the bar knows nothing about workspaces; the app hands it the recents.
+        menuBar.recentFolders = Self.recentFolders
+        menuBar.openFolder = { [weak self] folder in self?.openRecent(folder) }
+    }
 
     @ObservationIgnored private var openWindow: OpenWindowAction?
     @ObservationIgnored private var pendingFolders: [URL] = []
@@ -47,19 +54,35 @@ final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
     func takeLaunchFolder() -> URL {
         guard !hasTakenLaunchFolder else { return homeFolder() }
         hasTakenLaunchFolder = true
-        if let argument = WorkspaceFolder.argument(in: CommandLine.arguments) {
-            return measured(
-                WorkspaceFolder.resolve(
-                    path: argument,
-                    currentDirectory: .currentDirectory(),
-                    home: .homeDirectory
-                ))
+        let argument = WorkspaceFolder.argument(in: CommandLine.arguments)
+        let pending = pendingFolders.isEmpty ? nil : pendingFolders.removeFirst()
+        let folder = WorkspaceFolder.launchFolder(
+            argument: argument, pending: pending, recents: Self.recentFolders(), home: .homeDirectory,
+            currentDirectory: .currentDirectory(), exists: WorkspaceFolder.isFolder)
+        // product R8: only a window that fell back to `$HOME` can be superseded by a late folder.
+        if argument == nil, pending == nil, folder == homeFolder() {
+            launchedOnHome = .now
         }
-        if !pendingFolders.isEmpty {
-            return pendingFolders.removeFirst()
-        }
-        launchedOnHome = .now
-        return measured(homeFolder())
+        return measured(folder)
+    }
+
+    /// product R8: the workspaces opened before, most recent first, as the system remembers them.
+    ///
+    /// `NSDocumentController` holds the list, persists it and shares it with the Dock; Foreman only
+    /// notes what it opens. It works outside a document-based app.
+    static func recentFolders() -> [URL] {
+        NSDocumentController.shared.recentDocumentURLs
+    }
+
+    /// product R8: every workspace Foreman opens joins the system's recent list.
+    func noteOpened(_ folder: URL) {
+        NSDocumentController.shared.noteNewRecentDocumentURL(folder)
+        menuBar.rebuild()
+    }
+
+    /// *File ▸ Open Recent*: opens one of them again (product R1: a second window is not created).
+    func openRecent(_ folder: URL) {
+        open(folder: WorkspaceFolder.canonical(folder))
     }
 
     /// The window rooted at `folder` drew its first frame: closes its `workspace.open` interval.

@@ -77,3 +77,47 @@ struct WorkspaceFolderTests {
         URL(filePath: path, directoryHint: .isDirectory)
     }
 }
+
+/// product R8 (amended 2026-08-30): the folder a window opens on at launch.
+struct LaunchFolderTests {
+    private let home = URL(filePath: "/Users/x", directoryHint: .isDirectory)
+    private let cwd = URL(filePath: "/Users/x/code", directoryHint: .isDirectory)
+    private let existing: Set<String> = ["Users/x/foreman", "Users/x/other"]
+
+    private func launch(argument: String? = nil, pending: URL? = nil, recents: [String] = []) -> String {
+        WorkspaceFolder.launchFolder(
+            argument: argument, pending: pending,
+            recents: recents.map { URL(filePath: $0, directoryHint: .isDirectory) },
+            home: home, currentDirectory: cwd,
+            // A folder URL's path ends with a slash; the set is written without one.
+            exists: { existing.contains($0.path(percentEncoded: false).trimmingCharacters(in: ["/"])) }
+        ).path(percentEncoded: false)
+    }
+
+    @Test func theCommandLineArgumentComesFirst() {
+        #expect(
+            launch(
+                argument: "/Users/x/asked-for", pending: URL(filePath: "/Users/x/other"),
+                recents: ["/Users/x/foreman"]) == "/Users/x/asked-for/")
+        #expect(launch(argument: ".") == "/Users/x/code/")
+    }
+
+    @Test func thenTheFolderTheSystemHandedOver() {
+        #expect(
+            launch(pending: URL(filePath: "/Users/x/dropped"), recents: ["/Users/x/foreman"])
+                == "/Users/x/dropped/")
+    }
+
+    @Test func thenTheMostRecentWorkspace() {
+        #expect(launch(recents: ["/Users/x/foreman", "/Users/x/other"]) == "/Users/x/foreman/")
+    }
+
+    @Test func aRecentFolderThatIsGoneIsSkipped() {
+        #expect(launch(recents: ["/Users/x/moved-away", "/Users/x/other"]) == "/Users/x/other/")
+    }
+
+    @Test func andTheHomeWhenNothingIsLeft() {
+        #expect(launch() == "/Users/x/")
+        #expect(launch(recents: ["/Users/x/moved-away", "/Users/x/deleted"]) == "/Users/x/")
+    }
+}

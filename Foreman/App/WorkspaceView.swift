@@ -120,6 +120,8 @@ struct WorkspaceView: View {
                         hostWindow = window
                         // layout R37: the bar follows the key window, the actions being per window.
                         appDelegate.menuBar.use(layout.shortcuts, for: window)
+                        // product R8: this workspace is the one to reopen at the next launch.
+                        appDelegate.noteOpened(folder)
                         closeIfSuperseded()
                     }
                     // layout R27, config R8: every change of the layout is persisted, debounced.

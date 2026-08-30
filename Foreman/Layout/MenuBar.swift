@@ -17,6 +17,8 @@ nonisolated enum MenuBarLayout {
         case action(String, title: String? = nil)
         /// Every action whose id starts with the prefix, in registration order (`agents.`).
         case actions(prefix: String)
+        /// product R8: the workspaces opened before; the app, not the registry, provides them.
+        case recentFolders(String)
         case submenu(String, [Entry])
         case separator
     }
@@ -33,6 +35,8 @@ nonisolated enum MenuBarLayout {
         Menu(
             title: "File", isStandard: true,
             entries: [
+                .recentFolders("Open Recent"),
+                .separator,
                 .action("editor.quickOpen", title: "Quick Open…"),
                 .separator,
                 .action("editor.save"),
@@ -134,6 +138,8 @@ nonisolated struct MenuBarModel: Equatable {
     indirect enum Entry: Equatable {
         case item(Item)
         case submenu(String, [Entry])
+        /// product R8: a submenu of folders, filled by the app when the menu is built.
+        case recentFolders(String)
         case separator
     }
 
@@ -179,6 +185,8 @@ nonisolated struct MenuBarModel: Equatable {
                 let children = resolve(children, actions: actions, shortcut: shortcut, placed: &placed)
                 guard !children.isEmpty else { continue }
                 resolved.append(.submenu(title, children))
+            case .recentFolders(let title):
+                resolved.append(.recentFolders(title))
             case .separator:
                 guard !resolved.isEmpty, resolved.last != .separator else { continue }
                 resolved.append(.separator)
@@ -203,6 +211,10 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
         weak var window: NSWindow?
         let shortcuts: ShortcutRegistry
     }
+
+    /// product R8: the recent workspaces and what to do with one; the app owns both.
+    var recentFolders: () -> [URL] = { [] }
+    var openFolder: (URL) -> Void = { _ in }
 
     private var windows: [Window] = []
     private var observers: [any NSObjectProtocol] = []
@@ -303,6 +315,24 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
         }
     }
 
+    /// product R8: the folders opened before, most recent first, named by their folder.
+    private func recentMenu(named title: String) -> NSMenu {
+        let menu = NSMenu(title: title)
+        for folder in recentFolders() {
+            let item = NSMenuItem(title: folder.lastPathComponent, action: #selector(openRecent(_:)), keyEquivalent: "")
+            item.target = self
+            item.toolTip = folder.path(percentEncoded: false)
+            item.representedObject = folder as NSURL
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func openRecent(_ sender: NSMenuItem) {
+        guard let folder = sender.representedObject as? NSURL else { return }
+        openFolder(folder as URL)
+    }
+
     private func menu(named title: String, _ entries: [MenuBarModel.Entry], shortcuts: ShortcutRegistry) -> NSMenu {
         let menu = NSMenu(title: title)
         for item in items(for: entries, shortcuts: shortcuts) {
@@ -320,6 +350,10 @@ final class MenuBarController: NSObject, NSMenuItemValidation {
             case .submenu(let title, let children):
                 item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
                 item.submenu = menu(named: title, children, shortcuts: shortcuts)
+            case .recentFolders(let title):
+                item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                item.submenu = recentMenu(named: title)
+                item.isEnabled = !recentFolders().isEmpty
             case .item(let entry):
                 let equivalent = entry.shortcut?.keyEquivalent
                 item = NSMenuItem(

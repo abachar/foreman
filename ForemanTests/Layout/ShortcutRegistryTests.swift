@@ -225,6 +225,8 @@ struct MenuBarModelTests {
                 return [indent + item.title + (item.shortcut.map { " · \($0)" } ?? "")]
             case .submenu(let title, let children):
                 return [indent + title + " >"] + rows(children, under: indent + "  ")
+            case .recentFolders(let title):
+                return [indent + title + " > (recent folders)"]
             }
         }
     }
@@ -237,7 +239,8 @@ struct MenuBarModelTests {
 
         #expect(
             tree(model()) == [
-                "File (standard)", "  Quick Open… · cmd+p", "  -", "  Save · cmd+s", "  -", "  Close Tab · cmd+w",
+                "File (standard)", "  Open Recent > (recent folders)", "  -", "  Quick Open… · cmd+p", "  -",
+                "  Save · cmd+s", "  -", "  Close Tab · cmd+w",
             ])
     }
 
@@ -245,7 +248,7 @@ struct MenuBarModelTests {
     @Test func keepsAnActionNoShortcutReaches() {
         register("agents.claude", "Claude", nil)
 
-        #expect(tree(model()) == ["Tools", "  Agents >", "    Claude"])
+        #expect(tree(model()).suffix(3) == ["Tools", "  Agents >", "    Claude"])
     }
 
     /// layout R37: the same action three times, one per scope, is not three menu entries.
@@ -253,7 +256,8 @@ struct MenuBarModelTests {
         register("editor.sendToAgent", "Send to Agent", "cmd+e", scope: .tab(kind: "editor.file"))
         register("explorer.sendToAgent", "Send to Agent", "cmd+e", scope: .panel)
 
-        #expect(model().menus.isEmpty)
+        // Only *File* is left, and only for its recent folders.
+        #expect(tree(model()) == ["File (standard)", "  Open Recent > (recent folders)"])
     }
 
     @Test func dropsASubmenuNoFeatureRegistered() {
@@ -262,7 +266,7 @@ struct MenuBarModelTests {
 
         // No Postgres in this window, and `git.history` is not registered either.
         #expect(
-            tree(model()) == [
+            tree(model()).suffix(5) == [
                 "Tools", "  Git >", "    Changes · cmd+shift+g", "  Browser >", "    Open Browser · cmd+shift+o",
             ])
     }
@@ -271,7 +275,7 @@ struct MenuBarModelTests {
         register("editor.search", "Search", "cmd+shift+f")
         registry.apply(overrides: ["editor.search": "cmd+opt+shift+f"])
 
-        #expect(tree(model()) == ["Edit (standard)", "  Find in Project… · cmd+shift+opt+f"])
+        #expect(tree(model()).suffix(2) == ["Edit (standard)", "  Find in Project… · cmd+shift+opt+f"])
     }
 
     @Test func foldsTheFamiliesIntoSubmenusInsteadOfOneEntryEach() {
@@ -281,7 +285,7 @@ struct MenuBarModelTests {
         }
 
         #expect(
-            tree(model()) == [
+            tree(model()).suffix(7) == [
                 "View (standard)", "  Tabs >", "    Previous Tab · cmd+shift+[", "    -", "    Tab 1 · cmd+1",
                 "    Tab 2 · cmd+2", "    Tab 3 · cmd+3",
             ])

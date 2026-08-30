@@ -32,6 +32,35 @@ nonisolated enum WorkspaceFolder {
         arguments.dropFirst().first { $0.hasPrefix("/") || $0.hasPrefix("~") || $0.hasPrefix(".") }
     }
 
+    /// product R8: the folder a window opens on at launch.
+    ///
+    /// The command-line argument first, then a folder the system handed over while launching
+    /// (`open -a`, a folder dropped on the icon), then the most recent workspace that still exists,
+    /// then `$HOME`. A recent folder that has been moved or deleted is skipped, not opened on an
+    /// error: nobody asked for it by name.
+    static func launchFolder(
+        argument: String?, pending: URL?, recents: [URL], home: URL, currentDirectory: URL,
+        exists: (URL) -> Bool
+    ) -> URL {
+        if let argument {
+            return resolve(path: argument, currentDirectory: currentDirectory, home: home)
+        }
+        if let pending {
+            return canonical(pending)
+        }
+        if let recent = recents.first(where: exists) {
+            return canonical(recent)
+        }
+        return canonical(home)
+    }
+
+    /// Whether `folder` is still a folder on disk, for `launchFolder`.
+    static func isFolder(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory)
+            && isDirectory.boolValue
+    }
+
     private static func absolute(path: String, currentDirectory: URL, home: URL) -> URL {
         if path == "~" {
             return home
