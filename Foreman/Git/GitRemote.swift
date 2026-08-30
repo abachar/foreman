@@ -31,7 +31,8 @@ nonisolated struct GitStash: Equatable, Sendable, Identifiable {
 /// `for-each-ref --format=<fields by \x1f>` and `stash list --format=<fields by \x1f>` (git R27).
 nonisolated enum RefParser {
     static let branchFormat = "%(refname)%1f%(refname:short)%1f%(upstream:short)%1f%(HEAD)"
-    static let stashFormat = "%gd%1f%s"
+    /// `stash list` goes through the pretty machinery, which emits `%1f` literally and only expands `%x1f`.
+    static let stashFormat = "%gd%x1f%s"
 
     static func branches(_ data: Data) -> [GitBranch] {
         String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line in

@@ -49,11 +49,21 @@ struct GitRemoteTests {
         #expect(!branches[1].isRemote)
         #expect(RefParser.branches(Data()).isEmpty)
 
-        let stashes = RefParser.stashes(
-            Data("stash@{0}\u{1f}On main: wip\nstash@{1}\u{1f}WIP on main: abc\u{1f}odd\n".utf8))
-        #expect(stashes.map(\.ref) == ["stash@{0}", "stash@{1}"])
-        #expect(stashes[1].message == "WIP on main: abc\u{1f}odd")
+        // Bytes of `git stash list --format=<stashFormat>` on a repo with three stashes (git 2.43); the
+        // first was pushed with a message holding the separator itself, which git passes through.
+        let list = "stash@{0}\u{1f}On main: odd\u{1f}msg\nstash@{1}\u{1f}WIP on main: aa177fd first\n"
+        let stashes = RefParser.stashes(Data((list + "stash@{2}\u{1f}On main: wip one\n").utf8))
+        #expect(stashes.map(\.ref) == ["stash@{0}", "stash@{1}", "stash@{2}"])
+        #expect(stashes[0].message == "On main: odd\u{1f}msg")
+        #expect(stashes[2].message == "On main: wip one")
         #expect(RefParser.stashes(Data("garbage".utf8)).isEmpty)
+    }
+
+    /// `stash list` runs the pretty machinery, which prints `%1f` verbatim: only `%x1f` yields a separator.
+    @Test func theStashFormatAsksForAnEscapedSeparator() {
+        #expect(RefParser.stashFormat == "%gd%x1f%s")
+        // What git 2.43 emitted for a stash when the format asked for `%1f` instead.
+        #expect(RefParser.stashes(Data("stash@{0}%1fWIP on main: aa177fd first\n".utf8)).isEmpty)
     }
 
     @Test func oneRemoteOperationAtATimePerRepo() {
