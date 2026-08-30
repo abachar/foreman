@@ -52,6 +52,9 @@ final class PostgresQueryTab: Identifiable {
     var gridSelection: Set<Int> = []
     private(set) var error: String?
     private(set) var hint: String?
+    /// R17: whether the statement being run comes back with a result set; without it an empty
+    /// result cannot be told from a command tag.
+    private(set) var returnsRows = false
     /// The text view, set by `SQLEditorView` for the commands; not observed, since the view
     /// assigns it from its own update pass.
     @ObservationIgnored weak var textView: NSTextView?
@@ -83,10 +86,11 @@ final class PostgresQueryTab: Identifiable {
         pending = PendingEdit(version: pending.version + 1, cursor: location)
     }
 
-    func start() {
+    func start(returnsRows: Bool) {
         isRunning = true
         error = nil
         hint = nil
+        self.returnsRows = returnsRows
         result = QueryResult(columns: [], rows: [], duration: .zero)
         sortedRows = []
         gridSelection = []

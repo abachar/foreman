@@ -82,7 +82,7 @@ extension PostgresFeature {
         }
         guard let statement = QueryExecution.statement(in: tab.text, selection: tab.selection) else { return }
         execution = next
-        tab.start()
+        tab.start(returnsRows: QueryExecution.returnsRows(statement.sql))
         let clock = ContinuousClock()
         let started = clock.now
         executionTask = Task { [weak self] in

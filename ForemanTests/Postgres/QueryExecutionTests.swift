@@ -37,6 +37,24 @@ struct QueryExecutionTests {
         #expect(QueryExecution.cursorLocation(position: 5, sent: sent, textLength: 12) == 12)
     }
 
+    /// R17: PostgresNIO gives neither the row description nor the command tag, so the leading
+    /// keyword is what tells an empty result set from a statement that has none.
+    @Test func recognisesTheStatementsThatComeBackWithRows() {
+        #expect(QueryExecution.returnsRows("select 1"))
+        #expect(QueryExecution.returnsRows("  \n SELECT * FROM t WHERE false"))
+        #expect(QueryExecution.returnsRows("-- what it does\nSELECT 1"))
+        #expect(QueryExecution.returnsRows("/* what it does */ VALUES (1)"))
+        #expect(QueryExecution.returnsRows("(SELECT 1) UNION (SELECT 2)"))
+        #expect(QueryExecution.returnsRows("WITH t AS (SELECT 1) SELECT * FROM t"))
+        #expect(QueryExecution.returnsRows("TABLE users"))
+        #expect(QueryExecution.returnsRows("EXPLAIN SELECT 1"))
+        #expect(!QueryExecution.returnsRows("UPDATE t SET a = 1"))
+        #expect(!QueryExecution.returnsRows("CREATE TABLE t (a int)"))
+        #expect(!QueryExecution.returnsRows("INSERT INTO t VALUES (1) RETURNING id"))
+        #expect(!QueryExecution.returnsRows(""))
+        #expect(!QueryExecution.returnsRows("/* never closed"))
+    }
+
     @Test func hintsExplainTheTwoKnownStates() {
         #expect(QueryExecution.hint(sqlState: "42601")?.contains("select the statement") == true)
         #expect(QueryExecution.hint(sqlState: "25006")?.contains("Allow writes") == true)
