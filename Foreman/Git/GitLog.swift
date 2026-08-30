@@ -75,6 +75,10 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
             "--skip=\(consumed[field] ?? 0)",
         ]
         if !filter.isEmpty, let field {
+            // git R18: a text filter, not a pattern. Without `--fixed-strings` git reads it as a
+            // basic regular expression, so a `[` is a fatal error and a `.` matches anything; it
+            // applies to `--author` as well as to `--grep`.
+            arguments.append("--fixed-strings")
             switch field {
             case .subject: arguments += ["-i", "--grep=\(filter)"]
             case .author: arguments += ["-i", "--author=\(filter)"]
