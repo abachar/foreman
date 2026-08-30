@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 
 /// layout R27–R29: what is persisted, and how it comes back.
 extension LayoutManager {
@@ -23,6 +24,28 @@ extension LayoutManager {
             windowFrame: windowFrame,
             isToolbarVisible: isToolbarVisible
         )
+    }
+
+    /// config R8, layout R27: hands the state over on every change, once, for the window's life.
+    ///
+    /// `snapshot()` walks every group and asks every feature to serialize its tab; read from a
+    /// view's body it ran on every update of that view. Observation says when the state a window
+    /// persists has moved — a keystroke's cursor as much as a new group — and only then is it
+    /// worth building; the write itself is debounced downstream (config R8).
+    func persistState(to write: @escaping (LayoutState) -> Void) {
+        guard writeState == nil else { return }
+        writeState = write
+        observeState(writing: false)
+    }
+
+    private func observeState(writing: Bool) {
+        let state = withObservationTracking { snapshot() } onChange: { [weak self] in
+            // Observation fires before the change lands: the new state is read on the next turn.
+            Task { @MainActor in self?.observeState(writing: true) }
+        }
+        guard writing, state != persistedState else { return }
+        persistedState = state
+        writeState?(state)
     }
 
     /// layout R29: tree and groups, then tabs, then panels, then the active group.

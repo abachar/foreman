@@ -26,6 +26,11 @@ final class LayoutManager {
     /// The window this layout is shown in, so a feature attaches its sheets to its own window and
     /// not to whichever one is key; `nil` until the first frame.
     @ObservationIgnored weak var window: NSWindow?
+    /// config R8: where a changed state goes, set once by the window (see `persistState(to:)`).
+    @ObservationIgnored var writeState: ((LayoutState) -> Void)?
+    /// The last state handed over, so an observation that fires without changing anything the
+    /// state holds does not schedule a write (layout R27).
+    @ObservationIgnored var persistedState: LayoutState?
 
     /// layout R18 (amended 2026-08-28): one persisted thickness per panel.
     private(set) var panelSizes: [PanelID: CGFloat] = [:]

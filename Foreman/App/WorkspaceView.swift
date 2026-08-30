@@ -82,6 +82,8 @@ struct WorkspaceView: View {
                 browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 restoreLayout()
+                // layout R27, config R8: every change of the layout is persisted, debounced.
+                layout.persistState { [weak workspace] state in workspace?.setState("layout", to: state) }
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)
                 theme.apply(workspace.config)
@@ -131,10 +133,6 @@ struct WorkspaceView: View {
                         // product R8: this workspace is the one to reopen at the next launch.
                         appDelegate.noteOpened(folder)
                         closeIfSuperseded()
-                    }
-                    // layout R27, config R8: every change of the layout is persisted, debounced.
-                    .onChange(of: layout.snapshot()) { _, snapshot in
-                        workspace.setState("layout", to: snapshot)
                     }
                     // design R2, R21: the gutter on three edges, the toolbar gap on top.
                     .padding(
