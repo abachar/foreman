@@ -39,6 +39,10 @@ struct AgentCatalogTests {
         #expect(merged.warnings.count == 2)
         #expect(!AgentCatalog.isValid(id: "-x"))
         #expect(AgentCatalog.isValid(id: "my_agent-2"))
+        // R3 starts on a letter or a digit: `a` and `f` are letters like any other, `A` is not.
+        #expect(AgentCatalog.isValid(id: "aider"))
+        #expect(AgentCatalog.isValid(id: "9lives"))
+        #expect(!AgentCatalog.isValid(id: "Aider"))
     }
 
     @Test func parsesTheNulSeparatedEnvironment() {

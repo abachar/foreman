@@ -68,7 +68,7 @@ nonisolated enum AgentCatalog {
 
     /// agents R3: `[a-z0-9][a-z0-9_-]*`.
     static func isValid(id: String) -> Bool {
-        guard let first = id.unicodeScalars.first, first.properties.isASCIIHexDigit || ("a"..."z").contains(first)
+        guard let first = id.unicodeScalars.first, ("a"..."z").contains(first) || ("0"..."9").contains(first)
         else { return false }
         return id.unicodeScalars.allSatisfy { scalar in
             ("a"..."z").contains(scalar) || ("0"..."9").contains(scalar) || scalar == "_" || scalar == "-"
