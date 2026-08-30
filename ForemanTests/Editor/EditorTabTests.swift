@@ -60,6 +60,26 @@ struct EditorTabTests {
         #expect(tab.diskState == .current)
     }
 
+    /// editor R10: showing the tab again must not re-read the file — a re-read would refresh the
+    /// modification date and defuse the stale-overwrite prompt.
+    @Test func loadRunsOnceSoAReappearanceKeepsTheStaleGuardArmed() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "EditorTabTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appending(path: "a.txt")
+        try Data("one\n".utf8).write(to: url)
+        let tab = EditorTab(path: "a.txt", url: url, isPinned: true)
+        await tab.load()
+
+        try Data("two\n".utf8).write(to: url)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(10)], ofItemAtPath: url.path(percentEncoded: false))
+        await tab.load()
+
+        #expect(tab.document?.text == "one\n")
+        #expect(tab.document?.isStale(at: url) == true)
+    }
+
     /// A closed tab must free its whole text stack: the coordinator holds the tab weakly, so the
     /// pair deallocates once the feature drops the tab.
     @Test func aReleasedTabAndItsCoordinatorDeallocate() {

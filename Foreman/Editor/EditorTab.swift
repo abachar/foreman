@@ -192,6 +192,9 @@ final class EditorTab {
     }
 
     func load() async {
+        // Shown again is not read again: a re-read would refresh the modification date and
+        // defuse the stale-overwrite prompt (editor R10); `reload()` is the explicit path (R9).
+        guard case .loading = content else { return }
         do {
             let document = try await FileDocument.read(url)
             indentUnit = TextEditing.detectIndent(document.text)
