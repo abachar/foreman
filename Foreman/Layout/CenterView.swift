@@ -197,6 +197,8 @@ private struct TabButton: View {
     let close: () -> Void
 
     private static let minimumWidth: CGFloat = 120
+    /// layout R16 (amended 2026-08-30): what one title may take of the bar before it is truncated.
+    private static let maximumTitleWidth: CGFloat = 200
 
     @State private var isHovered = false
 
@@ -217,6 +219,7 @@ private struct TabButton: View {
                 .font(font)
                 .italic(tab.isPreview)
                 .foregroundStyle(isActive && isActiveGroup ? tokens.textPrimary.color : tokens.textSecondary.color)
+                .frame(maxWidth: Self.maximumTitleWidth, alignment: .leading)
             Button(action: close) {
                 Image(systemName: "xmark")
                     .font(closeFont)
@@ -226,6 +229,9 @@ private struct TabButton: View {
             .opacity(isHovered ? 1 : 0)
         }
         .padding(.horizontal, 12)
+        // A capped title makes the row flexible, and a flexible tab would stretch into the room
+        // the bar's empty part is meant to take (layout R38): the tab keeps its own width.
+        .fixedSize(horizontal: true, vertical: false)
         .frame(minWidth: Self.minimumWidth, maxHeight: .infinity)
         .background(isActive ? tokens.surface.color : .clear)
         .overlay(alignment: .bottom) {

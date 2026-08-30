@@ -58,7 +58,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 - R13 — A group is an ordered list of tabs + an active tab. Each tab has a stable `id` (a UUID generated at creation, persisted), a `kind` (a namespaced id declared by a feature: `editor.file`, `agent.claude`, `run.backend:test`, `git.diff`…), a title, a "modified" state (`isDirty`) and a "preview" state (`isPreview`, italic title, `editor` R2) provided by its owner.
 - R14 — A new tab is inserted just after the active tab and becomes active. Closing the active tab activates its left neighbour, or the first tab if there is none.
 - R15 — Closing an `isDirty` tab asks for confirmation (the wording belongs to the owning feature, the mechanism to the layout). Closing a group or a window chains the confirmations one by one.
-- R16 — The tab bar is a single component (`product` R3): tabs scroll horizontally when there are too many, the active tab is always visible, no tab is truncated below a minimum width.
+- R16 — The tab bar is a single component (`product` R3): tabs scroll horizontally when there are too many, the active tab is always visible, no tab is truncated below a minimum width, and no title takes more than 200 pt — past that it is truncated (amended 2026-08-30, from use: one long title took the whole bar).
 - R17 — There is exactly one **active group** per window; clicking in a group, moving into it from the keyboard or opening a tab in it makes it active. All tab commands (new, close, `cmd+1..9`) apply to the active group.
 
 ### Resizing and sizes
