@@ -23,6 +23,9 @@ final class LayoutManager {
     var isToolbarVisible = true
     /// layout R27: where the window was; `nil` until the window reports it.
     var windowFrame: CGRect?
+    /// The window this layout is shown in, so a feature attaches its sheets to its own window and
+    /// not to whichever one is key; `nil` until the first frame.
+    @ObservationIgnored weak var window: NSWindow?
 
     /// layout R18 (amended 2026-08-28): one persisted thickness per panel.
     private(set) var panelSizes: [PanelID: CGFloat] = [:]

@@ -571,13 +571,12 @@ final class GitFeature {
     }
 
     private func confirm(_ title: String, _ text: String, _ button: String, _ done: @escaping () -> Void) {
-        guard let window = NSApp.keyWindow else { return }
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = text
         alert.addButton(withTitle: button)
         alert.addButton(withTitle: "Cancel")
-        alert.beginSheetModal(for: window) { response in
+        present(alert) { response in
             guard response == .alertFirstButtonReturn else { return }
             done()
         }
@@ -587,7 +586,6 @@ final class GitFeature {
         _ title: String, placeholder: String, button: String = "Create", allowsEmpty: Bool = false,
         _ done: @escaping (String) -> Void
     ) {
-        guard let window = NSApp.keyWindow else { return }
         let alert = NSAlert()
         alert.messageText = title
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
@@ -596,10 +594,22 @@ final class GitFeature {
         alert.addButton(withTitle: button)
         alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = field
-        alert.beginSheetModal(for: window) { response in
+        present(alert) { response in
             let text = field.stringValue.trimmingCharacters(in: .whitespaces)
             guard response == .alertFirstButtonReturn, allowsEmpty || !text.isEmpty else { return }
             done(text)
+        }
+    }
+
+    /// The alert as a sheet of the window the panels live in, which is not always the key one when
+    /// several workspaces are open; with no window at all it is run modally, never dropped.
+    private func present(_ alert: NSAlert, _ done: @escaping (NSApplication.ModalResponse) -> Void) {
+        guard let window = layout.window ?? NSApp.keyWindow else {
+            done(alert.runModal())
+            return
+        }
+        alert.beginSheetModal(for: window) { response in
+            done(response)
         }
     }
 
@@ -788,7 +798,7 @@ final class GitFeature {
 
     /// git R8: always confirmed, with the count and the word "irreversible".
     func discard(_ entries: [GitStatusEntry], in id: String) {
-        guard !entries.isEmpty, let window = NSApp.keyWindow else { return }
+        guard !entries.isEmpty else { return }
         let alert = NSAlert()
         alert.messageText =
             entries.count == 1
@@ -798,7 +808,7 @@ final class GitFeature {
         alert.addButton(withTitle: "Discard")
         alert.addButton(withTitle: "Cancel")
         alert.buttons.first?.hasDestructiveAction = true
-        alert.beginSheetModal(for: window) { [weak self] response in
+        present(alert) { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             self?.write(GitCommand.discard(entries), in: id)
         }
