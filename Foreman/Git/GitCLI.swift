@@ -221,21 +221,13 @@ actor GitCLI {
             logger.error("git not launched: \(error.localizedDescription, privacy: .public)")
             throw .gitNotFound
         }
-        let pid = process.processIdentifier
-        let watchdog = Task {
-            guard (try? await Task.sleep(for: kind.timeout)) != nil else { return false }
-            Self.terminate(pid)
-            return true
-        }
-        async let outData = Self.readToEnd(stdout.fileHandleForReading)
-        async let errData = Self.readToEnd(stderr.fileHandleForReading)
-        await withTaskCancellationHandler {
-            for await _ in exited {}
-        } onCancel: {
-            Self.terminate(pid)
-        }
-        watchdog.cancel()
-        let timedOut = await watchdog.value
+        // Both pipes are drained while the process runs: git blocked on a full pipe never exits.
+        let outHandle = stdout.fileHandleForReading
+        let errHandle = stderr.fileHandleForReading
+        async let outData = Self.read(outHandle)
+        async let errData = Self.read(errHandle)
+        let timedOut = await Self.wait(
+            for: process, exited: exited, timeout: kind.timeout, pipes: [outHandle, errHandle])
         let output = GitOutput(stdout: await outData, stderr: String(decoding: await errData, as: UTF8.self))
         if timedOut {
             throw .timeout
@@ -256,17 +248,67 @@ actor GitCLI {
             .joined(separator: "\n")
     }
 
-    /// git R26: `SIGTERM`, then `SIGKILL` after the grace period if the process is still there.
-    private nonisolated static func terminate(_ pid: pid_t) {
-        kill(pid, SIGTERM)
-        Task {
-            try? await Task.sleep(for: killGrace)
-            kill(pid, SIGKILL)
+    /// Waits for git, and answers `true` when the time bound ran out first (git R26).
+    ///
+    /// A race between two children: one on the termination event, one on the budget. The budget
+    /// child also wakes on cancellation — the caller's, which must still stop git, or the group's
+    /// own once git is gone, which `isRunning` tells apart.
+    private nonisolated static func wait(
+        for process: Process, exited: AsyncStream<Void>, timeout: Duration, pipes: [FileHandle]
+    ) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for await _ in exited {}
+                return false
+            }
+            group.addTask {
+                let expired = (try? await Task.sleep(for: timeout)) != nil
+                Self.terminate(process, pipes: pipes)
+                return expired
+            }
+            var timedOut = false
+            for await result in group {
+                if result {
+                    timedOut = true
+                } else {
+                    // git answered: the budget child has nothing left to wait for.
+                    group.cancelAll()
+                }
+            }
+            return timedOut
         }
     }
 
+    /// git R26: `SIGTERM`, then `SIGKILL` after the grace period if the process is still there.
+    ///
+    /// Every signal goes through the live `Process`: a bare pid signalled after git was reaped
+    /// could belong to any process the kernel has since given the number to. The grace runs in an
+    /// unstructured task on purpose — a cancelled caller must still get the escalation.
+    private nonisolated static func terminate(_ process: Process, pipes: [FileHandle]) {
+        guard process.isRunning else { return }
+        process.terminate()
+        Task {
+            try? await Task.sleep(for: killGrace)
+            guard process.isRunning else { return }
+            kill(process.processIdentifier, SIGKILL)
+            // A hook's own child may hold the pipes open: closing them ends the reads.
+            for pipe in pipes {
+                try? pipe.close()
+            }
+        }
+    }
+
+    /// The whole pipe, accumulated without parking a pool thread (like `FormatterLaunch.read`).
     @concurrent
-    private static func readToEnd(_ handle: FileHandle) async -> Data {
-        (try? handle.readToEnd()) ?? Data()
+    private static func read(_ handle: FileHandle) async -> Data {
+        var data = Data()
+        do {
+            for try await byte in handle.bytes {
+                data.append(byte)
+            }
+        } catch {
+            // The escalation closed the pipe: what was read so far is all there is.
+        }
+        return data
     }
 }
