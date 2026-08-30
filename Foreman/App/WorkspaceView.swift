@@ -127,6 +127,8 @@ struct WorkspaceView: View {
                         appDelegate.firstFrame(of: folder)
                     } onWindow: { window in
                         hostWindow = window
+                        // The window a feature's sheets belong to (git R8, R21, R23).
+                        layout.window = window
                         // layout R37: the bar follows the key window, the actions being per window.
                         appDelegate.menuBar.use(layout.shortcuts, for: window)
                         // product R8: this workspace is the one to reopen at the next launch.
