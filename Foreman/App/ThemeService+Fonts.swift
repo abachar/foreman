@@ -13,8 +13,8 @@ extension ThemeService {
     /// config, at the style's size; `medium` is the only other weight.
     func interfaceFont(_ style: TextStyle = .body, weight: NSFont.Weight = .regular) -> NSFont {
         let size = Self.pointSize(of: style, body: tokens.interfaceFontSize)
-        if let name = tokens.interfaceFontName, let font = NSFont(name: name, size: size) {
-            return weight == .regular ? font : NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        if let name = tokens.interfaceFontName, let font = Self.font(family: name, size: size, weight: weight) {
+            return font
         }
         return NSFont.systemFont(ofSize: size, weight: weight)
     }
@@ -27,10 +27,24 @@ extension ThemeService {
     /// (body 1, headings 2 / 1.5 / 1.25 / 1 / 0.875 / 0.85, small 0.875).
     func readingFont(scale: CGFloat = 1, weight: NSFont.Weight = .regular) -> NSFont {
         let size = (tokens.readingFontSize * scale).rounded()
-        if let name = tokens.interfaceFontName, let font = NSFont(name: name, size: size) {
-            return weight == .regular ? font : NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        if let name = tokens.interfaceFontName, let font = Self.font(family: name, size: size, weight: weight) {
+            return font
         }
         return NSFont.systemFont(ofSize: size, weight: weight)
+    }
+
+    /// The configured family at `weight`, or `nil` when the family does not exist: the caller then
+    /// falls back on the system font. The weight travels in the descriptor, so `.medium` stays
+    /// medium and `.bold` bold (`NSFontManager`'s bold trait made every non-regular weight bold);
+    /// a family without the exact face gets the closest one the descriptor matching finds.
+    private static func font(family: String, size: CGFloat, weight: NSFont.Weight) -> NSFont? {
+        guard let font = NSFont(name: family, size: size) else { return nil }
+        guard weight != .regular else { return font }
+        let descriptor = NSFontDescriptor(fontAttributes: [
+            .family: family,
+            .traits: [NSFontDescriptor.TraitKey.weight: weight.rawValue],
+        ])
+        return NSFont(descriptor: descriptor, size: size) ?? font
     }
 
     /// design R6 (2026-08-29): code in the preview, the code font at 0.85 of the reading size.
