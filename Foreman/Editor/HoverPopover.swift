@@ -15,8 +15,8 @@ import SwiftUI
 @MainActor
 final class HoverPopover {
     /// Wide enough for a signature, short enough not to cover what is under it.
-    static let maximumWidth: CGFloat = 460
-    static let maximumHeight: CGFloat = 320
+    static let maximumWidth: CGFloat = 420
+    static let maximumHeight: CGFloat = 260
     /// The gap between the character and the panel, so the caret stays visible.
     nonisolated static let gap: CGFloat = 6
 
@@ -46,18 +46,21 @@ final class HoverPopover {
             hide()
             return
         }
-        let content = HoverPopoverView(
+        let body = HoverPopoverContent(
             blocks: blocks, diagnostic: diagnostic, theme: theme, highlighter: highlighter)
-        let hosting = NSHostingController(rootView: content)
-        self.hosting = hosting
-        // Measured **at the width it will have**: `fittingSize` on an unconstrained view reports
-        // the height of text that has not wrapped yet, which showed a scroller over content that
-        // fits (author, 2026-08-31).
-        let ideal = hosting.sizeThatFits(
+        // Measured on the content **without its scroll view**, at the width it will have: a
+        // `ScrollView` accepts whatever size it is offered, so measuring through one always
+        // answered the maximum, and every popover came out as large as the largest (author,
+        // 2026-08-31). `fittingSize` on an unconstrained view is no better — it reports the
+        // height of text that has not wrapped yet.
+        let ideal = NSHostingController(rootView: body).sizeThatFits(
             in: NSSize(width: Self.maximumWidth, height: .greatestFiniteMagnitude))
         let size = NSSize(
-            width: min(max(ideal.width, 160), Self.maximumWidth),
+            width: min(max(ideal.width.rounded(.up), 120), Self.maximumWidth),
             height: min(ideal.height.rounded(.up), Self.maximumHeight))
+        let hosting = NSHostingController(
+            rootView: HoverPopoverView(content: body, theme: theme))
+        self.hosting = hosting
         let panel = self.panel ?? makePanel(in: window)
         self.panel = panel
         // design R18: the island's rounding lives on the hosted layer, the panel itself is clear.
@@ -145,8 +148,23 @@ private final class HoverPanelView: NSView {
     }
 }
 
-/// What the popover shows (editor R41, R42).
+/// The popover, scrolling only when what it holds does not fit (editor R42).
 struct HoverPopoverView: View {
+    let content: HoverPopoverContent
+    let theme: ThemeService
+
+    var body: some View {
+        ScrollView {
+            content
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        // design R18: the same island as the palette — opaque overlay, nothing translucent.
+        .background(theme.tokens.surfaceOverlay.color)
+    }
+}
+
+/// What the popover shows (editor R41, R42).
+struct HoverPopoverContent: View {
     let blocks: [MarkdownBlock]
     let diagnostic: EditorDiagnostic?
     let theme: ThemeService
@@ -165,36 +183,31 @@ struct HoverPopoverView: View {
 
     var body: some View {
         let tokens = theme.tokens
-        ScrollView {
-            VStack(alignment: .leading, spacing: metrics.blockSpacing) {
-                if let diagnostic {
-                    // editor R41: the diagnostic comes first, in its severity's colour.
-                    Label {
-                        Text(diagnostic.message)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: Self.symbol(for: diagnostic.severity))
-                    }
-                    .foregroundStyle(color(for: diagnostic.severity))
-                    if !blocks.isEmpty {
-                        Divider()
-                    }
+        VStack(alignment: .leading, spacing: metrics.blockSpacing) {
+            if let diagnostic {
+                // editor R41: the diagnostic comes first, in its severity's colour.
+                Label {
+                    Text(diagnostic.message)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: Self.symbol(for: diagnostic.severity))
                 }
-                ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                    MarkdownBlockView(
-                        block: block, theme: theme, highlighter: highlighter, metrics: metrics,
-                        images: MarkdownImageCache(), scale: Self.codeScale)
+                .foregroundStyle(color(for: diagnostic.severity))
+                if !blocks.isEmpty {
+                    Divider()
                 }
             }
-            .frame(maxWidth: HoverPopover.maximumWidth, alignment: .leading)
-            .padding(10)
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                MarkdownBlockView(
+                    block: block, theme: theme, highlighter: highlighter, metrics: metrics,
+                    images: MarkdownImageCache(), scale: Self.codeScale)
+            }
         }
+        // No `maxWidth`: a greedy frame made every popover as wide as the widest one could be.
+        .padding(10)
         .font(Font(theme.readingFont(scale: Self.proseScale)))
         .foregroundStyle(tokens.textPrimary.color)
         .textSelection(.enabled)
-        .scrollBounceBehavior(.basedOnSize)
-        // design R18: the same island as the palette — opaque overlay, nothing translucent.
-        .background(tokens.surfaceOverlay.color)
     }
 
     private static func symbol(for severity: EditorDiagnostic.Severity) -> String {
