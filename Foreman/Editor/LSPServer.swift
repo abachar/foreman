@@ -309,11 +309,17 @@ final class LSPServer {
     }
 
     /// editor R39: what the banner says when the server died twice.
+    ///
+    /// It ends with what to do, because there is exactly one thing to do and no way to guess it:
+    /// R39 gives up on the language for the life of the window, and the login environment is
+    /// resolved once per window too (`terminal` R3) — so a user who has just fixed their `PATH`
+    /// sees no change until they reopen it. Met on 2026-08-31, twice in a row.
     nonisolated static func deathFailure(binary: String, stderr: String?) -> String {
+        let advice = "reopen the window to try again"
         guard let stderr, !stderr.isEmpty else {
-            return "`\(binary)` stopped twice — no LSP for this language"
+            return "`\(binary)` stopped twice — \(advice)"
         }
-        return "`\(binary)` stopped twice — \(stderr)"
+        return "`\(binary)` stopped twice (\(stderr)) — \(advice)"
     }
 
     /// editor R39: the line of `stderr` worth showing — the last one that says something.

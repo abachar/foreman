@@ -27,13 +27,16 @@ struct LSPFailureTests {
                 == "`jdtls` did not answer in 30 s")
     }
 
-    @Test func carriesTheReasonIntoTheSecondDeath() {
+    /// The message ends with what to do, because there is one thing to do and no way to guess it:
+    /// the language is given up for the life of the window, and the login environment is resolved
+    /// once per window too — so fixing a `PATH` changes nothing until the window is reopened.
+    @Test func carriesTheReasonAndWhatToDo() {
         #expect(
             LSPServer.deathFailure(binary: "gopls", stderr: "cannot find module")
-                == "`gopls` stopped twice — cannot find module")
+                == "`gopls` stopped twice (cannot find module) — reopen the window to try again")
         #expect(
             LSPServer.deathFailure(binary: "gopls", stderr: nil)
-                == "`gopls` stopped twice — no LSP for this language")
+                == "`gopls` stopped twice — reopen the window to try again")
     }
 
     /// The useful line is the last: `node` prefixes its own noise and a usage message ends with
