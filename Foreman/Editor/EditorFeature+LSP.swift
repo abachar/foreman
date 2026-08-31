@@ -32,7 +32,13 @@ extension EditorFeature {
         }
         tab.onCommandClick = { [weak self, weak tab] location in
             guard let self, let tab else { return }
-            goToDefinition(in: tab, at: location)
+            // editor R48: in an HTML file the click may be on a class or an id, which is answered
+            // locally and without a server; anything else is a definition (R43).
+            if tab.language == .html {
+                goToSelector(in: tab, at: location)
+            } else {
+                goToDefinition(in: tab, at: location)
+            }
         }
         // editor R42: the pointer at rest asks, any movement cancels.
         tab.onPointerMoved = { [weak self, weak tab] location in
@@ -98,10 +104,19 @@ extension EditorFeature {
         }
     }
 
-    /// editor R43: `ctrl+cmd+j` — the same jump from the keyboard, at the caret.
+    /// editor R43, R48: `ctrl+cmd+j` — the same jump from the keyboard, at the caret.
+    ///
+    /// One action for both, dispatched on the file like the click is: in an HTML file "go to the
+    /// definition" means the CSS rule, and a second shortcut for it would be a distinction only
+    /// the implementation cares about.
     func goToDefinitionAtCursor() {
         guard let tab = activeTab, let textView = tab.textView else { return }
-        goToDefinition(in: tab, at: textView.selectedRange().location)
+        let location = textView.selectedRange().location
+        if tab.language == .html {
+            goToSelector(in: tab, at: location)
+        } else {
+            goToDefinition(in: tab, at: location)
+        }
     }
 
     /// editor R43, R44: the definition of the symbol at `location`, opened as a preview.

@@ -47,7 +47,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+f` / `cmd+opt+f` | `editor.find` / `.replace` | Find / replace in the file (`NSTextFinder`); `escape` closes the bar (native) | tab(editor.file) | 🟢 |
 | `cmd+shift+v` | `editor.togglePreview` | Markdown source / preview | tab(editor.file) | 🟢 |
 | `cmd+shift+l` | `editor.format` | Format the active file (`01-study-formatter.md` R24) | tab(editor.file) | 🟢 |
-| `ctrl+cmd+j` | `editor.goToDefinition` | Go to the definition of the symbol at the cursor; `cmd+click` does the same at the pointer (`03-study-lsp.md` R43) | tab(editor.file) | 🟢 (2026-08-31) |
+| `ctrl+cmd+j` | `editor.goToDefinition` | Go to the definition of the symbol at the cursor — in an HTML file, the CSS rule of the class or id (`04-study-selectors.md` R48); `cmd+click` does the same at the pointer (`03-study-lsp.md` R43) | tab(editor.file) | 🟢 (2026-08-31) |
 | `cmd+opt+[` / `cmd+opt+]` | `editor.fold` / `.unfold` | Fold / unfold the region at the cursor (`02-study-folding.md` R27) | tab(editor.file) | 🟢 (2026-08-28) |
 | `enter` / `cmd+enter` / `escape` / `↑↓` | — | Palette: open / new group / close / navigate | native | 🟢 |
 

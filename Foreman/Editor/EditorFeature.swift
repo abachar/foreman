@@ -22,6 +22,8 @@ final class EditorFeature {
     private let index: QuickOpenIndex
     /// editor R35–R39: the workspace's language servers, created here and stopped with it.
     let lsp: LSPServers
+    /// editor R47: the workspace's stylesheets, indexed at the first `cmd+click` that needs them.
+    let selectors: SelectorIndex
     /// editor R41, R42: one popover for the whole window, whichever tab asked for it.
     let hoverPopover = HoverPopover()
     /// editor R42: the pending hover, cancelled by the next movement.
@@ -44,6 +46,7 @@ final class EditorFeature {
         self.palette = palette
         self.highlighter = highlighter
         index = QuickOpenIndex(root: workspace.root)
+        selectors = SelectorIndex(root: workspace.root)
         // editor R35: the section is read on every use, like the formatter's — a config change
         // needs no wiring. R46: the login environment, the same one the formatters run in.
         lsp = LSPServers(
@@ -171,6 +174,8 @@ final class EditorFeature {
                     await tab.fileChangedOnDisk()
                 }
                 await index.apply(batch)
+                // editor R47: a stylesheet that changed is re-read, on the index's own actor.
+                await selectors.apply(batch)
             }
         }
     }
