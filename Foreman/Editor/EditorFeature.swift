@@ -29,6 +29,8 @@ final class EditorFeature {
     let hoverPopover = HoverPopover()
     /// editor R42: the pending hover, cancelled by the next movement.
     var hoverTask: Task<Void, Never>?
+    /// editor R42: the pending close, cancelled when the pointer lands on the popover.
+    var hoverDismissTask: Task<Void, Never>?
     /// editor R42: the character the popover is about; a move within it asks nothing again.
     var hoverLocation: Int?
     private var gitWatch: Task<Void, Never>?

@@ -11,7 +11,7 @@ extension EditorFeature {
     /// editor R42: how long the pointer must rest before anything is asked.
     static let hoverDelay = Duration.milliseconds(300)
     /// editor R42: how long the pointer has to reach the popover after leaving the text.
-    static let hoverGrace = Duration.milliseconds(150)
+    static let hoverGrace = Duration.milliseconds(250)
 
     /// editor R37: a tab that just loaded, changed or was saved tells its server.
     ///
@@ -73,11 +73,17 @@ extension EditorFeature {
     ///
     /// A move inside the character the popover is already about changes nothing: a server answers
     /// per position, and the pointer crosses many pixels of the same character.
+    ///
+    /// A move to another character does **not** close what is shown. It used to, and that made the
+    /// popover unreachable: the pointer travels several characters of text on its way to it, and
+    /// each of them closed it before it was ever left (author, 2026-08-31). What is shown stays
+    /// until something replaces it — the next answer — or until the pointer leaves for good.
     private func pointerMoved(to location: Int, in tab: EditorTab) {
         guard location != hoverLocation else { return }
         hoverLocation = location
         hoverTask?.cancel()
-        hoverPopover.hide()
+        hoverDismissTask?.cancel()
+        hoverDismissTask = nil
         hoverTask = Task { [weak self, weak tab] in
             guard (try? await Task.sleep(for: Self.hoverDelay)) != nil, let self, let tab else { return }
             await showHover(at: location, in: tab)
@@ -91,7 +97,8 @@ extension EditorFeature {
     /// off when the pointer has landed on the popover, which then reports its own exit.
     private func scheduleHoverDismissal() {
         hoverTask?.cancel()
-        hoverTask = Task { [weak self] in
+        hoverDismissTask?.cancel()
+        hoverDismissTask = Task { [weak self] in
             guard (try? await Task.sleep(for: Self.hoverGrace)) != nil, let self else { return }
             guard !hoverPopover.containsMouse else { return }
             dismissHover()
@@ -101,6 +108,8 @@ extension EditorFeature {
     func dismissHover() {
         hoverTask?.cancel()
         hoverTask = nil
+        hoverDismissTask?.cancel()
+        hoverDismissTask = nil
         hoverLocation = nil
         hoverPopover.hide()
     }
@@ -122,9 +131,16 @@ extension EditorFeature {
         if let markdown {
             blocks = await MarkdownBlocks.make(markdown, file: tab.url, root: workspace.root)
         }
-        guard !Task.isCancelled, diagnostic != nil || !blocks.isEmpty, textView.window?.isKeyWindow == true,
-            let rect = textView.rect(forCharacterAt: location)
-        else { return }
+        guard !Task.isCancelled else { return }
+        // Nothing to say here: whatever was shown for the character before this one goes now,
+        // since `pointerMoved` no longer closes it on the way (R42).
+        guard diagnostic != nil || !blocks.isEmpty else {
+            hoverPopover.hide()
+            return
+        }
+        guard textView.window?.isKeyWindow == true, let rect = textView.rect(forCharacterAt: location) else {
+            return
+        }
         hoverPopover.show(
             blocks: blocks, diagnostic: diagnostic, relativeTo: rect, of: textView, theme: theme,
             highlighter: highlighter)
