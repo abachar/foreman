@@ -11,9 +11,9 @@ final class EditorFeature {
     static let searchPanelID: PanelID = "editor.search"
 
     private let layout: LayoutManager
-    private let workspace: Workspace
-    private let highlighter: Highlighter
-    private let theme: ThemeService
+    let workspace: Workspace
+    let highlighter: Highlighter
+    let theme: ThemeService
     private var tabs: [TabID: EditorTab] = [:]
     /// The tab `open` is creating: `openTab` asks for its view before returning its id.
     private var opening: EditorTab?
@@ -22,6 +22,12 @@ final class EditorFeature {
     private let index: QuickOpenIndex
     /// editor R35–R39: the workspace's language servers, created here and stopped with it.
     let lsp: LSPServers
+    /// editor R41, R42: one popover for the whole window, whichever tab asked for it.
+    let hoverPopover = HoverPopover()
+    /// editor R42: the pending hover, cancelled by the next movement.
+    var hoverTask: Task<Void, Never>?
+    /// editor R42: the character the popover is about; a move within it asks nothing again.
+    var hoverLocation: Int?
     private var gitWatch: Task<Void, Never>?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []

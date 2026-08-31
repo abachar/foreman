@@ -70,6 +70,20 @@ final class LSPServer {
         Self.providesDefinition(capabilities)
     }
 
+    /// editor R39: the server announced hover.
+    var hasHoverProvider: Bool {
+        Self.providesHover(capabilities)
+    }
+
+    /// editor R39: hover, announced as a plain boolean or as an options object.
+    nonisolated static func providesHover(_ capabilities: ServerCapabilities?) -> Bool {
+        switch capabilities?.hoverProvider {
+        case .optionA(let flag): return flag
+        case .optionB: return true
+        case nil: return false
+        }
+    }
+
     /// editor R39: nothing is offered that the server did not announce.
     ///
     /// A capability comes either as a plain `true`/`false` or as an options object; an options
@@ -120,6 +134,15 @@ final class LSPServer {
         guard let connection, hasDefinitionProvider else { return nil }
         let response: DefinitionResponse? = await withTimeout(timeout) {
             try? await connection.definition(TextDocumentPositionParams(uri: uri, position: position))
+        }
+        return response ?? nil
+    }
+
+    /// editor R42, R45: bounded like the rest; a slow server makes the popover late, never stuck.
+    func hover(uri: DocumentUri, position: Position) async -> HoverResponse {
+        guard let connection, hasHoverProvider else { return nil }
+        let response: HoverResponse? = await withTimeout(timeout) {
+            try? await connection.hover(TextDocumentPositionParams(uri: uri, position: position))
         }
         return response ?? nil
     }

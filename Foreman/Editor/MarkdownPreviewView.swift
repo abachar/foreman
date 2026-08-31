@@ -71,7 +71,11 @@ struct MarkdownPreviewView: View {
     }
 }
 
-private struct MarkdownBlockView: View {
+/// One markdown block, rendered (editor R14).
+///
+/// Internal rather than private since 2026-08-31: the hover popover shows a server's markdown
+/// with the same renderer (R42).
+struct MarkdownBlockView: View {
     let block: MarkdownBlock
     let theme: ThemeService
     let highlighter: Highlighter
@@ -275,7 +279,9 @@ private struct CodeBlockView: View {
 /// The blocks only ever carry workspace files (`MarkdownLinks.image`), never a remote resource.
 @MainActor
 @Observable
-private final class MarkdownImageCache {
+/// Internal rather than private since 2026-08-31, with `MarkdownBlockView`: the hover popover
+/// needs one to render blocks, and it renders no image (a server sends none).
+final class MarkdownImageCache {
     private var images: [URL: NSImage] = [:]
     /// URLs whose file read or decode produced nothing: the alt text shows instead.
     private var failed: Set<URL> = []

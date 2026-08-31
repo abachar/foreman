@@ -164,6 +164,45 @@ final class LSPServers {
         }
     }
 
+    // MARK: - Hover (editor R42)
+
+    /// The markdown a server has for the symbol at `location`, or `nil` when it has none.
+    func hover(in url: URL, text: NSString, location: Int) async -> String? {
+        guard let command = config().command(for: url), let server = await server(for: command) else { return nil }
+        let response = await server.hover(
+            uri: url.absoluteString, position: TextEditing.lspPosition(at: location, in: text))
+        return Self.markdown(of: response)
+    }
+
+    /// editor R42: the text of a hover, whichever of the protocol's three shapes it came in.
+    ///
+    /// `MarkedString` is the deprecated form and still what several servers send: a bare string,
+    /// or a language/value pair that is a code block by another name — which is why the pair is
+    /// fenced here rather than shown raw. Empty content counts as no answer: a server that says
+    /// "nothing to say" with an empty string must not open an empty popover.
+    nonisolated static func markdown(of response: HoverResponse) -> String? {
+        guard let contents = response?.contents else { return nil }
+        let text: String
+        switch contents {
+        case .optionA(let marked):
+            text = fenced(marked)
+        case .optionB(let markedList):
+            text = markedList.map(fenced).joined(separator: "\n\n")
+        case .optionC(let markup):
+            text = markup.kind == .markdown ? markup.value : "```\n\(markup.value)\n```"
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// A language/value pair is a code block by another name; a bare string is already markdown.
+    private nonisolated static func fenced(_ marked: MarkedString) -> String {
+        switch marked {
+        case .optionA(let string): return string
+        case .optionB(let pair): return "```\(pair.language.rawValue)\n\(pair.value)\n```"
+        }
+    }
+
     // MARK: - Servers (editor R36, R39)
 
     /// editor R39: why this file has no LSP, once, or `nil` when it has one or wants none.

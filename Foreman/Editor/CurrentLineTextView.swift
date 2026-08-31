@@ -32,6 +32,50 @@ class CurrentLineTextView: NSTextView {
         }
     }
 
+    /// editor R42: the pointer came to rest logic lives in the feature; the view only reports
+    /// where it is, and when it leaves.
+    var onPointerMoved: ((Int) -> Void)?
+    var onPointerLeft: (() -> Void)?
+    private var pointerTracking: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let pointerTracking {
+            removeTrackingArea(pointerTracking)
+        }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self)
+        addTrackingArea(area)
+        pointerTracking = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        guard let onPointerMoved else { return }
+        onPointerMoved(characterIndexForInsertion(at: convert(event.locationInWindow, from: nil)))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        onPointerLeft?()
+    }
+
+    /// editor R42: the rect of one character, where the popover is anchored.
+    func rect(forCharacterAt location: Int) -> NSRect? {
+        guard let layoutManager = textLayoutManager, let contentManager = layoutManager.textContentManager,
+            let start = contentManager.location(layoutManager.documentRange.location, offsetBy: location),
+            let end = contentManager.location(start, offsetBy: 1),
+            let range = NSTextRange(location: start, end: end)
+        else { return nil }
+        var found: NSRect?
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) { _, frame, _, _ in
+            found = frame.offsetBy(dx: textContainerInset.width, dy: textContainerInset.height)
+            return false
+        }
+        return found
+    }
+
     override func mouseDown(with event: NSEvent) {
         guard event.modifierFlags.contains(.command), let onCommandClick else {
             super.mouseDown(with: event)

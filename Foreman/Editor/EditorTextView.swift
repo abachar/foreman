@@ -63,6 +63,9 @@ struct EditorTextView: NSViewRepresentable {
         tab.textView = textView
         // editor R43: the view reports the click, the tab routes it to the feature.
         textView.onCommandClick = { [weak tab] location in tab?.onCommandClick?(location) }
+        // editor R42: the same route for the pointer.
+        textView.onPointerMoved = { [weak tab] location in tab?.onPointerMoved?(location) }
+        textView.onPointerLeft = { [weak tab] in tab?.onPointerLeft?() }
         // editor R6: the gutter.
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
         ruler.onToggleFold = { [weak tab] line in tab?.toggleFold(atLine: line) }

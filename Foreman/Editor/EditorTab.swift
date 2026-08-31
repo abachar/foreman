@@ -124,6 +124,9 @@ final class EditorTab {
     var diagnostics: [EditorDiagnostic] = []
     /// editor R43: `cmd+click` at that character offset; set by `EditorFeature`.
     var onCommandClick: ((Int) -> Void)?
+    /// editor R42: the pointer moved to that character offset, or left the text.
+    var onPointerMoved: ((Int) -> Void)?
+    var onPointerLeft: (() -> Void)?
 
     var payload: Payload {
         Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock)
