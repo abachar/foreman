@@ -12,6 +12,19 @@ struct EditorTextView: NSViewRepresentable {
     let document: FileDocument
     let theme: ThemeService
     let highlighter: Highlighter
+    /// editor R41: passed in rather than read off the tab, so the SwiftUI body observes it and
+    /// `updateNSView` runs when a batch arrives.
+    let diagnostics: [EditorDiagnostic]
+
+    /// editor R41, design R6: severity to token — the status colours the app already defines.
+    static func color(for severity: EditorDiagnostic.Severity, tokens: ThemeService.Tokens) -> NSColor {
+        switch severity {
+        case .error: return tokens.statusRed.nsColor
+        case .warning: return tokens.statusOrange.nsColor
+        case .information: return tokens.statusBlue.nsColor
+        case .hint: return tokens.textSecondary.nsColor
+        }
+    }
 
     func makeCoordinator() -> Coordinator {
         if let existing = tab.textCoordinator {
@@ -129,6 +142,7 @@ struct EditorTextView: NSViewRepresentable {
         }
         // editor R26, R27: the folds reach the layout and the gutter.
         context.coordinator.applyFolds(regions: tab.foldRegions, folded: tab.foldedLines, to: textView, in: scroll)
+        applyDiagnostics(to: textView, ruler: scroll.verticalRulerView as? LineNumberRulerView)
         guard let line = tab.requestedLine else { return }
         tab.requestedLine = nil
         // editor R3: the cursor goes to the line and the line is shown.
@@ -138,6 +152,22 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     /// design R8, R22: the text, the caret, the selection, the current line and the gutter.
+    /// editor R41: the ranges to underline and the lines to mark, both recomputed against the
+    /// text as it is now — a diagnostic holds a line and a column, not an offset, precisely so a
+    /// batch that arrives after an edit lands where the text is rather than where it was.
+    private func applyDiagnostics(to textView: CurrentLineTextView, ruler: LineNumberRulerView?) {
+        let text = textView.string as NSString
+        let tokens = theme.tokens
+        textView.underlines = diagnostics.compactMap { diagnostic in
+            diagnostic.range(in: text).map {
+                CurrentLineTextView.Underline(range: $0, color: Self.color(for: diagnostic.severity, tokens: tokens))
+            }
+        }
+        ruler?.diagnosticDots = EditorDiagnostic.severityByLine(diagnostics).mapValues {
+            Self.color(for: $0, tokens: tokens)
+        }
+    }
+
     static func paint(_ textView: CurrentLineTextView, ruler: LineNumberRulerView?, tokens: ThemeService.Tokens) {
         let background = tokens.surface.nsColor
         guard textView.backgroundColor != background || textView.currentLineColor != tokens.surfaceSunken.nsColor

@@ -23,6 +23,14 @@ final class LineNumberRulerView: NSRulerView {
         didSet { needsDisplay = true }
     }
     var onToggleFold: ((Int) -> Void)?
+    /// editor R41: a dot on every line carrying a diagnostic, in its severity's colour.
+    var diagnosticDots: [Int: NSColor] = [:] {
+        didSet {
+            guard diagnosticDots != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+    private static let dotDiameter: CGFloat = 6
     private static let chevronWidth: CGFloat = 14
     /// The UTF-16 offset where each line starts, line `i + 1` at `lineStarts[i]`: the draw looks
     /// numbers up here instead of scanning the whole text on every pass.
@@ -104,6 +112,15 @@ final class LineNumberRulerView: NSRulerView {
                 at: NSPoint(
                     x: ruleThickness - Self.chevronWidth - size.width - 4, y: y + lineHeight / 2 - size.height / 2),
                 withAttributes: attributes)
+            // editor R41: the dot sits left of the numbers, where nothing else draws.
+            if let color = diagnosticDots[current] {
+                color.setFill()
+                let diameter = Self.dotDiameter
+                NSBezierPath(
+                    ovalIn: NSRect(
+                        x: 3, y: y + lineHeight / 2 - diameter / 2, width: diameter, height: diameter)
+                ).fill()
+            }
             // editor R27: the chevron next to the code, in the numbers' color (author, 2026-08-28).
             if foldRegions.contains(where: { $0.first == current }) {
                 let name = foldedLines.contains(current) ? "chevron.right" : "chevron.down"

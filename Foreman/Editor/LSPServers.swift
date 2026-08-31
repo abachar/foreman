@@ -40,6 +40,9 @@ final class LSPServers {
         self.environment = environment
     }
 
+    /// editor R40, R41: a file's diagnostics after the version filter; set by `EditorFeature`.
+    var onDiagnostics: ((URL, [EditorDiagnostic]) -> Void)?
+
     /// Test seam: how many tabs hold each open document (editor R37).
     var openDocuments: [DocumentUri: Int] {
         documents.mapValues(\.tabs)
@@ -188,8 +191,36 @@ final class LSPServers {
 
     private func make(_ command: String, catalog: LSPCatalog, environment: [String: String]) -> LSPServer {
         let server = LSPServer(command: command, root: root, timeout: catalog.timeout, environment: environment)
+        server.onDiagnostics = { [weak self] uri, version, diagnostics in
+            self?.publish(uri: uri, version: version, diagnostics: diagnostics)
+        }
         servers[command] = server
         return server
+    }
+
+    /// editor R40: a batch is dropped when its version is stale or its URI has no open tab.
+    ///
+    /// The version is the server's echo of the one Foreman sent with the last `didChange`; a
+    /// server that sends none (they are allowed to) is trusted, since there is nothing to compare.
+    private func publish(uri: DocumentUri, version: Int?, diagnostics: [Diagnostic]) {
+        guard let document = documents[uri] else { return }
+        guard Self.isCurrent(version, of: document.version) else { return }
+        onDiagnostics?(document.url, diagnostics.map(Self.convert))
+    }
+
+    /// editor R40: whether a batch stamped `version` still describes the text at `current`.
+    nonisolated static func isCurrent(_ version: Int?, of current: Int) -> Bool {
+        guard let version else { return true }
+        return version == current
+    }
+
+    /// The protocol's diagnostic as Foreman's (`architecture.md`: third-party types stay here).
+    nonisolated static func convert(_ diagnostic: Diagnostic) -> EditorDiagnostic {
+        EditorDiagnostic(
+            startLine: diagnostic.range.start.line, startCharacter: diagnostic.range.start.character,
+            endLine: diagnostic.range.end.line, endCharacter: diagnostic.range.end.character,
+            message: diagnostic.message,
+            severity: EditorDiagnostic.Severity(rawValue: diagnostic.severity?.rawValue ?? 0) ?? .information)
     }
 
     private func stopIfUnused(_ command: String) async {

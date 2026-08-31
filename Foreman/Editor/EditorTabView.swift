@@ -25,7 +25,9 @@ struct EditorTabView: View {
                         text: tab.currentText, file: tab.url, root: root, theme: theme, highlighter: highlighter,
                         firstBlock: Bindable(tab).previewBlock, onOpenFile: onOpenFile)
                 } else {
-                    EditorTextView(tab: tab, document: document, theme: theme, highlighter: highlighter)
+                    EditorTextView(
+                        tab: tab, document: document, theme: theme, highlighter: highlighter,
+                        diagnostics: tab.diagnostics)
                 }
             case .failed(let error):
                 ContentUnavailableView {

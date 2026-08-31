@@ -61,6 +61,7 @@ final class EditorFeature {
         // layout R38: the double click of the tab bar and of the home screen; the layout has
         // already activated the group when this runs.
         layout.onNewTab = { [weak self] in Task { await self?.newFile() } }
+        routeDiagnostics()
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()
         watchDisk()
@@ -339,6 +340,11 @@ final class EditorFeature {
             TextEditing.selectedLines($0.selectedRange(), in: $0.string as NSString)
         }
         sendToAgent(.path(tab.url, lines: lines, isDirectory: false))
+    }
+
+    /// editor R40: every open tab on `url` — the same file can be open in two groups (R1).
+    func tabsShowing(_ url: URL) -> [EditorTab] {
+        tabs.values.filter { $0.url == url }
     }
 
     /// The tab the editor's commands act on; `nil` when the active tab is not the editor's.

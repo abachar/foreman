@@ -119,6 +119,9 @@ final class EditorTab {
     }
 
     var onTextEvent: ((TextEvent) -> Void)?
+    /// editor R40, R41: what the server says about this file right now; replaced whole, never
+    /// merged — a batch is the server's complete opinion of the file (`publishDiagnostics`).
+    var diagnostics: [EditorDiagnostic] = []
     /// editor R43: `cmd+click` at that character offset; set by `EditorFeature`.
     var onCommandClick: ((Int) -> Void)?
 

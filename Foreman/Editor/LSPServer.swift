@@ -62,6 +62,9 @@ final class LSPServer {
         return started
     }
 
+    /// editor R40: the server pushed diagnostics for a URI; set by `LSPServers`.
+    var onDiagnostics: ((DocumentUri, Int?, [Diagnostic]) -> Void)?
+
     /// editor R39: the server announced this feature.
     var hasDefinitionProvider: Bool {
         Self.providesDefinition(capabilities)
@@ -210,16 +213,22 @@ final class LSPServer {
     private func listen(_ connection: JSONRPCServerConnection) {
         events = Task { [weak self] in
             for await event in await connection.eventSequence {
-                self?.log(event)
+                self?.handle(event)
             }
             self?.serverEnded()
         }
     }
 
-    /// Nothing acts on a server event yet: diagnostics are M18's next task (editor R40).
-    private func log(_ event: ServerEvent) {
-        guard case .error(let error) = event else { return }
-        logger.debug("\(self.command, privacy: .private): \(error.localizedDescription, privacy: .private)")
+    /// editor R40: diagnostics arrive here unasked; everything else is a log.
+    private func handle(_ event: ServerEvent) {
+        switch event {
+        case .notification(.textDocumentPublishDiagnostics(let params)):
+            onDiagnostics?(params.uri, params.version, params.diagnostics)
+        case .error(let error):
+            logger.debug("\(self.command, privacy: .private): \(error.localizedDescription, privacy: .private)")
+        case .notification, .request:
+            break
+        }
     }
 
     /// editor R39: a crash costs the language its LSP after the second one.

@@ -15,6 +15,23 @@ class CurrentLineTextView: NSTextView {
     /// place the user is coming back to.
     var onCommandClick: ((Int) -> Void)?
 
+    /// editor R41: one range to underline, with the colour of its severity.
+    struct Underline: Equatable {
+        let range: NSRange
+        let color: NSColor
+    }
+
+    /// editor R41: the ranges to underline, drawn here rather than set as attributes.
+    ///
+    /// The same reason the current line is: Neon owns the text's attributes and reapplies them on
+    /// every parse, so an underline put there would be wiped by the next keystroke.
+    var underlines: [Underline] = [] {
+        didSet {
+            guard underlines != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+
     override func mouseDown(with event: NSEvent) {
         guard event.modifierFlags.contains(.command), let onCommandClick else {
             super.mouseDown(with: event)
@@ -42,9 +59,53 @@ class CurrentLineTextView: NSTextView {
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
-        guard let line = currentLineRect, line.intersects(rect) else { return }
-        currentLineColor.setFill()
-        line.fill()
+        if let line = currentLineRect, line.intersects(rect) {
+            currentLineColor.setFill()
+            line.fill()
+        }
+        drawUnderlines(in: rect)
+    }
+
+    /// editor R41: a wave under each diagnostic's range, clipped to what is being redrawn.
+    private func drawUnderlines(in rect: NSRect) {
+        guard !underlines.isEmpty, let layoutManager = textLayoutManager,
+            let contentManager = layoutManager.textContentManager
+        else { return }
+        for underline in underlines {
+            let origin = layoutManager.documentRange.location
+            guard let start = contentManager.location(origin, offsetBy: underline.range.location),
+                let end = contentManager.location(start, offsetBy: underline.range.length),
+                let range = NSTextRange(location: start, end: end)
+            else { continue }
+            underline.color.setStroke()
+            layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) { _, frame, _, _ in
+                var frame = frame
+                frame.origin.x += textContainerInset.width
+                frame.origin.y += textContainerInset.height
+                guard frame.width > 0, frame.intersects(rect) else { return true }
+                Self.wave(under: frame).stroke()
+                return true
+            }
+        }
+    }
+
+    /// The wave itself: a 1 pt line zigzagging over a 4 pt period, one point above the baseline's
+    /// descent so it reads as an underline rather than as a border.
+    private static func wave(under frame: NSRect) -> NSBezierPath {
+        let path = NSBezierPath()
+        path.lineWidth = 1
+        let period: CGFloat = 4
+        let amplitude: CGFloat = 1.5
+        let base = frame.maxY - amplitude
+        path.move(to: NSPoint(x: frame.minX, y: base))
+        var x = frame.minX
+        var up = true
+        while x < frame.maxX {
+            x = min(x + period / 2, frame.maxX)
+            path.line(to: NSPoint(x: x, y: base + (up ? amplitude : -amplitude)))
+            up.toggle()
+        }
+        return path
     }
 
     /// The full-width rect of the caret's paragraph; `nil` with a selection (nothing painted).

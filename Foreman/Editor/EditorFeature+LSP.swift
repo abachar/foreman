@@ -31,6 +31,18 @@ extension EditorFeature {
         }
     }
 
+    /// editor R40, R41: a batch reaches every tab showing that file, whichever group it is in.
+    ///
+    /// Installed once, with the feature: the servers are the workspace's, not a tab's.
+    func routeDiagnostics() {
+        lsp.onDiagnostics = { [weak self] url, diagnostics in
+            guard let self else { return }
+            for tab in tabsShowing(url) {
+                tab.diagnostics = diagnostics
+            }
+        }
+    }
+
     /// editor R43: `ctrl+cmd+j` — the same jump from the keyboard, at the caret.
     func goToDefinitionAtCursor() {
         guard let tab = activeTab, let textView = tab.textView else { return }
