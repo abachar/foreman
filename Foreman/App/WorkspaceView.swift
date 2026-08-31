@@ -58,6 +58,8 @@ struct WorkspaceView: View {
                 let workspace = workspace
                 appDelegate.registerFlush(for: workspace) { [weak workspace, weak editor] in
                     await editor?.flushScratches()
+                    // editor R36: the language servers are asked to leave before the app does.
+                    await editor?.stopLanguageServers()
                     await workspace?.flushState()
                 }
                 let explorer = ExplorerFeature.register(in: layout, workspace: workspace, editor: editor, theme: theme)

@@ -27,6 +27,8 @@
 		B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D400000000000F0002 /* TreeSitterCSS */; };
 		B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000100002 /* TreeSitterDockerfile */; };
 		B1B2C3D40000000000110003 /* TreeSitterSql in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D40000000000110002 /* TreeSitterSql */; };
+		E1B2C3D40000000000010003 /* LanguageServerProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = E1B2C3D40000000000010002 /* LanguageServerProtocol */; };
+		E1B2C3D40000000000020003 /* JSONRPC in Frameworks */ = {isa = PBXBuildFile; productRef = E1B2C3D40000000000020002 /* JSONRPC */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +96,8 @@
 				B1B2C3D400000000000F0003 /* TreeSitterCSS in Frameworks */,
 				B1B2C3D40000000000100003 /* TreeSitterDockerfile in Frameworks */,
 				B1B2C3D40000000000110003 /* TreeSitterSql in Frameworks */,
+				E1B2C3D40000000000010003 /* LanguageServerProtocol in Frameworks */,
+				E1B2C3D40000000000020003 /* JSONRPC in Frameworks */,
 			);
 		};
 		158380D1303E6BB600F921C8 /* Frameworks */ = {
@@ -161,6 +165,8 @@
 				B1B2C3D400000000000F0002 /* TreeSitterCSS */,
 				B1B2C3D40000000000100002 /* TreeSitterDockerfile */,
 				B1B2C3D40000000000110002 /* TreeSitterSql */,
+				E1B2C3D40000000000010002 /* LanguageServerProtocol */,
+				E1B2C3D40000000000020002 /* JSONRPC */,
 			);
 			productName = Foreman;
 			productReference = 158380C7303E6BB500F921C8 /* Foreman.app */;
@@ -237,6 +243,8 @@
 				B1B2C3D400000000000F0001 /* XCRemoteSwiftPackageReference "tree-sitter-css" */,
 				B1B2C3D40000000000100001 /* XCRemoteSwiftPackageReference "tree-sitter-dockerfile" */,
 				B1B2C3D40000000000110001 /* XCRemoteSwiftPackageReference "tree-sitter-sql" */,
+				E1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "LanguageServerProtocol" */,
+				E1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "JSONRPC" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 158380C8303E6BB500F921C8 /* Products */;
@@ -720,6 +728,22 @@
 				minimumVersion = 1.33.1;
 			};
 		};
+		E1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "LanguageServerProtocol" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChimeHQ/LanguageServerProtocol";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.14.1;
+			};
+		};
+		E1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "JSONRPC" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChimeHQ/JSONRPC";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.9.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -827,6 +851,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "postgres-nio" */;
 			productName = PostgresNIO;
+		};
+		E1B2C3D40000000000010002 /* LanguageServerProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1B2C3D40000000000010001 /* XCRemoteSwiftPackageReference "LanguageServerProtocol" */;
+			productName = LanguageServerProtocol;
+		};
+		E1B2C3D40000000000020002 /* JSONRPC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1B2C3D40000000000020001 /* XCRemoteSwiftPackageReference "JSONRPC" */;
+			productName = JSONRPC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -9,6 +9,21 @@ class CurrentLineTextView: NSTextView {
         didSet { needsDisplay = true }
     }
 
+    /// editor R43: `cmd+click` reports the character under the pointer and stops there.
+    ///
+    /// The caret is deliberately left alone: a jump that also moved the selection would lose the
+    /// place the user is coming back to.
+    var onCommandClick: ((Int) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        guard event.modifierFlags.contains(.command), let onCommandClick else {
+            super.mouseDown(with: event)
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        onCommandClick(characterIndexForInsertion(at: point))
+    }
+
     override func setSelectedRanges(
         _ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting stillSelectingFlag: Bool
     ) {

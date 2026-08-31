@@ -80,6 +80,7 @@ We import where we use. Versions `.upToNextMinor`, `Package.resolved` committed,
 | Postgres | **PostgresNIO** | schema through `pg_catalog` |
 | Highlighting | **SwiftTreeSitter + Neon** (ChimeHQ, `main` branch, editor decision 2026-08-26), 15 SPM grammars (`tree-sitter-*`; `sql` on tree-sitter-sql's `gh-pages` branch, editor decision 2026-08-28) | editor, git diff, Postgres query editor |
 | Markdown | **swift-markdown** | preview |
+| Language servers | **LanguageServerProtocol** `0.14.1` + **JSONRPC** `0.9.2` (ChimeHQ, editor decision 2026-08-31) | the framing and the typed messages only; the process, the handshake and the restart are Foreman's ~120 lines. `LanguageClient` was refused: five more dependencies, one of them a second FSEvents wrapper, for that wrapper |
 | Fuzzy | **FuzzyMatch** (ordo-one) | fzf-style Smith-Waterman: boundary bonuses, ranges for highlighting (editor decision 2026-08-26) |
 | Content search | `rg` binary (`grep` fallback) | `cmd+shift+f` |
 | Secrets | Security.framework (Keychain) | PG password |

@@ -108,6 +108,20 @@ final class EditorTab {
 
     private var scratchWrite: Task<Void, Never>?
 
+    /// editor R37: what the text did, for whoever keeps a copy of it — the language server.
+    ///
+    /// A closure rather than a reference: the tab knows nothing of LSP, and `EditorFeature` owns
+    /// the servers (architecture: a notification between features is a closure).
+    enum TextEvent {
+        case opened
+        case changed
+        case saved
+    }
+
+    var onTextEvent: ((TextEvent) -> Void)?
+    /// editor R43: `cmd+click` at that character offset; set by `EditorFeature`.
+    var onCommandClick: ((Int) -> Void)?
+
     var payload: Payload {
         Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock)
     }
@@ -209,6 +223,7 @@ final class EditorTab {
             let document = try await FileDocument.read(url)
             indentUnit = TextEditing.detectIndent(document.text)
             content = .text(document)
+            onTextEvent?(.opened)
         } catch {
             content = .failed(error)
         }
@@ -263,6 +278,7 @@ final class EditorTab {
         isDirty = true
         message = nil
         refreshFolds()
+        onTextEvent?(.changed)
         if isScratch {
             scheduleScratchWrite()
         }
@@ -323,6 +339,7 @@ final class EditorTab {
         // still matches what was written.
         isDirty = textView.string != saved
         diskState = .current
+        onTextEvent?(.saved)
         return true
     }
 }

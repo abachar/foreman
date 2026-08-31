@@ -48,6 +48,8 @@ struct EditorTextView: NSViewRepresentable {
         // editor R26: folded paragraphs are laid out through the coordinator.
         textView.textContentStorage?.delegate = context.coordinator
         tab.textView = textView
+        // editor R43: the view reports the click, the tab routes it to the feature.
+        textView.onCommandClick = { [weak tab] location in tab?.onCommandClick?(location) }
         // editor R6: the gutter.
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
         ruler.onToggleFold = { [weak tab] line in tab?.toggleFold(atLine: line) }

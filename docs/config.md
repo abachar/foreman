@@ -94,6 +94,27 @@ One command per lowercased extension (or whole file name without one, e.g. `Dock
 | `timeout` | `number` seconds | `5` | `1…60`, clamped. |
 | `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the file's folder. |
 
+## `lsp` — `Editor/LSPCatalog.swift` (editor R35, R39)
+
+One language server command per lowercased extension (or whole file name without one); the server is started at the first tab of that language and stopped with the last (editor R36). Read on every use. A server needing per-project state puts it on its own command line — `config.json` is per workspace, so the path is written once, here (`jdtls -data <this project>/.foreman/jdtls`).
+
+| Key | Type | Default | Note |
+|---|---|---|---|
+| `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds `initialize` and the shutdown (editor R36, R39). |
+| `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the workspace root. |
+
+```json
+{
+  "lsp": {
+    "swift": "xcrun sourcekit-lsp",
+    "ts": "typescript-language-server --stdio",
+    "tsx": "typescript-language-server --stdio",
+    "html": "ngserver --stdio --ngProbeLocations node_modules --tsProbeLocations node_modules",
+    "java": "jdtls -data /Users/me/Projects/shop/.foreman/jdtls"
+  }
+}
+```
+
 ## `git` — `Git/GitFeature.swift` (git R26)
 
 | Key | Type | Default | Note |

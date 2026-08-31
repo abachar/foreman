@@ -20,6 +20,8 @@ final class EditorFeature {
     private var watch: Task<Void, Never>?
     private let palette: Palette
     private let index: QuickOpenIndex
+    /// editor R35–R39: the workspace's language servers, created here and stopped with it.
+    let lsp: LSPServers
     private var gitWatch: Task<Void, Never>?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
@@ -36,6 +38,17 @@ final class EditorFeature {
         self.palette = palette
         self.highlighter = highlighter
         index = QuickOpenIndex(root: workspace.root)
+        // editor R35: the section is read on every use, like the formatter's — a config change
+        // needs no wiring. R46: the login environment, the same one the formatters run in.
+        lsp = LSPServers(
+            root: workspace.root,
+            config: { [weak workspace] in
+                guard let workspace, let catalog = try? workspace.config.section("lsp", as: LSPCatalog.self) else {
+                    return .empty
+                }
+                return catalog
+            },
+            environment: { [weak workspace] in await workspace?.loginEnvironment() ?? [:] })
         layout.register(
             tabKind: CenterTabDescriptor(
                 kind: Self.tabKind,
@@ -241,6 +254,8 @@ final class EditorFeature {
     private func tabClosed(_ id: TabID) {
         guard let tab = tabs.removeValue(forKey: id) else { return }
         tab.textCoordinator = nil
+        // editor R37: the last tab on this file closes the document, and R36 the server with it.
+        lsp.closed(tab.url)
         guard tab.isScratch else { return }
         Task { await Scratch.remove(tab.url) }
     }
@@ -283,6 +298,10 @@ final class EditorFeature {
                 { [weak self] in self?.findActive(.showReplaceInterface) }
             ),
             ("editor.sendToAgent", "Send to Agent", "cmd+e", { [weak self] in self?.sendActiveToAgent() }),
+            (
+                "editor.goToDefinition", "Go to Definition", "ctrl+cmd+j",
+                { [weak self] in self?.goToDefinitionAtCursor() }
+            ),
             ("editor.fold", "Fold Region", "cmd+opt+[", { [weak self] in self?.foldAtCursor(true) }),
             ("editor.unfold", "Unfold Region", "cmd+opt+]", { [weak self] in self?.foldAtCursor(false) }),
         ]
@@ -320,6 +339,11 @@ final class EditorFeature {
             TextEditing.selectedLines($0.selectedRange(), in: $0.string as NSString)
         }
         sendToAgent(.path(tab.url, lines: lines, isDirectory: false))
+    }
+
+    /// The tab the editor's commands act on; `nil` when the active tab is not the editor's.
+    var activeTab: EditorTab? {
+        active?.tab
     }
 
     private var active: (id: TabID, tab: EditorTab)? {
@@ -719,11 +743,17 @@ final class EditorFeature {
                 }
             }
         }
+        bindLSP(tab)
         return AnyView(
             EditorTabView(
                 tab: tab, theme: theme, highlighter: highlighter, root: workspace.root,
                 onDirtyChange: { [weak self] in self?.syncDirty(id) },
                 onOpenFile: { [weak self] url in self?.open(url, preview: true) }))
+    }
+
+    /// editor R36: every server goes when the window's work is flushed at quit.
+    func stopLanguageServers() async {
+        await lsp.stopAll()
     }
 
     private func serialize(_ id: TabID) -> String? {
