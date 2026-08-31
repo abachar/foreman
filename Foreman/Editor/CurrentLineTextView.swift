@@ -77,6 +77,8 @@ class CurrentLineTextView: NSTextView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        // editor R42: a click ends the pointer's rest, whether or not it moved a pixel first.
+        onPointerLeft?()
         guard event.modifierFlags.contains(.command), let onCommandClick else {
             super.mouseDown(with: event)
             return

@@ -52,7 +52,7 @@ The editor was scoped as deliberately simple on 2026-08-25 (`decisions.md`): *"a
 
 ### Hover
 
-- R42 — `textDocument/hover` at the pointer's position after **~300 ms without movement**, cancelled by any movement, keystroke or scroll, at most one request in flight per tab. The response's `contents` is markdown and is rendered by what already renders markdown — `MarkdownBlocks.make` and the preview views (R14) — including its rule about the network: **nothing is fetched**, no remote resource, ever (`architecture.md`, security). One popover component, two sources: a diagnostic's message when the pointer is on a diagnostic range, the hover otherwise; when both apply, the diagnostic comes first in the same popover.
+- R42 — `textDocument/hover` at the pointer's position after **~300 ms without movement**, cancelled by any movement, keystroke or scroll, at most one request in flight per tab. The response's `contents` is markdown and is rendered by what already renders markdown — `MarkdownBlocks.make` and the preview views (R14) — including its rule about the network: **nothing is fetched**, no remote resource, ever (`architecture.md`, security). The popover is a floating island like the palette — opaque `surfaceOverlay`, `islandRadius`, one shadow, no beak (`design` R18; amended 2026-08-31: an `NSPopover`'s system material and arrow were a second look for the same idea), and it never takes the key window. Its prose renders smaller than its code: a signature has to stay readable as code, the sentence under it does not. One popover component, two sources: a diagnostic's message when the pointer is on a diagnostic range, the hover otherwise; when both apply, the diagnostic comes first in the same popover.
 
 ### Go-to-definition
 
