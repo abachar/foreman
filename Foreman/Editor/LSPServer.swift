@@ -32,6 +32,12 @@ final class LSPServer {
     private var starting: Task<Bool, Never>?
     private var restarts = 0
     private var isStopping = false
+    /// editor R39: the last thing the server said on `stderr`, for the banner when it dies.
+    ///
+    /// A server that cannot start almost always says why in one line — a missing flag, a bad
+    /// node version, a project it cannot read — and that line is worth more than anything
+    /// Foreman can infer from the outside.
+    private var lastError: String?
 
     /// What the server said it can do; `nil` until it is running (editor R39).
     private(set) var capabilities: ServerCapabilities?
@@ -203,8 +209,9 @@ final class LSPServer {
         drainDiagnostics(stderr)
         listen(connection)
         guard let response = await handshake(connection) else {
-            let seconds = Double(timeout.components.seconds)
-            failed("`\(FormatterCatalog.binary(of: command))` did not answer in \(seconds.formatted()) s")
+            failed(
+                Self.startupFailure(
+                    binary: FormatterCatalog.binary(of: command), stderr: lastError, timeout: timeout))
             await stop()
             return false
         }
@@ -257,23 +264,61 @@ final class LSPServer {
     /// editor R39: a crash costs the language its LSP after the second one.
     private func serverEnded() {
         guard !isStopping else { return }
+        let reason = lastError
         clear()
         restarts += 1
         if restarts > Self.restartLimit {
-            failure = "`\(FormatterCatalog.binary(of: command))` stopped twice — no LSP for this language"
+            failure = Self.deathFailure(binary: FormatterCatalog.binary(of: command), stderr: reason)
         }
         logger.debug("\(self.command, privacy: .private) ended (\(self.restarts) restarts)")
+    }
+
+    /// editor R39: what the banner says when the server never answered `initialize`.
+    ///
+    /// Its own words when it left any, the timeout otherwise — "did not answer in 10 s" is true
+    /// and useless when the server printed the reason on the way out.
+    nonisolated static func startupFailure(binary: String, stderr: String?, timeout: Duration) -> String {
+        if let stderr, !stderr.isEmpty {
+            return "`\(binary)`: \(stderr)"
+        }
+        let seconds = Double(timeout.components.seconds)
+        return "`\(binary)` did not answer in \(seconds.formatted()) s"
+    }
+
+    /// editor R39: what the banner says when the server died twice.
+    nonisolated static func deathFailure(binary: String, stderr: String?) -> String {
+        guard let stderr, !stderr.isEmpty else {
+            return "`\(binary)` stopped twice — no LSP for this language"
+        }
+        return "`\(binary)` stopped twice — \(stderr)"
+    }
+
+    /// editor R39: the line of `stderr` worth showing — the last one that says something.
+    ///
+    /// Servers are chatty and the useful line is the last, not the first: `node` prefixes its own
+    /// noise, and a usage message ends with what was actually wrong.
+    nonisolated static func meaningfulLine(of output: String) -> String? {
+        let line =
+            output
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .last { !$0.isEmpty }
+        guard let line, line.count > 1 else { return nil }
+        return line.count > 200 ? String(line.prefix(200)) + "…" : line
     }
 
     /// editor R39: a server's `stderr` is a log, never a banner — it is noisy by design and it can
     /// quote the file, which never reaches a log (coding rules).
     private func drainDiagnostics(_ pipe: Pipe) {
-        Task { [logger, command] in
+        Task { [weak self, logger, command] in
             for await chunk in PipeIO.chunks(pipe.fileHandleForReading) {
                 guard let text = String(data: chunk, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                     !text.isEmpty
                 else { continue }
                 logger.debug("\(command, privacy: .private): \(text.prefix(200), privacy: .private)")
+                // editor R39: kept for the banner, not shown yet — a running server writes here
+                // constantly and only its last word matters, and only if it dies.
+                self?.lastError = Self.meaningfulLine(of: text)
             }
         }
     }

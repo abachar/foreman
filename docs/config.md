@@ -101,7 +101,7 @@ One language server command per lowercased extension (or whole file name without
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds `initialize` and the shutdown (editor R36, R39). |
-| `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the workspace root. |
+| `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the workspace root. It must be the server's **stdio** invocation: most need a flag for it (`--stdio`), and without it they print a usage message and exit — which the banner now quotes back (editor R39). |
 
 ```json
 {
@@ -109,6 +109,8 @@ One language server command per lowercased extension (or whole file name without
     "swift": "xcrun sourcekit-lsp",
     "ts": "typescript-language-server --stdio",
     "tsx": "typescript-language-server --stdio",
+    "js": "typescript-language-server --stdio",
+    "jsx": "typescript-language-server --stdio",
     "html": "ngserver --stdio --ngProbeLocations node_modules --tsProbeLocations node_modules",
     "java": "jdtls -data /Users/me/Projects/shop/.foreman/jdtls"
   }
