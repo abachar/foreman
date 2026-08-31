@@ -18,9 +18,18 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
 ## Where it stands
 
-**M18 is landed** (2026-08-31). `cmd+click` and `ctrl+cmd+j` jump to a definition, errors are underlined and marked in the gutter, and the pointer at rest opens a popover with the diagnostic, the server's markdown, or both.
+**M18 is closed** (2026-08-31, author). `cmd+click` and `ctrl+cmd+j` jump to a definition, errors are underlined and marked in the gutter, and the pointer at rest opens a popover with the diagnostic, the server's markdown, or both — checked on Swift through `sourcekit-lsp` and on a real React project through `typescript-language-server`.
 
-Two faults were found by checking against the real `sourcekit-lsp` rather than by the tests, and both were in the new plumbing rather than in the protocol:
+The five tasks landed in a morning; the afternoon was spent on what only use finds, and that half is the more interesting one. Every fault below was reported by the author running the app, none by a test:
+
+- **Three times, the app had the answer and hid it.** A server that will not start says why — on `stderr` when it dies, and *in the protocol* when it refuses on purpose (`typescript-language-server` answers `initialize` with "Could not find a valid TypeScript installation"). `try?` swallowed the second, a sentence built at the moment of death missed the first (the two streams reach EOF in either order), and the banner said "stopped twice" three times running. It now quotes the server, and says to reopen the window — which R39 required and nothing told the user.
+- **A repository is not always a project.** The `cwd` was the workspace root; the React project's `package.json` was one folder down. The `lsp` section takes a `cwd` per entry now (R35, R36).
+- **Editing that section leaked servers.** Nothing stopped a server whose declaration had changed, and creating one was not atomic — three processes for one file, two at the wrong `cwd`. Both fixed at the root (R36).
+- **The popover was unreachable.** Every move inside the text closed it, and the pointer crosses several characters on its way to it; the author reached it once by accident. It also sized itself through its own `ScrollView`, which accepts any size it is offered, so every popover came out as large as the largest could be.
+
+What the milestone did **not** settle is in [`questions.md`](../specs/editor/questions.md), and none of it is theoretical any more: a definition landing in a dependency (the common case, not the edge), "no answer" and "cannot answer" looking the same, a server that wants incremental sync getting full text, and running the server at the file's project marker rather than at a declared `cwd`.
+
+During the tasks themselves, three faults came out of checking against a real server rather than out of the tests, and all three were in the new plumbing rather than in the protocol:
 
 - **`PipeIO`'s streaming closures inherited `@MainActor`** from the file's default isolation and are called on a `DispatchIO` queue: the first server started trapped in `swift_task_checkIsolated`. The extension is `nonisolated`.
 - **A pseudo-class is a `class_name` in the CSS grammar**, so `:hover` and `::before` were indexed as classes and `class="hover"` jumped to a `:hover` rule. Skipped by the parent node, and pinned by a test.
