@@ -57,8 +57,11 @@ private struct HoverPopoverView: View {
     let theme: ThemeService
     let highlighter: Highlighter
 
+    /// editor R42: a tooltip, not a document — the same markdown at 0.85 (author, 2026-08-31).
+    static let scale: CGFloat = 0.85
+
     private var metrics: MarkdownMetrics {
-        MarkdownMetrics(readingFontSize: theme.tokens.readingFontSize)
+        MarkdownMetrics(readingFontSize: (theme.tokens.readingFontSize * Self.scale).rounded())
     }
 
     var body: some View {
@@ -80,13 +83,13 @@ private struct HoverPopoverView: View {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                     MarkdownBlockView(
                         block: block, theme: theme, highlighter: highlighter, metrics: metrics,
-                        images: MarkdownImageCache())
+                        images: MarkdownImageCache(), scale: Self.scale)
                 }
             }
             .frame(maxWidth: HoverPopover.maximumWidth, alignment: .leading)
             .padding(12)
         }
-        .font(Font(theme.readingFont()))
+        .font(Font(theme.readingFont(scale: Self.scale)))
         .foregroundStyle(theme.tokens.textPrimary.color)
         .textSelection(.enabled)
         .scrollBounceBehavior(.basedOnSize)

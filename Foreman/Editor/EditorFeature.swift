@@ -18,6 +18,7 @@ final class EditorFeature {
     /// The tab `open` is creating: `openTab` asks for its view before returning its id.
     private var opening: EditorTab?
     private var watch: Task<Void, Never>?
+    private var lspConfigWatch: Task<Void, Never>?
     private let palette: Palette
     private let index: QuickOpenIndex
     /// editor R35–R39: the workspace's language servers, created here and stopped with it.
@@ -71,6 +72,7 @@ final class EditorFeature {
         // already activated the group when this runs.
         layout.onNewTab = { [weak self] in Task { await self?.newFile() } }
         routeDiagnostics()
+        watchConfigForLSP()
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()
         watchDisk()
@@ -164,6 +166,16 @@ final class EditorFeature {
     }
 
     // MARK: - Disk (editor R9; explorer R17, R18)
+
+    /// editor R35, R36: the servers follow the `lsp` section when it changes on disk.
+    private func watchConfigForLSP() {
+        lspConfigWatch = Task { [weak self, workspace] in
+            for await _ in workspace.configChanges() {
+                guard let self else { return }
+                lspConfigChanged()
+            }
+        }
+    }
 
     private func watchDisk() {
         watch = Task { [weak self, fsWatch = workspace.fsWatch, root = workspace.root] in
@@ -351,6 +363,11 @@ final class EditorFeature {
             TextEditing.selectedLines($0.selectedRange(), in: $0.string as NSString)
         }
         sendToAgent(.path(tab.url, lines: lines, isDirectory: false))
+    }
+
+    /// Every editor tab that has its text (editor R35: only those are declared to a server).
+    func tabs(showingAnyFile: Bool) -> [EditorTab] {
+        tabs.values.filter { $0.document != nil }
     }
 
     /// editor R40: every open tab on `url` — the same file can be open in two groups (R1).

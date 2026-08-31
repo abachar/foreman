@@ -63,7 +63,7 @@ struct LSPFailureTests {
     @Test func quotesAnErrorThatArrivesAfterTheProcessIsGone() async {
         let server = LSPServer(
             command: "printf 'boom: bad flag\\n' >&2; exit 1", root: URL(filePath: "/tmp"),
-            timeout: .seconds(2), environment: ProcessInfo.processInfo.environment)
+            timeout: .seconds(2), environment: { ProcessInfo.processInfo.environment })
         #expect(await server.ready() == false)
         #expect(server.failure?.contains("boom: bad flag") == true)
         await server.stop()

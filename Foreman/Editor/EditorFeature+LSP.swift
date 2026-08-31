@@ -48,6 +48,23 @@ extension EditorFeature {
         tab.onPointerLeft = { [weak self] in self?.dismissHover() }
     }
 
+    /// editor R35, R36: the `lsp` section changed, so every open document is declared again.
+    ///
+    /// A server is keyed by its command and its `cwd`; when either changes, the old key names a
+    /// process nothing will ever ask for again. Closing every document first lets R36's rule —
+    /// the last document of a server takes the process with it — do the stopping, and reopening
+    /// them starts whatever the new declaration asks for. Before this, editing the section left
+    /// the old servers running and out of reach (found 2026-08-31: three processes for one file).
+    func lspConfigChanged() {
+        let open = tabs(showingAnyFile: true)
+        for tab in open {
+            lsp.closed(tab.url)
+        }
+        for tab in open {
+            lsp.opened(tab.url, text: tab.currentText)
+        }
+    }
+
     // MARK: - Hover (editor R41, R42)
 
     /// editor R42: one request in flight per tab, `hoverDelay` after the pointer came to rest.

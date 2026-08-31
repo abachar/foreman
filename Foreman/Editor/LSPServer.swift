@@ -22,7 +22,12 @@ final class LSPServer {
     let command: String
     private let root: URL
     private let timeout: Duration
-    private let environment: [String: String]
+    /// Resolved inside `start()` rather than handed in.
+    ///
+    /// It was the only `await` on the creation path, and having it before the registry's lookup is
+    /// what let two callers create two processes for one key (2026-08-31). Nothing suspends
+    /// between `servers[key]` and its insertion now.
+    private let environment: @Sendable () async -> [String: String]
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "lsp")
 
     private var process: Process?
@@ -84,7 +89,10 @@ final class LSPServer {
     private var failureKind: FailureKind?
     private(set) var isRunning = false
 
-    init(command: String, root: URL, timeout: Duration, environment: [String: String]) {
+    init(
+        command: String, root: URL, timeout: Duration,
+        environment: @escaping @Sendable () async -> [String: String]
+    ) {
         self.command = command
         self.root = root
         self.timeout = timeout
@@ -219,6 +227,13 @@ final class LSPServer {
     }
 
     private func start() async -> Bool {
+        let environment = await environment()
+        // editor R39: the PATH is checked before anything is launched, so the banner can name the
+        // binary instead of repeating the shell's complaint (the formatter's rule, R25).
+        guard FormatterCatalog.isBinaryAvailable(command, inPath: environment["PATH"]) else {
+            failed(.binaryMissing)
+            return false
+        }
         let invocation = FormatterLaunch.invocation(command: command, cwd: root, environment: environment)
         let process = Process()
         process.executableURL = URL(filePath: invocation.executable)
@@ -392,11 +407,6 @@ final class LSPServer {
                 self?.lastError = Self.meaningfulLine(of: text)
             }
         }
-    }
-
-    /// editor R39: the command's binary is not in the `PATH` — nothing was launched.
-    func markBinaryMissing() {
-        failed(.binaryMissing)
     }
 
     /// editor R36, R39: the `cwd` the entry names is not a folder under the workspace.

@@ -83,16 +83,19 @@ struct MarkdownBlockView: View {
     let images: MarkdownImageCache
     /// design R6: how many lists deep this block sits, for the marker (0 at the top level).
     var depth = 0
+    /// editor R42: everything smaller by this factor — the hover popover is a tooltip, not a
+    /// document, and it renders the same markdown at 0.85 (author, 2026-08-31).
+    var scale: CGFloat = 1
 
     private static let headingScales: [CGFloat] = [2, 1.5, 1.25, 1, 0.875, 0.85]
 
     /// design R6 (amended 2026-08-30): headings scale the reading size, `semibold` as GitHub's.
     private func headingFont(_ level: Int) -> Font {
-        Font(theme.readingFont(scale: Self.headingScales[min(max(level, 1), 6) - 1], weight: .semibold))
+        Font(theme.readingFont(scale: Self.headingScales[min(max(level, 1), 6) - 1] * scale, weight: .semibold))
     }
 
     private func headingSize(_ level: Int) -> CGFloat {
-        (theme.tokens.readingFontSize * Self.headingScales[min(max(level, 1), 6) - 1]).rounded()
+        (theme.tokens.readingFontSize * Self.headingScales[min(max(level, 1), 6) - 1] * scale).rounded()
     }
 
     /// Inline code runs (`inlinePresentationIntent == .code`) take the preview's code font and,
@@ -108,7 +111,7 @@ struct MarkdownBlockView: View {
         var text = text
         for run in text.runs {
             if run.inlinePresentationIntent?.contains(.code) == true {
-                text[run.range].font = Font(theme.readingCodeFont)
+                text[run.range].font = Font(theme.readingCodeFont(scale: scale))
                 text[run.range].backgroundColor = theme.tokens.surfaceSunken.color
             }
             if run.link != nil {
@@ -134,7 +137,9 @@ struct MarkdownBlockView: View {
         case .paragraph(let text):
             Text(styled(text))
         case .code(let language, let code):
-            CodeBlockView(language: language, code: code, theme: theme, highlighter: highlighter, metrics: metrics)
+            CodeBlockView(
+                language: language, code: code, theme: theme, highlighter: highlighter, metrics: metrics,
+                scale: scale)
         case .list(let ordered, let start, let items):
             // design R6: a fixed marker column, so the content lands at `listIndent` (GitHub's
             // `padding-left: 2em`) and the markers of a level line up whatever their width.
@@ -148,7 +153,7 @@ struct MarkdownBlockView: View {
                             ForEach(Array(item.blocks.enumerated()), id: \.offset) { _, child in
                                 MarkdownBlockView(
                                     block: child, theme: theme, highlighter: highlighter, metrics: metrics,
-                                    images: images, depth: depth + 1)
+                                    images: images, depth: depth + 1, scale: scale)
                             }
                         }
                     }
@@ -160,8 +165,8 @@ struct MarkdownBlockView: View {
                 VStack(alignment: .leading, spacing: metrics.blockSpacing) {
                     ForEach(Array(blocks.enumerated()), id: \.offset) { _, child in
                         MarkdownBlockView(
-                            block: child, theme: theme, highlighter: highlighter, metrics: metrics, images: images,
-                            depth: depth)
+                            block: child, theme: theme, highlighter: highlighter, metrics: metrics,
+                            images: images, depth: depth, scale: scale)
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -202,7 +207,7 @@ struct MarkdownBlockView: View {
                     .accessibilityLabel(alt)
             } else if images.hasFailed(url) {
                 Text("[\(alt.isEmpty ? url.lastPathComponent : alt)]")
-                    .font(Font(theme.readingFont(scale: 0.875)))
+                    .font(Font(theme.readingFont(scale: 0.875 * scale)))
                     .foregroundStyle(.secondary)
             } else {
                 theme.tokens.surfaceSunken.color
@@ -212,7 +217,7 @@ struct MarkdownBlockView: View {
             }
         case .html(let raw):
             Text(raw)
-                .font(Font(theme.readingCodeFont))
+                .font(Font(theme.readingCodeFont(scale: scale)))
                 .foregroundStyle(.secondary)
         }
     }
@@ -252,13 +257,14 @@ private struct CodeBlockView: View {
     let theme: ThemeService
     let highlighter: Highlighter
     let metrics: MarkdownMetrics
+    var scale: CGFloat = 1
 
     @State private var highlighted: AttributedString?
 
     var body: some View {
         ScrollView(.horizontal) {
             Text(highlighted ?? AttributedString(code))
-                .font(Font(theme.readingCodeFont))
+                .font(Font(theme.readingCodeFont(scale: scale)))
                 .padding(metrics.codePadding)
         }
         // design R8: the sunken shade, opaque (the tint let text show through, M8 8.7).

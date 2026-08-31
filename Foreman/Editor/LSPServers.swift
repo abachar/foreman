@@ -17,7 +17,7 @@ final class LSPServers {
 
     private let root: URL
     private let config: () -> LSPCatalog
-    private let environment: () async -> [String: String]
+    private let environment: @Sendable () async -> [String: String]
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "lsp")
 
     private var servers: [ServerKey: LSPServer] = [:]
@@ -45,7 +45,10 @@ final class LSPServers {
         var tabs: Int
     }
 
-    init(root: URL, config: @escaping () -> LSPCatalog, environment: @escaping () async -> [String: String]) {
+    init(
+        root: URL, config: @escaping () -> LSPCatalog,
+        environment: @escaping @Sendable () async -> [String: String]
+    ) {
         self.root = root
         self.config = config
         self.environment = environment
@@ -227,26 +230,24 @@ final class LSPServers {
     }
 
     /// editor R36: the server of `command`, started on this first use; `nil` when it will not run.
+    /// editor R36: the server of `key`, started on this first use; `nil` when it will not run.
+    ///
+    /// Everything up to `ready()` is synchronous **on purpose**: an `await` between the lookup and
+    /// the insertion is what let two callers each create a process for one key (2026-08-31).
     private func server(for key: ServerKey) async -> LSPServer? {
         let catalog = config()
         for warning in catalog.warnings {
             logger.warning("\(warning, privacy: .public)")
         }
+        let existing = servers[key]
         // editor R36, security: a `cwd` from `config.json` must stay under the root, which is what
         // `Workspace.url(forPersistedPath:root:)` already refuses to leave.
         guard let cwd = Self.workingDirectory(key.cwd, root: root) else {
-            let server = servers[key] ?? make(key, cwd: root, catalog: catalog, environment: [:])
+            let server = existing ?? make(key, cwd: root, catalog: catalog)
             server.markDirectoryMissing(key.cwd ?? "")
             return nil
         }
-        let environment = await environment()
-        let server = servers[key] ?? make(key, cwd: cwd, catalog: catalog, environment: environment)
-        // editor R39: the PATH is checked before anything is launched, so the banner can name the
-        // binary instead of repeating the shell's complaint (the formatter's rule, R25).
-        guard FormatterCatalog.isBinaryAvailable(key.command, inPath: environment["PATH"]) else {
-            server.markBinaryMissing()
-            return nil
-        }
+        let server = existing ?? make(key, cwd: cwd, catalog: catalog)
         return await server.ready() ? server : nil
     }
 
@@ -266,8 +267,9 @@ final class LSPServers {
         return url
     }
 
-    private func make(_ key: ServerKey, cwd: URL, catalog: LSPCatalog, environment: [String: String]) -> LSPServer {
-        let server = LSPServer(command: key.command, root: cwd, timeout: catalog.timeout, environment: environment)
+    private func make(_ key: ServerKey, cwd: URL, catalog: LSPCatalog) -> LSPServer {
+        let server = LSPServer(
+            command: key.command, root: cwd, timeout: catalog.timeout, environment: environment)
         server.onDiagnostics = { [weak self] uri, version, diagnostics in
             self?.publish(uri: uri, version: version, diagnostics: diagnostics)
         }

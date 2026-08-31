@@ -15,6 +15,19 @@ struct LSPServersTests {
         return LSPServers(root: URL(filePath: "/w"), config: { catalog }, environment: { ["PATH": "/nowhere"] })
     }
 
+    /// editor R36: the key is the command **and** the `cwd`, so the four entries a monorepo needs
+    /// (`ts`, `tsx`, `js`, `jsx`, all `typescript-language-server --stdio` in `server/`) are one
+    /// server, and two folders declaring the same binary are two (author's question, 2026-08-31).
+    @Test func keysAServerByItsCommandAndItsDirectory() {
+        let command = "typescript-language-server --stdio"
+        let one = LSPServers.ServerKey(command: command, cwd: "server")
+        #expect(one == LSPServers.ServerKey(command: command, cwd: "server"))
+        #expect(one != LSPServers.ServerKey(command: command, cwd: "client"))
+        #expect(one != LSPServers.ServerKey(command: command, cwd: nil))
+        // The command is compared as written: a stray space is a different server.
+        #expect(one != LSPServers.ServerKey(command: command + " ", cwd: "server"))
+    }
+
     private let file = URL(filePath: "/w/a.swift")
 
     @Test func opensOneDocumentPerFile() {

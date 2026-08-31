@@ -48,8 +48,15 @@ extension ThemeService {
     }
 
     /// design R6 (2026-08-29): code in the preview, the code font at 0.85 of the reading size.
+    ///
+    /// `scale` shrinks the whole rendering with it (editor R42, 2026-08-31): the hover popover is
+    /// a tooltip, not a document, and it reads the same markdown at a smaller size.
+    func readingCodeFont(scale: CGFloat = 1) -> NSFont {
+        editorFont.withSize((tokens.readingFontSize * 0.85 * scale).rounded())
+    }
+
     var readingCodeFont: NSFont {
-        editorFont.withSize((tokens.readingFontSize * 0.85).rounded())
+        readingCodeFont()
     }
 
     /// The code font at an interface size: a sha, a line number, a ref in a list.
