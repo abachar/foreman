@@ -86,8 +86,11 @@ struct EditorTabView: View {
             banner("Not UTF-8: read as Latin-1, will be saved as UTF-8", icon: "textformat.abc")
         }
         if let message = tab.message {
-            // editor R28, R30, R32: the formatter's verdict, gone at the next keystroke.
-            banner(message, icon: "text.alignleft")
+            // editor R28, R30, R32: the formatter's verdict, gone at the next keystroke — and
+            // R39's, which has no keystroke to wait for, so it closes by hand (2026-08-31).
+            BannerView(text: message, icon: "text.alignleft", theme: theme) {
+                tab.message = nil
+            }
         }
     }
 

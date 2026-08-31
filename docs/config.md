@@ -101,7 +101,7 @@ One language server command per lowercased extension (or whole file name without
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds `initialize` and the shutdown (editor R36, R39). |
-| `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the workspace root. It must be the server's **stdio** invocation: most need a flag for it (`--stdio`), and without it they print a usage message and exit — which the banner now quotes back (editor R39). |
+| `<ext>` | `string` or `{ command, cwd }` | — | Shell command, `$SHELL -l -c`. `cwd` is a folder under the root, for a repository whose project is not at its root (a monorepo's `server/`); without it the server runs at the root. It must be the server's **stdio** invocation: most need a flag for it (`--stdio`), and without it they print a usage message and exit — which the banner now quotes back (editor R39). |
 
 ```json
 {
@@ -113,6 +113,17 @@ One language server command per lowercased extension (or whole file name without
     "jsx": "typescript-language-server --stdio",
     "html": "ngserver --stdio --ngProbeLocations node_modules --tsProbeLocations node_modules",
     "java": "jdtls -data /Users/me/Projects/shop/.foreman/jdtls"
+  }
+}
+```
+
+A monorepo whose `package.json` and `node_modules` are one folder down — the server must run there, or it will not find the TypeScript it needs:
+
+```json
+{
+  "lsp": {
+    "ts": { "command": "typescript-language-server --stdio", "cwd": "server" },
+    "tsx": { "command": "typescript-language-server --stdio", "cwd": "server" }
   }
 }
 ```

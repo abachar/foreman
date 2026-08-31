@@ -12,9 +12,20 @@ nonisolated struct LSPCatalog: Decodable, Equatable, Sendable {
     /// editor R39: seconds, clamped.
     static let timeoutRange: ClosedRange<Double> = 1...60
 
+    /// One declared server: the command, and where it runs (editor R35, R36).
+    struct Entry: Equatable, Sendable {
+        let command: String
+        /// A path relative to the workspace root, `nil` for the root itself (editor R36).
+        ///
+        /// It exists because a repository is not always a project: `typescript-language-server`
+        /// looks for the `typescript` it needs from its own `cwd`, and a monorepo keeps that
+        /// under `server/`, not at the root (author, 2026-08-31).
+        let cwd: String?
+    }
+
     var timeout: Duration = .seconds(LSPCatalog.defaultTimeout)
-    /// Lowercased key (an extension, or a whole file name without one) → the user's command.
-    var commands: [String: String] = [:]
+    /// Lowercased key (an extension, or a whole file name without one) → the declared server.
+    var commands: [String: Entry] = [:]
     /// config R7: an invalid entry is dropped and reported, never the section.
     var warnings: [String] = []
 
@@ -31,25 +42,41 @@ nonisolated struct LSPCatalog: Decodable, Equatable, Sendable {
                 }
                 timeout = .seconds(min(max(value, Self.timeoutRange.lowerBound), Self.timeoutRange.upperBound))
             default:
-                guard let command = try? container.decode(String.self, forKey: key) else {
-                    warnings.append("lsp.\(key.stringValue) ignored: expected a command string.")
+                // A value is `"command"` or `{ "command": …, "cwd": … }` — the shape `run` R2
+                // already uses for a command that does not run at the root.
+                var entry: Entry?
+                if let command = try? container.decode(String.self, forKey: key) {
+                    entry = Entry(command: command, cwd: nil)
+                } else if let detailed = try? container.decode(Detailed.self, forKey: key),
+                    let command = detailed.command
+                {
+                    entry = Entry(command: command, cwd: detailed.cwd)
+                }
+                guard let entry else {
+                    warnings.append(
+                        "lsp.\(key.stringValue) ignored: expected a command, or an object with a command.")
                     continue
                 }
-                guard !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                guard !entry.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     warnings.append("lsp.\(key.stringValue) ignored: the command is empty.")
                     continue
                 }
-                commands[key.stringValue.lowercased()] = command
+                commands[key.stringValue.lowercased()] = entry
             }
         }
     }
 
-    /// The command declared for `url`, keyed by its extension or its whole name.
+    /// The server declared for `url`, keyed by its extension or its whole name.
     ///
     /// The key is built by `FormatterCatalog.key(for:)`: the two sections index files the same way,
     /// and one rule written twice is one rule that can drift.
-    func command(for url: URL) -> String? {
+    func entry(for url: URL) -> Entry? {
         commands[FormatterCatalog.key(for: url).lowercased()]
+    }
+
+    private struct Detailed: Decodable {
+        var command: String?
+        var cwd: String?
     }
 
     private struct Key: CodingKey {

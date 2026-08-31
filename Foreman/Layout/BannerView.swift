@@ -12,6 +12,12 @@ struct BannerView: View {
     let icon: String
     var tone: Tone = .info
     let theme: ThemeService
+    /// When set, the band carries a close button — for a message that outlives what caused it.
+    ///
+    /// The formatter's verdict goes at the next keystroke (`editor` R28), but a language server's
+    /// refusal has no keystroke to wait for: the user reads it, fixes their config, and has no way
+    /// to get rid of it (author, 2026-08-31).
+    var onDismiss: (() -> Void)?
 
     var body: some View {
         let tokens = theme.tokens
@@ -27,6 +33,17 @@ struct BannerView: View {
         .textSelection(.enabled)
         .padding(6)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .trailing) {
+            if let onDismiss {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .foregroundStyle(tokens.textSecondary.color)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 8)
+                .help("Dismiss")
+            }
+        }
         // The state token tints the band (mockup 08, first visual review 2026-08-27); `info` stays flat.
         .background(color(tokens).opacity(tone == .info ? 0 : Self.tintOpacity))
         .background(tokens.surfaceRaised.color)

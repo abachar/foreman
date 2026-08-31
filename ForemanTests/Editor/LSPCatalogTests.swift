@@ -13,14 +13,14 @@ struct LSPCatalogTests {
         let catalog = try WorkspaceConfig.empty.section("lsp", as: LSPCatalog.self) ?? .empty
         #expect(catalog == .empty)
         #expect(catalog.timeout == .seconds(10))
-        #expect(catalog.command(for: URL(filePath: "/w/a.swift")) == nil)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.swift")) == nil)
     }
 
     @Test func theReservedKeyIsNeverAnExtension() throws {
         let catalog = try decode(#"{ "timeout": 20, "swift": "xcrun sourcekit-lsp" }"#)
         #expect(catalog.timeout == .seconds(20))
-        #expect(catalog.commands == ["swift": "xcrun sourcekit-lsp"])
-        #expect(catalog.command(for: URL(filePath: "/w/timeout")) == nil)
+        #expect(catalog.commands == ["swift": LSPCatalog.Entry(command: "xcrun sourcekit-lsp", cwd: nil)])
+        #expect(catalog.entry(for: URL(filePath: "/w/timeout")) == nil)
         #expect(catalog.warnings.isEmpty)
     }
 
@@ -33,7 +33,7 @@ struct LSPCatalogTests {
     @Test func dropsAnInvalidEntryAndKeepsTheRest() throws {
         let catalog = try decode(
             #"{ "swift": "xcrun sourcekit-lsp", "java": 12, "go": "   ", "timeout": "soon" }"#)
-        #expect(catalog.commands == ["swift": "xcrun sourcekit-lsp"])
+        #expect(catalog.commands == ["swift": LSPCatalog.Entry(command: "xcrun sourcekit-lsp", cwd: nil)])
         #expect(catalog.timeout == .seconds(10))
         #expect(catalog.warnings.count == 3)
     }
@@ -43,16 +43,56 @@ struct LSPCatalogTests {
     @Test func twoExtensionsCanNameTheSameCommand() throws {
         let command = "typescript-language-server --stdio"
         let catalog = try decode(#"{ "ts": "\#(command)", "tsx": "\#(command)" }"#)
-        #expect(catalog.command(for: URL(filePath: "/w/a.ts")) == command)
-        #expect(catalog.command(for: URL(filePath: "/w/a.tsx")) == command)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.ts"))?.command == command)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.tsx"))?.command == command)
     }
 
     /// editor R35: an extension, or a whole file name when there is none, case-insensitively.
     @Test func keysAFileByItsExtensionOrItsWholeName() throws {
         let catalog = try decode(#"{ "SWIFT": "xcrun sourcekit-lsp", "Dockerfile": "docker-langserver --stdio" }"#)
-        #expect(catalog.command(for: URL(filePath: "/w/A.Swift")) == "xcrun sourcekit-lsp")
-        #expect(catalog.command(for: URL(filePath: "/w/Dockerfile")) == "docker-langserver --stdio")
-        #expect(catalog.command(for: URL(filePath: "/w/a.kt")) == nil)
+        #expect(catalog.entry(for: URL(filePath: "/w/A.Swift"))?.command == "xcrun sourcekit-lsp")
+        #expect(catalog.entry(for: URL(filePath: "/w/Dockerfile"))?.command == "docker-langserver --stdio")
+        #expect(catalog.entry(for: URL(filePath: "/w/a.kt")) == nil)
+    }
+
+    /// editor R36: a repository is not always a project — a monorepo keeps its `node_modules`
+    /// under `server/`, and `typescript-language-server` looks for TypeScript from its own `cwd`.
+    @Test func readsACommandWithItsOwnDirectory() throws {
+        let catalog = try decode(
+            #"{ "ts": { "command": "typescript-language-server --stdio", "cwd": "server" } }"#)
+        let entry = try #require(catalog.entry(for: URL(filePath: "/w/a.ts")))
+        #expect(entry.command == "typescript-language-server --stdio")
+        #expect(entry.cwd == "server")
+        #expect(catalog.warnings.isEmpty)
+    }
+
+    /// The short form is unchanged, and it means the workspace root.
+    @Test func aBareStringStillMeansTheRoot() throws {
+        #expect(try decode(#"{ "swift": "xcrun sourcekit-lsp" }"#).entry(for: URL(filePath: "/w/a.swift"))?.cwd == nil)
+    }
+
+    /// config R7: an object with no command is as invalid as a number.
+    @Test func dropsAnObjectWithoutACommand() throws {
+        let catalog = try decode(#"{ "ts": { "cwd": "server" }, "js": { "command": "  " } }"#)
+        #expect(catalog.commands.isEmpty)
+        #expect(catalog.warnings.count == 2)
+    }
+
+    /// editor R36, security: a `cwd` from `config.json` must stay under the workspace root — the
+    /// file can be shipped by a cloned repository and it names a process's working directory.
+    @Test func refusesADirectoryOutsideTheWorkspace() {
+        let root = URL(filePath: "/w")
+        #expect(LSPServers.workingDirectory("../elsewhere", root: root) == nil)
+        #expect(LSPServers.workingDirectory("/etc", root: root) == nil)
+        // A folder that simply does not exist is refused too: nothing is launched in a guess.
+        #expect(LSPServers.workingDirectory("no-such-folder", root: root) == nil)
+    }
+
+    /// No `cwd` is the root itself, which always exists.
+    @Test func noDirectoryMeansTheRoot() throws {
+        let root = URL(filePath: NSTemporaryDirectory()).standardizedFileURL
+        #expect(LSPServers.workingDirectory(nil, root: root) == root)
+        #expect(LSPServers.workingDirectory("", root: root) == root)
     }
 
     /// editor R46: the command is the user's text, run in the login shell — the formatter's rule,

@@ -20,14 +20,25 @@ final class LSPServers {
     private let environment: () async -> [String: String]
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "lsp")
 
-    private var servers: [String: LSPServer] = [:]
+    private var servers: [ServerKey: LSPServer] = [:]
+
+    /// editor R36: one process per (command × cwd × workspace root).
+    ///
+    /// The `cwd` joins the key because two extensions can name the same binary in two projects of
+    /// one repository — a monorepo's `server/` and `client/` — and those are two servers, each
+    /// resolving its own `node_modules`.
+    struct ServerKey: Hashable, Sendable {
+        let command: String
+        let cwd: String?
+    }
     private var documents: [DocumentUri: Document] = [:]
     private var pending: [DocumentUri: Task<Void, Never>] = [:]
 
     /// What Foreman knows about one open file, independent of how many tabs show it.
     private struct Document {
         let url: URL
-        let command: String
+        /// editor R36: the key of the server, which is the command **and** where it runs.
+        let command: ServerKey
         let languageId: String
         var version: Int
         /// editor R37: how many tabs have it open; the last one to go sends `didClose`.
@@ -53,7 +64,8 @@ final class LSPServers {
     /// editor R36, R37: the first tab on this file starts the server if needed and opens the
     /// document; the next ones only take a reference.
     func opened(_ url: URL, text: String) {
-        guard let command = config().command(for: url), let languageId = Self.languageId(for: url) else { return }
+        guard let entry = config().entry(for: url), let languageId = Self.languageId(for: url) else { return }
+        let command = ServerKey(command: entry.command, cwd: entry.cwd)
         let uri = url.absoluteString
         if documents[uri] != nil {
             documents[uri]?.tabs += 1
@@ -119,7 +131,8 @@ final class LSPServers {
     /// one case the user must be told about: a definition Foreman will not open (R44).
     func definition(in url: URL, text: NSString, location: Int) async -> Definition {
         let uri = url.absoluteString
-        guard let command = config().command(for: url) else { return .none }
+        guard let entry = config().entry(for: url) else { return .none }
+        let command = ServerKey(command: entry.command, cwd: entry.cwd)
         guard let server = await server(for: command) else {
             return servers[command]?.failure.map { Definition.refused($0) } ?? .none
         }
@@ -168,7 +181,9 @@ final class LSPServers {
 
     /// The markdown a server has for the symbol at `location`, or `nil` when it has none.
     func hover(in url: URL, text: NSString, location: Int) async -> String? {
-        guard let command = config().command(for: url), let server = await server(for: command) else { return nil }
+        guard let entry = config().entry(for: url) else { return nil }
+        let key = ServerKey(command: entry.command, cwd: entry.cwd)
+        guard let server = await server(for: key) else { return nil }
         let response = await server.hover(
             uri: url.absoluteString, position: TextEditing.lspPosition(at: location, in: text))
         return Self.markdown(of: response)
@@ -207,33 +222,56 @@ final class LSPServers {
 
     /// editor R39: why this file has no LSP, once, or `nil` when it has one or wants none.
     func failure(for url: URL) -> String? {
-        guard let command = config().command(for: url) else { return nil }
-        return servers[command]?.failure
+        guard let entry = config().entry(for: url) else { return nil }
+        return servers[ServerKey(command: entry.command, cwd: entry.cwd)]?.failure
     }
 
     /// editor R36: the server of `command`, started on this first use; `nil` when it will not run.
-    private func server(for command: String) async -> LSPServer? {
+    private func server(for key: ServerKey) async -> LSPServer? {
         let catalog = config()
         for warning in catalog.warnings {
             logger.warning("\(warning, privacy: .public)")
         }
+        // editor R36, security: a `cwd` from `config.json` must stay under the root, which is what
+        // `Workspace.url(forPersistedPath:root:)` already refuses to leave.
+        guard let cwd = Self.workingDirectory(key.cwd, root: root) else {
+            let server = servers[key] ?? make(key, cwd: root, catalog: catalog, environment: [:])
+            server.markDirectoryMissing(key.cwd ?? "")
+            return nil
+        }
         let environment = await environment()
-        let server = servers[command] ?? make(command, catalog: catalog, environment: environment)
+        let server = servers[key] ?? make(key, cwd: cwd, catalog: catalog, environment: environment)
         // editor R39: the PATH is checked before anything is launched, so the banner can name the
         // binary instead of repeating the shell's complaint (the formatter's rule, R25).
-        guard FormatterCatalog.isBinaryAvailable(command, inPath: environment["PATH"]) else {
+        guard FormatterCatalog.isBinaryAvailable(key.command, inPath: environment["PATH"]) else {
             server.markBinaryMissing()
             return nil
         }
         return await server.ready() ? server : nil
     }
 
-    private func make(_ command: String, catalog: LSPCatalog, environment: [String: String]) -> LSPServer {
-        let server = LSPServer(command: command, root: root, timeout: catalog.timeout, environment: environment)
+    /// editor R36: where a declared server runs — the root, or the folder it named under it.
+    ///
+    /// `nil` when the path escapes the workspace or is not a folder: a language server is a
+    /// process launched from a file a cloned repository can ship (`architecture.md`, security).
+    nonisolated static func workingDirectory(_ cwd: String?, root: URL) -> URL? {
+        guard let cwd, !cwd.isEmpty else { return root }
+        guard let url = Workspace.url(forPersistedPath: cwd, root: root),
+            Workspace.contains(url, under: root)
+        else { return nil }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory),
+            isDirectory.boolValue
+        else { return nil }
+        return url
+    }
+
+    private func make(_ key: ServerKey, cwd: URL, catalog: LSPCatalog, environment: [String: String]) -> LSPServer {
+        let server = LSPServer(command: key.command, root: cwd, timeout: catalog.timeout, environment: environment)
         server.onDiagnostics = { [weak self] uri, version, diagnostics in
             self?.publish(uri: uri, version: version, diagnostics: diagnostics)
         }
-        servers[command] = server
+        servers[key] = server
         return server
     }
 
@@ -262,7 +300,7 @@ final class LSPServers {
             severity: EditorDiagnostic.Severity(rawValue: diagnostic.severity?.rawValue ?? 0) ?? .information)
     }
 
-    private func stopIfUnused(_ command: String) async {
+    private func stopIfUnused(_ command: ServerKey) async {
         guard !documents.values.contains(where: { $0.command == command }), let server = servers[command] else {
             return
         }

@@ -11,7 +11,7 @@ import Testing
 struct LSPServersTests {
     private func servers(_ commands: [String: String] = ["swift": "no-such-language-server"]) -> LSPServers {
         var catalog = LSPCatalog()
-        catalog.commands = commands
+        catalog.commands = commands.mapValues { LSPCatalog.Entry(command: $0, cwd: nil) }
         return LSPServers(root: URL(filePath: "/w"), config: { catalog }, environment: { ["PATH": "/nowhere"] })
     }
 

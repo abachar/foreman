@@ -63,6 +63,8 @@ final class LSPServer {
             return nil
         case .binaryMissing:
             return "`\(FormatterCatalog.binary(of: command))` not found in PATH"
+        case .directoryMissing(let path):
+            return "lsp cwd `\(path)` is not a folder in this workspace"
         case .startup:
             return Self.startupFailure(
                 binary: FormatterCatalog.binary(of: command), reason: lastError ?? refusal, timeout: timeout)
@@ -74,6 +76,7 @@ final class LSPServer {
     /// editor R39: which of the three ways it failed; the sentence is built when it is read.
     private enum FailureKind {
         case binaryMissing
+        case directoryMissing(String)
         case startup
         case diedTwice
     }
@@ -394,6 +397,11 @@ final class LSPServer {
     /// editor R39: the command's binary is not in the `PATH` — nothing was launched.
     func markBinaryMissing() {
         failed(.binaryMissing)
+    }
+
+    /// editor R36, R39: the `cwd` the entry names is not a folder under the workspace.
+    func markDirectoryMissing(_ path: String) {
+        failed(.directoryMissing(path))
     }
 
     private func failed(_ kind: FailureKind) {
