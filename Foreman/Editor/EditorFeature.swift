@@ -72,6 +72,7 @@ final class EditorFeature {
         // already activated the group when this runs.
         layout.onNewTab = { [weak self] in Task { await self?.newFile() } }
         routeDiagnostics()
+        bindHoverPopover()
         watchConfigForLSP()
         recentPaths = (try? workspace.state.section("editor", as: State.self))?.recent ?? []
         publishRecents()

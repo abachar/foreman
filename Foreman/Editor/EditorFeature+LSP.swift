@@ -10,6 +10,8 @@ import LanguageServerProtocol
 extension EditorFeature {
     /// editor R42: how long the pointer must rest before anything is asked.
     static let hoverDelay = Duration.milliseconds(300)
+    /// editor R42: how long the pointer has to reach the popover after leaving the text.
+    static let hoverGrace = Duration.milliseconds(150)
 
     /// editor R37: a tab that just loaded, changed or was saved tells its server.
     ///
@@ -45,7 +47,7 @@ extension EditorFeature {
             guard let self, let tab else { return }
             pointerMoved(to: location, in: tab)
         }
-        tab.onPointerLeft = { [weak self] in self?.dismissHover() }
+        tab.onPointerLeft = { [weak self] in self?.scheduleHoverDismissal() }
     }
 
     /// editor R35, R36: the `lsp` section changed, so every open document is declared again.
@@ -82,6 +84,20 @@ extension EditorFeature {
         }
     }
 
+    /// editor R42: leaving the text does not close the popover if the pointer is heading into it.
+    ///
+    /// The text view reports the pointer leaving *it*, which is exactly what happens on the way to
+    /// the popover — and there is a gap between the two. So the close waits a moment and is called
+    /// off when the pointer has landed on the popover, which then reports its own exit.
+    private func scheduleHoverDismissal() {
+        hoverTask?.cancel()
+        hoverTask = Task { [weak self] in
+            guard (try? await Task.sleep(for: Self.hoverGrace)) != nil, let self else { return }
+            guard !hoverPopover.containsMouse else { return }
+            dismissHover()
+        }
+    }
+
     func dismissHover() {
         hoverTask?.cancel()
         hoverTask = nil
@@ -90,6 +106,11 @@ extension EditorFeature {
     }
 
     /// editor R41, R42: the diagnostic under the pointer, the server's markdown, or both.
+    /// editor R42: the popover closes itself when the pointer leaves it.
+    func bindHoverPopover() {
+        hoverPopover.onPointerLeft = { [weak self] in self?.dismissHover() }
+    }
+
     private func showHover(at location: Int, in tab: EditorTab) async {
         guard let textView = tab.textView as? CurrentLineTextView else { return }
         let text = textView.string as NSString

@@ -21,6 +21,17 @@ final class HoverPopover {
     nonisolated static let gap: CGFloat = 6
 
     private var panel: NSPanel?
+    /// Retained with the panel: the container owns the tracking, the controller owns the view.
+    private var hosting: NSHostingController<HoverPopoverView>?
+    /// editor R42: the pointer left the popover itself, so there is nothing left to read.
+    var onPointerLeft: (() -> Void)?
+
+    /// Whether the pointer is over the popover — a move *into* it must not close it (author,
+    /// 2026-08-31: moving onto it made it vanish, so a long doc could not be scrolled).
+    var containsMouse: Bool {
+        guard let panel, panel.isVisible else { return false }
+        return panel.frame.contains(NSEvent.mouseLocation)
+    }
 
     var isShown: Bool {
         panel?.isVisible == true
@@ -38,17 +49,27 @@ final class HoverPopover {
         let content = HoverPopoverView(
             blocks: blocks, diagnostic: diagnostic, theme: theme, highlighter: highlighter)
         let hosting = NSHostingController(rootView: content)
-        hosting.sizingOptions = [.preferredContentSize]
+        self.hosting = hosting
+        // Measured **at the width it will have**: `fittingSize` on an unconstrained view reports
+        // the height of text that has not wrapped yet, which showed a scroller over content that
+        // fits (author, 2026-08-31).
+        let ideal = hosting.sizeThatFits(
+            in: NSSize(width: Self.maximumWidth, height: .greatestFiniteMagnitude))
         let size = NSSize(
-            width: min(max(hosting.view.fittingSize.width, 160), Self.maximumWidth),
-            height: min(hosting.view.fittingSize.height, Self.maximumHeight))
+            width: min(max(ideal.width, 160), Self.maximumWidth),
+            height: min(ideal.height.rounded(.up), Self.maximumHeight))
         let panel = self.panel ?? makePanel(in: window)
         self.panel = panel
         // design R18: the island's rounding lives on the hosted layer, the panel itself is clear.
-        hosting.view.wantsLayer = true
-        hosting.view.layer?.cornerRadius = theme.tokens.islandRadius
-        hosting.view.layer?.masksToBounds = true
-        panel.contentViewController = hosting
+        let container = HoverPanelView(frame: NSRect(origin: .zero, size: size))
+        container.onExit = { [weak self] in self?.onPointerLeft?() }
+        hosting.view.frame = container.bounds
+        hosting.view.autoresizingMask = [.width, .height]
+        container.addSubview(hosting.view)
+        container.wantsLayer = true
+        container.layer?.cornerRadius = theme.tokens.islandRadius
+        container.layer?.masksToBounds = true
+        panel.contentView = container
         panel.setContentSize(size)
         panel.setFrameTopLeftPoint(Self.origin(for: rect, of: view, size: size))
         // Never key: the pointer is resting, the user is not asking to type in it.
@@ -59,7 +80,8 @@ final class HoverPopover {
         guard let panel else { return }
         panel.orderOut(nil)
         panel.parent?.removeChildWindow(panel)
-        panel.contentViewController = nil
+        panel.contentView = nil
+        hosting = nil
         self.panel = nil
     }
 
@@ -98,8 +120,33 @@ final class HoverPopover {
     }
 }
 
+/// The panel's content view, which knows when the pointer leaves it (editor R42).
+///
+/// The text view reports the pointer leaving *it*, which happens on the way **in** here; without
+/// this the popover closed exactly when the user reached for it.
+private final class HoverPanelView: NSView {
+    var onExit: (() -> Void)?
+    private var tracking: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking {
+            removeTrackingArea(tracking)
+        }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        onExit?()
+    }
+}
+
 /// What the popover shows (editor R41, R42).
-private struct HoverPopoverView: View {
+struct HoverPopoverView: View {
     let blocks: [MarkdownBlock]
     let diagnostic: EditorDiagnostic?
     let theme: ThemeService
