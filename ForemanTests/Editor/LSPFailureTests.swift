@@ -12,7 +12,7 @@ import Testing
 struct LSPFailureTests {
     @Test func showsTheServersOwnWordsWhenItNeverAnswered() {
         let message = LSPServer.startupFailure(
-            binary: "typescript-language-server", stderr: "error: required option '--stdio' not specified",
+            binary: "typescript-language-server", reason: "error: required option '--stdio' not specified",
             timeout: .seconds(10))
         #expect(message == "`typescript-language-server`: error: required option '--stdio' not specified")
     }
@@ -20,10 +20,10 @@ struct LSPFailureTests {
     /// A server that hangs says nothing, and then the timeout is all there is to report.
     @Test func fallsBackToTheTimeoutWhenItSaidNothing() {
         #expect(
-            LSPServer.startupFailure(binary: "jdtls", stderr: nil, timeout: .seconds(10))
+            LSPServer.startupFailure(binary: "jdtls", reason: nil, timeout: .seconds(10))
                 == "`jdtls` did not answer in 10 s")
         #expect(
-            LSPServer.startupFailure(binary: "jdtls", stderr: "", timeout: .seconds(30))
+            LSPServer.startupFailure(binary: "jdtls", reason: "", timeout: .seconds(30))
                 == "`jdtls` did not answer in 30 s")
     }
 
@@ -32,10 +32,10 @@ struct LSPFailureTests {
     /// once per window too — so fixing a `PATH` changes nothing until the window is reopened.
     @Test func carriesTheReasonAndWhatToDo() {
         #expect(
-            LSPServer.deathFailure(binary: "gopls", stderr: "cannot find module")
+            LSPServer.deathFailure(binary: "gopls", reason: "cannot find module")
                 == "`gopls` stopped twice (cannot find module) — reopen the window to try again")
         #expect(
-            LSPServer.deathFailure(binary: "gopls", stderr: nil)
+            LSPServer.deathFailure(binary: "gopls", reason: nil)
                 == "`gopls` stopped twice — reopen the window to try again")
     }
 
@@ -67,6 +67,29 @@ struct LSPFailureTests {
         #expect(await server.ready() == false)
         #expect(server.failure?.contains("boom: bad flag") == true)
         await server.stop()
+    }
+
+    /// A server that refuses to start says so **in the protocol**, not on `stderr`: the banner has
+    /// to unwrap the JSON-RPC boilerplate and keep the sentence the server actually wrote.
+    /// `typescript-language-server` in a workspace whose `node_modules` is one folder down, 2026-08-31.
+    @Test func unwrapsAnInitializeRefusal() {
+        struct ServerError: Error, CustomStringConvertible {
+            let description = """
+                JSONRPCResponseError<JSONValue>(code: -32603, message: "Request initialize failed \
+                with message: Could not find a valid TypeScript installation. Exiting.", data: nil)
+                """
+        }
+        #expect(
+            LSPServer.refusalMessage(of: ServerError())
+                == "Could not find a valid TypeScript installation. Exiting.")
+    }
+
+    /// An error with no message of its own still gives its description rather than nothing.
+    @Test func fallsBackToTheErrorItself() {
+        struct Plain: Error, CustomStringConvertible {
+            let description = "connection closed"
+        }
+        #expect(LSPServer.refusalMessage(of: Plain()) == "connection closed")
     }
 
     /// A banner is one line: a server that dumps a stack trace does not take the window with it.

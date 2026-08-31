@@ -32,6 +32,16 @@ final class LSPServer {
     private var starting: Task<Bool, Never>?
     private var restarts = 0
     private var isStopping = false
+    /// editor R39: what the server answered `initialize` with, when it answered an error.
+    ///
+    /// A server that refuses to start on purpose says so **in the protocol**, not on `stderr` —
+    /// `typescript-language-server` answers "Could not find a valid TypeScript installation" and
+    /// exits. Swallowing that with `try?` cost two rounds of guessing (2026-08-31).
+    ///
+    /// `stderr` wins when there is any: a process dying under the connection throws a transport
+    /// error that says nothing useful, while a server refusing on purpose answers in the protocol
+    /// and writes nothing.
+    private var refusal: String?
     /// editor R39: the last thing the server said on `stderr`, for the banner when it dies.
     ///
     /// A server that cannot start almost always says why in one line — a missing flag, a bad
@@ -55,9 +65,9 @@ final class LSPServer {
             return "`\(FormatterCatalog.binary(of: command))` not found in PATH"
         case .startup:
             return Self.startupFailure(
-                binary: FormatterCatalog.binary(of: command), stderr: lastError, timeout: timeout)
+                binary: FormatterCatalog.binary(of: command), reason: lastError ?? refusal, timeout: timeout)
         case .diedTwice:
-            return Self.deathFailure(binary: FormatterCatalog.binary(of: command), stderr: lastError)
+            return Self.deathFailure(binary: FormatterCatalog.binary(of: command), reason: lastError ?? refusal)
         }
     }
 
@@ -247,7 +257,7 @@ final class LSPServer {
         return true
     }
 
-    /// editor R39: `initialize` bounded by `lsp.timeout`; `nil` when it did not answer in time.
+    /// editor R39: `initialize` bounded by `lsp.timeout`; `nil` when it refused or never answered.
     private func handshake(_ connection: JSONRPCServerConnection) async -> InitializationResponse? {
         let params = InitializeParams(
             processId: Int(ProcessInfo.processInfo.processIdentifier),
@@ -259,7 +269,36 @@ final class LSPServer {
             capabilities: ClientCapabilities(
                 workspace: nil, textDocument: nil, window: nil, general: nil, experimental: nil),
             trace: nil, workspaceFolders: nil)
-        return await withTimeout(timeout) { try? await connection.initialize(params) }
+        return await withTimeout(timeout) { [weak self] in
+            do {
+                return try await connection.initialize(params)
+            } catch {
+                // editor R39: an error answer is the server telling us why, in its own words.
+                await self?.refused(by: error)
+                return nil
+            }
+        }
+    }
+
+    private func refused(by error: any Error) {
+        refusal = Self.refusalMessage(of: error)
+    }
+
+    /// editor R39: the sentence out of a failed `initialize`.
+    ///
+    /// The protocol wraps it in its own boilerplate ("Request initialize failed with message: "),
+    /// which says nothing the banner does not already say — the server's own sentence follows it.
+    nonisolated static func refusalMessage(of error: any Error) -> String? {
+        let text = String(describing: error)
+        guard let range = text.range(of: "message: ", options: .backwards) else {
+            return meaningfulLine(of: text)
+        }
+        var message = String(text[range.upperBound...])
+        if let quote = message.range(of: "\", data:", options: .backwards) {
+            message = String(message[..<quote.lowerBound])
+        }
+        message = message.trimmingCharacters(in: CharacterSet(charactersIn: "\"() "))
+        return message.isEmpty ? meaningfulLine(of: text) : String(message.prefix(200))
     }
 
     /// The event loop, and the death notice: the sequence ends when the child's `stdout` reaches
@@ -300,9 +339,9 @@ final class LSPServer {
     ///
     /// Its own words when it left any, the timeout otherwise — "did not answer in 10 s" is true
     /// and useless when the server printed the reason on the way out.
-    nonisolated static func startupFailure(binary: String, stderr: String?, timeout: Duration) -> String {
-        if let stderr, !stderr.isEmpty {
-            return "`\(binary)`: \(stderr)"
+    nonisolated static func startupFailure(binary: String, reason: String?, timeout: Duration) -> String {
+        if let reason, !reason.isEmpty {
+            return "`\(binary)`: \(reason)"
         }
         let seconds = Double(timeout.components.seconds)
         return "`\(binary)` did not answer in \(seconds.formatted()) s"
@@ -314,12 +353,12 @@ final class LSPServer {
     /// R39 gives up on the language for the life of the window, and the login environment is
     /// resolved once per window too (`terminal` R3) — so a user who has just fixed their `PATH`
     /// sees no change until they reopen it. Met on 2026-08-31, twice in a row.
-    nonisolated static func deathFailure(binary: String, stderr: String?) -> String {
+    nonisolated static func deathFailure(binary: String, reason: String?) -> String {
         let advice = "reopen the window to try again"
-        guard let stderr, !stderr.isEmpty else {
+        guard let reason, !reason.isEmpty else {
             return "`\(binary)` stopped twice — \(advice)"
         }
-        return "`\(binary)` stopped twice (\(stderr)) — \(advice)"
+        return "`\(binary)` stopped twice (\(reason)) — \(advice)"
     }
 
     /// editor R39: the line of `stderr` worth showing — the last one that says something.
