@@ -50,6 +50,22 @@ struct LSPFailureTests {
         #expect(LSPServer.meaningfulLine(of: ">") == nil)
     }
 
+    /// The race this file's fix exists for, against a real child that dies talking.
+    ///
+    /// `stderr` and `stdout` are two streams: a process that fails on launch usually reaches EOF
+    /// on the second before the first has been read, so a sentence built at the moment of death
+    /// said "no LSP for this language" with the reason arriving milliseconds later. The message
+    /// is computed when it is read, and this pins that.
+    @MainActor
+    @Test func quotesAnErrorThatArrivesAfterTheProcessIsGone() async {
+        let server = LSPServer(
+            command: "printf 'boom: bad flag\\n' >&2; exit 1", root: URL(filePath: "/tmp"),
+            timeout: .seconds(2), environment: ProcessInfo.processInfo.environment)
+        #expect(await server.ready() == false)
+        #expect(server.failure?.contains("boom: bad flag") == true)
+        await server.stop()
+    }
+
     /// A banner is one line: a server that dumps a stack trace does not take the window with it.
     @Test func capsAVeryLongLine() throws {
         let line = try #require(LSPServer.meaningfulLine(of: String(repeating: "x", count: 400)))

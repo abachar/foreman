@@ -42,7 +42,33 @@ final class LSPServer {
     /// What the server said it can do; `nil` until it is running (editor R39).
     private(set) var capabilities: ServerCapabilities?
     /// editor R39: why the three features are absent, shown once in the tab's banner.
-    private(set) var failure: String?
+    ///
+    /// Computed, not stored, and that is the whole point: the server's `stderr` and its `stdout`
+    /// are two streams, and a process that dies on launch usually reaches EOF on the second
+    /// before the first has been read. Storing the sentence at the moment of death produced "no
+    /// LSP for this language" with the reason arriving milliseconds later (2026-08-31).
+    var failure: String? {
+        switch failureKind {
+        case nil:
+            return nil
+        case .binaryMissing:
+            return "`\(FormatterCatalog.binary(of: command))` not found in PATH"
+        case .startup:
+            return Self.startupFailure(
+                binary: FormatterCatalog.binary(of: command), stderr: lastError, timeout: timeout)
+        case .diedTwice:
+            return Self.deathFailure(binary: FormatterCatalog.binary(of: command), stderr: lastError)
+        }
+    }
+
+    /// editor R39: which of the three ways it failed; the sentence is built when it is read.
+    private enum FailureKind {
+        case binaryMissing
+        case startup
+        case diedTwice
+    }
+
+    private var failureKind: FailureKind?
     private(set) var isRunning = false
 
     init(command: String, root: URL, timeout: Duration, environment: [String: String]) {
@@ -195,7 +221,7 @@ final class LSPServer {
         do {
             try process.run()
         } catch {
-            failed("`\(FormatterCatalog.binary(of: command))` could not be started")
+            failed(.startup)
             return false
         }
         self.process = process
@@ -209,14 +235,12 @@ final class LSPServer {
         drainDiagnostics(stderr)
         listen(connection)
         guard let response = await handshake(connection) else {
-            failed(
-                Self.startupFailure(
-                    binary: FormatterCatalog.binary(of: command), stderr: lastError, timeout: timeout))
+            failed(.startup)
             await stop()
             return false
         }
         capabilities = response.capabilities
-        failure = nil
+        failureKind = nil
         isRunning = true
         try? await connection.initialized(InitializedParams())
         logger.debug("\(response.serverInfo?.name ?? self.command, privacy: .private) ready")
@@ -264,11 +288,10 @@ final class LSPServer {
     /// editor R39: a crash costs the language its LSP after the second one.
     private func serverEnded() {
         guard !isStopping else { return }
-        let reason = lastError
         clear()
         restarts += 1
         if restarts > Self.restartLimit {
-            failure = Self.deathFailure(binary: FormatterCatalog.binary(of: command), stderr: reason)
+            failureKind = .diedTwice
         }
         logger.debug("\(self.command, privacy: .private) ended (\(self.restarts) restarts)")
     }
@@ -325,11 +348,11 @@ final class LSPServer {
 
     /// editor R39: the command's binary is not in the `PATH` — nothing was launched.
     func markBinaryMissing() {
-        failed("`\(FormatterCatalog.binary(of: command))` not found in PATH")
+        failed(.binaryMissing)
     }
 
-    private func failed(_ reason: String) {
-        failure = reason
+    private func failed(_ kind: FailureKind) {
+        failureKind = kind
         clear()
     }
 
