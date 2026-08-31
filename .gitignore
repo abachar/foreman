@@ -8,3 +8,9 @@ xcuserdata/
 *.profraw
 *.profdata
 .foreman/config.json
+# sourcekit-lsp's build server, written by `xcode-build-server config`: absolute paths
+# to this machine's DerivedData, and it is regenerated in one command.
+buildServer.json
+# and its flag cache, rewritten on every `xcode-build-server parse`
+.compile
+.compile.lock
