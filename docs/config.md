@@ -35,7 +35,7 @@ Example with every section (values are the defaults unless noted):
 
 | Key | Type | Default | Note |
 |---|---|---|---|
-| `repos` | `[string]` | absent → scan for `.git/` (depth ≤ 2, `node_modules`, `target`, `.build`, `DerivedData` skipped) | Paths relative to the root; a missing folder is dropped with a warning. No repo at all → no git panels (git R1b). |
+| `repos` | `[string]` | absent → scan for `.git/` (depth ≤ 2, `node_modules`, `target`, `.build`, `DerivedData` skipped) | Paths relative to the root; a missing folder is dropped with a warning. An entry starting with `!` excludes that repo from git tracking (declared or scanned; `"!."` excludes the root repo) — git R1, amended 2026-09-09. No repo at all → no git panels (git R1b). |
 
 ## `commands` — `Run/RunCatalog.swift` (run R1–R3, R8)
 

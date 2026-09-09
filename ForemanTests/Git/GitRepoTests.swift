@@ -52,6 +52,28 @@ struct GitRepoTests {
         #expect(GitRepo(url: root, root: root).id == ".")
     }
 
+    @Test func ignoredReposLeaveTheScanAndTheDeclaredList() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try makeFolder("a/.git")
+        try makeFolder("b/.git")
+
+        let scanned = await GitRepo.discover(root: root, declared: [], ignored: [root.appending(path: "b")])
+        #expect(scanned.map(\.id) == ["a"])
+
+        let declared = await GitRepo.discover(
+            root: root, declared: [root.appending(path: "a"), root.appending(path: "b")],
+            ignored: [root.appending(path: "a")])
+        #expect(declared.map(\.id) == ["b"])
+    }
+
+    @Test func anIgnoredRootRepoLeavesNothingToTrack() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try makeFolder(".git")
+
+        let repos = await GitRepo.discover(root: root, declared: [], ignored: [root])
+        #expect(repos.isEmpty)
+    }
+
     @Test func readsTheOperationInProgressOffTheGitDirectory() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         try makeFolder(".git")

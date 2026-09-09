@@ -17,11 +17,15 @@ nonisolated struct WorkspaceConfig: Sendable {
     /// `warnings` (config, edge cases). Empty when `repos` is absent.
     let repos: [URL]
 
+    /// Repositories excluded from git tracking: the `repos` entries starting with `!` (git R1,
+    /// amended 2026-09-09), resolved under the root.
+    let ignoredRepos: [URL]
+
     /// What was ignored while loading, one message each (config R11, edge cases).
     let warnings: [String]
 
     /// A workspace without any `config.json` (config R2).
-    static let empty = WorkspaceConfig(sections: [:], repos: [], warnings: [])
+    static let empty = WorkspaceConfig(sections: [:], repos: [], ignoredRepos: [], warnings: [])
 
     /// The section `name` decoded as `type`, or `nil` when no file declares it.
     func section<T: Decodable>(_ name: String, as type: T.Type) throws -> T? {
@@ -101,7 +105,8 @@ nonisolated struct WorkspaceConfig: Sendable {
         var sections = sections
         let declared = sections.removeValue(forKey: "repos")
         let repos = repos(declared: declared, root: root, warnings: &warnings)
-        return WorkspaceConfig(sections: sections, repos: repos, warnings: warnings)
+        return WorkspaceConfig(
+            sections: sections, repos: repos.declared, ignoredRepos: repos.ignored, warnings: warnings)
     }
 
     /// Reads both files and merges them; `globalFile` is `nil` when there is none to read.
@@ -140,25 +145,37 @@ nonisolated struct WorkspaceConfig: Sendable {
         return dictionary
     }
 
-    private static func repos(declared: Data?, root: URL, warnings: inout [String]) -> [URL] {
-        guard let declared else { return [] }
+    private static func repos(
+        declared: Data?, root: URL, warnings: inout [String]
+    ) -> (declared: [URL], ignored: [URL]) {
+        guard let declared else { return ([], []) }
         guard let paths = try? JSONDecoder().decode([String].self, from: declared) else {
             warnings.append("\"repos\" ignored: expected an array of paths.")
-            return []
+            return ([], [])
         }
-        return paths.compactMap { path in
-            let folder = root.appending(path: path, directoryHint: .isDirectory)
+        var repos: [URL] = []
+        var ignored: [URL] = []
+        for path in paths {
+            let isExclusion = path.hasPrefix("!")
+            let relative = isExclusion ? String(path.dropFirst()) : path
+            let folder = root.appending(path: relative, directoryHint: .isDirectory)
             // architecture, security: a declared path never resolves outside the workspace root.
             guard Workspace.contains(folder, under: root) else {
                 warnings.append("Repository \"\(path)\" ignored: outside the workspace root.")
-                return nil
+                continue
+            }
+            if isExclusion {
+                // A folder missing on disk has nothing to track: the exclusion is kept as it is.
+                ignored.append(folder)
+                continue
             }
             guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else {
                 warnings.append("Repository \"\(path)\" ignored: folder not found.")
-                return nil
+                continue
             }
-            return folder
+            repos.append(folder)
         }
+        return (repos, ignored)
     }
 
     /// Line of a `JSONSerialization` error: the byte offset it reports, counted in newlines.

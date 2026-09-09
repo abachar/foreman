@@ -61,8 +61,11 @@ final class GitFeature {
             model.restore(state)
         }
         // git R1b: the panels exist only with a repo; the root or `config.repos` answers at once,
-        // the depth-2 scan answers off the main actor.
-        showPanels(!workspace.config.repos.isEmpty || GitRepo.hasGitEntry(workspace.root))
+        // the depth-2 scan answers off the main actor. A root excluded by a `!` entry does not
+        // answer for itself: `checkPresence` decides.
+        let root = workspace.root.standardizedFileURL
+        let rootIgnored = workspace.config.ignoredRepos.contains { $0.standardizedFileURL == root }
+        showPanels(!workspace.config.repos.isEmpty || (GitRepo.hasGitEntry(workspace.root) && !rootIgnored))
         presence = Task { [weak self] in await self?.checkPresence() }
         // agents R10b: `cmd+e` on a diff tab sends its file, or the sha of a whole commit.
         layout.shortcuts.register(
@@ -97,7 +100,8 @@ final class GitFeature {
     // MARK: - Presence (git R1b, layout R36)
 
     private func checkPresence() async {
-        let repos = await GitRepo.discover(root: workspace.root, declared: workspace.config.repos)
+        let repos = await GitRepo.discover(
+            root: workspace.root, declared: workspace.config.repos, ignored: workspace.config.ignoredRepos)
         guard !Task.isCancelled else { return }
         showPanels(!repos.isEmpty)
     }
@@ -214,7 +218,8 @@ final class GitFeature {
     private func discoverAndRefresh() async {
         guard let toolchain = await resolveToolchain() else { return }
         model.setDiscovering(true)
-        let repos = await GitRepo.discover(root: workspace.root, declared: workspace.config.repos)
+        let repos = await GitRepo.discover(
+            root: workspace.root, declared: workspace.config.repos, ignored: workspace.config.ignoredRepos)
         guard isActive, !Task.isCancelled else {
             model.setDiscovering(false)
             return
@@ -764,7 +769,10 @@ final class GitFeature {
             .max { $0.url.path().count < $1.url.path().count }
         }
         if let repo = deepest(model.sections.map(\.repo)) { return repo }
-        if let repo = deepest(await GitRepo.discover(root: workspace.root, declared: workspace.config.repos)) {
+        if let repo = deepest(
+            await GitRepo.discover(
+                root: workspace.root, declared: workspace.config.repos, ignored: workspace.config.ignoredRepos))
+        {
             return repo
         }
         return GitRepo.hasGitEntry(cwd) ? GitRepo(url: cwd, root: workspace.root) : nil

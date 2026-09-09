@@ -23,13 +23,17 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
 
     // MARK: - Discovery (git R1)
 
-    /// The declared repos as they are, otherwise the scan; sorted by id, the root first.
+    /// The declared repos as they are, otherwise the scan, minus the `!` exclusions of
+    /// `config.repos` (git R1, amended 2026-09-09); sorted by id, the root first.
     @concurrent
-    static func discover(root: URL, declared: [URL]) async -> [GitRepo] {
+    static func discover(root: URL, declared: [URL], ignored: [URL] = []) async -> [GitRepo] {
+        let excluded = Set(ignored.map { GitRepo(url: $0, root: root).id })
         guard declared.isEmpty else {
-            return declared.map { GitRepo(url: $0, root: root) }.sorted { $0.id < $1.id }
+            return declared.map { GitRepo(url: $0, root: root) }
+                .filter { !excluded.contains($0.id) }
+                .sorted { $0.id < $1.id }
         }
-        return scan(root: root)
+        return scan(root: root).filter { !excluded.contains($0.id) }
     }
 
     /// git R1: the scan, disk IO never on the main actor.

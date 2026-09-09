@@ -100,6 +100,33 @@ struct WorkspaceConfigTests {
         #expect(try config.section("repos", as: [String].self) == nil)
     }
 
+    @Test func separatesExclusionsFromDeclaredRepos() async throws {
+        defer { fixture.remove() }
+        try fixture.makeFolder("backend")
+        try fixture.writeWorkspace(#"{ "repos": ["backend", "!vendor/lib", "!."] }"#)
+
+        let config = try await fixture.load()
+
+        #expect(config.repos == [fixture.root.appending(path: "backend", directoryHint: .isDirectory)])
+        // git R1 (amended 2026-09-09): an exclusion is kept even when the folder is missing.
+        #expect(
+            config.ignoredRepos == [
+                fixture.root.appending(path: "vendor/lib", directoryHint: .isDirectory),
+                fixture.root.appending(path: ".", directoryHint: .isDirectory),
+            ])
+        #expect(config.warnings.isEmpty)
+    }
+
+    @Test func dropsExclusionsOutsideTheRoot() async throws {
+        defer { fixture.remove() }
+        try fixture.writeWorkspace(#"{ "repos": ["!../outside"] }"#)
+
+        let config = try await fixture.load()
+
+        #expect(config.ignoredRepos.isEmpty)
+        #expect(config.warnings == ["Repository \"!../outside\" ignored: outside the workspace root."])
+    }
+
     @Test func dropsDeclaredReposOutsideTheRoot() async throws {
         defer { fixture.remove() }
         try fixture.makeFolder("backend")
