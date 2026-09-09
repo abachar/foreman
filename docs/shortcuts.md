@@ -59,6 +59,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `cmd+k` | `terminal.clear` | Clear the scrollback | terminal | 🟢 |
 | `cmd+=` / `cmd+-` | `terminal.zoomIn` / `.zoomOut` | Font zoom | terminal | 🟢 |
 | `ctrl+…`, `opt+…`, `esc`, arrows | — | To the process (`layout` R25) | native | 🟢 |
+| `shift+enter` | — | Insert a newline in the agent TUIs: sent as `ESC CR` (`terminal` R12, amended 2026-09-09) | native | 🟢 (2026-09-09) |
 
 ## Agents (`agents` R9)
 

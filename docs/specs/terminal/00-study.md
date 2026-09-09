@@ -43,7 +43,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 ### Input, mouse, appearance
 
-- R12 — Keyboard: `layout` R25 — everything that is not a Foreman `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`).
+- R12 — Keyboard: `layout` R25 — everything that is not a Foreman `cmd+…` shortcut goes to the process (including `ctrl+c`, `ctrl+d`, arrows, `esc`). `cmd+c`/`cmd+v` copy/paste (SwiftTerm's selection), `cmd+k` clears the scrollback, `cmd+=`/`cmd+-` zoom the font (scope `tab(terminal)`). **Amended 2026-09-09** (issue #4): `shift+enter` (no other modifier) reaches the process as `ESC CR` instead of a bare `CR` — the sequence the agent TUIs (Claude Code…) read as "insert a newline", where `CR` submits; a shell that receives it treats `ESC` and `CR` separately, harmless in the surfaces Foreman hosts (no interactive shell, `product` R4).
 - R13 — Mouse: selection, copy, scrolling, forwarding mouse events to the TUIs that ask for them — all delegated to SwiftTerm. Detected links are clickable (`cmd+click`).
 - R14 — Appearance: the monospaced font (**JetBrains Mono 13** by default since 2026-08-28, the system monospaced font when it is not installed) and the theme are defined by Foreman (`ThemeService`); the `terminal` section of `.foreman/config.json` (`font`, `fontSize`, `theme`) overrides them (the local config only, config decision 2026-08-26). Scrollback: 10,000 lines.
 - R15 — Resizing: the surface receives its size in points from the layout (`layout` R21); SwiftTerm derives rows/columns from it and propagates the window size to the process.

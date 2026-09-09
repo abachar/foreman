@@ -29,6 +29,26 @@ final class TerminalSurfaceView: LocalProcessTerminalView {
         onBell?()
     }
 
+    /// terminal R12 (amended 2026-09-09, issue #4): `shift+enter` reaches the process as `ESC CR`,
+    /// which the agent TUIs (Claude Code…) read as "insert a newline" — a bare `CR` submits.
+    ///
+    /// `keyDown` is not `open` in SwiftTerm; `performKeyEquivalent` runs first, for every key,
+    /// on the whole hierarchy — hence the first-responder check. A TUI that enabled the kitty
+    /// keyboard protocol already receives `shift+enter` as `CSI 13;2u`: SwiftTerm keeps it.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard window?.firstResponder === self, terminal.keyboardEnhancementFlags.isEmpty,
+            Self.insertsNewline(keyCode: event.keyCode, modifiers: event.modifierFlags)
+        else { return super.performKeyEquivalent(with: event) }
+        send([0x1b, 0x0d])
+        return true
+    }
+
+    /// `shift+enter` and nothing else: `cmd`/`opt`/`ctrl` combinations keep SwiftTerm's handling.
+    nonisolated static func insertsNewline(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        keyCode == 36 && modifiers.contains(.shift)
+            && modifiers.isDisjoint(with: [.command, .option, .control])
+    }
+
     /// terminal R14: colors from `ThemeService`, converted here and only here (architecture:
     /// third-party types next to their use).
     func apply(_ palette: ThemeService.TerminalPalette, font: NSFont) {
