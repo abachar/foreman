@@ -32,15 +32,26 @@ final class TerminalSurfaceView: LocalProcessTerminalView {
     /// terminal R12 (amended 2026-09-09, issue #4): `shift+enter` reaches the process as `ESC CR`,
     /// which the agent TUIs (Claude Code…) read as "insert a newline" — a bare `CR` submits.
     ///
-    /// `keyDown` is not `open` in SwiftTerm; `performKeyEquivalent` runs first, for every key,
-    /// on the whole hierarchy — hence the first-responder check. A TUI that enabled the kitty
-    /// keyboard protocol already receives `shift+enter` as `CSI 13;2u`: SwiftTerm keeps it.
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard window?.firstResponder === self, terminal.keyboardEnhancementFlags.isEmpty,
-            Self.insertsNewline(keyCode: event.keyCode, modifiers: event.modifierFlags)
-        else { return super.performKeyEquivalent(with: event) }
-        send([0x1b, 0x0d])
-        return true
+    /// A local monitor, as `ShortcutRegistry`: SwiftTerm's `keyDown` is not `open`, and AppKit
+    /// sends `performKeyEquivalent` for `cmd+…` keys only (checked 2026-09-10). A TUI that
+    /// enabled the kitty keyboard protocol already receives `shift+enter` as `CSI 13;2u`.
+    private var newlineMonitor: Any?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let newlineMonitor {
+            NSEvent.removeMonitor(newlineMonitor)
+            self.newlineMonitor = nil
+        }
+        guard window != nil else { return }
+        newlineMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let window, event.window === window, window.firstResponder === self,
+                terminal.keyboardEnhancementFlags.isEmpty,
+                Self.insertsNewline(keyCode: event.keyCode, modifiers: event.modifierFlags)
+            else { return event }
+            send([0x1b, 0x0d])
+            return nil
+        }
     }
 
     /// `shift+enter` and nothing else: `cmd`/`opt`/`ctrl` combinations keep SwiftTerm's handling.
