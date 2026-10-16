@@ -52,6 +52,40 @@ nonisolated enum LogParser {
     }
 }
 
+/// git R19b: the files a commit changed, `show --name-status -z`.
+nonisolated enum CommitFilesParser {
+    /// A merge shows what it brought to its first parent, like its diff (R14).
+    static func arguments(_ sha: String) -> [String] {
+        [
+            "-c", "core.quotepath=false", "show", "-m", "--first-parent", "--format=", "--name-status", "-z", "-M", sha,
+            "--",
+        ]
+    }
+
+    /// One entry per file, its status in `index` (the side a commit has).
+    ///
+    /// The fields are `M\0path\0` or `R100\0old\0new\0`: a status letter (a score after R and
+    /// C), then one path, or two for a rename or a copy.
+    static func parse(_ data: Data) -> [GitStatusEntry] {
+        var fields = data.split(separator: 0, omittingEmptySubsequences: false).map {
+            String(decoding: $0, as: UTF8.self)
+        }[...]
+        var result: [GitStatusEntry] = []
+        while let status = fields.popFirst() {
+            let trimmed = status.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let letter = trimmed.first, let change = GitChange(rawValue: letter) else { continue }
+            if change == .renamed || change == .copied {
+                guard let old = fields.popFirst(), let new = fields.popFirst() else { break }
+                result.append(GitStatusEntry(path: new, originalPath: old, index: change, worktree: .unmodified))
+            } else {
+                guard let path = fields.popFirst() else { break }
+                result.append(GitStatusEntry(path: path, index: change, worktree: .unmodified))
+            }
+        }
+        return result
+    }
+}
+
 /// What the history panel asks git (git R18, R20).
 nonisolated struct GitLogQuery: Equatable, Sendable {
     static let pageSize = 200

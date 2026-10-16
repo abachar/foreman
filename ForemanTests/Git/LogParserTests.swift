@@ -139,3 +139,18 @@ struct LogParserTests {
         #expect(GitFeature.path("README.md", in: GitRepo(id: ".", url: root), root: root) == "README.md")
     }
 }
+
+/// git R19b: `show --name-status -z` as the history's file tree reads it.
+struct CommitFilesParserTests {
+    @Test func readsStatusesRenamesAndCopies() {
+        let fields = [
+            "M", "src/a.swift", "R087", "old/b.swift", "new/b.swift", "D", "gone.txt", "C100", "x", "y", "A", "n",
+        ]
+        let files = CommitFilesParser.parse(Data((fields.joined(separator: "\0") + "\0").utf8))
+        #expect(files.map(\.path) == ["src/a.swift", "new/b.swift", "gone.txt", "y", "n"])
+        #expect(files.map(\.index) == [.modified, .renamed, .deleted, .copied, .added])
+        #expect(files[1].originalPath == "old/b.swift")
+        #expect(files.allSatisfy { $0.worktree == .unmodified })
+        #expect(CommitFilesParser.parse(Data()).isEmpty)
+    }
+}

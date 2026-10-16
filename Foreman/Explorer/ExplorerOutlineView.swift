@@ -29,21 +29,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let outline = KeyboardOutlineView()
         outline.onKey = { [coordinator = context.coordinator] key in coordinator.handle(key) }
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        column.resizingMask = .autoresizingMask
-        outline.addTableColumn(column)
-        outline.outlineTableColumn = column
-        outline.headerView = nil
-        // `.custom`: any other style makes the outline overwrite the cells' font (design R6).
-        outline.rowSizeStyle = .custom
-        outline.indentationPerLevel = 12
-        outline.autoresizesOutlineColumn = true
-        // The only column takes the whole width from the first frame (bug: names hidden until
-        // the panel was resized).
-        outline.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        outline.usesAutomaticRowHeights = false
-        outline.allowsEmptySelection = true
-        outline.autosaveExpandedItems = false
+        // design R23: the look every file tree shares.
+        FileTreeStyle.configure(outline, theme: theme)
         outline.dataSource = context.coordinator
         outline.delegate = context.coordinator
         outline.target = context.coordinator
@@ -63,8 +50,6 @@ struct ExplorerOutlineView: NSViewRepresentable {
         scroll.documentView = outline
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
-        outline.backgroundColor = theme.tokens.surface.nsColor
-        outline.rowHeight = theme.listRowHeight
         return scroll
     }
 
@@ -72,11 +57,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
         // design R8: the tree sits on the island.
         // design R6, R11: a new font family or size in the `theme` section reaches the cells.
         if let outline = context.coordinator.outline,
-            outline.backgroundColor != theme.tokens.surface.nsColor || outline.rowHeight != theme.listRowHeight
-                || context.coordinator.appliedFont != font
+            FileTreeStyle.refresh(outline, theme: theme) || context.coordinator.appliedFont != font
         {
-            outline.backgroundColor = theme.tokens.surface.nsColor
-            outline.rowHeight = theme.listRowHeight
             context.coordinator.appliedFont = font
             outline.reloadData()
         }
@@ -455,19 +437,16 @@ struct ExplorerOutlineView: NSViewRepresentable {
 
         /// design R3: the selection on the accent.
         func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
-            let row =
-                outlineView.makeView(withIdentifier: TokenRowView.identifier, owner: nil) as? TokenRowView
-                ?? TokenRowView()
-            row.identifier = TokenRowView.identifier
-            row.tokens = theme.tokens
-            return row
+            FileTreeStyle.rowView(outlineView, theme: theme)
         }
 
         func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
             guard let item = item as? OutlineItem else { return nil }
-            let identifier = NSUserInterfaceItemIdentifier("cell")
-            let cell =
-                outlineView.makeView(withIdentifier: identifier, owner: nil) as? NSTableCellView ?? makeCell(identifier)
+            let cell = FileTreeStyle.cell(in: outlineView, theme: theme)
+            // explorer R17: the label doubles as the inline rename editor.
+            cell.textField?.target = self
+            cell.textField?.action = #selector(renamed(_:))
+            cell.setDetail(nil, mark: nil, markColor: nil, actions: [])
             switch item.kind {
             case .node(let node):
                 cell.textField?.isEditable = false
@@ -545,35 +524,6 @@ struct ExplorerOutlineView: NSViewRepresentable {
             path(of: notification.userInfo?["NSObject"])
         }
 
-        private func makeCell(_ identifier: NSUserInterfaceItemIdentifier) -> NSTableCellView {
-            let cell = NSTableCellView()
-            cell.identifier = identifier
-            let image = NSImageView()
-            image.translatesAutoresizingMaskIntoConstraints = false
-            let text = NSTextField(labelWithString: "")
-            text.translatesAutoresizingMaskIntoConstraints = false
-            // explorer R17: the label doubles as the inline rename editor.
-            text.isBezeled = false
-            text.drawsBackground = false
-            text.target = self
-            text.action = #selector(renamed(_:))
-            text.lineBreakMode = .byTruncatingMiddle
-            text.font = theme.interfaceFont()
-            cell.addSubview(image)
-            cell.addSubview(text)
-            cell.imageView = image
-            cell.textField = text
-            NSLayoutConstraint.activate([
-                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-                image.widthAnchor.constraint(equalToConstant: 16),
-                text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 4),
-                text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
-                text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            ])
-            return cell
-        }
-
         /// What the row shows: its chain when it is folded (R23), its name otherwise.
         private func displayed(atRow row: Int) -> String {
             guard let outline, let item = outline.item(atRow: row) as? OutlineItem, case .node(let node) = item.kind
@@ -590,8 +540,8 @@ struct ExplorerOutlineView: NSViewRepresentable {
         private static func fileIcon(for node: FileNode, isExpanded: Bool) -> NSImage? {
             guard !node.isUnreadable else { return nil }
             switch node.kind {
-            case .file: return FileIcon.image(named: FileIcon.name(for: node.name))
-            case .directory: return FileIcon.image(named: FileIcon.folder(isExpanded: isExpanded))
+            case .file: return FileTreeStyle.icon(file: node.name)
+            case .directory: return FileTreeStyle.icon(folderExpanded: isExpanded)
             case .symlink: return nil
             }
         }

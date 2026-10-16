@@ -15,12 +15,36 @@ final class GitHistoryModel {
     var query = GitLogQuery()
     /// The rows the table selected, by sha.
     var selection: Set<String> = []
+    /// git R19b: the commit whose files the lower half shows, and those files.
+    private(set) var filesCommit: GitCommit?
+    private(set) var files: [GitStatusEntry] = []
+    private(set) var isLoadingFiles = false
 
     private var loading: Task<Void, Never>?
+    private var loadingFiles: Task<Void, Never>?
+
+    /// git R19b: the files of `commit`, or nothing when no commit is selected.
+    func showFiles(of commit: GitCommit?, with client: GitCLI?) {
+        loadingFiles?.cancel()
+        filesCommit = commit
+        files = []
+        guard let commit, let client else {
+            isLoadingFiles = false
+            return
+        }
+        isLoadingFiles = true
+        loadingFiles = Task { [weak self] in
+            let output = try? await client.run(CommitFilesParser.arguments(commit.sha))
+            guard !Task.isCancelled, let self else { return }
+            files = output.map { CommitFilesParser.parse($0.stdout) } ?? []
+            isLoadingFiles = false
+        }
+    }
 
     /// The first page again, for a new repo, filter or path.
     func reload(with client: GitCLI?) {
         loading?.cancel()
+        showFiles(of: nil, with: nil)
         commits = []
         query.rewind()
         hasMore = false

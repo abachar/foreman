@@ -15,4 +15,4 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
 ## Where it stands
 
-Built and tested on 2026-10-16; **to be checked by hand by the author** on the `ccoe` workspace (two repos, worktrees in the parent folder). Open points stay in [`git/questions.md`](../specs/git/questions.md): an agent that creates its own worktree after starting in the repo keeps its badge on the main folder.
+**M19 is closed** (2026-10-16): built, tested, and checked by the author on the `ccoe` workspace (two repos, worktrees in the parent folder). Open points stay in [`git/questions.md`](../specs/git/questions.md): an agent that creates its own worktree after starting in the repo keeps its badge on the main folder.

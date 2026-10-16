@@ -23,6 +23,14 @@ struct GitHistoryPanelView: View {
             } else if model.commits.isEmpty {
                 ContentUnavailableView("No Commits", systemImage: "clock.arrow.circlepath")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let commit = model.filesCommit {
+                // git R19b: the selected commit's files under the log.
+                VSplitView {
+                    table
+                        .frame(minHeight: 120)
+                    GitCommitFilesView(commit: commit, model: model, feature: feature, theme: theme)
+                        .frame(minHeight: 100)
+                }
             } else {
                 table
             }
@@ -123,10 +131,8 @@ struct GitHistoryPanelView: View {
             }
         }
         .onChange(of: model.selection) { _, selection in
-            // git R19: a click previews the commit's diff.
-            if let sha = selection.first, let commit = model.commits.first(where: { $0.sha == sha }) {
-                feature.openCommitDiff(commit, preview: true)
-            }
+            // git R19b: a click lists the commit's files; a double click still opens it whole.
+            feature.selectCommit(selection.first.flatMap { sha in model.commits.first { $0.sha == sha } })
         }
         .safeAreaInset(edge: .bottom) {
             if model.hasMore {
@@ -150,5 +156,54 @@ struct GitHistoryPanelView: View {
         Divider()
         Button("Reset Soft to Here…") { feature.reset(to: commit, mode: .soft) }
         Button("Reset Mixed to Here…") { feature.reset(to: commit, mode: .mixed) }
+    }
+}
+
+/// git R19b: the files a commit changed, as a tree; a click previews one file's diff in the center.
+struct GitCommitFilesView: View {
+    let commit: GitCommit
+    let model: GitHistoryModel
+    let feature: GitFeature
+    let theme: ThemeService
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Text(commit.shortSha)
+                    .font(theme.codeFont(.small))
+                Text(commit.subject)
+                    .font(theme.font(.small, weight: .medium))
+                    .lineLimit(1)
+                Spacer()
+                if model.isLoadingFiles {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Text(model.files.count == 1 ? "1 file" : "\(model.files.count) files")
+                        .font(theme.font(.small))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(theme.tokens.surfaceRaised.color)
+            // design R23: the explorer's tree, the status letter at the end of the row.
+            FileTreeView(
+                entries: model.files.map(Self.treeEntry), theme: theme, font: theme.interfaceFont(),
+                open: { entry, pinned in feature.openCommitFileDiff(commit, path: entry.path, preview: !pinned) },
+                menu: { entry in
+                    [
+                        FileTreeAction(title: "Git History", symbol: "clock") {
+                            feature.showHistory(repo: model.repoID ?? ".", path: entry.path)
+                        }
+                    ]
+                })
+        }
+    }
+
+    private static func treeEntry(_ entry: GitStatusEntry) -> FileTreeEntry {
+        FileTreeEntry(
+            path: entry.path, status: entry.fileStatus, mark: String(entry.index.rawValue),
+            detail: entry.originalPath.map { "\u{2190} \($0)" })
     }
 }

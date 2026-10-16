@@ -66,7 +66,8 @@ nonisolated struct GitStatusEntry: Equatable, Sendable, Identifiable {
         }
     }
 
-    private static func fileStatus(of change: GitChange) -> GitFileStatus {
+    /// One side's change as the explorer colours it.
+    static func fileStatus(of change: GitChange) -> GitFileStatus {
         switch change {
         case .added: return .added
         case .deleted: return .deleted

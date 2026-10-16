@@ -42,6 +42,13 @@ struct GitChangesPanelView: View {
                         model.clearRevealed()
                     }
                 }
+                // git R10 (amended 2026-10-16): one commit area, always at the bottom of the panel.
+                if let target = model.commitTarget {
+                    theme.tokens.separator.color.frame(height: 1)
+                    GitCommitView(section: target, sections: model.sections, feature: feature, theme: theme)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
+                }
             }
         }
         .sheet(
@@ -286,8 +293,6 @@ struct GitRepoSectionView: View {
     var agents: [GitAgentSession] = []
     let feature: GitFeature
     let theme: ThemeService
-    /// git R6b: which folders are folded shut, per group; nothing is persisted.
-    @State private var collapsed: [String: Set<String>] = [:]
 
     var body: some View {
         Section {
@@ -296,8 +301,6 @@ struct GitRepoSectionView: View {
                 group("Conflicts", entries: sections.conflicts, kind: .conflicts)
                 group("Staged", entries: sections.staged, kind: .staged)
                 group("Changes", entries: sections.changes, kind: .changes)
-                GitCommitView(section: section, feature: feature, theme: theme)
-                    .padding(.leading, inset)
             }
         } header: {
             header
@@ -541,71 +544,48 @@ struct GitRepoSectionView: View {
             }
             .padding(.top, 4)
             .padding(.leading, inset)
-            // git R6b: one tree per group, open at first sight, no per-folder action.
-            ForEach(PathTree.rows(of: entries, collapsed: collapsed[title] ?? [])) { row in
-                switch row {
-                case .folder(let path, let label, let depth):
-                    folderRow(path, label: label, group: title, depth: depth)
-                case .file(let entry, let depth):
-                    GitChangeRowView(
-                        entry: entry, letter: Self.letter(of: entry, kind: kind), theme: theme,
-                        color: Color(nsColor: theme.color(for: entry.fileStatus)),
-                        actions: rowActions(entry, kind: kind), open: { feature.open(entry.path, in: section.id) },
-                        select: { preview in
-                            // git R13, US3: a click previews the diff, a double click pins it.
-                            feature.openDiff(
-                                GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)),
-                                preview: preview)
+            // git R6b: one tree per group, open at first sight, no per-folder action; the
+            // explorer's look (design R23), the status letter at the end of the row.
+            let byPath = Dictionary(entries.map { ($0.path, $0) }) { first, _ in first }
+            FittedFileTreeView(
+                entries: entries.map { Self.treeEntry($0, kind: kind) }, theme: theme,
+                open: { treeEntry, pinned in
+                    guard let entry = byPath[treeEntry.path] else { return }
+                    feature.setCommitTarget(section.id)
+                    // git R13, US3: a click previews the diff, a double click pins it.
+                    feature.openDiff(
+                        GitDiffPayload(repo: section.id, source: Self.diffSource(entry, kind: kind)), preview: !pinned)
+                },
+                actions: { treeEntry in byPath[treeEntry.path].map { rowActions($0, kind: kind) } ?? [] },
+                menu: { treeEntry in
+                    guard let entry = byPath[treeEntry.path] else { return [] }
+                    return [
+                        FileTreeAction(title: "Open File", symbol: "doc.text") {
+                            feature.open(entry.path, in: section.id)
                         },
-                        history: { feature.showHistory(repo: section.id, path: entry.path) }
-                    )
-                    // The chevron's width, so a file's letter lines up with its folder's icon.
-                    .padding(.leading, inset + Self.indent(depth) + Self.chevronWidth)
+                        FileTreeAction(title: "Git History", symbol: "clock") {
+                            feature.showHistory(repo: section.id, path: entry.path)
+                        },
+                    ] + rowActions(entry, kind: kind).dropLast()
                 }
+            )
+            .padding(.leading, inset)
+        }
+    }
+
+    /// git R6, R6b: a row of the tree — the name coloured by the group's side, the letter, a
+    /// rename's origin.
+    private static func treeEntry(_ entry: GitStatusEntry, kind: GroupKind) -> FileTreeEntry {
+        let side: GitFileStatus =
+            switch kind {
+            case .conflicts: .conflicted
+            case .staged: GitStatusEntry.fileStatus(of: entry.index)
+            case .changes: entry.isUntracked ? .untracked : GitStatusEntry.fileStatus(of: entry.worktree)
             }
-        }
+        return FileTreeEntry(
+            path: entry.path, status: side, mark: letter(of: entry, kind: kind),
+            detail: entry.originalPath.map { "\u{2190} \($0)" })
     }
-
-    /// git R6b: a folded chain on one row, the explorer's folder icon, and a click to close it.
-    ///
-    /// The only thing a folder row does: it carries no git action (R6b), staging stays per file.
-    private func folderRow(_ path: String, label: String, group: String, depth: Int) -> some View {
-        let isCollapsed = collapsed[group]?.contains(path) ?? false
-        return HStack(spacing: 4) {
-            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                .font(theme.font(.small))
-                .foregroundStyle(.secondary)
-                .frame(width: 10)
-            if let icon = FileIcon.image(named: FileIcon.folder(isExpanded: !isCollapsed)) {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 14, height: 14)
-            }
-            Text(label)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.head)
-            Spacer()
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { toggle(path, in: group) }
-        .padding(.leading, inset + Self.indent(depth))
-    }
-
-    private func toggle(_ path: String, in group: String) {
-        var folders = collapsed[group] ?? []
-        if folders.remove(path) == nil {
-            folders.insert(path)
-        }
-        collapsed[group] = folders
-    }
-
-    /// The explorer's `indentationPerLevel`, so both trees read at the same rhythm.
-    private static func indent(_ depth: Int) -> CGFloat {
-        CGFloat(depth) * 12
-    }
-
-    private static let chevronWidth: CGFloat = 14
 
     /// git R7: the per-section actions.
     @ViewBuilder
@@ -628,29 +608,33 @@ struct GitRepoSectionView: View {
         }
     }
 
-    /// git R7, R9: the hover buttons of a row.
-    private func rowActions(_ entry: GitStatusEntry, kind: GroupKind) -> [GitChangeRowView.Action] {
+    /// git R7, R9: the hover buttons of a row, *Open File* last.
+    private func rowActions(_ entry: GitStatusEntry, kind: GroupKind) -> [FileTreeAction] {
+        let open = FileTreeAction(title: "Open File", symbol: "doc.text") { feature.open(entry.path, in: section.id) }
         switch kind {
         case .conflicts:
             return [
-                GitChangeRowView.Action(title: "Mark as Resolved", icon: "checkmark.circle") {
+                FileTreeAction(title: "Mark as Resolved", symbol: "checkmark.circle") {
                     feature.markResolved(entry.path, in: section.id)
-                }
+                },
+                open,
             ]
         case .staged:
             return [
-                GitChangeRowView.Action(title: "Unstage", icon: "minus.circle") {
+                FileTreeAction(title: "Unstage", symbol: "minus.circle") {
                     feature.unstage([entry.path], in: section.id)
-                }
+                },
+                open,
             ]
         case .changes:
             return [
-                GitChangeRowView.Action(title: "Discard", icon: "arrow.uturn.backward.circle") {
+                FileTreeAction(title: "Discard", symbol: "arrow.uturn.backward.circle") {
                     feature.discard([entry], in: section.id)
                 },
-                GitChangeRowView.Action(title: "Stage", icon: "plus.circle") {
+                FileTreeAction(title: "Stage", symbol: "plus.circle") {
                     feature.stage([entry.path], in: section.id)
                 },
+                open,
             ]
         }
     }
@@ -708,6 +692,8 @@ struct GitRepoSectionView: View {
 /// decision 2026-08-27), *Cancel* while a hook runs.
 struct GitCommitView: View {
     let section: GitModel.Section
+    /// git R10: every working copy the area can commit in.
+    let sections: [GitModel.Section]
     let feature: GitFeature
     let theme: ThemeService
 
@@ -718,6 +704,19 @@ struct GitCommitView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // git R10: where the commit goes — the working copy last worked in, or another one.
+            Picker(
+                "Commit in",
+                selection: Binding(get: { section.id }, set: { feature.setCommitTarget($0) })
+            ) {
+                ForEach(sections) { candidate in
+                    Text(Self.label(candidate)).tag(candidate.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .controlSize(.small)
             TextEditor(
                 text: Binding(get: { section.message }, set: { feature.setMessage($0, in: section.id) })
             )
@@ -764,83 +763,11 @@ struct GitCommitView: View {
         }
         .padding(.top, 6)
     }
-}
 
-/// git R6, R6b: status, name in bold, the rename origin in grey, the actions on hover.
-struct GitChangeRowView: View {
-    struct Action: Identifiable {
-        let title: String
-        let icon: String
-        let perform: () -> Void
-
-        var id: String {
-            title
-        }
-    }
-
-    let entry: GitStatusEntry
-    let letter: String
-    let theme: ThemeService
-    let color: Color
-    let actions: [Action]
-    let open: () -> Void
-    let select: (_ preview: Bool) -> Void
-    let history: () -> Void
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(letter)
-                .font(theme.codeFont().weight(.medium))
-                .foregroundStyle(color)
-                .frame(width: 14)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name)
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-                if !origin.isEmpty {
-                    Text(origin)
-                        .font(theme.font(.small))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-            if isHovering {
-                ForEach(actions) { action in
-                    Button {
-                        action.perform()
-                    } label: {
-                        Image(systemName: action.icon)
-                    }
-                    .buttonStyle(.borderless)
-                    .help(action.title)
-                }
-                Button {
-                    open()
-                } label: {
-                    Image(systemName: "doc.text")
-                }
-                .buttonStyle(.borderless)
-                .help("Open File")
-            }
-        }
-        .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
-        .onTapGesture(count: 2) { select(false) }
-        .onTapGesture { select(true) }
-        .contextMenu {
-            Button("Open File") { open() }
-            Button("Git History") { history() }
-        }
-    }
-
-    private var name: String {
-        entry.path.split(separator: "/").last.map(String.init) ?? entry.path
-    }
-
-    /// git R6b: the tree above the row already spells the parent out; only a rename adds anything.
-    private var origin: String {
-        entry.originalPath.map { "\u{2190} \($0)" } ?? ""
+    /// `app · main (2 staged)`: the folder, its branch, what a commit would take.
+    private static func label(_ section: GitModel.Section) -> String {
+        let head = section.status.map(GitRepoSectionView.headText).map { " \u{00b7} \($0)" } ?? ""
+        let staged = section.sections.staged.count
+        return section.repo.name + head + (staged > 0 ? " (\(staged) staged)" : "")
     }
 }

@@ -4,7 +4,7 @@ import SwiftUI
 struct GitDiffView: View {
     let model: GitDiffModel
     let theme: ThemeService
-    /// agents R10b: the line's context menu (side by side only: the inline column is one text).
+    /// agents R10b: the line's context menu.
     let sendLine: (String, Int) -> Void
 
     var body: some View {
@@ -28,29 +28,9 @@ struct GitDiffView: View {
         }
     }
 
+    /// git R13b (amended 2026-10-16): side by side only.
     private func content(_ diff: GitDiff) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                // git R13b: side by side by default, inline on demand.
-                Picker("Layout", selection: Bindable(model).isSideBySide) {
-                    Image(systemName: "rectangle.split.2x1").tag(true)
-                    Image(systemName: "list.bullet.rectangle").tag(false)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .help("Side by side / inline")
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            theme.tokens.separator.color.frame(height: 1)
-            files(diff)
-        }
-    }
-
-    private func files(_ diff: GitDiff) -> some View {
-        ScrollView(model.isSideBySide ? .vertical : [.vertical, .horizontal]) {
+        ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(diff.files) { file in
                     fileHeader(file, isLarge: diff.isLarge)
@@ -130,27 +110,18 @@ struct GitDiffView: View {
                 .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(theme.tokens.surfaceSunken.color)
-            if model.isSideBySide {
-                // git R13b: one row per pair, both cells the height of the taller one, lines wrap.
-                LazyVStack(spacing: 0) {
-                    ForEach(hunk.rows) { row in
-                        HStack(alignment: .top, spacing: 0) {
-                            cell(row.left, path: path)
-                            Divider()
-                            cell(row.right, path: path)
-                        }
-                        .fixedSize(horizontal: false, vertical: true)
+            // git R13b: one row per pair, both cells the height of the taller one, lines wrap.
+            LazyVStack(spacing: 0) {
+                ForEach(hunk.rows) { row in
+                    HStack(alignment: .top, spacing: 0) {
+                        cell(row.left, path: path)
+                        Divider()
+                        cell(row.right, path: path)
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, 2)
-            } else {
-                HStack(alignment: .top, spacing: 0) {
-                    gutter(hunk.inline.numbers)
-                    gutter(hunk.inlineNewNumbers)
-                    code(hunk.inline.text)
-                }
-                .padding(.vertical, 2)
             }
+            .padding(.vertical, 2)
         }
     }
 
@@ -184,22 +155,5 @@ struct GitDiffView: View {
         case .removed: return Color(nsColor: theme.diffLineBackground(added: false))
         case .context, nil: return .clear
         }
-    }
-
-    private func code(_ text: AttributedString) -> some View {
-        Text(text)
-            .font(Font(theme.editorFont))
-            .textSelection(.enabled)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.leading, 8)
-    }
-
-    private func gutter(_ numbers: String) -> some View {
-        Text(numbers)
-            .font(Font(theme.editorFont))
-            .foregroundStyle(.tertiary)
-            .multilineTextAlignment(.trailing)
-            .frame(minWidth: 40, alignment: .trailing)
-            .padding(.trailing, 4)
     }
 }

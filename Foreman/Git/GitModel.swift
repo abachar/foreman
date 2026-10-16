@@ -144,6 +144,8 @@ final class GitModel {
     private(set) var collapsedGroups: Set<String> = []
     /// git R34c: the agent tabs of the window, as `agents` last said.
     private(set) var agentSessions: [GitAgentSession] = []
+    /// git R10: the working copy the commit area commits in, as last chosen.
+    private var chosenCommitTarget: String?
     /// git R36, agents R5b: the section to scroll to, once.
     private(set) var revealed: String?
     private var restoredCollapsed: Set<String> = []
@@ -211,6 +213,17 @@ final class GitModel {
                 top: top, children: children.filter { busy.contains($0.id) } + children.filter { !busy.contains($0.id) }
             )
         }
+    }
+
+    /// git R10 (amended 2026-10-16): the working copy last worked in; else the first one with
+    /// something staged; else the first one.
+    var commitTarget: Section? {
+        chosenCommitTarget.flatMap(section) ?? sections.first { !$0.sections.staged.isEmpty } ?? sections.first
+    }
+
+    func setCommitTarget(_ id: String) {
+        guard chosenCommitTarget != id else { return }
+        chosenCommitTarget = id
     }
 
     func children(of id: String) -> [Section] {

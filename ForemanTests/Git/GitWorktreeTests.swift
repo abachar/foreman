@@ -155,6 +155,22 @@ struct GitWorktreeChildTests {
         #expect(GitModel.owner(of: URL(filePath: "/tmp"), among: repos) == nil)
     }
 
+    /// git R10 (amended 2026-10-16): the commit area goes where the user last worked.
+    @Test @MainActor func theCommitAreaFollowsTheWorkingCopyLastWorkedIn() {
+        let model = grouped()
+        #expect(model.commitTarget?.id == "app")
+        model.setStatus(
+            "/elsewhere/app-zeta",
+            GitStatus(
+                head: .branch("fix"), entries: [GitStatusEntry(path: "a", index: .modified, worktree: .unmodified)]))
+        #expect(model.commitTarget?.id == "/elsewhere/app-zeta")
+        model.setCommitTarget("/elsewhere/app-alpha")
+        #expect(model.commitTarget?.id == "/elsewhere/app-alpha")
+        // A target that left (a worktree removed) falls back.
+        model.setRepos([GitRepo(id: "app", url: URL(filePath: "/work/app"))])
+        #expect(model.commitTarget?.id == "app")
+    }
+
     /// git R34b: a group's fold under the repo id, its main folder's under `<id>#main`.
     @Test @MainActor func aGroupAndItsMainFolderFoldApart() {
         let model = grouped()
@@ -243,6 +259,22 @@ struct GitWorktreeRepoTests {
         #expect(diff.files.map(\.path).sorted() == ["b.txt", "c.txt"])
         #expect(payload.title == "fix vs main")
         #expect(!payload.source.isImmutable)
+    }
+
+    /// git R19b: a commit's files, a rename on one entry with its origin.
+    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: GitSnapshotTests.git.path())))
+    func aCommitListsItsFiles() async throws {
+        let fixture = try await fixture()
+        defer { try? FileManager.default.removeItem(at: fixture.base) }
+        _ = try await fixture.client.run(["mv", "a.txt", "renamed.txt"], kind: .write)
+        try "new\n".write(to: fixture.main.appending(path: "n.txt"), atomically: true, encoding: .utf8)
+        _ = try await fixture.client.run(["add", "-A"], kind: .write)
+        _ = try await fixture.client.run(Self.identity + ["commit", "-q", "-m", "rename"], kind: .write)
+        let files = CommitFilesParser.parse(try await fixture.client.run(CommitFilesParser.arguments("HEAD")).stdout)
+        #expect(files.map(\.path).sorted() == ["n.txt", "renamed.txt"])
+        #expect(files.first { $0.path == "renamed.txt" }?.originalPath == "a.txt")
+        #expect(files.first { $0.path == "renamed.txt" }?.index == .renamed)
+        #expect(files.first { $0.path == "n.txt" }?.index == .added)
     }
 
     /// git R37: a clean worktree goes and its branch lands in the main folder; a dirty one stays.

@@ -9,12 +9,6 @@ nonisolated struct DiffTint: Sendable {
     let removed: Color
 }
 
-/// A column of text with its gutter, as the view draws it (git R13).
-nonisolated struct RenderedColumn: Sendable {
-    let numbers: String
-    let text: AttributedString
-}
-
 /// git R13b: one side of a row; `nil` when nothing faces the other side.
 nonisolated struct RenderedCell: Sendable {
     /// What the gutter shows: the old file's number on the left, the new one on the right.
@@ -33,12 +27,10 @@ nonisolated struct RenderedRow: Sendable, Identifiable {
     let right: RenderedCell?
 }
 
-/// A hunk as the view draws it: inline, or side by side (git R13, R13b).
+/// A hunk as the view draws it, side by side (git R13, R13b).
 nonisolated struct RenderedHunk: Sendable, Identifiable {
     let id: String
     let header: String
-    let inline: RenderedColumn
-    let inlineNewNumbers: String
     let rows: [RenderedRow]
 }
 
@@ -54,8 +46,6 @@ final class GitDiffModel {
     private(set) var isLoading = false
     /// git R16: the files opened by hand in a large diff.
     var expandedFiles: Set<String> = []
-    /// git R13b: side by side by default, inline on demand.
-    var isSideBySide = true
 
     private let client: () async -> GitCLI?
     private let repo: GitRepo
@@ -199,10 +189,10 @@ final class GitDiffModel {
         self.rendered = rendered
     }
 
-    /// The highlighted text sliced back per line, the `+`/`−` tint, then both layouts.
+    /// The highlighted text sliced back per line, the `+`/`−` tint, then the side-by-side rows.
     ///
-    /// Off the main actor: a large diff builds an `AttributedString` per line, twice — inline and
-    /// side by side — and that ran between the user and every frame (audit M3b).
+    /// Off the main actor: a large diff builds an `AttributedString` per line, and that ran
+    /// between the user and every frame (audit M3b).
     @concurrent
     private static func render(
         _ file: FileDiff, highlighted: AttributedString?, tint: DiffTint
@@ -232,7 +222,6 @@ final class GitDiffModel {
                 }
                 pieces.append(piece)
             }
-            let inline = column(hunk.lines, pieces: pieces, number: \.oldNumber)
             let pieceOf = Dictionary(zip(hunk.lines.indices, pieces)) { first, _ in first }
             let indexOf = Dictionary(hunk.lines.enumerated().map { ($0.element, $0.offset) }) { first, _ in first }
             let rows = SideBySideRow.rows(of: hunk).enumerated().map { offset, row in
@@ -254,28 +243,9 @@ final class GitDiffModel {
                     })
             }
             result.append(
-                RenderedHunk(
-                    id: hunk.id, header: hunk.header, inline: inline,
-                    inlineNewNumbers: hunk.lines.map { $0.newNumber.map(String.init) ?? "" }.joined(separator: "\n"),
-                    rows: rows))
+                RenderedHunk(id: hunk.id, header: hunk.header, rows: rows))
         }
         return result
-    }
-
-    nonisolated private static func column(
-        _ lines: [DiffLine], pieces: [AttributedString], number: KeyPath<DiffLine, Int?>
-    )
-        -> RenderedColumn
-    {
-        var text = AttributedString()
-        for (index, piece) in pieces.enumerated() {
-            if index > 0 {
-                text.append(AttributedString("\n"))
-            }
-            text.append(piece)
-        }
-        return RenderedColumn(
-            numbers: lines.map { $0[keyPath: number].map(String.init) ?? "" }.joined(separator: "\n"), text: text)
     }
 }
 

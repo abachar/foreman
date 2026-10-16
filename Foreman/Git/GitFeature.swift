@@ -602,7 +602,24 @@ final class GitFeature {
         }
     }
 
-    /// git R19: the commit's diff, a preview on a click, pinned on a double click.
+    /// git R19b: a click on a commit lists its files under the log.
+    func selectCommit(_ commit: GitCommit?) {
+        guard let repo = history.repoID else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            history.showFiles(of: commit, with: await client(for: repo))
+        }
+    }
+
+    /// git R19b: one file of the selected commit, a preview on a click, pinned on a double click.
+    func openCommitFileDiff(_ commit: GitCommit, path: String, preview: Bool) {
+        guard let repo = history.repoID else { return }
+        openDiff(
+            GitDiffPayload(repo: repo, source: .commitFile(sha: commit.sha, subject: commit.subject, path: path)),
+            preview: preview)
+    }
+
+    /// git R19: the commit's whole diff, pinned (a double click on the commit).
     func openCommitDiff(_ commit: GitCommit, preview: Bool) {
         guard let repo = history.repoID else { return }
         let source: GitDiffPayload.Source =
@@ -1050,11 +1067,18 @@ final class GitFeature {
 
     // MARK: - Actions (git R7–R9)
 
+    /// git R10: the commit area follows the working copy last worked in.
+    func setCommitTarget(_ id: String) {
+        model.setCommitTarget(id)
+    }
+
     func stage(_ paths: [String], in id: String) {
+        model.setCommitTarget(id)
         write([GitCommand.stage(paths)], in: id)
     }
 
     func unstage(_ paths: [String], in id: String) {
+        model.setCommitTarget(id)
         guard let status = model.section(id)?.status else { return }
         var isUnborn = false
         if case .unborn = status.head {
@@ -1083,6 +1107,7 @@ final class GitFeature {
 
     /// git R9: the file opens with its markers; `add` marks it resolved.
     func markResolved(_ path: String, in id: String) {
+        model.setCommitTarget(id)
         write([GitCommand.stage([path])], in: id)
     }
 
