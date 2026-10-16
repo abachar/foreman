@@ -195,7 +195,8 @@ final class RunFeature {
                 makeView: { [weak self] tab, payload in self?.view(tab, payload: payload, commandID: id) },
                 serialize: { [weak self] tab in self?.serialize(tab, commandID: id) },
                 confirmClose: { [weak self] tab in await self?.terminal.confirmClose(tab) ?? true },
-                onClose: { [weak self] tab in self?.closed(tab) }))
+                onClose: { [weak self] tab in self?.closed(tab) },
+                statusItems: { [weak self] tab in self?.terminal.statusItems(tab) ?? [] }))
     }
 
     func command(_ id: String) -> RunCommand? {

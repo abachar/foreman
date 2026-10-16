@@ -121,6 +121,17 @@ nonisolated struct SideBySideRow: Equatable, Sendable {
 
 /// What a `git.diff` tab shows (git R13, R14).
 nonisolated struct GitDiff: Equatable, Sendable {
+    /// layout (status bar, 2026-10-16): the `+n −n` of a diff tab — its added and removed lines.
+    var lineStats: (added: Int, removed: Int) {
+        files.flatMap(\.hunks).flatMap(\.lines).reduce(into: (added: 0, removed: 0)) { stats, line in
+            switch line.kind {
+            case .added: stats.added += 1
+            case .removed: stats.removed += 1
+            case .context: break
+            }
+        }
+    }
+
     /// git R16: over this many lines, every file starts collapsed.
     static let collapseThreshold = 5000
 

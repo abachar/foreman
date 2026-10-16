@@ -22,6 +22,11 @@ struct CenterTabDescriptor {
     let showsFileIcon: Bool
     /// The owner's entries at the end of the tab's context menu (agents R5b).
     let contextMenu: (TabID) -> [ToolbarMenuEntry]
+    /// layout (status bar, 2026-10-16): what the status bar shows on its right while the tab is
+    /// active — read inside the bar's body, so observable state keeps it current.
+    let statusItems: (TabID) -> [StatusItem]
+    /// layout (status bar): the tab's ⊗ / ⚠ counters; `nil` for a tab that is not a file.
+    let problemCounts: (TabID) -> ProblemCounts?
 
     init(
         kind: String,
@@ -31,9 +36,13 @@ struct CenterTabDescriptor {
         serialize: @escaping (TabID) -> String?,
         confirmClose: @escaping (TabID) async -> Bool = { _ in true },
         onClose: @escaping (TabID) -> Void = { _ in },
-        contextMenu: @escaping (TabID) -> [ToolbarMenuEntry] = { _ in [] }
+        contextMenu: @escaping (TabID) -> [ToolbarMenuEntry] = { _ in [] },
+        statusItems: @escaping (TabID) -> [StatusItem] = { _ in [] },
+        problemCounts: @escaping (TabID) -> ProblemCounts? = { _ in nil }
     ) {
         self.contextMenu = contextMenu
+        self.statusItems = statusItems
+        self.problemCounts = problemCounts
         self.kind = kind
         self.isTerminal = isTerminal
         self.showsFileIcon = showsFileIcon

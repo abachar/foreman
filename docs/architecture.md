@@ -7,7 +7,7 @@
 - **P1 — The simplest thing that works.** One user, no backward compatibility, no third-party plugins. We write the code for today's need; we abstract when there are **two** real implementations, not before. No protocol, adapter or double "just in case".
 - **P2 — Use the libraries.** If a maintained library does the job, we use it directly, the way it is meant to be used. Rewriting what a library does is a mistake, not caution.
 - **P3 — Use the platform.** AppKit/SwiftUI/Foundation first (`NSToolbar`, `NSSplitView`, `NSOutlineView`, `NSTextView`, `FileManager`, `Process`). We do not reimplement one because it does not do *exactly* what we imagine; we adapt the need.
-- **P4 — Lazy by default.** No work (connection, scan, tree read) before a panel or a tab is actually used; a hidden panel costs nothing.
+- **P4 — Lazy by default.** No work (connection, scan, tree read) before a panel or a tab is actually used; a hidden panel costs nothing. One exception (2026-10-16): `git` follows the status while the window has a repo, because the toolbar and the status bar show it (`git` surfaces).
 - **P5 — Nothing breaks opening a workspace.** Invalid config, missing repo, unreadable state: degradation announced in the UI, never a crash or a blank screen.
 
 ## Overview

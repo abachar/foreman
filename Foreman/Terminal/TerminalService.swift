@@ -86,6 +86,13 @@ final class TerminalService {
         tabs[id]
     }
 
+    /// layout (status bar, 2026-10-16): the surface's title and its grid, `Claude Code · 82×38`.
+    func statusItems(_ id: TabID) -> [StatusItem] {
+        guard let tab = tabs[id] else { return [] }
+        let size = tab.size.map { " \u{00B7} \($0.columns)\u{00D7}\($0.rows)" } ?? ""
+        return [StatusItem(id: "terminal.size", text: tab.title + size)]
+    }
+
     func state(of id: TabID) throws(TerminalError) -> TerminalState {
         try known(id).state
     }
@@ -285,7 +292,10 @@ final class TerminalService {
 
 extension TerminalService: @preconcurrency LocalProcessTerminalViewDelegate {
     func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {
-        // terminal R15: SwiftTerm already propagated the window size to the process.
+        // terminal R15: SwiftTerm already propagated the window size to the process; the status
+        // bar shows it.
+        guard let id = surfaces.first(where: { $0.value === source })?.key else { return }
+        tabs[id]?.didResize(columns: newCols, rows: newRows)
     }
 
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {

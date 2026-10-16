@@ -113,7 +113,8 @@ final class AgentsFeature {
                 serialize: { [weak self] id in self?.serialize(id, agentID: agent.id) },
                 confirmClose: { [weak self] id in await self?.terminal.confirmClose(id) ?? true },
                 onClose: { [weak self] id in self?.closed(id) },
-                contextMenu: { [weak self] id in self?.tabMenu(id) ?? [] }))
+                contextMenu: { [weak self] id in self?.tabMenu(id) ?? [] },
+                statusItems: { [weak self] id in self?.terminal.statusItems(id) ?? [] }))
         layout.shortcuts.register(
             ShortcutAction(id: "agents.\(agent.id)", title: agent.title, defaultShortcut: nil) { [weak self] in
                 self?.buttonClicked(agent.id)

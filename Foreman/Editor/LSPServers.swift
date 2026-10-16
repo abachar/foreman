@@ -1,5 +1,6 @@
 import Foundation
 import LanguageServerProtocol
+import Observation
 import os
 
 /// The workspace's language servers and the documents they know about (editor R35–R39, R43).
@@ -10,6 +11,7 @@ import os
 ///
 /// It is not a `…Service`: it is owned by `EditorFeature`, created with the workspace and stopped
 /// with it, not an injected capability (coding rules, naming).
+@Observable
 @MainActor
 final class LSPServers {
     /// editor R37: the pause after the last keystroke before the whole text is sent again.
@@ -222,6 +224,21 @@ final class LSPServers {
     }
 
     // MARK: - Servers (editor R36, R39)
+
+    /// layout (status bar, 2026-10-16): the server of a file as the status bar names it — its
+    /// binary, and whether it runs, is starting or failed (R39); `nil` for a file without one.
+    func status(for url: URL) -> StatusItem? {
+        guard let entry = config().entry(for: url) else { return nil }
+        let name = FormatterCatalog.binary(of: entry.command)
+        let server = servers[ServerKey(command: entry.command, cwd: entry.cwd)]
+        if let failure = server?.failure {
+            return StatusItem(id: "editor.lsp", text: name, dot: .red, help: failure)
+        }
+        let isRunning = server?.isRunning == true
+        return StatusItem(
+            id: "editor.lsp", text: name, dot: isRunning ? .green : .orange,
+            help: isRunning ? "\(name) is running" : "\(name) is starting")
+    }
 
     /// editor R39: why this file has no LSP, once, or `nil` when it has one or wants none.
     func failure(for url: URL) -> String? {

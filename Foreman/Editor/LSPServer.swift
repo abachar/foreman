@@ -1,6 +1,7 @@
 import Foundation
 import JSONRPC
 import LanguageServerProtocol
+import Observation
 import os
 
 /// One language server process, and the connection to it (editor R36, R39).
@@ -12,6 +13,7 @@ import os
 /// What it does **not** do is as deliberate as what it does: no completion (editor R35–R46 leave
 /// it out), no reopening of documents after a crash (`LSPServers` re-sends `didOpen` on the next
 /// use, which needs no state kept here), and no restart beyond the single one of R39.
+@Observable
 @MainActor
 final class LSPServer {
     /// editor R36: after `exit`, the grace before `SIGKILL` — the formatter's ladder.

@@ -19,6 +19,14 @@ struct DiffParserTests {
 
         """
 
+    /// layout (status bar, 2026-10-16): the `+n −n` of a diff tab.
+    @Test func countsTheAddedAndRemovedLines() {
+        let stats = DiffParser.parse(simple).lineStats
+        #expect(stats.added == 2)
+        #expect(stats.removed == 1)
+        #expect(DiffParser.parse("").lineStats.added == 0)
+    }
+
     @Test func readsOneHunkWithBothSidesNumbered() throws {
         let diff = DiffParser.parse(simple)
         let file = try #require(diff.files.first)

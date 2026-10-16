@@ -21,7 +21,8 @@ extension LayoutManager {
             panels: panels.visible,
             panelSizes: panelSizes,
             windowFrame: windowFrame,
-            isToolbarVisible: isToolbarVisible
+            isToolbarVisible: isToolbarVisible,
+            lastPanels: panels.last
         )
     }
 
@@ -53,7 +54,7 @@ extension LayoutManager {
             groups[id] = nil
         }
         model = LayoutModel(tree: tree, groups: groups, activeGroup: state.activeGroup)
-        panels.restore(visible: state.panels)
+        panels.restore(visible: state.panels, last: state.lastPanels ?? [:])
         // layout R18: a size of a panel that no longer exists (or a pre-2026-08-28 per-slot key) is dropped.
         for (id, size) in state.panelSizes where panels[id] != nil {
             setPanelSize(size, of: id)

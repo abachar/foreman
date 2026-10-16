@@ -25,4 +25,6 @@ nonisolated struct LayoutState: Codable, Equatable, Sendable {
     var panelSizes: [PanelID: CGFloat]
     var windowFrame: CGRect?
     var isToolbarVisible: Bool
+    /// layout (status bar, 2026-10-16): the last panel of each slot; absent from older states.
+    var lastPanels: [PanelSide: PanelID]? = nil
 }

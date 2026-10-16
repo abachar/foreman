@@ -68,7 +68,9 @@ final class EditorFeature {
                 makeView: { [weak self] id, payload in self?.restore(id, payload: payload) },
                 serialize: { [weak self] id in self?.serialize(id) },
                 confirmClose: { [weak self] id in await self?.confirmClose(id) ?? true },
-                onClose: { [weak self] id in self?.tabClosed(id) }))
+                onClose: { [weak self] id in self?.tabClosed(id) },
+                statusItems: { [weak self] id in self?.statusItems(id) ?? [] },
+                problemCounts: { [weak self] id in self?.problemCounts(id) }))
         registerActions()
         // layout R38: the double click of the tab bar and of the home screen; the layout has
         // already activated the group when this runs.
@@ -792,6 +794,31 @@ final class EditorFeature {
     /// editor R36: every server goes when the window's work is flushed at quit.
     func stopLanguageServers() async {
         await lsp.stopAll()
+    }
+
+    /// layout (status bar, 2026-10-16): the language server, `line:column`, the language, the encoding.
+    private func statusItems(_ id: TabID) -> [StatusItem] {
+        guard let tab = tabs[id] else { return [] }
+        var items: [StatusItem] = []
+        if let server = lsp.status(for: tab.url) {
+            items.append(server)
+        }
+        if case .text(let document) = tab.content {
+            let text = (tab.textView?.string ?? document.text) as NSString
+            let position = TextEditing.position(at: tab.cursor, in: text)
+            items.append(StatusItem(id: "editor.position", text: "\(position.line):\(position.column + 1)"))
+            items.append(StatusItem(id: "editor.language", text: tab.language?.displayName ?? "Plain Text"))
+            items.append(StatusItem(id: "editor.encoding", text: document.encoding.displayName))
+        }
+        return items
+    }
+
+    /// layout (status bar): the tab's errors and warnings (editor R40).
+    private func problemCounts(_ id: TabID) -> ProblemCounts? {
+        guard let tab = tabs[id] else { return nil }
+        return ProblemCounts(
+            errors: tab.diagnostics.count { $0.severity == .error },
+            warnings: tab.diagnostics.count { $0.severity == .warning })
     }
 
     private func serialize(_ id: TabID) -> String? {

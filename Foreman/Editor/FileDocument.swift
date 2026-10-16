@@ -7,6 +7,14 @@ nonisolated struct FileDocument: Equatable, Sendable {
         case utf8(bom: Bool)
         /// editor, edge cases: read as Latin-1 with a banner; written back as UTF-8.
         case latin1
+
+        /// layout (status bar, 2026-10-16): as the status bar names it.
+        var displayName: String {
+            switch self {
+            case .utf8(let bom): return bom ? "UTF-8 BOM" : "UTF-8"
+            case .latin1: return "ISO-8859-1"
+            }
+        }
     }
 
     enum LineEnding: String, Equatable, Sendable {

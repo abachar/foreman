@@ -100,6 +100,9 @@ final class PanelManager {
     private(set) var visible: [PanelSide: PanelID] = [:]
     private(set) var focus: FocusTarget = .center
     private(set) var panels: [PanelDescriptor] = []
+    /// layout (status bar, 2026-10-16): the panel each slot showed last, which its toggle shows
+    /// again; persisted in `state.json`.
+    private(set) var last: [PanelSide: PanelID] = [:]
 
     private var views: [PanelID: AnyView] = [:]
     /// layout R36: what `state.json` asked for, kept for the panels registered after restoration.
@@ -174,8 +177,27 @@ final class PanelManager {
             self[replaced]?.deactivate()
         }
         visible[descriptor.side] = id
+        last[descriptor.side] = id
         descriptor.activate()
         focus = .panel(id)
+    }
+
+    /// layout (status bar, 2026-10-16): a slot toggle hides the slot, or shows its last panel —
+    /// the first of the slot when that one was never shown or was withdrawn (R36).
+    func toggle(_ side: PanelSide) {
+        if visible[side] != nil {
+            hide(side)
+        } else if let id = panelToShow(on: side) {
+            show(id)
+        }
+    }
+
+    /// What the toggle of `side` would show; `nil` for a slot without panels.
+    func panelToShow(on side: PanelSide) -> PanelID? {
+        if let id = last[side], self[id]?.side == side {
+            return id
+        }
+        return panels(on: side).first?.id
     }
 
     /// Hides the slot; its panel is deactivated and focus returns to the center (layout R4, R6).
@@ -210,9 +232,11 @@ final class PanelManager {
 
     /// Restores the visible panels from `state.json` without activating them (layout R29): a panel
     /// that moved to another slot since is considered hidden (edge cases).
-    func restore(visible restored: [PanelSide: PanelID]) {
+    func restore(visible restored: [PanelSide: PanelID], last: [PanelSide: PanelID] = [:]) {
         self.restored = restored
         visible = restored.filter { side, id in self[id]?.side == side }
+        // A panel that moved since is checked when the toggle is used, not here: it may register later.
+        self.last = last.merging(restored) { _, shown in shown }
     }
 
     /// layout R29: after the first frame, the restored panels start their work.

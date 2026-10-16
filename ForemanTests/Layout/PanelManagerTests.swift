@@ -178,4 +178,38 @@ struct PanelManagerTests {
 
         #expect(manager.visible == [.left: "explorer.tree", .bottom: "git.history"])
     }
+
+    /// layout (status bar, 2026-10-16): a slot toggle shows the slot's first panel until another
+    /// was shown, then the last one; pressed again it hides the slot.
+    @Test func aSlotToggleShowsTheLastPanelOrTheFirst() {
+        manager.register(panel("editor.search", side: .bottom, order: 1))
+        manager.register(panel("git.history", side: .bottom, order: 0))
+
+        manager.toggle(PanelSide.bottom)
+        #expect(manager.visible == [.bottom: "git.history"])
+        manager.show("editor.search")
+        manager.toggle(PanelSide.bottom)
+        #expect(manager.visible.isEmpty)
+        manager.toggle(PanelSide.bottom)
+        #expect(manager.visible == [.bottom: "editor.search"])
+        #expect(manager.last == [.bottom: "editor.search"])
+
+        manager.toggle(PanelSide.right)
+        #expect(manager.visible == [.bottom: "editor.search"])
+        #expect(manager.panelToShow(on: .right) == nil)
+    }
+
+    /// layout R36: a withdrawn last panel gives the toggle back to the slot's first panel; a last
+    /// panel restored on a side it left is ignored the same way.
+    @Test func aWithdrawnOrMovedLastPanelFallsBackToTheFirst() {
+        manager.register(panel("explorer.tree", side: .left))
+        manager.register(panel("git.changes", side: .left, order: 1))
+        manager.show("git.changes")
+        manager.hide(.left)
+        manager.unregister("git.changes")
+        #expect(manager.panelToShow(on: .left) == "explorer.tree")
+
+        manager.restore(visible: [:], last: [.right: "explorer.tree"])
+        #expect(manager.panelToShow(on: .right) == nil)
+    }
 }

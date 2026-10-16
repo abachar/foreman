@@ -98,6 +98,11 @@ final class GitFeature {
                 onClose: { [weak self] id in
                     self?.diffModels[id] = nil
                     self?.pinnedDiffs.remove(id)
+                },
+                // layout (status bar, 2026-10-16): the lines the diff adds and removes.
+                statusItems: { [weak self] id in
+                    guard let stats = self?.diffModels[id]?.diff?.lineStats else { return [] }
+                    return [StatusItem(id: "git.diff.stats", text: "+\(stats.added) \u{2212}\(stats.removed)")]
                 }))
         configWatch = Task { [weak self, workspace] in
             for await _ in workspace.configChanges() {
@@ -125,8 +130,13 @@ final class GitFeature {
         guard shown else {
             layout.unregister(panel: Self.panelID)
             layout.unregister(panel: Self.historyPanelID)
+            deactivate()
             return
         }
+        // git (surfaces, amended 2026-10-16): the status is followed while the window has a repo,
+        // not only while Changes is shown — the Changes tab counts the files, History may be shown
+        // alone in its own slot, and the toolbar names the branch (`architecture` P4, an exception).
+        activate()
         let model = model
         let theme = theme
         layout.register(
@@ -138,9 +148,7 @@ final class GitFeature {
                 makeView: { [weak self] in
                     guard let self else { return AnyView(EmptyView()) }
                     return AnyView(GitChangesPanelView(model: model, feature: self, theme: theme))
-                },
-                activate: { [weak self] in self?.activate() },
-                deactivate: { [weak self] in self?.deactivate() }))
+                }))
         let history = history
         layout.register(
             panel: PanelDescriptor(

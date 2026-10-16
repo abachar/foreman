@@ -1,15 +1,12 @@
 import AppKit
 
 /// design R15: a flat toolbar button — `surfaceRaised` at rest, `surfaceSunken` under the mouse
-/// and while pressed, a 1 pt accent outline when it stands for a visible panel (layout R30).
+/// and while pressed.
 final class ToolbarButton: NSButton {
     static let height: CGFloat = 26
     static let radius: CGFloat = 6
 
     var tokens = ThemeService.Tokens.dark {
-        didSet { paint() }
-    }
-    var isOutlined = false {
         didSet { paint() }
     }
     private var isHovered = false {
@@ -84,11 +81,6 @@ final class ToolbarButton: NSButton {
         let path = NSBezierPath(roundedRect: plate, xRadius: Self.radius, yRadius: Self.radius)
         (isHovered || isHighlighted ? tokens.surfaceSunken : tokens.surfaceRaised).nsColor.setFill()
         path.fill()
-        if isOutlined {
-            tokens.accent.nsColor.setStroke()
-            NSBezierPath(roundedRect: plate.insetBy(dx: 0.5, dy: 0.5), xRadius: Self.radius, yRadius: Self.radius)
-                .stroke()
-        }
         super.draw(dirtyRect)
     }
 

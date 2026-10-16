@@ -53,6 +53,8 @@ struct LayoutStateTests {
         #expect(restored.model.tree.groups.count == 2)
         #expect(restored.model.active.active?.title == "three")
         #expect(restored.panels.visible == [.left: "git.status"])
+        // layout (status bar, 2026-10-16): the last panel of each slot comes back with the rest.
+        #expect(restored.panels.last == [.left: "git.status"])
         #expect(restored.panelSizes["git.status"] == 300)
         #expect(restored.requestedSizes[.left] == 300)
         #expect(!restored.isToolbarVisible)
@@ -148,5 +150,16 @@ struct LayoutStateTests {
         #expect(
             LayoutManager.frameToRestore(offScreen, screens: [main], main: main)
                 == CGRect(x: 0, y: 190, width: 1920, height: 700))
+    }
+
+    /// layout (status bar, 2026-10-16): a state written before `lastPanels` existed still decodes.
+    @Test func aStateWithoutLastPanelsStillDecodes() throws {
+        var state = manager(kinds: []).snapshot()
+        state.lastPanels = nil
+        let data = try JSONEncoder().encode(state)
+        let json = try #require(String(data: data, encoding: .utf8))
+        #expect(!json.contains("lastPanels"))
+        let decoded = try JSONDecoder().decode(LayoutState.self, from: data)
+        #expect(decoded.lastPanels == nil)
     }
 }

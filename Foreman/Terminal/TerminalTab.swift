@@ -23,6 +23,8 @@ final class TerminalTab {
     private(set) var isCwdMissing: Bool
     /// Incremented on every new process, so the view swaps its surface (terminal R8).
     private(set) var generation = 0
+    /// layout (status bar, 2026-10-16): the grid the surface last reported.
+    private(set) var size: (columns: Int, rows: Int)?
 
     init(kind: String, title: String, command: String, cwd: URL, env: [String: String] = [:]) {
         self.kind = kind
@@ -41,6 +43,11 @@ final class TerminalTab {
     var pid: pid_t? {
         if case .running(let pid) = state { return pid }
         return nil
+    }
+
+    func didResize(columns: Int, rows: Int) {
+        guard size?.columns != columns || size?.rows != rows else { return }
+        size = (columns, rows)
     }
 
     // MARK: - Transitions (terminal R6–R8)

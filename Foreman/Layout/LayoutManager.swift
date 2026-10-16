@@ -46,7 +46,8 @@ final class LayoutManager {
 
     // MARK: - Registration
 
-    /// Registers a panel and its toggle shortcut (layout R3, R22).
+    /// Registers a panel and its toggle shortcut (layout R3, R22); the panel toggles left the
+    /// toolbar for the status bar (R30 amended 2026-10-16, M21 21.2).
     func register(panel: PanelDescriptor) {
         guard panels.register(panel) else { return }
         shortcuts.register(
@@ -54,30 +55,13 @@ final class LayoutManager {
                 [panels] in
                 panels.toggle(panel.id)
             })
-        // layout R30 (2026-08-27), design R15: a toggle in the toolbar for the left and right slots.
-        guard panel.side != .bottom else { return }
-        register(
-            toolbarItem: ToolbarItemDescriptor(
-                id: Self.toggleID(of: panel.id), title: panel.title, icon: panel.icon,
-                placement: panel.side == .left ? .leading : .trailing,
-                kind: .action(perform: { [panels] in panels.toggle(panel.id) }, secondaryMenu: nil)))
     }
 
-    /// layout R36: the panel, its toggle shortcut and its toolbar toggle go together.
+    /// layout R36: the panel and its toggle shortcut go together.
     func unregister(panel id: PanelID) {
         guard panels[id] != nil else { return }
         panels.unregister(id)
         shortcuts.unregister(id.rawValue)
-        removeToolbarItem(Self.toggleID(of: id))
-    }
-
-    /// The toolbar item that toggles a panel; `nil` for an item that is not one.
-    nonisolated static func toggleID(of panel: PanelID) -> String {
-        "layout.panel.\(panel.rawValue)"
-    }
-
-    nonisolated static func panelID(ofToggle itemID: String) -> PanelID? {
-        itemID.hasPrefix("layout.panel.") ? PanelID(String(itemID.dropFirst("layout.panel.".count))) : nil
     }
 
     func register(tabKind descriptor: CenterTabDescriptor) {

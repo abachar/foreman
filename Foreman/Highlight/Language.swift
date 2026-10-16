@@ -37,6 +37,27 @@ nonisolated enum Language: String, CaseIterable, Sendable {
     case dockerfile
     case sql
 
+    /// layout (status bar, 2026-10-16): the language as the status bar names it.
+    var displayName: String {
+        switch self {
+        case .java: return "Java"
+        case .kotlin: return "Kotlin"
+        case .typescript: return "TypeScript"
+        case .tsx: return "TypeScript JSX"
+        case .javascript: return "JavaScript"
+        case .json: return "JSON"
+        case .yaml: return "YAML"
+        case .toml: return "TOML"
+        case .markdown: return "Markdown"
+        case .bash: return "Shell"
+        case .swift: return "Swift"
+        case .html: return "HTML"
+        case .css: return "CSS"
+        case .dockerfile: return "Dockerfile"
+        case .sql: return "SQL"
+        }
+    }
+
     /// editor R11: by file name first (`Dockerfile.dev`, `.zshrc`), then by extension; `nil` is
     /// plain text.
     static func forFile(_ url: URL) -> Language? {

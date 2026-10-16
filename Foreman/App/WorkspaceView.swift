@@ -148,6 +148,8 @@ struct WorkspaceView: View {
                         EdgeInsets(
                             top: tokens.toolbarGap, leading: tokens.gutter, bottom: tokens.gutter,
                             trailing: tokens.gutter))
+                    // layout (status bar, 2026-10-16): under the zones, never hidden.
+                    StatusBarView(layout: layout, theme: theme)
                 }
             }
             .background(tokens.windowBackground.color)

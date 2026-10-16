@@ -64,46 +64,20 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             button.tokens = tokens
             button.font = theme.interfaceFont()
             button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
-            // design R15: a toggle whose panel is visible is outlined.
-            button.isOutlined = LayoutManager.panelID(ofToggle: descriptor.id).map(layout.panels.isVisible) ?? false
             button.fit()
         }
     }
 
-    /// The trailing panel toggles travel as one group (design R15: a tight trio after Run).
-    static let trailingTogglesID = "layout.panels.trailing"
-    /// The room between Run and the trio: twice the room inside the trio (author, 2026-08-28),
-    /// laid as a leading inset of the trio's first toggle.
-    private static let trailingGap: CGFloat = 8
-
     private var identifiers: [NSToolbarItem.Identifier] {
-        var identifiers: [NSToolbarItem.Identifier] = []
-        for id in Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }) {
-            if trailingToggleIDs.contains(id) {
-                if identifiers.last?.rawValue != Self.trailingTogglesID {
-                    identifiers.append(NSToolbarItem.Identifier(Self.trailingTogglesID))
-                }
-            } else {
-                identifiers.append(NSToolbarItem.Identifier(id))
-            }
-        }
-        return identifiers
+        Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }).map { NSToolbarItem.Identifier($0) }
     }
 
-    private var trailingToggleIDs: [String] {
-        layout.toolbarItems.filter { $0.placement == .trailing && LayoutManager.panelID(ofToggle: $0.id) != nil }
-            .map(\.id)
-    }
-
-    /// layout R30: leading, a space, centre, a space, trailing — the features' items first in
-    /// each placement, the layout's panel toggles after them (so Run precedes the right toggles);
-    /// in the centre the agents come first, whatever the registration order (browser R1).
+    /// layout R30: leading, a space, centre, a space, trailing, each in registration order; in
+    /// the centre the agents come first, whatever the registration order (browser R1).
     nonisolated static func order(_ items: [(id: String, placement: ToolbarItemDescriptor.Placement)]) -> [String] {
         func ids(_ placement: ToolbarItemDescriptor.Placement) -> [String] {
             let own = items.filter { $0.placement == placement }.map(\.id)
-            let features = own.filter { LayoutManager.panelID(ofToggle: $0) == nil }
-            return features.filter { $0.hasPrefix("agent.") } + features.filter { !$0.hasPrefix("agent.") }
-                + own.filter { LayoutManager.panelID(ofToggle: $0) != nil }
+            return own.filter { $0.hasPrefix("agent.") } + own.filter { !$0.hasPrefix("agent.") }
         }
         return ids(.leading) + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.center)
             + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.trailing)
@@ -123,24 +97,15 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         _ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar: Bool
     ) -> NSToolbarItem? {
-        if identifier.rawValue == Self.trailingTogglesID {
-            let group = NSToolbarItemGroup(itemIdentifier: identifier)
-            group.subitems = trailingToggleIDs.enumerated().compactMap { index, id in
-                makeItem(NSToolbarItem.Identifier(id), leadingInset: index == 0 ? Self.trailingGap : 0)
-            }
-            group.isBordered = false
-            return group
-        }
-        return makeItem(identifier)
+        makeItem(identifier)
     }
 
-    private func makeItem(_ identifier: NSToolbarItem.Identifier, leadingInset: CGFloat = 0) -> NSToolbarItem? {
+    private func makeItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
         guard let descriptor = layout.toolbarItem(identifier.rawValue) else { return nil }
         let item = NSToolbarItem(itemIdentifier: identifier)
         let button = ToolbarButton()
         button.identifier = NSUserInterfaceItemIdentifier(descriptor.id)
-        // A panel toggle is an icon alone (design R15, the mockups); the others carry their name.
-        button.title = LayoutManager.panelID(ofToggle: descriptor.id) == nil ? descriptor.title : ""
+        button.title = descriptor.title
         button.tokens = theme.tokens
         button.font = theme.interfaceFont()
         button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
@@ -148,25 +113,11 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         button.action = #selector(performButton(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.fit()
-        item.view = leadingInset > 0 ? Self.inset(button, leading: leadingInset) : button
+        item.view = button
         item.label = descriptor.title
         item.toolTip = descriptor.title
         item.isBordered = false
         return item
-    }
-
-    /// `button` in a container `leading` points wider, pinned to its right edge.
-    private static func inset(_ button: ToolbarButton, leading: CGFloat) -> NSView {
-        let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(button)
-        NSLayoutConstraint.activate([
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: leading),
-            button.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            button.topAnchor.constraint(equalTo: container.topAnchor),
-            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        return container
     }
 
     @objc private func performButton(_ sender: ToolbarButton) {

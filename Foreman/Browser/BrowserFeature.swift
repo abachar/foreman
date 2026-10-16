@@ -33,7 +33,13 @@ final class BrowserFeature {
                 kind: Self.tabKind,
                 makeView: { [weak self] id, _ in self?.view(id) },
                 serialize: { _ in "{}" },
-                onClose: { [weak self] id in self?.closed(id) }))
+                onClose: { [weak self] id in self?.closed(id) },
+                // layout (status bar, 2026-10-16): the page's host.
+                statusItems: { [weak self] _ in
+                    guard let url = self?.tab?.url ?? self?.url else { return [] }
+                    let host = url.host().map { host in url.port.map { "\(host):\($0)" } ?? host }
+                    return [StatusItem(id: "browser.host", text: host ?? url.absoluteString)]
+                }))
         registerShortcuts()
         apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
