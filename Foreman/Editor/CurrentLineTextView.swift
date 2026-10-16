@@ -20,6 +20,73 @@ class CurrentLineTextView: NSTextView {
         didSet { needsDisplay = true }
     }
 
+    // MARK: Reading aids (editor R54, R55)
+
+    var guideColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+    var activeGuideColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+    var bracketColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+    private var regions: [FoldRegion] = []
+    private var brackets: [BracketPair] = []
+    private var indentWidth = 4
+    /// The levels of every line and where each line starts, kept with the text: the draw and the
+    /// caret only read them.
+    private var guideLevels: [Int] = []
+    private var lineStarts: [Int] = [0]
+    /// What the caret lights up, kept to redraw only when it changes.
+    private var activeGuide: (column: Int, lines: ClosedRange<Int>)?
+    private var matchedBrackets: BracketPair?
+
+    /// The parse's regions and pairs, and the width of a level; called on every SwiftUI update.
+    func setStructure(regions: [FoldRegion], brackets: [BracketPair], indentWidth: Int) {
+        guard regions != self.regions || brackets != self.brackets || indentWidth != self.indentWidth else { return }
+        self.regions = regions
+        self.brackets = brackets
+        self.indentWidth = indentWidth
+        // A new parse follows every edit and every reload (which posts no change): the levels are
+        // read again with it.
+        rebuildLines()
+        updateCaretAids(force: true)
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        rebuildLines()
+        needsDisplay = true
+    }
+
+    private func rebuildLines() {
+        guideLevels = IndentGuides.levels(of: string, width: indentWidth)
+        lineStarts = IndentGuides.lineStarts(of: string as NSString)
+    }
+
+    /// The 1-based line of a UTF-16 offset, from the cached starts.
+    private func line(at offset: Int) -> Int {
+        IndentGuides.line(at: offset, starts: lineStarts)
+    }
+
+    /// editor R54, R55: the active block and the matched pair follow the caret.
+    private func updateCaretAids(force: Bool = false) {
+        let caret = selectedRange().length == 0 ? selectedRange().location : nil
+        let line = caret.map { self.line(at: $0) }
+        let guide = line.flatMap {
+            IndentGuides.activeGuide(regions: regions, caretLine: $0, levels: guideLevels, width: indentWidth)
+        }
+        let pair = caret.flatMap { BracketPair.match(brackets, caret: $0) }
+        guard
+            force || guide?.column != activeGuide?.column || guide?.lines != activeGuide?.lines
+                || pair != matchedBrackets
+        else { return }
+        activeGuide = guide
+        matchedBrackets = pair
+        needsDisplay = true
+    }
+
     /// editor R43: `cmd+click` reports the character under the pointer and stops there.
     ///
     /// The caret is deliberately left alone: a jump that also moved the selection would lose the
@@ -105,6 +172,7 @@ class CurrentLineTextView: NSTextView {
         let old = currentLineRect
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelectingFlag)
         let new = currentLineRect
+        updateCaretAids()
         guard old != new else { return }
         if let old {
             setNeedsDisplay(old)
@@ -121,7 +189,48 @@ class CurrentLineTextView: NSTextView {
             line.fill()
         }
         drawPrintMargin(in: rect)
+        drawGuides(in: rect)
+        drawMatchedBrackets(in: rect)
         drawUnderlines(in: rect)
+    }
+
+    /// editor R54: a 1 pt line at each enclosing level's column of every visible line, the
+    /// caret's block brighter; a folded line has no height and gets none.
+    private func drawGuides(in rect: NSRect) {
+        guard let font, let layoutManager = textLayoutManager, let contentManager = layoutManager.textContentManager,
+            !guideLevels.isEmpty
+        else { return }
+        let advance = Self.advance(of: font)
+        let origin = textContainerInset.width + (textContainer?.lineFragmentPadding ?? 0)
+        let start =
+            layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: rect.minY - textContainerInset.height))?
+            .rangeInElement.location ?? layoutManager.documentRange.location
+        var line = self.line(at: contentManager.offset(from: layoutManager.documentRange.location, to: start))
+        layoutManager.enumerateTextLayoutFragments(from: start, options: [.ensuresLayout]) { fragment in
+            defer { line += 1 }
+            let frame = fragment.layoutFragmentFrame.offsetBy(dx: 0, dy: textContainerInset.height)
+            guard frame.height >= 1, line - 1 < guideLevels.count else { return frame.minY < rect.maxY }
+            for column in IndentGuides.columns(level: guideLevels[line - 1], width: indentWidth) {
+                let isActive = activeGuide.map { $0.column == column && $0.lines.contains(line) } ?? false
+                (isActive ? activeGuideColor : guideColor).setFill()
+                NSRect(
+                    x: (origin + CGFloat(column) * advance).rounded(.down), y: frame.minY, width: 1,
+                    height: frame.height
+                )
+                .fill()
+            }
+            return frame.maxY < rect.maxY
+        }
+    }
+
+    /// editor R55: both brackets of the matched pair on a tint of the accent.
+    private func drawMatchedBrackets(in rect: NSRect) {
+        guard let pair = matchedBrackets else { return }
+        bracketColor.setFill()
+        for offset in [pair.open, pair.close] {
+            guard let frame = self.rect(forCharacterAt: offset), frame.intersects(rect) else { continue }
+            NSBezierPath(roundedRect: frame.insetBy(dx: -1, dy: 0), xRadius: 2, yRadius: 2).fill()
+        }
     }
 
     /// editor R53: a 1 pt line at the margin's column, the full height of what is redrawn.

@@ -66,6 +66,8 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 ### Reading aids (2026-10-16, M21 21.8–21.11, reference view 02)
 
 - R53 — **Print margin**: a 1 pt `separator` line at the column `config.editor.printMargin` (120 by default, `0` for none), the full height of the text, under the text; its x is the text's left inset plus `column` times the advance of one character of the editor font. A 1 pt `separator` line also closes the gutter on the text's side (`design` R25).
+- R54 — **Indent guides** (M21 21.9): every visible line gets a 1 pt `separator` line at the column of each enclosing indentation level but the outermost (a line indented three levels has guides at one and two levels); a level is the indentation unit the tab detected (R6), a tab counting 4 columns; a blank line takes the smaller level of the nearest non-blank lines around it, so a guide runs through a block's blank lines and stops between two blocks. The guide of the caret's **innermost block** (the innermost fold region holding the caret's line, R26) is drawn in `textDisabled` over the lines strictly inside the block, at the column of the block's first line's indentation. A folded line draws none.
+- R55 — **Matched brackets** (M21 21.9): the bracket just before the caret — else the one at the caret — and its pair are drawn on a tint of the accent; the pairs come from the syntax tree of R26's parse (an opener and its closer among the children of one node), so a bracket inside a string or a comment never matches. No grammar, no matching.
 
 ### Problems (2026-10-16, M21 21.7, reference views 12 and 13)
 

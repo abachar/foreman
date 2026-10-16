@@ -17,24 +17,48 @@ nonisolated enum Folding {
     /// The tokens that open a block, an object or an argument list.
     static let openers: Set<String> = ["{", "[", "("]
 
+    /// The closer of each opener, for the bracket pairs (editor R55).
+    static let closers: [String: String] = ["{": "}", "[": "]", "(": ")"]
+
     /// editor R26, R13: the regions, `[]` when the grammar cannot parse.
     static func regions(in text: String, language: Language) -> [FoldRegion] {
+        structure(in: text, language: language).regions
+    }
+
+    /// editor R26, R55 (2026-10-16): the fold regions and the bracket pairs, from one parse.
+    ///
+    /// A pair is an opener and its closer among the children of one node, matched on a stack:
+    /// most grammars wrap a block in a node of its own (`{` first, `}` last), but some put the
+    /// braces straight into the statement (Swift's `if`). A bracket inside a string or a comment
+    /// is part of that token, never a child of its own, so the tree skips them with no lexing.
+    /// A region is a pair spanning lines, from the opener's line to the line before the closer
+    /// (amended 2026-10-16: it used to need the opener as its node's first child).
+    static func structure(in text: String, language: Language) -> (regions: [FoldRegion], brackets: [BracketPair]) {
         let parser = Parser()
         guard (try? parser.setLanguage(language.treeSitterLanguage)) != nil, let tree = parser.parse(text),
             let root = tree.rootNode
-        else { return [] }
+        else { return ([], []) }
         var regions: [FoldRegion] = []
+        var brackets: [BracketPair] = []
         var seen: Set<Int> = []
         visit(root) { node in
-            guard node.isNamed, let first = node.firstChild, !first.isNamed, let opener = first.nodeType,
-                openers.contains(opener), let last = node.lastChild, last.id != first.id
-            else { return }
-            let region = FoldRegion(
-                first: Int(first.pointRange.lowerBound.row) + 1, last: Int(last.pointRange.lowerBound.row))
-            guard region.last > region.first, seen.insert(region.first).inserted else { return }
-            regions.append(region)
+            var open: [(type: String, node: Node)] = []
+            node.enumerateChildren { child in
+                guard !child.isNamed, let type = child.nodeType else { return }
+                if openers.contains(type) {
+                    open.append((type, child))
+                } else if let last = open.last, closers[last.type] == type {
+                    open.removeLast()
+                    brackets.append(BracketPair(open: last.node.range.location, close: child.range.location))
+                    let region = FoldRegion(
+                        first: Int(last.node.pointRange.lowerBound.row) + 1, last: Int(child.pointRange.lowerBound.row))
+                    if region.last > region.first, seen.insert(region.first).inserted {
+                        regions.append(region)
+                    }
+                }
+            }
         }
-        return regions.sorted { $0.first < $1.first }
+        return (regions.sorted { $0.first < $1.first }, brackets.sorted { $0.open < $1.open })
     }
 
     /// editor R27: the innermost region around `line` (the one starting last).

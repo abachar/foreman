@@ -150,6 +150,10 @@ struct EditorTextView: NSViewRepresentable {
         }
         // editor R26, R27: the folds reach the layout and the gutter.
         context.coordinator.applyFolds(regions: tab.foldRegions, folded: tab.foldedLines, to: textView, in: scroll)
+        // editor R54, R55: the guides' block and the brackets come from the same parse.
+        textView.setStructure(
+            regions: tab.foldRegions, brackets: tab.bracketPairs,
+            indentWidth: IndentGuides.width(of: tab.indentUnit))
         applyDiagnostics(to: textView, ruler: scroll.verticalRulerView as? LineNumberRulerView)
         guard let line = tab.requestedLine else { return }
         tab.requestedLine = nil
@@ -187,6 +191,9 @@ struct EditorTextView: NSViewRepresentable {
         textView.currentLineColor = tokens.surfaceSunken.nsColor
         // design R25 (2026-10-16): the print margin and the gutter's edge are separators.
         textView.printMarginColor = tokens.separator.nsColor
+        textView.guideColor = tokens.separator.nsColor
+        textView.activeGuideColor = tokens.textDisabled.nsColor
+        textView.bracketColor = tokens.accent.nsColor(alpha: 0.3)
         ruler?.textColor = tokens.textSecondary.nsColor
         ruler?.backgroundColor = background
         ruler?.separatorColor = tokens.separator.nsColor

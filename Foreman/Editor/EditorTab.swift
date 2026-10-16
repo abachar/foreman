@@ -89,6 +89,8 @@ final class EditorTab {
     /// editor R26–R28: the regions of the current text and the first lines of the folded ones.
     private(set) var foldRegions: [FoldRegion] = []
     private(set) var foldedLines: Set<Int> = []
+    /// editor R55: the bracket pairs of the same parse as the regions.
+    private(set) var bracketPairs: [BracketPair] = []
     private var folding: Task<Void, Never>?
     /// editor R28, R30, R32: why the last formatting did nothing, shown in a banner until the
     /// next keystroke.
@@ -268,16 +270,22 @@ final class EditorTab {
         guard let language else { return }
         folding = Task { [weak self] in
             guard (try? await Task.sleep(for: delay)) != nil, let text = self?.currentText else { return }
-            let regions = await Self.regions(in: text, language: language)
+            let structure = await Self.structure(in: text, language: language)
             guard !Task.isCancelled, let self else { return }
+            let regions = structure.regions
             foldRegions = regions
+            bracketPairs = structure.brackets
             foldedLines = foldedLines.filter { first in regions.contains { $0.first == first } }
         }
     }
 
     @concurrent
-    private static func regions(in text: String, language: Language) async -> [FoldRegion] {
-        Folding.regions(in: text, language: language)
+    private static func structure(
+        in text: String, language: Language
+    ) async -> (
+        regions: [FoldRegion], brackets: [BracketPair]
+    ) {
+        Folding.structure(in: text, language: language)
     }
 
     func textDidChange() {

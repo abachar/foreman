@@ -48,6 +48,15 @@ struct FoldingTests {
             ])
     }
 
+    /// editor R26 (amended 2026-10-16): Swift's `if` holds its braces itself, with no block node.
+    @Test func swiftStatementsFoldTheirBraces() {
+        let swift = "func f() {\n    if a {\n        g()\n    } else {\n        h()\n    }\n}\n"
+        #expect(
+            Folding.regions(in: swift, language: .swift) == [
+                FoldRegion(first: 1, last: 6), FoldRegion(first: 2, last: 3), FoldRegion(first: 4, last: 5),
+            ])
+    }
+
     /// editor R26: a pathologically nested document walks on an explicit stack, not the call one.
     @Test func survivesPathologicalNesting() {
         let depth = 10_000
