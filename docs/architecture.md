@@ -15,7 +15,7 @@
 One window = one folder = one workspace. In the center, tab groups in a split tree; around it, three panel slots (left, right, bottom), one visible panel per slot; above, a native toolbar. There is no free-form shell: a terminal surface only exists to host an agent or a `run` command.
 
 ```
-│ [Claude] [OpenCode]      TOOLBAR              [▶ Run] │
+│ [project ▾] [branch ▾]   TOOLBAR   [agents] [▶ Run] │
 ┌──────────┬──────────────────────────────────┬──────────┐
 │  LEFT    │        CENTER (splits →          │  RIGHT   │
 │  panel   │        tab groups)               │  panel   │

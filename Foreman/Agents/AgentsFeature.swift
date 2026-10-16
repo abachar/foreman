@@ -133,10 +133,12 @@ final class AgentsFeature {
             guard let agent = agent(id) else { continue }
             layout.register(
                 toolbarItem: ToolbarItemDescriptor(
-                    id: Self.kind(of: id), title: agent.title, icon: icon(of: agent), placement: .center,
+                    // layout R30 (amended 2026-10-16): icons on the right, the name in the tooltip.
+                    id: Self.kind(of: id), title: agent.title, icon: icon(of: agent), placement: .trailing,
                     kind: .action(
                         perform: { [weak self] in self?.buttonClicked(id) },
-                        secondaryMenu: { [weak self] in self?.menu(for: id) ?? [] })))
+                        secondaryMenu: { [weak self] in self?.menu(for: id) ?? [] }),
+                    showsTitle: false))
             syncBadge(id)
         }
         layout.replaceHomeEntries(

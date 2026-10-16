@@ -1,11 +1,13 @@
 import AppKit
 import Foundation
 import FuzzyMatch
+import Observation
 import SwiftUI
 import os
 
 /// Entry point of `run`: one `run.<id>` tab kind per command of the config, the terminal surface
 /// behind each tab, the launch and relaunch logic (run R4, R7–R10, R12, R13).
+@Observable
 @MainActor
 final class RunFeature {
     nonisolated struct Payload: Codable, Equatable, Sendable {
@@ -60,6 +62,7 @@ final class RunFeature {
     private let workspace: Workspace
     private let terminal: TerminalService
     private let palette: Palette
+    private let theme: ThemeService
     private(set) var commands: [RunCommand] = []
     /// run R14, R15: the two sources merged into `commands`.
     private var declared: [RunCommand] = []
@@ -77,17 +80,17 @@ final class RunFeature {
     private var pendingRelaunches: [TabID: Task<Void, Never>] = [:]
     /// run R9: when `cmd+.` last hit each tab.
     private var lastStops: [TabID: ContinuousClock.Instant] = [:]
-    /// run R6b: the tab whose failure the button reports, until it is shown.
-    private var lastFailed: TabID?
     private var configWatch: Task<Void, Never>?
     private var eventsWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "run")
 
-    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, palette: Palette) {
+    init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, palette: Palette, theme: ThemeService)
+    {
         self.layout = layout
         self.workspace = workspace
         self.terminal = terminal
         self.palette = palette
+        self.theme = theme
         registerStop()
         apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
@@ -325,11 +328,54 @@ final class RunFeature {
 
     // MARK: - Toolbar (run R6b)
 
+    /// run R6b (amended 2026-10-16, M21 21.3): the Run widget — the current command and its last
+    /// state, ▶ (↻ while it runs) and ■; the command opens the menu of every command.
     private func registerToolbar() {
+        let theme = theme
         layout.register(
             toolbarItem: ToolbarItemDescriptor(
                 id: Self.toolbarID, title: "Run", icon: "play.fill", placement: .trailing,
-                kind: .menu(entries: { [weak self] in self?.menuEntries() ?? [] })))
+                kind: .widget(
+                    view: { [weak self] openMenu in
+                        guard let self else { return AnyView(EmptyView()) }
+                        return AnyView(RunWidget(run: self, theme: theme, openMenu: openMenu))
+                    },
+                    menu: { [weak self] in ToolbarMenu(entries: self?.widgetMenuEntries() ?? []) })))
+    }
+
+    /// run R6b (amended 2026-10-16): the command the widget launches — the last one launched in
+    /// this window, else the first of the catalog.
+    var current: RunCommand? {
+        recents.lazy.compactMap { id in self.commands.first { $0.id == id && $0.problem == nil } }.first
+            ?? commands.first { $0.problem == nil }
+    }
+
+    /// The state of a command's primary tab; `nil` when it never ran in this window.
+    func state(ofCommand id: String) -> RunState? {
+        primaryTabs[id].flatMap(state(of:))
+    }
+
+    /// run R9, from the widget's ■: the command's primary tab, escalating like `cmd+.` does.
+    func stop(_ id: String) {
+        guard let tab = primaryTabs[id] else { return }
+        stop(tab: tab)
+    }
+
+    /// The widget's menu: the commands with their state, then *Run Command…* and *Stop*.
+    private func widgetMenuEntries() -> [ToolbarMenuEntry] {
+        var entries = menuEntries()
+        entries.append(
+            ToolbarMenuEntry(
+                id: "run.palette", title: "Run Command…", shortcut: layout.shortcuts.shortcut(for: "run.palette"),
+                startsSection: true
+            ) { [weak self] in self?.showPalette() })
+        if let current, state(ofCommand: current.id) == .running {
+            entries.append(
+                ToolbarMenuEntry(
+                    id: "run.stop", title: "Stop \(current.id)", shortcut: layout.shortcuts.shortcut(for: "run.stop")
+                ) { [weak self] in self?.stop(current.id) })
+        }
+        return entries
     }
 
     /// run R6b: every command with its state.
@@ -369,16 +415,6 @@ final class RunFeature {
         }
     }
 
-    /// run R6b: blue while anything runs, red while the last failure has not been looked at.
-    nonisolated static func toolbarBadge(anyRunning: Bool, hasUnseenFailure: Bool) -> ToolbarBadge {
-        anyRunning ? .dot(.blue) : (hasUnseenFailure ? .dot(.red) : .none)
-    }
-
-    private func syncToolbarBadge() {
-        let running = commandOfTab.keys.contains { terminal.tab($0)?.isRunning == true }
-        layout.setBadge(Self.toolbarBadge(anyRunning: running, hasUnseenFailure: lastFailed != nil), on: Self.toolbarID)
-    }
-
     // MARK: - Stop (run R9)
 
     private func registerStop() {
@@ -397,6 +433,10 @@ final class RunFeature {
     /// run R9: only a `run.*` tab; `cmd+.` on an agent does nothing (decision 2026-08-27).
     private func stopActiveTab() {
         guard let id = layout.model.active.active?.id, commandOfTab[id] != nil else { return }
+        stop(tab: id)
+    }
+
+    private func stop(tab id: TabID) {
         let now = ContinuousClock.now
         let signal = Self.stopSignal(lastStop: lastStops[id], now: now)
         lastStops[id] = now
@@ -439,14 +479,10 @@ final class RunFeature {
         terminal.closed(id)
         pendingRelaunches.removeValue(forKey: id)?.cancel()
         lastStops[id] = nil
-        if lastFailed == id {
-            lastFailed = nil
-        }
         guard let commandID = commandOfTab.removeValue(forKey: id) else { return }
         if primaryTabs[commandID] == id {
             primaryTabs[commandID] = commandOfTab.first { $0.value == commandID }?.key
         }
-        syncToolbarBadge()
     }
 
     // MARK: - State and badges (run R10)
@@ -472,15 +508,6 @@ final class RunFeature {
             id = tab
         }
         guard commandOfTab[id] != nil, let tab = terminal.tab(id) else { return }
-        defer { syncToolbarBadge() }
-        switch event {
-        case .exited(_, let exit) where exit != .code(0):
-            lastFailed = id
-        case .activated where lastFailed == id:
-            lastFailed = nil
-        case .started, .exited, .bell, .activated, .closed:
-            break
-        }
         if case .exited = event, let pending = pendingRelaunches.removeValue(forKey: id) {
             pending.cancel()
             try? terminal.relaunch(id)

@@ -87,10 +87,14 @@ struct RunToolbarTests {
         #expect(rows[1].subtitle == "repo not found: x")
     }
 
-    @Test func buttonBadgeIsBlueThenRedThenNone() {
-        #expect(RunFeature.toolbarBadge(anyRunning: true, hasUnseenFailure: true) == .dot(.blue))
-        #expect(RunFeature.toolbarBadge(anyRunning: false, hasUnseenFailure: true) == .dot(.red))
-        #expect(RunFeature.toolbarBadge(anyRunning: false, hasUnseenFailure: false) == .none)
+    /// run R6b (amended 2026-10-16): the widget's icon carries the current command's last state.
+    @Test func theWidgetIconFollowsTheState() {
+        #expect(RunWidget.Icon(nil) == .none)
+        #expect(RunWidget.Icon(.idle) == .none)
+        #expect(RunWidget.Icon(.running) == .running)
+        #expect(RunWidget.Icon(.succeeded) == .succeeded)
+        #expect(RunWidget.Icon(.failed(1)) == .failed)
+        #expect(RunWidget.Icon(.failed(nil)) == .failed)
     }
 
     @Test func secondStopWithinTwoSecondsEscalatesToTerm() {

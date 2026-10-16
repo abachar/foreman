@@ -56,7 +56,7 @@ This is **not** `run`: a `run` command is defined by the user and lives in the p
 
 ## Technical options
 
-- **Folder**: `Agents/` (`architecture.md`). `AgentsFeature` declares to `Layout` one toolbar item per agent (on the `leading` side, `layout` R30) and a tab kind `agent.<id>` whose payload is `{ "id", "cwd" }`; the tab's view is `TerminalService`'s terminal surface (the `run` tab does the same, `run` R7).
+- **Folder**: `Agents/` (`architecture.md`). `AgentsFeature` declares to `Layout` one toolbar item per agent (on the `leading` side, `layout` R30; the `trailing` side since 2026-10-16, an icon alone with the agent's name as its tooltip, before the Browser and Run — M21 21.3) and a tab kind `agent.<id>` whose payload is `{ "id", "cwd" }`; the tab's view is `TerminalService`'s terminal surface (the `run` tab does the same, `run` R7).
 - **Detection**: `Workspace` exposes the login shell's environment (PATH); the executable is looked up by simply walking the PATH entries (`FileManager.isExecutableFile`), off the main actor. No shell is launched to detect.
 - **Icons**: `Layout/IconImage` resolves an SF Symbol name, an asset name (`agent-<id>`, an SVG template) or an absolute path to an SVG/PNG file (`NSImage(contentsOfFile:)`, `isTemplate`); `AgentsFeature` makes a relative path under the root absolute.
 - **Tests**: parsing/merging `config.agents` with the built-ins (R3), PATH resolution over a temporary folder (R2), the button/tab state machine (R4, R6, R8) driven by simulated terminal events.

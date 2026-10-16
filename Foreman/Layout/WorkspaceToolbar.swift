@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Observation
+import SwiftUI
 
 /// The native toolbar of a window (layout R30–R32), dressed as design R15 says (option A,
 /// decision 2026-08-27): `unifiedCompact`, one flat `ToolbarButton` per item on the tokens.
@@ -57,9 +58,9 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             }
         }
         let tokens = theme.tokens
-        for item in toolbar.items.flatMap({ ($0 as? NSToolbarItemGroup)?.subitems ?? [$0] }) {
+        for item in toolbar.items {
             guard let descriptor = layout.toolbarItem(item.itemIdentifier.rawValue),
-                let button = item.view as? ToolbarButton ?? item.view?.subviews.first as? ToolbarButton
+                let button = item.view as? ToolbarButton
             else { continue }
             button.tokens = tokens
             button.font = theme.interfaceFont()
@@ -68,16 +69,22 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         }
     }
 
+    /// layout R30 (amended 2026-10-16): the project widget, declared by the app, leads.
+    nonisolated static let projectID = "workspace.project"
+
     private var identifiers: [NSToolbarItem.Identifier] {
         Self.order(layout.toolbarItems.map { ($0.id, $0.placement) }).map { NSToolbarItem.Identifier($0) }
     }
 
-    /// layout R30: leading, a space, centre, a space, trailing, each in registration order; in
-    /// the centre the agents come first, whatever the registration order (browser R1).
+    /// layout R30 (amended 2026-10-16): leading, a space, centre, a space, trailing, each in
+    /// registration order — except that the project widget leads, and on the right the agents
+    /// come first and Run last, whatever answered first (browser R1, run R6b).
     nonisolated static func order(_ items: [(id: String, placement: ToolbarItemDescriptor.Placement)]) -> [String] {
         func ids(_ placement: ToolbarItemDescriptor.Placement) -> [String] {
             let own = items.filter { $0.placement == placement }.map(\.id)
-            return own.filter { $0.hasPrefix("agent.") } + own.filter { !$0.hasPrefix("agent.") }
+            let first = own.filter { $0 == projectID || $0.hasPrefix("agent.") }
+            let last = own.filter { $0.hasPrefix("run.") }
+            return first + own.filter { !first.contains($0) && !last.contains($0) } + last
         }
         return ids(.leading) + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.center)
             + [NSToolbarItem.Identifier.flexibleSpace.rawValue] + ids(.trailing)
@@ -103,9 +110,23 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     private func makeItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
         guard let descriptor = layout.toolbarItem(identifier.rawValue) else { return nil }
         let item = NSToolbarItem(itemIdentifier: identifier)
+        if case .widget(let view, _) = descriptor.kind {
+            // layout R30 (amended 2026-10-16): the feature's SwiftUI, sized by its content; its menu
+            // opens under it, through the same `NSMenu` as the other items.
+            let host = NSHostingView(rootView: AnyView(EmptyView()))
+            host.rootView = view { [weak self, weak host] in
+                guard let self, let host else { return }
+                popUp(menu(for: descriptor.id), under: host)
+            }
+            host.sizingOptions = [.intrinsicContentSize]
+            item.view = host
+            item.label = descriptor.title
+            item.isBordered = false
+            return item
+        }
         let button = ToolbarButton()
         button.identifier = NSUserInterfaceItemIdentifier(descriptor.id)
-        button.title = descriptor.title
+        button.title = descriptor.showsTitle ? descriptor.title : ""
         button.tokens = theme.tokens
         button.font = theme.interfaceFont()
         button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
@@ -125,7 +146,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         let event = NSApp.currentEvent
         let isSecondary = event.map { $0.type == .rightMouseUp || $0.modifierFlags.contains(.control) } ?? false
         switch descriptor.kind {
-        case .menu:
+        case .menu, .widget:
             popUp(menu(for: id), under: sender)
         case .action(let perform, let secondaryMenu):
             // layout R31: a right click (or control-click) opens the secondary menu instead.
@@ -139,15 +160,17 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         }
     }
 
-    private func popUp(_ menu: NSMenu, under button: NSButton) {
+    private func popUp(_ menu: NSMenu, under view: NSView) {
         menuNeedsUpdate(menu)
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY + 4), in: button)
+        let y = view.isFlipped ? view.bounds.maxY + 4 : -4
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: y), in: view)
     }
 
     // MARK: - Menus (built on demand, layout R30)
 
     private func menu(for id: String) -> NSMenu {
         let menu = NSMenu(title: id)
+        menu.autoenablesItems = false
         menu.delegate = self
         menuItemsByMenu[ObjectIdentifier(menu)] = id
         return menu
@@ -161,9 +184,22 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             entries = provider()
         case .action(_, let secondaryMenu):
             entries = secondaryMenu?() ?? []
+        case .widget(_, let provider):
+            entries = provider().entries
         }
         menu.removeAllItems()
+        fill(menu, with: entries)
+    }
+
+    private func fill(_ menu: NSMenu, with entries: [ToolbarMenuEntry]) {
         for entry in entries {
+            if entry.startsSection, !menu.items.isEmpty {
+                menu.addItem(.separator())
+            }
+            if entry.isHeader {
+                menu.addItem(.sectionHeader(title: entry.title))
+                continue
+            }
             // layout R37: the entry writes the shortcut of what it offers.
             let equivalent = entry.shortcut?.keyEquivalent
             let item = NSMenuItem(
@@ -172,8 +208,17 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             item.target = self
             item.subtitle = entry.subtitle
             item.representedObject = Entry(perform: entry.perform)
+            item.isEnabled = entry.isEnabled
+            item.state = entry.isChecked ? .on : .off
             if case .dot(let color) = entry.badge {
                 item.image = dot(color)
+            }
+            if !entry.children.isEmpty {
+                let submenu = NSMenu(title: entry.title)
+                submenu.autoenablesItems = false
+                fill(submenu, with: entry.children)
+                item.submenu = submenu
+                item.action = nil
             }
             menu.addItem(item)
         }

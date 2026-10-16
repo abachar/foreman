@@ -40,14 +40,17 @@ struct ToolbarTests {
         #expect(layout.badge(of: "run.main") == .none)
     }
 
-    @Test func ordersLeadingCentreTrailingWithTheAgentsFirstInTheCentre() {
+    /// layout R30 (amended 2026-10-16): the project leads; on the right the agents come first and
+    /// Run last, whatever registered first.
+    @Test func ordersTheProjectFirstAndRunLast() {
         let order = WorkspaceToolbar.order([
-            ("run.main", .trailing), ("browser.page", .center), ("agent.claude", .center), ("agent.pi", .center),
+            ("git.branch", .leading), ("run.toolbar", .trailing), ("browser.open", .trailing),
+            ("agent.claude", .trailing), (WorkspaceToolbar.projectID, .leading), ("agent.pi", .trailing),
         ])
         #expect(
             order == [
-                "NSToolbarFlexibleSpaceItem", "agent.claude", "agent.pi", "browser.page", "NSToolbarFlexibleSpaceItem",
-                "run.main",
+                WorkspaceToolbar.projectID, "git.branch", "NSToolbarFlexibleSpaceItem", "NSToolbarFlexibleSpaceItem",
+                "agent.claude", "agent.pi", "browser.open", "run.toolbar",
             ])
     }
 
@@ -68,6 +71,38 @@ struct ToolbarTests {
             .perform()
 
         #expect(!layout.isToolbarVisible)
+    }
+}
+
+/// The project and branch widgets (layout R30 amended 2026-10-16, M21 21.3).
+@MainActor
+struct ToolbarWidgetTests {
+    @Test func theProjectMarkTakesTwoInitials() {
+        #expect(ProjectWidget.initials(of: "orders-api") == "OA")
+        #expect(ProjectWidget.initials(of: "foreman") == "FO")
+        #expect(ProjectWidget.initials(of: "my_big project") == "MB")
+        #expect(ProjectWidget.initials(of: "x") == "X")
+        #expect(ProjectWidget.initials(of: "") == "")
+    }
+
+    @Test func theProjectMenuOpensRevealsAndListsTheRecents() {
+        var opened: [URL] = []
+        let recents = [URL(filePath: "/tmp/a/one"), URL(filePath: "/tmp/b/two")]
+        let entries = ProjectWidget.entries(
+            recents: recents, choose: {}, openRecent: { opened.append($0) }, reveal: {})
+        #expect(entries.map(\.title) == ["Open…", "Open Recent", "Reveal in Finder"])
+        #expect(entries[1].children.map(\.title) == ["one", "two"])
+        #expect(entries[2].startsSection)
+        entries[1].children[1].perform()
+        #expect(opened == [recents[1]])
+        #expect(!ProjectWidget.entries(recents: [], choose: {}, openRecent: { _ in }, reveal: {})[1].isEnabled)
+    }
+
+    @Test func theBranchWidgetNamesTheBranchAndCountsTheWorktrees() {
+        #expect(GitBranchWidget.text(repo: nil, head: "main", worktrees: 2) == ("main", "2 worktrees"))
+        #expect(GitBranchWidget.text(repo: nil, head: "main", worktrees: 1) == ("main", "1 worktree"))
+        #expect(GitBranchWidget.text(repo: "api", head: "dev", worktrees: 0).title == "api / dev")
+        #expect(GitBranchWidget.text(repo: "api", head: "dev", worktrees: 0).detail == nil)
     }
 }
 

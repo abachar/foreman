@@ -87,7 +87,12 @@ struct WorkspaceView: View {
                 // git R34c: a click on an agent badge of the Changes panel.
                 git.activateAgentTab = { [weak agents] in agents?.activate($0) }
                 browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
-                run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
+                run = RunFeature(
+                    layout: layout, workspace: workspace, terminal: terminal, palette: palette, theme: theme)
+                // layout R30 (amended 2026-10-16): the project widget leads the toolbar.
+                ProjectWidget.register(
+                    in: layout, folder: folder, theme: theme, appDelegate: appDelegate,
+                    open: { openWindow(value: $0) })
                 restoreLayout()
                 workspace.watchConfig()
                 applyShortcutOverrides(workspace.config)

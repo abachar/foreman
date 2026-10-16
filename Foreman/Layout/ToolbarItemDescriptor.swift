@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftUI
 
 /// An element of the window toolbar, declared by a feature (layout R30, R31).
 struct ToolbarItemDescriptor {
@@ -16,6 +17,10 @@ struct ToolbarItemDescriptor {
         case action(perform: () -> Void, secondaryMenu: (() -> [ToolbarMenuEntry])?)
         /// Click opens the entries, asked for at that moment.
         case menu(entries: () -> [ToolbarMenuEntry])
+        /// layout R30 (amended 2026-10-16): a widget drawn by its feature in SwiftUI — the project,
+        /// the branch, Run. `view` gets the closure that opens `menu` under the widget; `menu` is
+        /// asked for at that moment.
+        case widget(view: (_ openMenu: @escaping () -> Void) -> AnyView, menu: () -> ToolbarMenu)
     }
 
     let id: String
@@ -24,6 +29,16 @@ struct ToolbarItemDescriptor {
     let icon: String
     let placement: Placement
     let kind: Kind
+    /// layout R30 (amended 2026-10-16): the agents and the browser are icons alone, their name in
+    /// the tooltip (reference views 01–13).
+    var showsTitle = true
+}
+
+/// What a widget's menu holds (layout R30, git branch menu).
+struct ToolbarMenu {
+    var entries: [ToolbarMenuEntry]
+    /// A filter field on top that hides the entries whose title does not contain its text.
+    var isFilterable = false
 }
 
 /// One line of a toolbar menu (layout R30).
@@ -34,6 +49,15 @@ struct ToolbarMenuEntry: Identifiable {
     var badge: ToolbarBadge = .none
     /// layout R37: written next to the entry; shown, never bound.
     var shortcut: Shortcut?
+    /// A submenu (`Open Recent ▸`, a worktree's actions); `perform` is not called for it.
+    var children: [ToolbarMenuEntry] = []
+    var isEnabled = true
+    /// A check mark before the title (the current branch).
+    var isChecked = false
+    /// A heading line, greyed and inert (`Worktrees`, `Local`).
+    var isHeader = false
+    /// The entry is preceded by a separator.
+    var startsSection = false
     let perform: () -> Void
 }
 

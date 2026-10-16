@@ -80,10 +80,12 @@ final class BrowserFeature {
         if shown {
             layout.register(
                 toolbarItem: ToolbarItemDescriptor(
-                    id: Self.toolbarID, title: "Browser", icon: "globe", placement: .center,
+                    // browser R1 (amended 2026-10-16): an icon after the agents, before Run.
+                    id: Self.toolbarID, title: "Browser", icon: "globe", placement: .trailing,
                     kind: .action(
                         perform: { [weak self] in self?.open() },
-                        secondaryMenu: { [weak self] in self?.menu() ?? [] })))
+                        secondaryMenu: { [weak self] in self?.menu() ?? [] }),
+                    showsTitle: false))
             layout.replaceHomeEntries(
                 in: .browser,
                 with: [

@@ -130,6 +130,7 @@ final class GitFeature {
         guard shown else {
             layout.unregister(panel: Self.panelID)
             layout.unregister(panel: Self.historyPanelID)
+            layout.removeToolbarItem(Self.branchWidgetID)
             deactivate()
             return
         }
@@ -139,6 +140,7 @@ final class GitFeature {
         activate()
         let model = model
         let theme = theme
+        registerBranchWidget()
         layout.register(
             panel: PanelDescriptor(
                 // git (surfaces, amended 2026-10-16): Changes is the left slot's second tab.
@@ -161,6 +163,34 @@ final class GitFeature {
                 },
                 activate: { [weak self] in self?.activateHistory() },
                 deactivate: { [weak self] in self?.history.reload(with: nil) }))
+    }
+
+    // MARK: - Branch widget (git, branch menu, M21 21.3–21.4)
+
+    static let branchWidgetID = "git.branch"
+
+    /// layout R30 (amended 2026-10-16): after the project, the branch of the working copy last
+    /// worked in (git R10) and how many worktrees its repo has.
+    private func registerBranchWidget() {
+        let model = model
+        let theme = theme
+        layout.register(
+            toolbarItem: ToolbarItemDescriptor(
+                id: Self.branchWidgetID, title: "Branch", icon: "arrow.triangle.branch", placement: .leading,
+                kind: .widget(
+                    view: { openMenu in AnyView(GitBranchWidget(model: model, theme: theme, openMenu: openMenu)) },
+                    menu: { [weak self] in self?.branchMenu() ?? ToolbarMenu(entries: []) })))
+    }
+
+    private func branchMenu() -> ToolbarMenu {
+        ToolbarMenu(entries: [
+            ToolbarMenuEntry(id: "git.branch.changes", title: "Show Changes") { [weak self] in
+                self?.layout.panels.show(Self.panelID)
+            },
+            ToolbarMenuEntry(id: "git.branch.history", title: "Show History") { [weak self] in
+                self?.layout.panels.show(Self.historyPanelID)
+            },
+        ])
     }
 
     isolated deinit {
