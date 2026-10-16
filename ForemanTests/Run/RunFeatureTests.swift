@@ -5,14 +5,14 @@ import Testing
 
 /// The launch decision (run R7, R9), the tab state and badge (R10), the persisted payload (R13).
 struct RunFeatureTests {
+    /// run R7 (amended 2026-10-16): the command's sub-tab is reused, stopped first when running.
     @Test func launchSpawnsRelaunchesOrStopsFirst() {
         let tab = TabID()
-        #expect(RunFeature.launchAction(primary: nil, state: nil, newTab: false) == .spawn)
-        #expect(RunFeature.launchAction(primary: tab, state: nil, newTab: false) == .spawn)
-        #expect(RunFeature.launchAction(primary: tab, state: .idle, newTab: false) == .relaunch(tab))
-        #expect(RunFeature.launchAction(primary: tab, state: .exited(.code(1)), newTab: false) == .relaunch(tab))
-        #expect(RunFeature.launchAction(primary: tab, state: .running(pid: 1), newTab: false) == .stopThenRelaunch(tab))
-        #expect(RunFeature.launchAction(primary: tab, state: .running(pid: 1), newTab: true) == .spawn)
+        #expect(RunFeature.launchAction(session: nil, state: nil) == .spawn)
+        #expect(RunFeature.launchAction(session: tab, state: nil) == .spawn)
+        #expect(RunFeature.launchAction(session: tab, state: .idle) == .relaunch(tab))
+        #expect(RunFeature.launchAction(session: tab, state: .exited(.code(1))) == .relaunch(tab))
+        #expect(RunFeature.launchAction(session: tab, state: .running(pid: 1)) == .stopThenRelaunch(tab))
     }
 
     @Test func stateFollowsTheExitCode() {
@@ -31,10 +31,17 @@ struct RunFeatureTests {
         #expect(RunFeature.badge(.idle, marked: true) == .none)
     }
 
-    @Test func payloadRoundTripsWithARelativeFolder() throws {
-        let payload = RunFeature.Payload(id: "backend:test", cwd: "backend")
-        let data = try JSONEncoder().encode(payload)
-        #expect(try JSONDecoder().decode(RunFeature.Payload.self, from: data) == payload)
+    /// run R13 (amended 2026-10-16): the sub-tabs persisted, then restored when their command is
+    /// known, the others waiting for detection.
+    @Test func subTabsRoundTripAndComeBackWhenTheirCommandIsKnown() throws {
+        let state = RunFeature.State(commands: ["root:test", "backend:dev", "web:lint"], selected: "backend:dev")
+        let data = try JSONEncoder().encode(state)
+        #expect(try JSONDecoder().decode(RunFeature.State.self, from: data) == state)
+
+        let split = RunFeature.restorable(state, known: ["root:test", "backend:dev"], open: ["root:test"])
+        #expect(split.now == ["backend:dev"])
+        #expect(split.later == RunFeature.State(commands: ["web:lint"], selected: "backend:dev"))
+        #expect(RunFeature.restorable(state, known: ["root:test", "backend:dev", "web:lint"], open: []).later == nil)
         #expect(RunFeature.kind(of: "backend:test") == "run.backend:test")
     }
 }

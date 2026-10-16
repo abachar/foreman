@@ -65,6 +65,21 @@ final class TerminalService {
         return id
     }
 
+    /// run (panel, 2026-10-16): a session that lives outside the center — the Run panel's
+    /// sub-tabs — started now; its view comes from `view(for:)`, its end from `closed`.
+    func start(command: String, cwd: URL, env: [String: String] = [:], kind: String, title: String) -> TabID {
+        let id = TabID()
+        let tab = TerminalTab(kind: kind, title: title, command: command, cwd: cwd, env: env)
+        tabs[id] = tab
+        launch(id, tab)
+        return id
+    }
+
+    /// terminal R12: *Clear scrollback* from a button rather than `cmd+k`.
+    func clearScrollback(_ id: TabID) {
+        surfaces[id]?.clearScrollback()
+    }
+
     /// The view of the tab `spawn` is opening, or of a tab already known; `nil` otherwise.
     func view(for id: TabID) -> AnyView? {
         if let opening, tabs[id] == nil {

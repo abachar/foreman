@@ -74,7 +74,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 |---|---|---|---|---|
 | `cmd+r` | `run.palette` | Command palette (needs a command, declared or detected; `run` R6b) | global | 🟢 (amended 2026-08-29) |
 | `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette: launch / new tab / copy / close | native | 🟢 |
-| `cmd+.` | `run.stop` | Stop the process (`SIGINT`, second press < 2 s → `SIGTERM`); no effect outside a `run.*` tab (decision 2026-08-27) | terminal | 🟢 |
+| `cmd+.` | `run.stop` | Stop the process of the Run panel's shown sub-tab (`SIGINT`, second press < 2 s → `SIGTERM`); no effect when the Run panel is not shown (amended 2026-10-16, M21 21.5: no more `run.*` tabs) | panel | 🟢 (amended 2026-10-16) |
 
 ## Git (`git`)
 

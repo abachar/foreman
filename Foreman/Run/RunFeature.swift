@@ -5,15 +5,17 @@ import Observation
 import SwiftUI
 import os
 
-/// Entry point of `run`: one `run.<id>` tab kind per command of the config, the terminal surface
-/// behind each tab, the launch and relaunch logic (run R4, R7–R10, R12, R13).
+/// Entry point of `run`: the commands of the config, one terminal session per command shown as a
+/// sub-tab of the Run panel, the launch and relaunch logic (run R4, R7–R10, R12, R13; the Run
+/// panel since 2026-10-16, M21 21.5).
 @Observable
 @MainActor
 final class RunFeature {
-    nonisolated struct Payload: Codable, Equatable, Sendable {
-        let id: String
-        /// config R10: relative to the root when inside it.
-        let cwd: String
+    /// run R13 (amended 2026-10-16): the `run` section of `state.json` — the sub-tabs, in their
+    /// order, and the one shown.
+    nonisolated struct State: Codable, Equatable, Sendable {
+        var commands: [String]
+        var selected: String?
     }
 
     /// run R10: what a tab shows, derived from the terminal state.
@@ -35,7 +37,7 @@ final class RunFeature {
         }
     }
 
-    /// run R7: what launching a command does to its tab.
+    /// run R7: what launching a command does to its session.
     nonisolated enum LaunchAction: Equatable, Sendable {
         case spawn
         case relaunch(TabID)
@@ -48,6 +50,8 @@ final class RunFeature {
     /// run R9: a second `cmd+.` within this window escalates to `SIGTERM`.
     nonisolated static let stopEscalation: Duration = .seconds(2)
     static let toolbarID = "run.toolbar"
+    /// run (panel, 2026-10-16): the bottom slot's Run tab.
+    static let panelID: PanelID = "run.output"
 
     /// run R6b: one line of the ▶ Run menu, before it becomes a `ToolbarMenuEntry`.
     nonisolated struct MenuRow: Equatable, Sendable {
@@ -71,10 +75,15 @@ final class RunFeature {
     private var manifestWatch: Task<Void, Never>?
     /// run R5: the ids launched in this window, last first (decision 2026-08-27: not persisted).
     private(set) var recents: [String] = []
-    /// run R7: the tab a command reuses, the first one opened or restored for it.
-    private var primaryTabs: [String: TabID] = [:]
-    private var commandOfTab: [TabID: String] = [:]
-    private var registeredKinds: Set<String> = []
+    /// run R7, R13 (amended 2026-10-16): the terminal session of each command, a sub-tab of the
+    /// Run panel, reused by every launch; in the order they were opened.
+    private(set) var sessions: [String: TabID] = [:]
+    private(set) var sessionOrder: [String] = []
+    /// The sub-tab shown in the Run panel.
+    private(set) var selected: String?
+    /// run R13: sub-tabs read from `state.json`, waiting for their command to be known.
+    private var pendingRestore: State?
+    private var registeredShortcuts: Set<String> = []
     private var isShown = false
     /// run R9: tabs waiting for `exited` to relaunch, with the task that gives up after the grace.
     private var pendingRelaunches: [TabID: Task<Void, Never>] = [:]
@@ -91,6 +100,7 @@ final class RunFeature {
         self.terminal = terminal
         self.palette = palette
         self.theme = theme
+        pendingRestore = try? workspace.state.section("run", as: State.self)
         registerStop()
         apply(workspace.config)
         configWatch = Task { [weak self, workspace] in
@@ -168,6 +178,7 @@ final class RunFeature {
             register(command.id)
         }
         show(!commands.isEmpty)
+        restoreSessions()
     }
 
     /// run R6b (2026-08-29), layout R36: the button and the palette exist only with a command.
@@ -177,29 +188,23 @@ final class RunFeature {
         if shown {
             registerPalette()
             registerToolbar()
+            registerPanel()
         } else {
             layout.shortcuts.unregister("run.palette")
             layout.removeToolbarItem(Self.toolbarID)
+            layout.unregister(panel: Self.panelID)
         }
     }
 
-    /// The tab kind of a command exists for the whole window, so its tabs restore (layout R28) and
-    /// survive its removal from the config (run R4).
+    /// run R11: the shortcut of a command, for the whole window, outliving the command.
+    ///
+    /// It survives the command's removal from the config (decision 2026-08-27). No center tab kind
+    /// any more (2026-10-16): a command runs in a sub-tab of the Run panel.
     private func register(_ id: String) {
         let kind = Self.kind(of: id)
-        guard !registeredKinds.contains(kind) else { return }
-        registeredKinds.insert(kind)
-        // run R11: no default; the shortcut outlives the command (decision 2026-08-27).
+        guard registeredShortcuts.insert(kind).inserted else { return }
         layout.shortcuts.register(
             ShortcutAction(id: kind, title: id, defaultShortcut: nil) { [weak self] in self?.launch(id) })
-        layout.register(
-            tabKind: CenterTabDescriptor(
-                kind: kind, isTerminal: true,
-                makeView: { [weak self] tab, payload in self?.view(tab, payload: payload, commandID: id) },
-                serialize: { [weak self] tab in self?.serialize(tab, commandID: id) },
-                confirmClose: { [weak self] tab in await self?.terminal.confirmClose(tab) ?? true },
-                onClose: { [weak self] tab in self?.closed(tab) },
-                statusItems: { [weak self] tab in self?.terminal.statusItems(tab) ?? [] }))
     }
 
     func command(_ id: String) -> RunCommand? {
@@ -212,50 +217,116 @@ final class RunFeature {
 
     // MARK: - Launching (run R7, R9)
 
-    /// run R7: the primary tab is reused (stopped first when running); `newTab` (R6) always spawns.
-    nonisolated static func launchAction(primary: TabID?, state: TerminalState?, newTab: Bool) -> LaunchAction {
-        guard !newTab, let primary, let state else { return .spawn }
-        if case .running = state { return .stopThenRelaunch(primary) }
-        return .relaunch(primary)
+    /// run R7 (amended 2026-10-16): the command's session is reused (stopped first when running).
+    nonisolated static func launchAction(session: TabID?, state: TerminalState?) -> LaunchAction {
+        guard let session, let state else { return .spawn }
+        if case .running = state { return .stopThenRelaunch(session) }
+        return .relaunch(session)
     }
 
-    /// The tab of the command, or `nil` when it is not launchable (R2) or unknown.
+    /// run R7: the session of the command, shown in the Run panel; `nil` when the command is not
+    /// launchable (R2) or unknown.
     @discardableResult
-    func launch(_ id: String, newTab: Bool = false) -> TabID? {
+    func launch(_ id: String) -> TabID? {
         guard let command = command(id), command.problem == nil else {
             logger.warning("run.\(id, privacy: .public) not launched: unknown or greyed")
             return nil
         }
         recents.removeAll { $0 == id }
         recents.insert(id, at: 0)
-        let primary = primaryTabs[id].flatMap { layout.model.owner(of: $0) != nil ? $0 : nil }
-        switch Self.launchAction(primary: primary, state: primary.flatMap { terminal.tab($0)?.state }, newTab: newTab)
-        {
+        let session: TabID
+        switch Self.launchAction(session: sessions[id], state: sessions[id].flatMap { terminal.tab($0)?.state }) {
         case .spawn:
-            return spawn(command, primary: primary == nil)
+            session = start(command)
         case .relaunch(let tab):
-            activate(tab)
-            // Refused only for a missing folder; the tab's banner says so.
+            // Refused only for a missing folder; the session's banner says so.
             try? terminal.relaunch(tab)
-            return tab
+            session = tab
         case .stopThenRelaunch(let tab):
-            activate(tab)
             stopThenRelaunch(tab)
-            return tab
+            session = tab
+        }
+        // run (panel, 2026-10-16): launching shows the panel on the command's sub-tab.
+        select(id)
+        layout.panels.show(Self.panelID)
+        return session
+    }
+
+    private func start(_ command: RunCommand) -> TabID {
+        let session = terminal.start(
+            command: command.command, cwd: command.cwd, env: command.env, kind: Self.kind(of: command.id),
+            title: command.id)
+        adopt(session, commandID: command.id)
+        return session
+    }
+
+    private func adopt(_ session: TabID, commandID: String) {
+        sessions[commandID] = session
+        if !sessionOrder.contains(commandID) {
+            sessionOrder.append(commandID)
+        }
+        persist()
+    }
+
+    /// The sub-tab shown in the Run panel.
+    func select(_ id: String) {
+        guard sessions[id] != nil, selected != id else { return }
+        selected = id
+        persist()
+    }
+
+    /// run R12 (amended 2026-10-16): closing a sub-tab asks while its process runs, then stops it.
+    func close(_ id: String) {
+        guard let session = sessions[id] else { return }
+        Task { [weak self] in
+            guard let self, await terminal.confirmClose(session) else { return }
+            terminal.closed(session)
+            pendingRelaunches.removeValue(forKey: session)?.cancel()
+            lastStops[session] = nil
+            sessions[id] = nil
+            sessionOrder.removeAll { $0 == id }
+            if selected == id {
+                selected = sessionOrder.last
+            }
+            persist()
         }
     }
 
-    private func spawn(_ command: RunCommand, primary: Bool) -> TabID? {
-        guard
-            let tab = terminal.spawn(
-                command: command.command, cwd: command.cwd, env: command.env, kind: Self.kind(of: command.id),
-                title: command.id)
-        else { return nil }
-        commandOfTab[tab] = command.id
-        if primary {
-            primaryTabs[command.id] = tab
+    /// run R13 (amended 2026-10-16): the sub-tabs of the last session come back idle, in their
+    /// folder, with today's command; nothing is relaunched.
+    private func restoreSessions() {
+        guard let state = pendingRestore else { return }
+        let split = Self.restorable(state, known: Set(commands.map(\.id)), open: Set(sessions.keys))
+        for id in split.now {
+            guard let command = command(id) else { continue }
+            let session = TabID()
+            _ = terminal.restore(
+                session, kind: Self.kind(of: id), title: id, command: command.command, cwd: command.cwd,
+                env: command.env)
+            adopt(session, commandID: id)
         }
-        return tab
+        if let selected = state.selected, sessions[selected] != nil {
+            self.selected = selected
+        } else if selected == nil {
+            selected = sessionOrder.first
+        }
+        pendingRestore = split.later
+    }
+
+    /// run R13: which persisted sub-tabs come back now — their command is known and not open yet —
+    /// and which wait, detection (R14) possibly bringing their command later.
+    nonisolated static func restorable(
+        _ state: State, known: Set<String>, open: Set<String>
+    ) -> (
+        now: [String], later: State?
+    ) {
+        let now = state.commands.filter { known.contains($0) && !open.contains($0) }
+        let later = state.commands.filter { !known.contains($0) && !open.contains($0) }
+        return (now, later.isEmpty ? nil : State(commands: later, selected: state.selected))
+    }
+
+    private func persist() {
+        workspace.setState("run", to: State(commands: sessionOrder, selected: selected))
     }
 
     /// run R9: `SIGINT`, then `relaunch` on `exited`; given up, and logged, after the grace period.
@@ -270,9 +341,36 @@ final class RunFeature {
         }
     }
 
-    private func activate(_ tab: TabID) {
-        guard let owner = layout.model.owner(of: tab) else { return }
-        layout.activate(tab, in: owner)
+    // MARK: - Panel (run, 2026-10-16)
+
+    /// The bottom slot's third tab: a sub-tab per command run, the output of the one shown.
+    private func registerPanel() {
+        let theme = theme
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.panelID, title: "Run", side: .bottom, icon: "play", order: 2,
+                badge: { [weak self] in self?.panelBadge ?? .none },
+                makeView: { [weak self] in
+                    guard let self else { return AnyView(EmptyView()) }
+                    return AnyView(
+                        RunPanelView(run: self, terminal: terminal, panels: layout.panels, theme: theme))
+                }))
+    }
+
+    /// The Run tab's mark: green while a command runs.
+    private var panelBadge: ToolbarBadge {
+        sessions.values.contains { terminal.tab($0)?.isRunning == true } ? .dot(.green) : .none
+    }
+
+    /// run R9 from the panel's ■ and ↻: the sub-tab shown.
+    func restartSelected() {
+        guard let selected else { return }
+        launch(selected)
+    }
+
+    func clearSelected() {
+        guard let selected, let session = sessions[selected] else { return }
+        terminal.clearScrollback(session)
     }
 
     // MARK: - Palette (run R5, R6)
@@ -295,7 +393,8 @@ final class RunFeature {
                     items: Self.items(commands, recents: recents, query: query),
                     notice: commands.isEmpty ? "No commands in .foreman/config.json" : nil)
             },
-            select: { [weak self] item, newTab in self?.launch(item.id, newTab: newTab) },
+            // run R6 (amended 2026-10-16): one session per command, `cmd+enter` launches it too.
+            select: { [weak self] item, _ in self?.launch(item.id) },
             secondary: { [weak self] item in
                 // run R6: opt+enter copies the command text.
                 guard let command = self?.command(item.id) else { return }
@@ -352,12 +451,12 @@ final class RunFeature {
 
     /// The state of a command's primary tab; `nil` when it never ran in this window.
     func state(ofCommand id: String) -> RunState? {
-        primaryTabs[id].flatMap(state(of:))
+        sessions[id].flatMap(state(of:))
     }
 
     /// run R9, from the widget's ■: the command's primary tab, escalating like `cmd+.` does.
     func stop(_ id: String) {
-        guard let tab = primaryTabs[id] else { return }
+        guard let tab = sessions[id] else { return }
         stop(tab: tab)
     }
 
@@ -399,8 +498,9 @@ final class RunFeature {
 
     private func menuEntries() -> [ToolbarMenuEntry] {
         Self.menuRows(commands) { id in
-            guard let tab = primaryTabs[id], let terminalTab = terminal.tab(tab) else { return .none }
-            return Self.badge(RunState(terminalTab.state), marked: terminalTab.isMarked)
+            // run R6b (amended 2026-10-16): the last state stays in the menu, there is no tab to visit.
+            guard let tab = sessions[id], let terminalTab = terminal.tab(tab) else { return .none }
+            return Self.badge(RunState(terminalTab.state), marked: true)
         }
         .map { row in
             // layout R37: a command the user gave a shortcut says so in the menu (`config.shortcuts`).
@@ -419,8 +519,8 @@ final class RunFeature {
 
     private func registerStop() {
         layout.shortcuts.register(
-            ShortcutAction(id: "run.stop", title: "Stop Command", scope: .terminal, defaultShortcut: "cmd+.") {
-                [weak self] in self?.stopActiveTab()
+            ShortcutAction(id: "run.stop", title: "Stop Command", scope: .panel, defaultShortcut: "cmd+.") {
+                [weak self] in self?.stopShown()
             })
     }
 
@@ -430,10 +530,12 @@ final class RunFeature {
         return SIGTERM
     }
 
-    /// run R9: only a `run.*` tab; `cmd+.` on an agent does nothing (decision 2026-08-27).
-    private func stopActiveTab() {
-        guard let id = layout.model.active.active?.id, commandOfTab[id] != nil else { return }
-        stop(tab: id)
+    /// run R9 (amended 2026-10-16): the sub-tab shown in the Run panel, while a panel has the
+    /// focus (scope `panel`) and the Run panel is shown; anywhere else `cmd+.` is left to the content
+    /// — the query tab cancels with it — and does nothing on an agent (decision 2026-08-27).
+    private func stopShown() {
+        guard layout.panels.isVisible(Self.panelID), let selected, let session = sessions[selected] else { return }
+        stop(tab: session)
     }
 
     private func stop(tab id: TabID) {
@@ -441,48 +543,6 @@ final class RunFeature {
         let signal = Self.stopSignal(lastStop: lastStops[id], now: now)
         lastStops[id] = now
         try? terminal.signal(signal, to: id)
-    }
-
-    // MARK: - Tabs (run R12, R13, layout R28)
-
-    private func view(_ id: TabID, payload: String, commandID: String) -> AnyView? {
-        if let view = terminal.view(for: id) {
-            adopt(id, commandID: commandID)
-            return view
-        }
-        // run R13: restored idle in its folder, with today's command, never run by itself.
-        guard let command = command(commandID), let data = payload.data(using: .utf8),
-            let decoded = try? JSONDecoder().decode(Payload.self, from: data),
-            let cwd = Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root)
-        else { return nil }
-        adopt(id, commandID: commandID)
-        return terminal.restore(
-            id, kind: Self.kind(of: commandID), title: commandID, command: command.command,
-            cwd: cwd, env: command.env)
-    }
-
-    private func adopt(_ id: TabID, commandID: String) {
-        commandOfTab[id] = commandID
-        if primaryTabs[commandID] == nil {
-            primaryTabs[commandID] = id
-        }
-    }
-
-    private func serialize(_ id: TabID, commandID: String) -> String? {
-        guard let tab = terminal.tab(id) else { return nil }
-        let payload = Payload(id: commandID, cwd: Workspace.persistedPath(for: tab.cwd, root: workspace.root))
-        // A two-field Codable struct always encodes.
-        return String(decoding: (try? JSONEncoder().encode(payload)) ?? Data(), as: UTF8.self)
-    }
-
-    private func closed(_ id: TabID) {
-        terminal.closed(id)
-        pendingRelaunches.removeValue(forKey: id)?.cancel()
-        lastStops[id] = nil
-        guard let commandID = commandOfTab.removeValue(forKey: id) else { return }
-        if primaryTabs[commandID] == id {
-            primaryTabs[commandID] = commandOfTab.first { $0.value == commandID }?.key
-        }
     }
 
     // MARK: - State and badges (run R10)
@@ -507,14 +567,10 @@ final class RunFeature {
         case .started(let tab, _), .exited(let tab, _), .bell(let tab), .activated(let tab), .closed(let tab):
             id = tab
         }
-        guard commandOfTab[id] != nil, let tab = terminal.tab(id) else { return }
+        guard sessions.values.contains(id) else { return }
         if case .exited = event, let pending = pendingRelaunches.removeValue(forKey: id) {
             pending.cancel()
             try? terminal.relaunch(id)
-            return
         }
-        // Published after the service's own badge (terminal R7), so this one is the one shown.
-        layout.update(
-            id, title: tab.title, isDirty: tab.isRunning, badge: Self.badge(RunState(tab.state), marked: tab.isMarked))
     }
 }

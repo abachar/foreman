@@ -37,7 +37,7 @@ struct RunWidget: View {
             HStack(spacing: 0) {
                 Button(action: openMenu) {
                     HStack(spacing: 6) {
-                        icon(Icon(state))
+                        RunStateIcon(icon: Icon(state), theme: theme)
                         Text(current?.name ?? "Run")
                             .font(theme.font(.body, weight: .medium))
                             .foregroundStyle(tokens.textPrimary.color)
@@ -80,26 +80,5 @@ struct RunWidget: View {
             .background(tokens.surfaceRaised.color, in: RoundedRectangle(cornerRadius: ToolbarButton.radius))
         }
         .fixedSize()
-    }
-
-    @ViewBuilder
-    private func icon(_ icon: Icon) -> some View {
-        let tokens = theme.tokens
-        switch icon {
-        case .none:
-            EmptyView()
-        case .running:
-            Circle()
-                .fill(tokens.statusOrange.color)
-                .frame(width: 6, height: 6)
-        case .succeeded:
-            Image(systemName: "checkmark")
-                .imageScale(.small)
-                .foregroundStyle(tokens.statusGreen.color)
-        case .failed:
-            Image(systemName: "xmark")
-                .imageScale(.small)
-                .foregroundStyle(tokens.statusRed.color)
-        }
     }
 }

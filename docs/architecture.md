@@ -29,7 +29,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 | Explorer | left panel *Project*: file tree | `cmd+shift+e` |
 | Editor | center tabs: file / markdown; bottom panel: content search | `cmd+p` quick open, `cmd+shift+f` |
 | Agents | toolbar buttons; one terminal tab per agent | `config.shortcuts["agents.<id>"]` |
-| Run | ▶ Run button + palette; one terminal tab per command | `cmd+r` |
+| Run | Run widget + palette; bottom panel *Run*: one sub-tab per command | `cmd+r` |
 | Git | left panel *Changes*, bottom panel *History*; center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
 | Postgres | right panel *Database*: schema; center tabs: query + results | `cmd+shift+b` / `cmd+shift+q` |
 | Browser | one center tab: the page of `config.browser.url` (`WKWebView`, private session) | `cmd+shift+o` |

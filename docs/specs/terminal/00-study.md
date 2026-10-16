@@ -50,7 +50,7 @@ The need changed: we are not emulating a terminal for the user, we are showing T
 
 ### Service for the features (`Terminal/`)
 
-- R16 — `TerminalService` (a concrete type in the shared `Terminal/` folder, injected into the features): `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (creates the tab and launches), `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (raw input, rarely useful), `state(of:) -> TerminalState`, `pid(of:)`, and an `events` stream (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `activated(tab)` — R7's marker cleared —, `closed(tab)`) as an `AsyncStream`, one per consumer (2026-08-27). The `kind` is the calling feature's (`agent.<id>`, `run.<id>`); there is no `terminal` kind.
+- R16 — `TerminalService` (a concrete type in the shared `Terminal/` folder, injected into the features): `spawn(command:, cwd:, env:, kind:, title:) -> TabID` (creates the tab and launches), `start(…)` (2026-10-16, `run` panel: a session with no center tab, its view from `view(for:)`), `clearScrollback(TabID)`, `relaunch(TabID)`, `signal(_:to:)`, `write(_ bytes:, to:)` (raw input, rarely useful), `state(of:) -> TerminalState`, `pid(of:)`, and an `events` stream (`started(tab, pid)`, `exited(tab, code)`, `bell(tab)`, `activated(tab)` — R7's marker cleared —, `closed(tab)`) as an `AsyncStream`, one per consumer (2026-08-27). The `kind` is the calling feature's (`agent.<id>`, `run.<id>`); there is no `terminal` kind.
 - R17 — A feature can only act on the tabs of the current window; an unknown or closed `TabID` → `TerminalError.noSuchTab`.
 - R18 — Several surfaces coexist without limit; each one has its own PTY and process. An `exited` or inactive surface consumes no CPU (`architecture.md`, performance).
 
