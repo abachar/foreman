@@ -102,3 +102,41 @@ struct ContentSearchTests {
         #expect(matches.allSatisfy { $0.path == "a.txt" })
     }
 }
+
+/// Search speed (editor R21 amended 2026-10-17, M22 22.4).
+@MainActor
+struct SearchSpeedTests {
+    private func match(_ path: String, _ line: Int) -> ContentSearch.Match {
+        ContentSearch.Match(path: path, line: line, text: "x", ranges: [])
+    }
+
+    @Test func aBatchIsFiledUnderItsFilesInOrder() {
+        let model = SearchModel(root: URL(filePath: "/ws"), tool: .grep(URL(filePath: "/usr/bin/grep")))
+        model.add([match("a.swift", 1), match("b.swift", 2), match("a.swift", 3)])
+        model.add([match("c.swift", 1), match("b.swift", 9)])
+        #expect(model.groups.map(\.path) == ["a.swift", "b.swift", "c.swift"])
+        #expect(model.groups[0].matches.map(\.line) == [1, 3])
+        #expect(model.groups[1].matches.map(\.line) == [2, 9])
+        #expect(model.matchCount == 5)
+    }
+
+    @Test func theFirstMatchShowsAtOnceTheOthersWaitForTheBatch() {
+        let now = ContinuousClock.now
+        #expect(SearchModel.shouldFlush(since: now, now: now, isFirst: true))
+        #expect(!SearchModel.shouldFlush(since: now, now: now + .milliseconds(10), isFirst: false))
+        #expect(SearchModel.shouldFlush(since: now, now: now + .milliseconds(50), isFirst: false))
+    }
+
+    @Test func aLongLineIsCutAroundItsFirstMatch() {
+        let text = String(repeating: "x", count: 5000) + "needle" + String(repeating: "y", count: 5000)
+        let shown = ContentSearch.window(text, ranges: [NSRange(location: 5000, length: 6)])
+        let cut = shown.text as NSString
+        #expect(cut.length == ContentSearch.maximumLine + 2)
+        #expect(shown.text.hasPrefix("\u{2026}") && shown.text.hasSuffix("\u{2026}"))
+        #expect(shown.ranges.count == 1)
+        #expect(cut.substring(with: shown.ranges[0]) == "needle")
+        let short = ContentSearch.window("let a = 1", ranges: [NSRange(location: 4, length: 1)])
+        #expect(short.text == "let a = 1")
+        #expect(short.ranges == [NSRange(location: 4, length: 1)])
+    }
+}

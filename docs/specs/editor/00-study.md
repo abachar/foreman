@@ -60,7 +60,7 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 ### Content search (`cmd+shift+f`)
 
 - R20 — **Bottom** panel `editor.search`: a search field, *case* / *whole word* / *regex* options, an include filter (glob, e.g. `src/**/*.ts`). Run through the `rg` binary when it is in the `PATH`, otherwise `grep -rn` (`Process` with an array of arguments, never a shell — `architecture.md`, security); the shared exclusions are applied; `.gitignore` is honoured natively by `rg`.
-- R21 — Results grouped by file, expanded, one row per match with the match highlighted; a click or `enter` opens the file at the line (as a preview), `cmd+enter` pins it. Cap of 2,000 matches (a "results truncated" message). A running search is cancelled by the next one or by closing the panel.
+- R21 — (**Amended 2026-10-17**, M22 22.4: results reach the panel in batches — the first match at once, then at most one update every 50 ms — the file groups are found by a dictionary, and a line longer than 300 characters is cut around its first match with `…` on the cut sides, since `rg --json` ignores `--max-columns`; each search is an `os_signpost` interval `search` with a `search.first` event.) Results grouped by file, expanded, one row per match with the match highlighted; a click or `enter` opens the file at the line (as a preview), `cmd+enter` pins it. Cap of 2,000 matches (a "results truncated" message). A running search is cancelled by the next one or by closing the panel.
 - R22 — No multi-file replace in v1 (`sed`/`rg` in the terminal).
 
 ### Reading aids (2026-10-16, M21 21.8–21.11, reference view 02)

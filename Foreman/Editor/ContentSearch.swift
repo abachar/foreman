@@ -95,7 +95,35 @@ nonisolated enum ContentSearch {
             let length = String(decoding: utf8[sub.start..<sub.end], as: UTF8.self).utf16.count
             return NSRange(location: head, length: length)
         }
-        return Match(path: relative(path), line: number, text: trimmed, ranges: ranges)
+        let shown = window(trimmed, ranges: ranges)
+        return Match(path: relative(path), line: number, text: shown.text, ranges: shown.ranges)
+    }
+
+    /// editor R21 (amended 2026-10-17): the longest line a result shows; `rg --json` ignores
+    /// `--max-columns`, and a minified bundle's line is megabytes the list would lay out.
+    static let maximumLine = 300
+
+    /// editor R21: a long line cut around its first match, with `…` where text was dropped, and
+    /// its ranges moved with it (those left outside are dropped).
+    static func window(
+        _ text: String, ranges: [NSRange], maximum: Int = maximumLine
+    ) -> (
+        text: String, ranges: [NSRange]
+    ) {
+        let utf16 = text as NSString
+        guard utf16.length > maximum else { return (text, ranges) }
+        let first = ranges.first?.location ?? 0
+        let start = max(0, min(first - maximum / 3, utf16.length - maximum))
+        let end = min(utf16.length, start + maximum)
+        let range = utf16.rangeOfComposedCharacterSequences(for: NSRange(location: start, length: end - start))
+        let head = range.location > 0 ? "\u{2026}" : ""
+        let tail = NSMaxRange(range) < utf16.length ? "\u{2026}" : ""
+        let shift = (head as NSString).length - range.location
+        let kept = ranges.compactMap { candidate -> NSRange? in
+            guard candidate.location >= range.location, NSMaxRange(candidate) <= NSMaxRange(range) else { return nil }
+            return NSRange(location: candidate.location + shift, length: candidate.length)
+        }
+        return (head + utf16.substring(with: range) + tail, kept)
     }
 
     /// One line of `grep -rn --null`: `path\0line:text`; the ranges are found again in `text`.
@@ -105,7 +133,8 @@ nonisolated enum ContentSearch {
         let rest = line[line.index(after: separator)...]
         guard let colon = rest.firstIndex(of: ":"), let number = Int(rest[..<colon]) else { return nil }
         let text = String(rest[rest.index(after: colon)...])
-        return Match(path: relative(path), line: number, text: text, ranges: ranges(of: options, in: text))
+        let shown = window(text, ranges: ranges(of: options, in: text))
+        return Match(path: relative(path), line: number, text: shown.text, ranges: shown.ranges)
     }
 
     /// Where `options` match inside one line (grep does not say).
