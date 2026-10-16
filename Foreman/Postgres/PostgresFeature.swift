@@ -109,7 +109,8 @@ final class PostgresFeature {
         // R4: `activate` connects nothing; the tree's first expansion does.
         layout.register(
             panel: PanelDescriptor(
-                id: Self.schemaPanelID, title: "Schema", side: .right, icon: "cylinder", defaultShortcut: "cmd+shift+b",
+                id: Self.schemaPanelID, title: "Database", side: .right, icon: "cylinder",
+                defaultShortcut: "cmd+shift+b",
                 makeView: { [weak self] in
                     guard let self else { return AnyView(EmptyView()) }
                     return AnyView(

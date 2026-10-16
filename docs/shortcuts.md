@@ -22,7 +22,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+e` | `explorer.tree` | Show / hide the tree | global | 🟢 |
+| `cmd+shift+e` | `explorer.tree` | Show / hide the tree (the *Project* tab of the left slot since 2026-10-16) | global | 🟢 |
 | `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
 | `enter` / double click | — | Open (pinned; `opt` + double click: in a new group) — decision 2026-08-28 | native | 🟢 |
 | `shift+F6` | — | Rename (IntelliJ; also the context menu) — decision 2026-08-28 | native | 🟢 |
@@ -80,15 +80,15 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+g` | `git.changes` | Changes panel (needs a repo, `git` R1b) | global | 🟢 (amended 2026-08-29) |
-| `cmd+shift+h` | `git.history` | History panel (needs a repo, `git` R1b) | global | 🟢 (amended 2026-08-29) |
+| `cmd+shift+g` | `git.changes` | Changes panel, left slot since 2026-10-16 (needs a repo, `git` R1b) | global | 🟢 (amended 2026-10-16) |
+| `cmd+shift+h` | `git.history` | History panel, bottom slot since 2026-10-16 (needs a repo, `git` R1b) | global | 🟢 (amended 2026-10-16) |
 | `cmd+enter` | — | Commit (message field) | native | 🟢 (2026-08-27) |
 
 ## Postgres (`postgres`)
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+b` | `postgres.schema` | Schema panel (needs a `postgres` section, R2; default changed on 2026-08-27: `cmd+shift+d` belongs to `layout.split.horizontal`) | global | 🟢 (amended 2026-08-29) |
+| `cmd+shift+b` | `postgres.schema` | Database panel (*Schema* until 2026-10-16) (needs a `postgres` section, R2; default changed on 2026-08-27: `cmd+shift+d` belongs to `layout.split.horizontal`) | global | 🟢 (amended 2026-08-29) |
 | `cmd+shift+q` | `postgres.query` | New query tab (center, decision 2026-08-27; needs a `postgres` section, R2) | global | 🟢 (amended 2026-08-29) |
 | `cmd+enter` / `cmd+.` | — | Execute / cancel | native (query tab) | 🟢 (2026-08-27) |
 | `cmd+/` | `postgres.comment` | Comment / uncomment (`--`) | tab(postgres.query) | 🟢 (2026-08-27) |

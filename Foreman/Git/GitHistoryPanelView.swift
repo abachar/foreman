@@ -38,7 +38,7 @@ struct GitHistoryPanelView: View {
     }
 
     private var header: some View {
-        PanelHeaderView(title: "History", theme: theme) {
+        PanelHeaderView(panels: feature.panels, current: GitFeature.historyPanelID, theme: theme) {
             Picker(
                 "Repository",
                 selection: Binding(

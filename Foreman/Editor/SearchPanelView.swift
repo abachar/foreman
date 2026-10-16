@@ -3,20 +3,26 @@ import SwiftUI
 /// The bottom panel `editor.search` (editor R20, R21).
 struct SearchPanelView: View {
     @Bindable var model: SearchModel
+    let panels: PanelManager
     let theme: ThemeService
     /// A match was chosen: open the file at the line, pinned on `cmd`.
     let onOpen: (ContentSearch.Match, _ pinned: Bool) -> Void
 
     @FocusState private var isFieldFocused: Bool
 
-    init(model: SearchModel, theme: ThemeService, onOpen: @escaping (ContentSearch.Match, _ pinned: Bool) -> Void) {
+    init(
+        model: SearchModel, panels: PanelManager, theme: ThemeService,
+        onOpen: @escaping (ContentSearch.Match, _ pinned: Bool) -> Void
+    ) {
         self.model = model
+        self.panels = panels
         self.theme = theme
         self.onOpen = onOpen
     }
 
     var body: some View {
         VStack(spacing: 0) {
+            PanelHeaderView(panels: panels, current: EditorFeature.searchPanelID, theme: theme) { EmptyView() }
             HStack(spacing: 8) {
                 TextField("Search in files", text: $model.options.query)
                     .textFieldStyle(.roundedBorder)

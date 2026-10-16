@@ -25,11 +25,11 @@ Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 
 
 ## Tasks
 
-Each task depends on the previous ones unless noted. One task = one branch `feat/redesign-<subject>` from `main`, one commit. **By eye**: each task is checked against its reference view.
+Each task depends on the previous ones unless noted. One branch `feat/redesign` from `main` for the whole milestone, one commit per task (author, 2026-10-16). **By eye**: each task is checked against its reference view.
 
 | # | Task | Rules | Library / native | Tests | Size | Status | PR |
 |---|---|---|---|---|---|---|---|
-| 21.1 | **Panel tabs**: a slot's header lists **every panel registered on that side** as tabs (icon, title, count badge), a click shows that panel (R3's replace, state kept); *Explorer* renamed *Project*, *Schema* renamed *Database*; `git.changes` moves to the **left**, `git.history` to the **bottom**; a panel persisted on its old side comes back hidden (existing edge case) | layout R2, R3 amended; design R17; git (surfaces) amended | `PanelHeaderView` → a SwiftUI tab strip; `PanelManager` unchanged | panels per side in registration order; a tab click replaces, the hidden panel keeps its state; restoration of a moved panel. **By eye**: views 04, 05, 06 | M | ⚪ | |
+| 21.1 | **Panel tabs**: a slot's header lists **every panel registered on that side** as tabs (icon, title, count badge), a click shows that panel (R3's replace, state kept); *Explorer* renamed *Project*, *Schema* renamed *Database*; `git.changes` moves to the **left**, `git.history` to the **bottom**; a panel persisted on its old side comes back hidden (existing edge case) | layout R2, R3 amended; design R17; git (surfaces) amended | `PanelHeaderView` → a SwiftUI tab strip; `PanelManager` gains `panels(on:)`, the descriptor an `order` and a `badge` | panels per side in registration order; a tab click replaces, the hidden panel keeps its state; restoration of a moved panel. **By eye**: views 04, 05, 06 | M | 🟢 | `feat/redesign` |
 | 21.2 | **Status bar**: a 28 pt bar under the zones — three slot toggles (left / bottom / right: shows the slot's last panel, or hides it), the active file's ⊗ / ⚠ counters, then items the active tab provides through a new `CenterTabDescriptor.statusItems` (editor: LSP server state, `line:col`, language, encoding; terminal: `cols×rows`; diff: `+n −n`; browser: host); no branch there; the panel toggles **leave the toolbar** | layout new rule (status bar), R30 amended; design R15 amended, new rule (status bar look) | SwiftUI in `WorkspaceView`; `PanelManager` gains the last panel per side (persisted in `state.json`) | last panel per side (first registered by default, persisted, a withdrawn panel R36); position and diff counters as pure functions. **By eye**: every view, status bar | M | ⚪ | |
 | 21.3 | **Toolbar**: left, a **project widget** (name ▾: *Open…*, *Open Recent ▸*, *Reveal in Finder*) then the branch widget's button (menu in 21.4); centre **empty**; right, the agents with their badges, *Browser* (only with `config.browser.url`), then the **Run widget** (current command ▾, ▶, ■ in one group, the icon carrying the last state ✓ / ✗ / ●) | layout R30 amended (placements); design R15 amended; run (widget) amended; browser R1 (place) | `NSToolbar`, `ToolbarButton`, `NSMenu` | the Run widget's state from `RunFeature`'s states; the toolbar order (`ToolbarTests` updated). **By eye**: views 01, 08, 10 | M | ⚪ | |
 | 21.4 | **Branch widget menu**: current branch and *n worktrees* in the button; the menu lists the worktrees (folder, the agents working there with their badge, ahead count, a submenu: *Compare with main*, *Check out in main folder*, *Reveal in Finder*, *Remove worktree…*), local then remote branches, *Fetch*, *Pull*, *Push*, *New branch…*, *Stash changes…*, with a filter field; several repos → one submenu per repo | git new rule (branch menu), reusing R36–R39 actions | `NSMenu` with a search field item (`NSMenuItem.view`), existing `GitCLI` operations | menu entries built from the model as a pure function (order, current checked, held branches tagged, agents attached). **By eye**: view 11 | M | ⚪ | |
@@ -42,14 +42,16 @@ Each task depends on the previous ones unless noted. One task = one branch `feat
 | 21.11 | **Sticky lines**: the first lines of the enclosing regions (class, method…) scrolled above the viewport stay pinned at the top of the editor, on the editor's own ground with a separator under them, at most 3; a click scrolls to the line | editor new rule | an `NSView` over the `NSScrollView`'s clip view, `Folding` regions | the pinned lines for a top visible line and a set of regions (pure), the cap. **By eye**: view 02 | M | ⚪ | |
 | 21.12 | **Review against the reference views**: the author goes through `02-redesign/` view by view on a real workspace; the gaps found become dated decisions or a task of M22 | — | — | **By eye**: the thirteen views | S | ⚪ | |
 
-## To decide during the milestone
+## Decided during the milestone
 
-- Does the status bar hide with the toolbar (`cmd+opt+t`), or have its own shortcut, or never hide? (21.2)
-- A slot toggle on a side whose panel was never shown: the first registered panel (proposed). (21.2)
-- History: keep the linear log of the study, or draw branch lanes as in view 05? (21.6)
-- The config error banner stays next to the *Foreman config* group of Problems (proposed, view 12), or the banner goes? (21.7)
-- Sticky lines: the cap (3 proposed) and which languages (those with folding queries). (21.11)
+Settled by the author on 2026-10-16, before 21.1; each is dated in the `decisions.md` of its domain.
+
+- The status bar never hides, and has no shortcut of its own (`layout`). (21.2)
+- A slot toggle on a side whose panel was never shown opens the slot's first panel — Project, History, Database (`layout`). (21.2)
+- History keeps the linear log, with its branch and tag chips; the lanes of view 05 wait for a later milestone (`git`). (21.6)
+- The config error banner stays, next to the *Foreman config* group of Problems (`config`). (21.7)
+- Sticky lines: 3 at most, for the languages with folding rules (`editor`). (21.11)
 
 ## Where it stands
 
-Planned on 2026-10-16; nothing started.
+Planned on 2026-10-16. 21.1 done the same day (panel tabs; Changes left, History bottom).

@@ -8,7 +8,7 @@ struct GitChangesPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeaderView(title: "Changes", theme: theme) { EmptyView() }
+            PanelHeaderView(panels: feature.panels, current: GitFeature.panelID, theme: theme) { EmptyView() }
             if let banner = model.banner {
                 // git R28: git missing or too old; nothing else happens.
                 BannerView(text: banner, icon: "exclamationmark.triangle", tone: .error, theme: theme)

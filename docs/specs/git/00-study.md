@@ -4,7 +4,7 @@
 
 Feature `git` (folder `Git/`): an overview of the changes across every repo in the workspace, stage/unstage/discard, commit, inline diff, linear history, and the everyday operations (fetch/pull/push, branches, stash) — all of it by calling the user's `git` binary, so that their config (hooks, signing, credential helpers; aliases excluded) is honoured.
 
-Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, not instead of it) (`cmd+shift+g`), right panel `git.history` (`cmd+shift+h`, the same slot as the changes: one replaces the other, decision 2026-08-27), center tab `git.diff`.
+Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, not instead of it) (`cmd+shift+g`), right panel `git.history` (`cmd+shift+h`, the same slot as the changes: one replaces the other, decision 2026-08-27), center tab `git.diff`. **Amended 2026-10-16** (M21 21.1, views 04–05): `git.changes` is the **second tab of the left slot**, after *Project*, with the number of files to commit on its tab; `git.history` is the **first tab of the bottom slot**, before *Search* — its rows carry a lot of information and want the centre's width.
 
 ## User stories
 
@@ -52,7 +52,7 @@ Surfaces: right panel `git.changes` (decision 2026-08-27: next to the explorer, 
 
 ### History
 
-- R18 — Right panel `git.history` (same slot as `git.changes`): a repo picker (the one from the active section of the changes panel by default), a **linear log** of the current branch (`git log --first-parent`), pagination by 200 commits ("load more"), columns: short sha, subject, author, relative date, ref badges (branches, tags, `HEAD`). A text filter on subject/author (`--grep`/`--author`).
+- R18 — Right panel `git.history` (same slot as `git.changes`; the bottom slot since 2026-10-16, see *Surfaces*): a repo picker (the one from the active section of the changes panel by default), a **linear log** of the current branch (`git log --first-parent`), pagination by 200 commits ("load more"), columns: short sha, subject, author, relative date, ref badges (branches, tags, `HEAD`). A text filter on subject/author (`--grep`/`--author`).
 - R19 — Click: the commit's diff (R14) as a preview. **Amended 2026-10-16** (R19b): a click selects the commit and lists its files; a **double click** opens the whole commit's diff, pinned. Menu: copy the sha, *Checkout* (detached HEAD, confirmed), *Create a branch here*, *Cherry-pick* (confirmed), *Revert* (confirmed, creates a commit), *Reset soft/mixed* (confirmed; `--hard` is **absent** from the UI, terminal only).
 - R19b — **The commit's files** (2026-10-16, author's request): selecting a commit splits the panel — the log on top, below it the files the commit changed (`git show -m --first-parent --name-status -z -M <sha>`: a merge shows what it brought to its first parent, like its diff), as a tree like R6b's (folders first, single-child chains folded into one row, a click on a folder closes it, nothing persisted), each row the status letter in its colour and the name, a rename's origin in grey. A header names the commit (short sha, subject) and the file count. A click on a file previews its diff (R14, *a file of a commit*) in the center, a double click pins it. The divider is draggable; no selection, no split. A new repo, filter or path clears the selection and the split.
 - R20 — A file's history: from a file's menu (explorer or changes) → the same panel, filtered (`git log --follow -- <path>`).

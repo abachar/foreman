@@ -47,8 +47,15 @@ struct PanelDescriptor {
     let id: PanelID
     let title: String
     let side: PanelSide
-    /// design R15: the toolbar toggle's icon (see `IconImage`).
+    /// design R17: the icon of the panel's tab (see `IconImage`).
     let icon: String
+    /// layout R2 (amended 2026-10-16): the place of the panel's tab in its slot's header.
+    ///
+    /// The conditional features (R36) register late, so the registration order alone would depend
+    /// on which repo or config answered first.
+    let order: Int
+    /// design R17: the number on the panel's tab (Changes: the files to commit); `.none` for none.
+    let badge: () -> ToolbarBadge
     let defaultShortcut: String?
     let makeView: () -> AnyView
     let activate: () -> Void
@@ -59,6 +66,8 @@ struct PanelDescriptor {
         title: String,
         side: PanelSide,
         icon: String = "rectangle",
+        order: Int = 0,
+        badge: @escaping () -> ToolbarBadge = { .none },
         defaultShortcut: String? = nil,
         makeView: @escaping () -> AnyView,
         activate: @escaping () -> Void = {},
@@ -68,6 +77,8 @@ struct PanelDescriptor {
         self.title = title
         self.side = side
         self.icon = icon
+        self.order = order
+        self.badge = badge
         self.defaultShortcut = defaultShortcut
         self.makeView = makeView
         self.activate = activate
@@ -126,6 +137,14 @@ final class PanelManager {
 
     subscript(id: PanelID) -> PanelDescriptor? {
         panels.first { $0.id == id }
+    }
+
+    /// layout R2 (amended 2026-10-16): the panels of a slot, as its header lists them — by
+    /// `order`, then registration order.
+    func panels(on side: PanelSide) -> [PanelDescriptor] {
+        panels.enumerated().filter { $0.element.side == side }
+            .sorted { ($0.element.order, $0.offset) < ($1.element.order, $1.offset) }
+            .map(\.element)
     }
 
     func isVisible(_ id: PanelID) -> Bool {

@@ -26,6 +26,11 @@ final class GitFeature {
     let model = GitModel()
     let history = GitHistoryModel()
     private let layout: LayoutManager
+
+    /// The panels the git panels' headers list as tabs (design R17).
+    var panels: PanelManager {
+        layout.panels
+    }
     private let workspace: Workspace
     private let editor: EditorFeature
     private let theme: ThemeService
@@ -126,7 +131,9 @@ final class GitFeature {
         let theme = theme
         layout.register(
             panel: PanelDescriptor(
-                id: Self.panelID, title: "Changes", side: .right, icon: "arrow.triangle.branch",
+                // git (surfaces, amended 2026-10-16): Changes is the left slot's second tab.
+                id: Self.panelID, title: "Changes", side: .left, icon: "arrow.triangle.branch", order: 1,
+                badge: { model.changedFileCount > 0 ? .count(model.changedFileCount, .orange) : .none },
                 defaultShortcut: "cmd+shift+g",
                 makeView: { [weak self] in
                     guard let self else { return AnyView(EmptyView()) }
@@ -137,7 +144,9 @@ final class GitFeature {
         let history = history
         layout.register(
             panel: PanelDescriptor(
-                id: Self.historyPanelID, title: "History", side: .right, icon: "clock", defaultShortcut: "cmd+shift+h",
+                // git (surfaces, amended 2026-10-16): History is the bottom slot's first tab.
+                id: Self.historyPanelID, title: "History", side: .bottom, icon: "clock", order: 0,
+                defaultShortcut: "cmd+shift+h",
                 makeView: { [weak self] in
                     guard let self else { return AnyView(EmptyView()) }
                     return AnyView(GitHistoryPanelView(model: history, changes: model, feature: self, theme: theme))

@@ -38,8 +38,8 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 ### Zones and panels
 
 - R1 — A window has exactly four zones: `center` (always visible) and three optional slots `left`, `right`, `bottom`, topped by a toolbar (R30–R32).
-- R2 — A slot shows at most one panel at a time. `PanelManager`'s state is `[PanelSide: PanelID?]` (three optionals).
-- R3 — Toggle: the shortcut of the panel visible in its slot hides it; the shortcut of another panel of the same slot replaces it; the shortcut of a hidden panel shows it. One shortcut never drives two slots.
+- R2 — A slot shows at most one panel at a time. `PanelManager`'s state is `[PanelSide: PanelID?]` (three optionals). **Amended 2026-10-16** (M21 21.1): the panels registered on a slot are its **tabs**, listed in the header of whichever is shown (`design` R17), in the order each panel declares (`PanelDescriptor.order`), then in registration order — the conditional features (R36) register late, so registration alone would order the tabs by which repo or config answered first. Today: left *Project · Changes*, bottom *History · Search*, right *Database*.
+- R3 — Toggle: the shortcut of the panel visible in its slot hides it; the shortcut of another panel of the same slot replaces it; the shortcut of a hidden panel shows it. One shortcut never drives two slots. **Amended 2026-10-16** (M21 21.1): a click on a tab of the slot's header does what that panel's shortcut does when it is hidden — it replaces the shown panel, which keeps its state (R4, R5); the bottom slot's header also has a *Hide* button (`—`).
 - R4 — Hidden panels keep their UI state (expanded tree, selection, scroll) but consume nothing (`architecture`: laziness): the feature receives `deactivate()` and stops its work; `activate()` starts it again.
 - R5 — A panel is only built (`makeView`) at its first activation; its view is then kept in memory for as long as the window lives.
 - R6 — Keyboard focus: showing a panel gives it the focus; hiding it gives the focus back to the active tab group. `escape` from a panel gives the focus back to the center without hiding the panel.
@@ -116,7 +116,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
   |---|---|
   | File | Open… · Open Recent ▸ (`product` R8) · Quick Open… · Save · Save All · Close Tab |
   | Edit | *(the natives macOS puts there)* · Find · Find and Replace… · Find in Project… · Go to Line… · Toggle Comment · Indent · Outdent · Move Line Up / Down · Format File · Fold / Unfold Region |
-  | View | Explorer · Toggle Toolbar · Toggle Markdown Preview · Tabs ▸ (previous, next, 1…9) · Split ▸ · Focus Group ▸ · Move Tab ▸ · Focus Center · Zoom In / Out |
+  | View | Project (*Explorer* until 2026-10-16) · Toggle Toolbar · Toggle Markdown Preview · Tabs ▸ (previous, next, 1…9) · Split ▸ · Focus Group ▸ · Move Tab ▸ · Focus Center · Zoom In / Out |
   | Tools | Agents ▸ (one per `config.agents`) · Send to Agent · Git ▸ · Postgres ▸ · Browser ▸ |
   | Run | Run Command… · Stop Command · Clear Scrollback |
 

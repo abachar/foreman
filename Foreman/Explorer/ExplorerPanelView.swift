@@ -34,7 +34,7 @@ struct ExplorerPanelView: View {
     }
 
     private var header: some View {
-        PanelHeaderView(title: model.root.lastPathComponent, theme: theme) {
+        PanelHeaderView(panels: layout.panels, current: ExplorerFeature.panelID, theme: theme) {
             Button {
                 operations.newFile(near: nil)
             } label: {

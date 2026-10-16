@@ -15,11 +15,12 @@ struct PanelManagerTests {
     private let probe = Probe()
     private let manager = PanelManager()
 
-    private func panel(_ id: PanelID, side: PanelSide) -> PanelDescriptor {
+    private func panel(_ id: PanelID, side: PanelSide, order: Int = 0) -> PanelDescriptor {
         PanelDescriptor(
             id: id,
             title: id.rawValue,
             side: side,
+            order: order,
             makeView: { [probe] in
                 probe.built += 1
                 return AnyView(EmptyView())
@@ -130,5 +131,51 @@ struct PanelManagerTests {
 
         manager.activateVisible()
         #expect(probe.activations == ["+git.status"])
+    }
+
+    /// layout R2 (amended 2026-10-16): a slot's header lists its panels by order, then by
+    /// registration — a conditional feature registering late still lands in its place.
+    @Test func panelsOfASideFollowTheirOrderThenRegistration() {
+        manager.register(panel("editor.search", side: .bottom, order: 1))
+        manager.register(panel("explorer.tree", side: .left, order: 0))
+        manager.register(panel("run.output", side: .bottom, order: 1))
+        manager.register(panel("git.history", side: .bottom, order: 0))
+        manager.register(panel("git.changes", side: .left, order: 1))
+
+        #expect(manager.panels(on: .bottom).map(\.id) == ["git.history", "editor.search", "run.output"])
+        #expect(manager.panels(on: .left).map(\.id) == ["explorer.tree", "git.changes"])
+        #expect(manager.panels(on: .right).isEmpty)
+    }
+
+    /// layout R3 (amended 2026-10-16): a tab click shows its panel in place of the other, which
+    /// keeps its view (R5) and is only deactivated (R4).
+    @Test func aTabClickReplacesAndTheHiddenPanelKeepsItsView() {
+        manager.register(panel("explorer.tree", side: .left))
+        manager.register(panel("git.changes", side: .left, order: 1))
+        manager.show("explorer.tree")
+        _ = manager.view(for: "explorer.tree")
+
+        manager.show("git.changes")
+        _ = manager.view(for: "git.changes")
+        manager.show("explorer.tree")
+        _ = manager.view(for: "explorer.tree")
+
+        #expect(manager.visible == [.left: "explorer.tree"])
+        #expect(probe.built == 2)
+        #expect(
+            probe.activations == ["+explorer.tree", "-explorer.tree", "+git.changes", "-git.changes", "+explorer.tree"])
+    }
+
+    /// layout, edge cases: `git.changes` was persisted in the right slot before it moved left; it
+    /// comes back hidden, and the left slot keeps what was restored there.
+    @Test func aPanelPersistedOnItsOldSideComesBackHidden() {
+        manager.register(panel("explorer.tree", side: .left))
+        manager.restore(visible: [.left: "explorer.tree", .right: "git.changes", .bottom: "git.history"])
+        manager.activateVisible()
+
+        manager.register(panel("git.changes", side: .left, order: 1))
+        manager.register(panel("git.history", side: .bottom))
+
+        #expect(manager.visible == [.left: "explorer.tree", .bottom: "git.history"])
     }
 }

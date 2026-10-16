@@ -71,7 +71,7 @@ nonisolated enum MenuBarLayout {
         Menu(
             title: "View", isStandard: true,
             entries: [
-                .action("explorer.tree", title: "Explorer"),
+                .action("explorer.tree", title: "Project"),
                 .action("layout.toolbar.toggle"),
                 .action("editor.togglePreview"),
                 .separator,

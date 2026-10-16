@@ -132,6 +132,13 @@ final class GitModel {
     }
 
     private(set) var sections: [Section] = []
+
+    /// design R17: the number on the Changes tab — the files every repo would commit.
+    var changedFileCount: Int {
+        sections.reduce(0) { total, section in
+            total + (section.status?.entries.count { $0.index != .ignored } ?? 0)
+        }
+    }
     /// git R23: the repo whose branch sheet is open, and the list the sheet shows.
     private(set) var branchSheetRepo: String?
     private(set) var branches: [GitBranch] = []

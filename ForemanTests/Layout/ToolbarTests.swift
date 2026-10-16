@@ -54,7 +54,7 @@ struct ToolbarTests {
 
     @Test func aLeftOrRightPanelDeclaresItsToggleAndABottomOneDoesNot() {
         layout.register(
-            panel: PanelDescriptor(id: "explorer.tree", title: "Explorer", side: .left, icon: "folder") {
+            panel: PanelDescriptor(id: "explorer.tree", title: "Project", side: .left, icon: "folder") {
                 AnyView(EmptyView())
             })
         layout.register(

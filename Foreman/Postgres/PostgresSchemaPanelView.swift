@@ -31,12 +31,13 @@ struct PostgresSchemaPanelView: View {
     }
 
     private var header: some View {
-        PanelHeaderView(title: connection.label ?? "Postgres", theme: theme) {
+        PanelHeaderView(panels: feature.layout.panels, current: PostgresFeature.schemaPanelID, theme: theme) {
             // R5: the state dot.
             Circle()
                 .fill(Color(nsColor: theme.color(for: connection.state)))
                 .frame(width: 8, height: 8)
-                .help(stateText)
+                // R2 (amended 2026-10-16): the header is the slot's tabs, the connection is told here.
+                .help([connection.label, stateText].compactMap(\.self).joined(separator: " — "))
             TextField("Filter", text: Bindable(model).filter)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 160)
