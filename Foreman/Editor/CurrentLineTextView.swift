@@ -37,7 +37,7 @@ class CurrentLineTextView: NSTextView {
     /// The levels of every line and where each line starts, kept with the text: the draw and the
     /// caret only read them.
     private var guideLevels: [Int] = []
-    private var lineStarts: [Int] = [0]
+    private(set) var lineStarts: [Int] = [0]
     /// What the caret lights up, kept to redraw only when it changes.
     private var activeGuide: (column: Int, lines: ClosedRange<Int>)?
     private var matchedBrackets: BracketPair?

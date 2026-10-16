@@ -100,3 +100,29 @@ struct FoldMarkersTests {
         #expect(markers[1]?.kind == .open)
     }
 }
+
+/// The sticky lines (editor R56, M21 21.11).
+struct StickyLinesTests {
+    // class 1–40, method 3–20, if 5–9, method 22–39.
+    private let regions = [
+        FoldRegion(first: 1, last: 40), FoldRegion(first: 3, last: 20), FoldRegion(first: 5, last: 9),
+        FoldRegion(first: 22, last: 39),
+    ]
+
+    @Test func theBlocksStartedAboveTheTopArePinnedOutermostFirst() {
+        #expect(StickyLines.lines(topLine: 1, regions: regions).isEmpty)
+        #expect(StickyLines.lines(topLine: 2, regions: regions) == [1])
+        // The two pinned lines cover lines 4 and 5: the `if` opened on 5 joins them.
+        #expect(StickyLines.lines(topLine: 4, regions: regions) == [1, 3, 5])
+        #expect(StickyLines.lines(topLine: 25, regions: regions) == [1, 22])
+        #expect(StickyLines.lines(topLine: 41, regions: regions).isEmpty)
+        // A block about to end lets go: under the class's line, `if` 5–9 has only its closer left.
+        #expect(StickyLines.lines(topLine: 9, regions: regions) == [1, 3])
+    }
+
+    @Test func threeAtMost() {
+        let deep = (1...6).map { FoldRegion(first: $0, last: 100 - $0) }
+        #expect(StickyLines.lines(topLine: 50, regions: deep) == [1, 2, 3])
+        #expect(StickyLines.lines(topLine: 50, regions: deep, cap: 2) == [1, 2])
+    }
+}

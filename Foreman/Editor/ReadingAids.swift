@@ -143,3 +143,26 @@ nonisolated enum FoldMarkers {
         return markers
     }
 }
+
+/// editor R56 (2026-10-16, M21 21.11, view 02): the sticky lines of an editor.
+nonisolated enum StickyLines {
+    /// editor R56, decision 2026-10-16: three at most.
+    static let cap = 3
+
+    /// The first lines of the blocks the top of the editor is in, outermost first, `cap` at most.
+    ///
+    /// The pinned lines cover the first visible lines, so each slot is checked against the line
+    /// it covers: a block is pinned in slot `k` when its first line is above `topLine + k` and its
+    /// body still reaches the line under the slot — so a block about to end lets go of its line
+    /// instead of covering its own last lines.
+    static func lines(topLine: Int, regions: [FoldRegion], cap: Int = StickyLines.cap) -> [Int] {
+        var pinned: [Int] = []
+        for region in regions.sorted(by: { $0.first < $1.first }) where pinned.count < cap {
+            let slot = topLine + pinned.count
+            if region.first < slot, region.last >= slot + 1 {
+                pinned.append(region.first)
+            }
+        }
+        return pinned
+    }
+}

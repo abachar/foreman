@@ -74,6 +74,13 @@ struct EditorTextView: NSViewRepresentable {
         scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
+        // editor R56: the sticky lines float over the top of the editor.
+        let sticky = StickyLinesView()
+        sticky.textView = textView
+        sticky.lineStarts = { [weak textView] in textView?.lineStarts ?? [0] }
+        sticky.autoresizingMask = [.width, .minYMargin]
+        scroll.addSubview(sticky)
+        context.coordinator.sticky = sticky
         scroll.drawsBackground = false
         Self.paint(textView, ruler: ruler, tokens: theme.tokens)
         if document.isHighlightable, let language = tab.language {
@@ -100,6 +107,7 @@ struct EditorTextView: NSViewRepresentable {
             MainActor.assumeIsolated {
                 // Weak: NotificationCenter keeps this block until `removeObserver`, which runs
                 // in the coordinator's deinit — a strong capture would make that unreachable.
+                coordinator?.sticky?.refresh()
                 guard let tab, let scroll, let coordinator, coordinator.isScrollRestored else { return }
                 tab.scroll = scroll.contentView.bounds.origin.y
             }
@@ -116,6 +124,8 @@ struct EditorTextView: NSViewRepresentable {
             // ruler and offsets its bounds, and an x of 0 hid the first 44 pt of text (2026-08-28).
             scroll.contentView.scroll(to: NSPoint(x: scroll.contentView.bounds.origin.x, y: savedScroll))
             scroll.reflectScrolledClipView(scroll.contentView)
+            // editor R56: the restored position may equal the one asked for, with no bounds change.
+            coordinator.sticky?.refresh()
         }
         return scroll
     }
@@ -150,6 +160,16 @@ struct EditorTextView: NSViewRepresentable {
         }
         // editor R26, R27: the folds reach the layout and the gutter.
         context.coordinator.applyFolds(regions: tab.foldRegions, folded: tab.foldedLines, to: textView, in: scroll)
+        // editor R56: the sticky lines follow the regions of the same parse, on the editor's ground.
+        if let sticky = context.coordinator.sticky {
+            let tokens = theme.tokens
+            sticky.background = tokens.surface.nsColor
+            sticky.separator = tokens.separator.nsColor
+            sticky.numberColor = tokens.textSecondary.nsColor
+            sticky.numberFont = NSFont.monospacedDigitSystemFont(
+                ofSize: theme.editorFont.pointSize - 1, weight: .regular)
+            sticky.regions = tab.foldRegions
+        }
         // editor R54, R55: the guides' block and the brackets come from the same parse.
         textView.setStructure(
             regions: tab.foldRegions, brackets: tab.bracketPairs,
@@ -207,6 +227,8 @@ struct EditorTextView: NSViewRepresentable {
         var scroll: NSScrollView?
         /// Kept alive for the life of the tab: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
+        /// editor R56: the pinned lines over the top of the editor.
+        var sticky: StickyLinesView?
         var attaching: Task<Void, Never>?
         var scrollObserver: (any NSObjectProtocol)?
         /// editor R4: bounds changes count only once the saved position was restored.
