@@ -62,13 +62,17 @@ struct PanelHeaderView<Trailing: View>: View {
                         .scaledToFit()
                         .frame(width: 14, height: 14)
                 }
-                Text(panel.title)
-                    .lineLimit(1)
+                // design R17 (amended 2026-10-17, M22 22.6): only the shown tab writes its title; the
+                // others are their icon and count, their title in the tooltip.
+                if isCurrent {
+                    Text(panel.title)
+                        .lineLimit(1)
+                }
                 PanelCountView(badge: panel.badge(), theme: theme)
             }
             .font(theme.font(.title, weight: isCurrent ? .medium : .regular))
             .foregroundStyle((isCurrent ? tokens.textPrimary : tokens.textSecondary).color)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, isCurrent ? 10 : 8)
             .frame(maxHeight: .infinity)
             // design R5: the shown tab carries the accent rule on its bottom edge.
             .overlay(alignment: .bottom) {
