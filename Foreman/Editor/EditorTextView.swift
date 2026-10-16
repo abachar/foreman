@@ -197,6 +197,8 @@ struct EditorTextView: NSViewRepresentable {
         ruler?.textColor = tokens.textSecondary.nsColor
         ruler?.backgroundColor = background
         ruler?.separatorColor = tokens.separator.nsColor
+        ruler?.activeMarkerColor = tokens.textPrimary.nsColor
+        ruler?.markerColor = tokens.textDisabled.nsColor
     }
 
     @MainActor

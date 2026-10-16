@@ -108,3 +108,38 @@ nonisolated enum IndentGuides {
         unit == "\t" ? tabWidth : max(unit.count, 1)
     }
 }
+
+/// editor R27 (amended 2026-10-16, M21 21.10, view 02): the gutter's fold markers.
+nonisolated enum FoldMarkers {
+    struct Marker: Equatable, Sendable {
+        enum Kind: Equatable, Sendable {
+            /// The region's first line, open: `⌄`.
+            case open
+            /// The region's first line, folded: `›`.
+            case folded
+            /// The line of the region's closer: `⌃`.
+            case close
+        }
+
+        let kind: Kind
+        /// The region the line belongs to, which a click folds or unfolds.
+        let region: FoldRegion
+        /// The caret's innermost block: drawn in `textPrimary`, the others in `textDisabled`.
+        let isActive: Bool
+    }
+
+    /// The marker of each line: an opening one on a region's first line, a closing one on the
+    /// line of its closer (the line after its last) unless it is folded; an opening marker wins
+    /// a line that also closes a region (`} else {`).
+    static func markers(regions: [FoldRegion], folded: Set<Int>, active: FoldRegion?) -> [Int: Marker] {
+        var markers: [Int: Marker] = [:]
+        for region in regions where !folded.contains(region.first) {
+            markers[region.last + 1] = Marker(kind: .close, region: region, isActive: region == active)
+        }
+        for region in regions {
+            markers[region.first] = Marker(
+                kind: folded.contains(region.first) ? .folded : .open, region: region, isActive: region == active)
+        }
+        return markers
+    }
+}

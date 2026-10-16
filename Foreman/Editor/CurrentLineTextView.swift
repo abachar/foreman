@@ -41,6 +41,9 @@ class CurrentLineTextView: NSTextView {
     /// What the caret lights up, kept to redraw only when it changes.
     private var activeGuide: (column: Int, lines: ClosedRange<Int>)?
     private var matchedBrackets: BracketPair?
+    /// editor R27 (amended 2026-10-16): the caret's innermost block, whose fold markers the
+    /// gutter draws brighter.
+    private(set) var activeRegion: FoldRegion?
 
     /// The parse's regions and pairs, and the width of a level; called on every SwiftUI update.
     func setStructure(regions: [FoldRegion], brackets: [BracketPair], indentWidth: Int) {
@@ -78,6 +81,11 @@ class CurrentLineTextView: NSTextView {
             IndentGuides.activeGuide(regions: regions, caretLine: $0, levels: guideLevels, width: indentWidth)
         }
         let pair = caret.flatMap { BracketPair.match(brackets, caret: $0) }
+        let region = line.flatMap { Folding.innermost(regions, containing: $0) }
+        if region != activeRegion {
+            activeRegion = region
+            enclosingScrollView?.verticalRulerView?.needsDisplay = true
+        }
         guard
             force || guide?.column != activeGuide?.column || guide?.lines != activeGuide?.lines
                 || pair != matchedBrackets

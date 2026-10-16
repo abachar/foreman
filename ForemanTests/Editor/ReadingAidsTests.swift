@@ -75,3 +75,28 @@ struct ReadingAidsTests {
         #expect(BracketPair.match(pairs, caret: offset("let")) == nil)
     }
 }
+
+/// The gutter's fold markers (editor R27 amended, M21 21.10).
+struct FoldMarkersTests {
+    @Test func openingOnTheFirstLineClosingOnTheCloserTheCaretsBlockActive() {
+        let outer = FoldRegion(first: 1, last: 9)
+        let inner = FoldRegion(first: 3, last: 5)
+        let markers = FoldMarkers.markers(regions: [outer, inner], folded: [], active: inner)
+        #expect(markers[1]?.kind == .open)
+        #expect(markers[10]?.kind == .close)
+        #expect(markers[3] == FoldMarkers.Marker(kind: .open, region: inner, isActive: true))
+        #expect(markers[6] == FoldMarkers.Marker(kind: .close, region: inner, isActive: true))
+        #expect(markers[1]?.isActive == false)
+        #expect(markers.count == 4)
+    }
+
+    @Test func aFoldedRegionHasNoClosingMarkerAndAnOpenerWinsItsLine() {
+        // `} else {`: the first block closes on the line the second opens.
+        let first = FoldRegion(first: 1, last: 2)
+        let second = FoldRegion(first: 3, last: 4)
+        let markers = FoldMarkers.markers(regions: [first, second], folded: [3], active: nil)
+        #expect(markers[3] == FoldMarkers.Marker(kind: .folded, region: second, isActive: false))
+        #expect(markers[5] == nil)
+        #expect(markers[1]?.kind == .open)
+    }
+}

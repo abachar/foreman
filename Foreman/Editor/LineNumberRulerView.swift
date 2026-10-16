@@ -12,6 +12,13 @@ final class LineNumberRulerView: NSRulerView {
     var textColor = NSColor.secondaryLabelColor {
         didSet { needsDisplay = true }
     }
+    /// editor R27 (amended 2026-10-16): the caret's block markers, then the others.
+    var activeMarkerColor = NSColor.labelColor {
+        didSet { needsDisplay = true }
+    }
+    var markerColor = NSColor.tertiaryLabelColor {
+        didSet { needsDisplay = true }
+    }
     var backgroundColor: NSColor = .clear {
         didSet { needsDisplay = true }
     }
@@ -94,6 +101,8 @@ final class LineNumberRulerView: NSRulerView {
         if abs(ruleThickness - width) > 0.5 {
             ruleThickness = width
         }
+        let markers = FoldMarkers.markers(
+            regions: foldRegions, folded: foldedLines, active: (textView as? CurrentLineTextView)?.activeRegion)
         var number: Int?
         layoutManager.enumerateTextLayoutFragments(
             from: layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: visible.minY - inset.height))?.rangeInElement
@@ -127,11 +136,18 @@ final class LineNumberRulerView: NSRulerView {
                         x: 3, y: y + lineHeight / 2 - diameter / 2, width: diameter, height: diameter)
                 ).fill()
             }
-            // editor R27: the chevron next to the code, in the numbers' color (author, 2026-08-28).
-            if foldRegions.contains(where: { $0.first == current }) {
-                let name = foldedLines.contains(current) ? "chevron.right" : "chevron.down"
+            // editor R27 (amended 2026-10-16): the markers next to the code — opening on a region's
+            // first line, closing on its closer's — the caret's block brighter.
+            if let marker = markers[current] {
+                let name =
+                    switch marker.kind {
+                    case .open: "chevron.down"
+                    case .folded: "chevron.right"
+                    case .close: "chevron.up"
+                    }
                 let configuration = NSImage.SymbolConfiguration(pointSize: font.pointSize - 3, weight: .semibold)
-                    .applying(NSImage.SymbolConfiguration(paletteColors: [textColor]))
+                    .applying(
+                        NSImage.SymbolConfiguration(paletteColors: [marker.isActive ? activeMarkerColor : markerColor]))
                 if let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
                     .withSymbolConfiguration(configuration)
                 {
@@ -147,20 +163,24 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
-    /// editor R27: a click on the chevron strip folds or unfolds that line's region.
+    /// editor R27: a click on a marker folds or unfolds its region.
+    ///
+    /// Anywhere else in the gutter a click does nothing: `NSRulerView`'s own handling would
+    /// offer to add a ruler marker.
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard point.x >= ruleThickness - Self.chevronWidth - 4, let textView,
             let layoutManager = textView.textLayoutManager,
             let contentManager = layoutManager.textContentManager
-        else { return super.mouseDown(with: event) }
+        else { return }
         let y = point.y + textView.visibleRect.minY - textView.textContainerInset.height
         guard let fragment = layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: y)) else { return }
         let offset = contentManager.offset(
             from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
         let line = line(at: offset)
-        guard foldRegions.contains(where: { $0.first == line }) else { return }
-        onToggleFold?(line)
+        let markers = FoldMarkers.markers(regions: foldRegions, folded: foldedLines, active: nil)
+        guard let marker = markers[line] else { return }
+        onToggleFold?(marker.region.first)
     }
 
     /// Re-reads the line starts from the text; the edit observer calls it on every change, and
