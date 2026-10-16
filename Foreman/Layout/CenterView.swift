@@ -189,7 +189,8 @@ struct TabBarView: View {
                 HStack(spacing: 0) {
                     ForEach(group.tabs) { tab in
                         TabButton(
-                            tab: tab, tokens: tokens, font: theme.font(), closeFont: theme.font(.small),
+                            tab: tab, tokens: tokens, font: theme.font(), measuringFont: theme.interfaceFont(),
+                            closeFont: theme.font(.small),
                             icon: layout.tabKinds[tab.kind]?.showsFileIcon == true
                                 ? FileIcon.image(named: FileIcon.name(for: tab.title)) : nil,
                             isActive: tab.id == group.activeTab,
@@ -272,10 +273,12 @@ extension EventModifiers {
 /// design R5, R16: a flat rectangle; active = the island's surface and a 2 pt accent rule on its
 /// bottom edge — grey in a group that is not the active one (amended 2026-10-16); the close
 /// button under the mouse, and always on the active tab of the active group (view 02).
-private struct TabButton: View {
+struct TabButton: View {
     let tab: Tab
     let tokens: ThemeService.Tokens
     let font: Font
+    /// The same font as `font`, to measure the title with (layout R16 amended 2026-10-17).
+    let measuringFont: NSFont
     let closeFont: Font
     /// design R23: the file's type icon.
     let icon: NSImage?
@@ -284,10 +287,17 @@ private struct TabButton: View {
     let activate: () -> Void
     let close: () -> Void
 
-    private static let minimumWidth: CGFloat = 120
-    /// layout R16: past this a title is truncated, so one long name cannot take the whole bar
-    /// and hide every other tab (audit L7).
-    private static let maximumWidth: CGFloat = 240
+    /// layout R16 (amended 2026-10-17, M22 22.5): the widest a tab's title gets.
+    ///
+    /// A tab is as wide as its content, its title truncated in the middle past this — so one long
+    /// name cannot take the whole bar (audit L7) and a short one leaves no empty band.
+    static let maximumTitleWidth: CGFloat = 180
+
+    /// The title's width: what the font needs, a point of slack for the italic of a preview, up
+    /// to `maximum`.
+    static func titleWidth(_ title: String, font: NSFont, maximum: CGFloat = maximumTitleWidth) -> CGFloat {
+        min((title as NSString).size(withAttributes: [.font: font]).width.rounded(.up) + 2, maximum)
+    }
 
     @State private var isHovered = false
 
@@ -303,9 +313,12 @@ private struct TabButton: View {
                     .fill(tokens.status(color).color)
                     .frame(width: 7, height: 7)
             }
-            Text(tab.title + (tab.isDirty && tab.badge == .none ? " •" : ""))
+            let title = tab.title + (tab.isDirty && tab.badge == .none ? " •" : "")
+            Text(title)
                 .lineLimit(1)
+                .truncationMode(.middle)
                 .font(font)
+                .frame(width: Self.titleWidth(title, font: measuringFont), alignment: .leading)
                 .italic(tab.isPreview)
                 .foregroundStyle(isActive && isActiveGroup ? tokens.textPrimary.color : tokens.textSecondary.color)
             Button(action: close) {
@@ -317,7 +330,8 @@ private struct TabButton: View {
             .opacity(isHovered || (isActive && isActiveGroup) ? 1 : 0)
         }
         .padding(.horizontal, 12)
-        .frame(minWidth: Self.minimumWidth, maxWidth: Self.maximumWidth, maxHeight: .infinity)
+        .frame(maxHeight: .infinity)
+        .help(tab.title)
         .background(isActive ? tokens.surface.color : .clear)
         .overlay(alignment: .bottom) {
             (isActive ? (isActiveGroup ? tokens.accent : tokens.textDisabled).color : .clear).frame(height: 2)

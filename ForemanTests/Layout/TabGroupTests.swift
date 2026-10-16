@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -135,5 +136,18 @@ struct TabBarMoreMenuTests {
         #expect(two.first { $0.title == "Split Right" }?.isEnabled == true)
         #expect(two.first { $0.title == "Close Tabs to the Left" }?.isEnabled == true)
         #expect(two.first { $0.title == "Close Tabs to the Right" }?.isEnabled == false)
+    }
+}
+
+/// Tab widths (layout R16 amended 2026-10-17, M22 22.5).
+@MainActor
+struct TabWidthTests {
+    @Test func aShortTitleIsAsWideAsItsTextALongOneStopsAtTheMaximum() {
+        let font = NSFont.systemFont(ofSize: 13)
+        let short = TabButton.titleWidth("pom.xml", font: font)
+        #expect(short < 80)
+        #expect(short >= ("pom.xml" as NSString).size(withAttributes: [.font: font]).width)
+        let long = TabButton.titleWidth(String(repeating: "detailed-service-simulator", count: 4), font: font)
+        #expect(long == TabButton.maximumTitleWidth)
     }
 }
