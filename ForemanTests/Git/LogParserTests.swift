@@ -6,9 +6,10 @@ import Testing
 /// `log --format -z` over fixtures, the query and the menu arguments (git R18, R19, R27).
 struct LogParserTests {
     private func record(
-        _ sha: String, _ short: String, _ author: String, _ date: String, _ refs: String, _ subject: String
+        _ sha: String, _ short: String, _ author: String, _ date: String, _ refs: String, _ subject: String,
+        parents: String = ""
     ) -> String {
-        [sha, short, author, date, refs, subject].joined(separator: "\u{1f}")
+        [sha, short, author, date, refs, parents, subject].joined(separator: "\u{1f}")
     }
 
     private func commit(_ sha: String, _ seconds: TimeInterval = 0) -> GitCommit {
@@ -43,6 +44,50 @@ struct LogParserTests {
         #expect(commit.subject == "odd \u{1f} subject\nwith line")
         #expect(LogParser.parse(Data()).isEmpty)
         #expect(LogParser.parse(Data("garbage\0".utf8)).isEmpty)
+    }
+
+    /// git R19 (amended 2026-10-16): the parents, for the commit's details.
+    @Test func readsTheParents() throws {
+        let data = Data(
+            (record("a", "a", "me", "2026-08-27T10:00:00Z", "", "merge", parents: "1a2b3c4 5d6e7f8") + "\0").utf8)
+        #expect(try #require(LogParser.parse(data).first).parents == ["1a2b3c4", "5d6e7f8"])
+    }
+
+    /// git R18 (amended 2026-10-16, view 05): today and yesterday by name, the year when it differs.
+    @Test func shortDatesNameTodayAndYesterday() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-10-16T15:00:00Z"))
+        func date(_ text: String) throws -> Date { try #require(ISO8601DateFormatter().date(from: text)) }
+        #expect(LogParser.shortDate(try date("2026-10-16T10:48:00Z"), now: now, calendar: calendar).hasPrefix("Today "))
+        #expect(
+            LogParser.shortDate(try date("2026-10-15T18:40:00Z"), now: now, calendar: calendar).hasPrefix("Yesterday "))
+        #expect(
+            LogParser.shortDate(try date("2026-10-14T17:30:00Z"), now: now, calendar: calendar).hasPrefix("Oct 14 "))
+        #expect(LogParser.shortDate(try date("2025-03-02T09:00:00Z"), now: now, calendar: calendar) == "Mar 2 2025")
+        #expect(LogParser.shortDate(nil, now: now).isEmpty)
+    }
+
+    /// git R18 (amended 2026-10-16): the chips of a row, `origin/HEAD` left out.
+    @Test func refChipsTellTheHeadLocalRemoteAndTags() {
+        let chips = GitRefChip.chips(
+            ["HEAD -> main", "origin/main", "origin/HEAD", "tag: v1.3.0", "feat/order-lines", ""],
+            remotes: ["origin/main"])
+        #expect(
+            chips == [
+                GitRefChip(name: "main", kind: .head), GitRefChip(name: "origin/main", kind: .remote),
+                GitRefChip(name: "v1.3.0", kind: .tag), GitRefChip(name: "feat/order-lines", kind: .local),
+            ])
+        #expect(GitRefChip.chips(["HEAD"], remotes: []) == [GitRefChip(name: "HEAD", kind: .head)])
+    }
+
+    /// git R18 (amended 2026-10-16): *All branches* reads every ref by date, except for a range.
+    @Test func allBranchesReadsEveryRefByDate() {
+        var query = GitLogQuery()
+        query.allBranches = true
+        #expect(Array(query.arguments(field: nil).prefix(3)) == ["log", "--all", "--date-order"])
+        query.range = GitLogQuery.Range(base: "main", head: "feat")
+        #expect(Array(query.arguments(field: nil).prefix(2)) == ["log", "--first-parent"])
     }
 
     @Test @MainActor func relativeDates() {

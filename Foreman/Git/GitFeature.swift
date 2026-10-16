@@ -679,6 +679,17 @@ final class GitFeature {
         }
     }
 
+    /// git R18 (amended 2026-10-16): *All branches* or the current branch's line.
+    func setHistoryAllBranches(_ value: Bool) {
+        guard history.query.allBranches != value else { return }
+        history.query.allBranches = value
+        guard let repo = history.repoID else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            history.reload(with: await client(for: repo))
+        }
+    }
+
     func filterHistory(_ text: String) {
         history.query.filter = text.trimmingCharacters(in: .whitespaces)
         guard let repo = history.repoID else { return }

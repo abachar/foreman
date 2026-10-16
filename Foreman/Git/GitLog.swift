@@ -9,6 +9,8 @@ nonisolated struct GitCommit: Equatable, Sendable, Identifiable {
     /// `HEAD -> main`, `origin/main`, `tag: v1`, as `%D` lists them.
     let refs: [String]
     let subject: String
+    /// git R19 (amended 2026-10-16): the abbreviated parents, `%p`, for the commit's details.
+    var parents: [String] = []
 
     var id: String {
         sha
@@ -19,7 +21,7 @@ nonisolated struct GitCommit: Equatable, Sendable, Identifiable {
 ///
 /// Fields separated by `\x1f`, the subject last so it may hold anything; records by NUL.
 nonisolated enum LogParser {
-    static let format = "%H%x1f%h%x1f%an%x1f%aI%x1f%D%x1f%s"
+    static let format = "%H%x1f%h%x1f%an%x1f%aI%x1f%D%x1f%p%x1f%s"
 
     static func parse(_ data: Data) -> [GitCommit] {
         // One formatter for the whole page instead of one per commit; `%aI` writes the offset with
@@ -27,13 +29,14 @@ nonisolated enum LogParser {
         let dates = ISO8601DateFormatter()
         return data.split(separator: 0, omittingEmptySubsequences: true).compactMap { record in
             let fields = String(decoding: record, as: UTF8.self).split(
-                separator: "\u{1f}", maxSplits: 5, omittingEmptySubsequences: false)
-            guard fields.count == 6, !fields[0].isEmpty else { return nil }
+                separator: "\u{1f}", maxSplits: 6, omittingEmptySubsequences: false)
+            guard fields.count == 7, !fields[0].isEmpty else { return nil }
             return GitCommit(
                 sha: String(fields[0]), shortSha: String(fields[1]), author: String(fields[2]),
                 date: dates.date(from: String(fields[3])),
                 refs: fields[4].split(separator: ", ").map { String($0).trimmingCharacters(in: .whitespaces) },
-                subject: String(fields[5]).trimmingCharacters(in: .whitespacesAndNewlines))
+                subject: String(fields[6]).trimmingCharacters(in: .whitespacesAndNewlines),
+                parents: fields[5].split(separator: " ").map(String.init))
         }
     }
 
@@ -49,6 +52,30 @@ nonisolated enum LogParser {
     @MainActor static func relativeText(_ date: Date?, now: Date) -> String {
         guard let date else { return "" }
         return relativeDates.localizedString(for: date, relativeTo: now)
+    }
+
+    /// git R18 (amended 2026-10-16, view 05): `Today 10:48`, `Yesterday 18:40`, `Oct 14 17:30`,
+    /// and the year for a commit of another year (`Oct 14 2025`).
+    static func shortDate(_ date: Date?, now: Date, calendar: Calendar = .current) -> String {
+        guard let date else { return "" }
+        let time = date.formatted(
+            Date.FormatStyle(locale: Locale(identifier: "en_GB"), calendar: calendar, timeZone: calendar.timeZone)
+                .hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "Today \(time)"
+        }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+            calendar.isDate(date, inSameDayAs: yesterday)
+        {
+            return "Yesterday \(time)"
+        }
+        let day = date.formatted(
+            Date.FormatStyle(locale: Locale(identifier: "en_US"), calendar: calendar, timeZone: calendar.timeZone)
+                .month(.abbreviated).day())
+        guard calendar.component(.year, from: date) == calendar.component(.year, from: now) else {
+            return "\(day) \(calendar.component(.year, from: date))"
+        }
+        return "\(day) \(time)"
     }
 }
 
@@ -96,6 +123,9 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
     var path: String?
     /// git R36b: only the commits `head` adds over `base`.
     var range: Range?
+    /// git R18 (amended 2026-10-16): every branch (`--all`, by date) instead of the current one's
+    /// first-parent line; ignored for a range.
+    var allBranches = false
 
     struct Range: Equatable, Sendable {
         let base: String
@@ -120,10 +150,10 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
 
     /// git R27: `--first-parent`, machine format, one page; the filter on one field at a time.
     func arguments(field: Field?) -> [String] {
-        var arguments = [
-            "log", "--first-parent", "--format=\(LogParser.format)", "-z", "-n", "\(Self.pageSize)",
-            "--skip=\(consumed[field] ?? 0)",
-        ]
+        var arguments =
+            (allBranches && range == nil ? ["log", "--all", "--date-order"] : ["log", "--first-parent"]) + [
+                "--format=\(LogParser.format)", "-z", "-n", "\(Self.pageSize)", "--skip=\(consumed[field] ?? 0)",
+            ]
         if !filter.isEmpty, let field {
             // git R18: a text filter, not a pattern. Without `--fixed-strings` git reads it as a
             // basic regular expression, so a `[` is a fatal error and a `.` matches anything; it
@@ -189,5 +219,46 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
             let (a, b) = (first.element.date ?? .distantPast, second.element.date ?? .distantPast)
             return a == b ? first.offset < second.offset : a > b
         }.map(\.element)
+    }
+}
+
+/// git R18 (amended 2026-10-16, view 05): a ref of a history row as a chip — the branch `HEAD`
+/// is on, a local branch, a remote one, a tag; `origin/HEAD` is left out.
+nonisolated struct GitRefChip: Equatable, Sendable, Identifiable {
+    enum Kind: Equatable, Sendable {
+        case head
+        case local
+        case remote
+        case tag
+    }
+
+    let name: String
+    let kind: Kind
+
+    var id: String {
+        "\(kind)-\(name)"
+    }
+
+    /// The chips of a row, from its `%D` decorations.
+    ///
+    /// `remotes` are the remote branches `for-each-ref` listed (R40), which tells `origin/main`
+    /// from a local branch named with a slash.
+    static func chips(_ decorations: [String], remotes: Set<String>) -> [GitRefChip] {
+        decorations.compactMap { decoration in
+            let text = decoration.trimmingCharacters(in: .whitespaces)
+            if text.isEmpty || text.hasSuffix("/HEAD") {
+                return nil
+            }
+            if text.hasPrefix("HEAD -> ") {
+                return GitRefChip(name: String(text.dropFirst("HEAD -> ".count)), kind: .head)
+            }
+            if text == "HEAD" {
+                return GitRefChip(name: "HEAD", kind: .head)
+            }
+            if text.hasPrefix("tag: ") {
+                return GitRefChip(name: String(text.dropFirst("tag: ".count)), kind: .tag)
+            }
+            return GitRefChip(name: text, kind: remotes.contains(text) ? .remote : .local)
+        }
     }
 }

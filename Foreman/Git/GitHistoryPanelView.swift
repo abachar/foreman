@@ -24,12 +24,14 @@ struct GitHistoryPanelView: View {
                 ContentUnavailableView("No Commits", systemImage: "clock.arrow.circlepath")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let commit = model.filesCommit {
-                // git R19b: the selected commit's files under the log.
-                VSplitView {
+                // git R19b (amended 2026-10-16, view 05): the selected commit's details and files
+                // beside the log, the panel being as wide as the centre.
+                HSplitView {
                     table
-                        .frame(minHeight: 120)
+                        .frame(minWidth: 480, idealWidth: 1000, maxWidth: .infinity)
+                        .layoutPriority(1)
                     GitCommitFilesView(commit: commit, model: model, feature: feature, theme: theme)
-                        .frame(minHeight: 100)
+                        .frame(minWidth: 240, idealWidth: 340, maxWidth: 480)
                 }
             } else {
                 table
@@ -39,50 +41,43 @@ struct GitHistoryPanelView: View {
 
     private var header: some View {
         PanelHeaderView(panels: feature.panels, current: GitFeature.historyPanelID, theme: theme) {
-            Picker(
-                "Repository",
-                selection: Binding(
-                    get: { model.repoID ?? "" }, set: { feature.showHistory(repo: $0, path: nil) })
-            ) {
-                // git R34a: the worktrees under their repo.
-                ForEach(changes.sections) { section in
-                    Text(section.repo.parent == nil ? section.repo.name : "\u{2003}\(section.repo.name)").tag(
-                        section.id)
+            if changes.sections.count > 1 {
+                Picker(
+                    "Repository",
+                    selection: Binding(
+                        get: { model.repoID ?? "" }, set: { feature.showHistory(repo: $0, path: nil) })
+                ) {
+                    // git R34a: the worktrees under their repo.
+                    ForEach(changes.sections) { section in
+                        Text(section.repo.parent == nil ? section.repo.name : "\u{2003}\(section.repo.name)").tag(
+                            section.id)
+                    }
                 }
+                .labelsHidden()
+                .fixedSize()
             }
-            .labelsHidden()
-            .fixedSize()
             if let path = model.query.path {
                 // git R20: a file's history.
-                Text(path)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Button {
-                    feature.showHistory(repo: model.repoID ?? ".", path: nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                }
-                .buttonStyle(.plain)
-                .help("Whole history")
+                chip(path)
             }
             if let range = model.query.range {
                 // git R36b: only what the branch adds.
-                Text("vs \(range.base)")
-                    .lineLimit(1)
-                    .padding(.horizontal, 4)
-                    .background(.quaternary, in: Capsule())
-                Button {
-                    feature.showHistory(repo: model.repoID ?? ".", path: nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                }
-                .buttonStyle(.plain)
-                .help("Whole history")
+                chip("vs \(range.base)")
             }
-            TextField("Filter subject or author", text: $filterText)
+            TextField("Filter message or author", text: $filterText)
                 .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 260)
+                .frame(minWidth: 140, maxWidth: 280)
                 .onSubmit { feature.filterHistory(filterText) }
+            Picker(
+                "Branches",
+                selection: Binding(get: { model.query.allBranches }, set: { feature.setHistoryAllBranches($0) })
+            ) {
+                Text("Current branch").tag(false)
+                Text("All branches").tag(true)
+            }
+            .labelsHidden()
+            .fixedSize()
+            .disabled(model.query.range != nil)
             if model.isLoading {
                 ProgressView()
                     .controlSize(.small)
@@ -90,20 +85,37 @@ struct GitHistoryPanelView: View {
         }
     }
 
-    private var table: some View {
-        Table(model.commits, selection: Bindable(model).selection) {
-            TableColumn("Commit") { commit in
-                Text(commit.shortSha)
-                    .font(theme.codeFont())
+    /// A narrowing of the log (a file, a range), closed back to the whole history.
+    private func chip(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Button {
+                feature.showHistory(repo: model.repoID ?? ".", path: nil)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
             }
-            .width(min: 60, ideal: 70, max: 90)
-            TableColumn("Subject") { commit in
-                HStack(spacing: 4) {
-                    ForEach(commit.refs, id: \.self) { ref in
-                        Text(ref)
-                            .font(theme.font(.small))
-                            .padding(.horizontal, 4)
-                            .background(.quaternary, in: Capsule())
+            .buttonStyle(.plain)
+            .help("Whole history")
+        }
+        .font(theme.font(.small))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(theme.tokens.surfaceRaised.color, in: Capsule())
+    }
+
+    /// git R18 (amended 2026-10-16, view 05): the refs as chips then the message, the author, the
+    /// date, the short hash at the end.
+    private var table: some View {
+        let remotes = Set(changes.refs.values.joined().filter(\.isRemote).map(\.name))
+        let now = Date()
+        return Table(model.commits, selection: Bindable(model).selection) {
+            TableColumn("Message") { commit in
+                HStack(spacing: 6) {
+                    ForEach(GitRefChip.chips(commit.refs, remotes: remotes)) { chip in
+                        GitRefChipView(chip: chip, theme: theme)
+                            .fixedSize()
                     }
                     Text(commit.subject)
                         .lineLimit(1)
@@ -112,13 +124,21 @@ struct GitHistoryPanelView: View {
             TableColumn("Author") { commit in
                 Text(commit.author)
                     .lineLimit(1)
+                    .foregroundStyle(theme.tokens.textSecondary.color)
             }
-            .width(min: 80, ideal: 140, max: 240)
+            .width(min: 80, ideal: 150, max: 240)
             TableColumn("Date") { commit in
-                Text(LogParser.relativeText(commit.date, now: Date()))
-                    .foregroundStyle(.secondary)
+                Text(LogParser.shortDate(commit.date, now: now))
+                    .lineLimit(1)
+                    .foregroundStyle(theme.tokens.textSecondary.color)
             }
-            .width(min: 60, ideal: 90, max: 120)
+            .width(min: 80, ideal: 120, max: 160)
+            TableColumn("Hash") { commit in
+                Text(commit.shortSha)
+                    .font(theme.codeFont())
+                    .foregroundStyle(theme.tokens.textSecondary.color)
+            }
+            .width(min: 60, ideal: 76, max: 100)
         }
         .contextMenu(forSelectionType: String.self) { shas in
             if let sha = shas.first, let commit = model.commits.first(where: { $0.sha == sha }) {
@@ -159,6 +179,32 @@ struct GitHistoryPanelView: View {
     }
 }
 
+/// git R18 (amended 2026-10-16), design R3: a ref chip — the branch `HEAD` is on in
+/// `statusGreen`, a local branch in the accent, a tag in `statusOrange`, a remote in grey; each a
+/// tint of its colour behind its text.
+struct GitRefChipView: View {
+    let chip: GitRefChip
+    let theme: ThemeService
+
+    var body: some View {
+        let tokens = theme.tokens
+        let color: ThemeColor =
+            switch chip.kind {
+            case .head: tokens.statusGreen
+            case .local: tokens.accent
+            case .tag: tokens.statusOrange
+            case .remote: tokens.textSecondary
+            }
+        Text(chip.name)
+            .font(theme.font(.small))
+            .foregroundStyle((chip.kind == .remote ? tokens.textSecondary : tokens.textPrimary).color)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(color.color.opacity(0.22), in: RoundedRectangle(cornerRadius: 4))
+    }
+}
+
 /// git R19b: the files a commit changed, as a tree; a click previews one file's diff in the center.
 struct GitCommitFilesView: View {
     let commit: GitCommit
@@ -167,26 +213,33 @@ struct GitCommitFilesView: View {
     let theme: ThemeService
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Text(commit.shortSha)
-                    .font(theme.codeFont(.small))
+        VStack(alignment: .leading, spacing: 0) {
+            // git R19b (amended 2026-10-16, view 05): the commit's details above its files.
+            VStack(alignment: .leading, spacing: 6) {
                 Text(commit.subject)
-                    .font(theme.font(.small, weight: .medium))
-                    .lineLimit(1)
-                Spacer()
-                if model.isLoadingFiles {
-                    ProgressView()
-                        .controlSize(.mini)
-                } else {
-                    Text(model.files.count == 1 ? "1 file" : "\(model.files.count) files")
-                        .font(theme.font(.small))
-                        .foregroundStyle(.secondary)
+                    .font(theme.font(.title, weight: .medium))
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+                detail("Author", commit.author)
+                detail("Date", LogParser.shortDate(commit.date, now: Date()))
+                detail(
+                    "Hash",
+                    ([commit.shortSha] + commit.parents.prefix(1).map { "parent \($0)" }).joined(
+                        separator: " \u{00B7} "),
+                    code: true)
+                HStack {
+                    Text(model.files.count == 1 ? "FILES \u{00B7} 1" : "FILES \u{00B7} \(model.files.count)")
+                        .font(theme.font(.small, weight: .medium))
+                        .foregroundStyle(theme.tokens.textSecondary.color)
+                    if model.isLoadingFiles {
+                        ProgressView()
+                            .controlSize(.mini)
+                    }
                 }
+                .padding(.top, 6)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(theme.tokens.surfaceRaised.color)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             // design R23: the explorer's tree, the status letter at the end of the row.
             FileTreeView(
                 entries: model.files.map(Self.treeEntry), theme: theme, font: theme.interfaceFont(),
@@ -198,6 +251,18 @@ struct GitCommitFilesView: View {
                         }
                     ]
                 })
+        }
+    }
+
+    private func detail(_ label: String, _ value: String, code: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label)
+                .foregroundStyle(theme.tokens.textSecondary.color)
+                .frame(width: 56, alignment: .leading)
+            Text(value)
+                .font(code ? theme.codeFont(.small) : theme.font())
+                .lineLimit(1)
+                .textSelection(.enabled)
         }
     }
 
