@@ -63,12 +63,34 @@ nonisolated struct GitSections: Equatable, Sendable {
     }
 }
 
+/// git R34c: an agent tab as the changes panel shows it, handed over by `agents`.
+nonisolated struct GitAgentSession: Equatable, Sendable, Identifiable {
+    let id: TabID
+    let title: String
+    /// The agent's icon, as `IconImage.resolve` reads it.
+    let icon: String
+    let cwd: URL
+    let isRunning: Bool
+    /// The tab rang (terminal R7).
+    let isMarked: Bool
+}
+
+/// git R34b: a top-level repo and its worktrees, as the panel lays them out.
+struct GitRepoGroup: Identifiable {
+    let top: GitModel.Section
+    let children: [GitModel.Section]
+
+    var id: String {
+        top.id
+    }
+}
+
 /// What the changes panel shows (git R2–R4, R6).
 @Observable
 @MainActor
 final class GitModel {
     struct Section: Identifiable {
-        let repo: GitRepo
+        var repo: GitRepo
         /// `nil` until the first `status` answers.
         var status: GitStatus?
         var error: GitError?
@@ -118,12 +140,18 @@ final class GitModel {
     private(set) var banner: String?
     /// `true` between the panel's activation and the end of repo discovery.
     private(set) var isDiscovering = false
+    /// git R34b: the groups folded by hand, by repo id; persisted under that id.
+    private(set) var collapsedGroups: Set<String> = []
+    /// git R34c: the agent tabs of the window, as `agents` last said.
+    private(set) var agentSessions: [GitAgentSession] = []
+    /// git R36, agents R5b: the section to scroll to, once.
+    private(set) var revealed: String?
     private var restoredCollapsed: Set<String> = []
     private var restoredMessages: [String: String] = [:]
 
     var persisted: GitState {
         GitState(
-            collapsed: sections.filter(\.isManuallyCollapsed).map(\.id).sorted(),
+            collapsed: (sections.filter(\.isManuallyCollapsed).map { collapseKey($0.id) } + collapsedGroups).sorted(),
             messages: Dictionary(sections.filter { !$0.message.isEmpty }.map { ($0.id, $0.message) }) { first, _ in
                 first
             })
@@ -145,12 +173,97 @@ final class GitModel {
     /// The repos found; a known repo keeps its status and its collapse, a new one starts from the
     /// persisted collapse.
     func setRepos(_ repos: [GitRepo]) {
+        let hadChildren = Set(sections.compactMap(\.repo.parent))
+        let previous = sections
         sections = repos.map { repo in
-            sections.first { $0.repo == repo }
-                ?? Section(
-                    repo: repo, isManuallyCollapsed: restoredCollapsed.contains(repo.id),
-                    message: restoredMessages[repo.id] ?? "")
+            guard var known = previous.first(where: { $0.repo.id == repo.id }) else {
+                return Section(
+                    repo: repo, isManuallyCollapsed: false, message: restoredMessages[repo.id] ?? "")
+            }
+            known.repo = repo
+            return known
         }
+        // git R34b: a working copy's fold is persisted under `<id>#main` once its repo is a group,
+        // the group's under the id; both restored the first time they appear.
+        for index in sections.indices where !previous.contains(where: { $0.repo.id == sections[index].id }) {
+            sections[index].isManuallyCollapsed = restoredCollapsed.contains(collapseKey(sections[index].id))
+        }
+        for id in Set(sections.compactMap(\.repo.parent)).subtracting(hadChildren)
+        where restoredCollapsed.contains(id) {
+            collapsedGroups.insert(id)
+        }
+    }
+
+    /// git R34b: where a working copy's fold is persisted.
+    private func collapseKey(_ id: String) -> String {
+        sections.contains { $0.repo.parent == id } ? id + "#main" : id
+    }
+
+    /// git R34b, R34c: each top-level repo and its children; the children with an agent session
+    /// first, then by folder name — the order moves when a session opens or closes, never when an
+    /// agent's state changes.
+    var groups: [GitRepoGroup] {
+        let tops = sections.filter { $0.repo.parent == nil }
+        return tops.map { top in
+            let children = sections.filter { $0.repo.parent == top.id }
+            let busy = Set(agentSessions.compactMap { Self.owner(of: $0.cwd, among: sections.map(\.repo)) })
+            return GitRepoGroup(
+                top: top, children: children.filter { busy.contains($0.id) } + children.filter { !busy.contains($0.id) }
+            )
+        }
+    }
+
+    func children(of id: String) -> [Section] {
+        sections.filter { $0.repo.parent == id }
+    }
+
+    func isGroupCollapsed(_ id: String) -> Bool {
+        collapsedGroups.contains(id)
+    }
+
+    func toggleGroupCollapsed(_ id: String) {
+        if collapsedGroups.remove(id) == nil {
+            collapsedGroups.insert(id)
+        }
+    }
+
+    // MARK: - Agents (git R34c)
+
+    func setAgentSessions(_ sessions: [GitAgentSession]) {
+        guard sessions != agentSessions else { return }
+        agentSessions = sessions
+    }
+
+    /// git R34c: the sessions running in the working copy `id`, by title.
+    func agentSessions(in id: String) -> [GitAgentSession] {
+        let repos = sections.map(\.repo)
+        return agentSessions.filter { Self.owner(of: $0.cwd, among: repos) == id }
+    }
+
+    /// git R34c: the working copy whose folder contains `cwd`, the deepest one.
+    nonisolated static func owner(of cwd: URL, among repos: [GitRepo]) -> String? {
+        let path = GitRepo.canonicalPath(cwd)
+        return repos.map { ($0.id, GitRepo.canonicalPath($0.url)) }
+            .filter { path == $0.1 || path.hasPrefix($0.1 + "/") }
+            .max { $0.1.count < $1.1.count }?.0
+    }
+
+    // MARK: - Reveal (git R36, agents R5b)
+
+    /// The section opened — its group too — and scrolled to by the panel.
+    func reveal(_ id: String) {
+        guard let section = section(id) else { return }
+        if let parent = section.repo.parent {
+            collapsedGroups.remove(parent)
+        } else if !children(of: id).isEmpty {
+            collapsedGroups.remove(id)
+        }
+        update(id) { $0.isManuallyCollapsed = false }
+        revealed = id
+    }
+
+    func clearRevealed() {
+        revealed = nil
     }
 
     func section(_ id: String) -> Section? {
@@ -273,6 +386,24 @@ final class GitModel {
     }
 
     /// `URL.path()` ends an existing directory with `/`; prefixes compare without it.
+    /// git R35: the repos whose `worktree list` must be read again — a worktree added, removed,
+    /// locked or unlocked shows as `<common>/worktrees/<name>` or its `locked` file.
+    nonisolated static func reposToRediscover(_ changes: [URL], commonDirectories: [String: URL]) -> Set<String> {
+        var result: Set<String> = []
+        for url in changes {
+            let path = folderPath(url)
+            for (id, common) in commonDirectories {
+                let worktrees = folderPath(common) + "/worktrees"
+                guard isUnder(path, worktrees) else { continue }
+                let relative = path.dropFirst(worktrees.count).split(separator: "/")
+                if relative.count <= 1 || (relative.count == 2 && relative[1] == "locked") {
+                    result.insert(id)
+                }
+            }
+        }
+        return result
+    }
+
     private nonisolated static func folderPath(_ url: URL) -> String {
         var path = url.path(percentEncoded: false)
         while path.count > 1, path.hasSuffix("/") {

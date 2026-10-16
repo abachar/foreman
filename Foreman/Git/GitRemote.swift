@@ -8,6 +8,8 @@ nonisolated struct GitBranch: Equatable, Sendable, Identifiable {
     let ref: String
     let upstream: String?
     let isCurrent: Bool
+    /// git R36: the folder of the worktree that has the branch checked out, if any.
+    var worktreePath: String?
 
     var id: String {
         ref
@@ -15,6 +17,13 @@ nonisolated struct GitBranch: Equatable, Sendable, Identifiable {
 
     var isRemote: Bool {
         ref.hasPrefix("refs/remotes/")
+    }
+}
+
+extension GitBranch {
+    /// A local branch known by its name only (git R37).
+    init(local name: String) {
+        self.init(name: name, ref: "refs/heads/\(name)", upstream: nil, isCurrent: false)
     }
 }
 
@@ -30,17 +39,18 @@ nonisolated struct GitStash: Equatable, Sendable, Identifiable {
 
 /// `for-each-ref --format=<fields by \x1f>` and `stash list --format=<fields by \x1f>` (git R27).
 nonisolated enum RefParser {
-    static let branchFormat = "%(refname)%1f%(refname:short)%1f%(upstream:short)%1f%(HEAD)"
+    static let branchFormat = "%(refname)%1f%(refname:short)%1f%(upstream:short)%1f%(HEAD)%1f%(worktreepath)"
     /// `stash list` goes through the pretty machinery, which emits `%1f` literally and only expands `%x1f`.
     static let stashFormat = "%gd%x1f%s"
 
     static func branches(_ data: Data) -> [GitBranch] {
         String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line in
             let fields = line.split(separator: "\u{1f}", omittingEmptySubsequences: false)
-            guard fields.count == 4, !fields[0].isEmpty, !fields[1].hasSuffix("/HEAD") else { return nil }
+            guard fields.count >= 4, !fields[0].isEmpty, !fields[1].hasSuffix("/HEAD") else { return nil }
             return GitBranch(
                 name: String(fields[1]), ref: String(fields[0]), upstream: fields[2].isEmpty ? nil : String(fields[2]),
-                isCurrent: fields[3] == "*")
+                isCurrent: fields[3] == "*",
+                worktreePath: fields.count > 4 && !fields[4].isEmpty ? String(fields[4]) : nil)
         }
     }
 

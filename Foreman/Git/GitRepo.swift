@@ -6,9 +6,14 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
     /// `"."` or the path relative to the root; stable, used in `state.json`.
     let id: String
     let url: URL
+    /// git R33: the repo this one is a worktree of; `nil` for a top-level section.
+    var parent: String?
+    /// git R34, R38: git's lock reason (`""` without one); `nil` when not locked.
+    var lockReason: String?
 
+    /// A worktree, or a folder outside the root, goes by its folder name (git R34).
     var name: String {
-        id == "." ? url.lastPathComponent : id
+        id == "." || parent != nil || id.hasPrefix("/") ? url.lastPathComponent : id
     }
 
     init(id: String, url: URL) {
@@ -62,6 +67,51 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
         return found.sorted { $0.id == "." || ($1.id != "." && $0.id < $1.id) }
     }
 
+    /// git R33, R33a: each top-level repo followed by its worktrees, by folder name.
+    ///
+    /// `worktrees` is each repo's `worktree list`, its first entry the main folder: a repo whose
+    /// main folder is another repo found moves under that one (no duplicate), a bare or prunable
+    /// entry is skipped, and a repo's own folder is not its own child.
+    static func arrange(_ repos: [GitRepo], worktrees: [String: [GitWorktree]], root: URL) -> [GitRepo] {
+        let byPath = Dictionary(repos.map { (canonicalPath($0.url), $0) }) { first, _ in first }
+        let owned = Set(
+            repos.filter { repo in
+                guard let main = worktrees[repo.id]?.first, let owner = byPath[canonicalPath(main.folder)] else {
+                    return false
+                }
+                return owner.id != repo.id
+            }
+            .map(\.id))
+        var result: [GitRepo] = []
+        for repo in repos where !owned.contains(repo.id) {
+            result.append(repo)
+            let own = canonicalPath(repo.url)
+            result += (worktrees[repo.id] ?? [])
+                .filter { !$0.isBare && !$0.isPrunable && canonicalPath($0.folder) != own }
+                .map { worktree in
+                    // A worktree the scan also found keeps the id the scan gave it.
+                    var child = byPath[canonicalPath(worktree.folder)] ?? GitRepo(url: worktree.folder, root: root)
+                    child.parent = repo.id
+                    child.lockReason = worktree.lockReason
+                    return child
+                }
+                .sorted {
+                    $0.url.lastPathComponent.localizedStandardCompare($1.url.lastPathComponent) == .orderedAscending
+                }
+        }
+        return result
+    }
+
+    /// A folder's path for comparisons: symlinks resolved (`/private/var` and `/var` alike), no
+    /// trailing `/`.
+    static func canonicalPath(_ url: URL) -> String {
+        var path = url.standardizedFileURL.resolvingSymlinksInPath().path(percentEncoded: false)
+        while path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+        }
+        return path
+    }
+
     static func hasGitEntry(_ folder: URL) -> Bool {
         FileManager.default.fileExists(atPath: folder.appending(path: ".git").path(percentEncoded: false))
     }
@@ -81,5 +131,16 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
         else { return nil }
         let target = line.dropFirst("gitdir:".count).trimmingCharacters(in: .whitespaces)
         return target.hasPrefix("/") ? URL(filePath: target) : repo.appending(path: target).standardizedFileURL
+    }
+
+    /// git R35: the folder shared by every worktree of the repo (`commondir` of a linked
+    /// worktree's git folder, else the git folder itself); its `worktrees/` lists them.
+    static func commonDirectory(of repo: URL) -> URL? {
+        guard let directory = gitDirectory(of: repo) else { return nil }
+        guard let text = try? String(contentsOf: directory.appending(path: "commondir"), encoding: .utf8) else {
+            return directory
+        }
+        let target = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return target.hasPrefix("/") ? URL(filePath: target) : directory.appending(path: target).standardizedFileURL
     }
 }

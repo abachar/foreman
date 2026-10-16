@@ -32,13 +32,6 @@ final class AgentsFeature {
         let base: String
     }
 
-    /// agents R4, R6: what a click on the button does.
-    nonisolated enum ButtonAction: Equatable, Sendable {
-        case activate(TabID)
-        case relaunch(TabID)
-        case spawn
-    }
-
     private let layout: LayoutManager
     private let workspace: Workspace
     private let terminal: TerminalService
@@ -50,8 +43,6 @@ final class AgentsFeature {
     private var worktrees: [TabID: Worktree] = [:]
     private var snapshots: [TabID: Task<Void, Never>] = [:]
     private var visibleIDs: [String] = []
-    /// agents R4: the tab the button reuses, the first one opened or restored for the agent.
-    private var primaryTabs: [String: TabID] = [:]
     private var agentOfTab: [TabID: String] = [:]
     /// agents R10: the agent tab the user showed last.
     private var lastActivated: TabID?
@@ -121,7 +112,8 @@ final class AgentsFeature {
                 makeView: { [weak self] id, payload in self?.view(id, payload: payload, agentID: agent.id) },
                 serialize: { [weak self] id in self?.serialize(id, agentID: agent.id) },
                 confirmClose: { [weak self] id in await self?.terminal.confirmClose(id) ?? true },
-                onClose: { [weak self] id in self?.closed(id) }))
+                onClose: { [weak self] id in self?.closed(id) },
+                contextMenu: { [weak self] id in self?.tabMenu(id) ?? [] }))
         layout.shortcuts.register(
             ShortcutAction(id: "agents.\(agent.id)", title: agent.title, defaultShortcut: nil) { [weak self] in
                 self?.buttonClicked(agent.id)
@@ -182,51 +174,50 @@ final class AgentsFeature {
 
     // MARK: - Button (agents R4–R6)
 
-    /// agents R4, R6, R8: the primary tab is activated while it runs, relaunched when it holds no
-    /// process — ended, or restored after a quit — and created when there is none.
-    ///
-    /// A restored tab is `idle`, not `exited` (`terminal` R6): reading only `exited` left every
-    /// agent tab brought back by a relaunch a dead terminal with nothing to start it, against R8
-    /// (audit C4).
-    nonisolated static func buttonAction(primary: TabID?, state: TerminalState?) -> ButtonAction {
-        guard let primary, let state else { return .spawn }
-        if case .running = state { return .activate(primary) }
-        return .relaunch(primary)
-    }
-
+    /// agents R4 (amended 2026-10-16): every click opens a new session; going back to one is the
+    /// menu's job (R5) or the Changes panel's (git R34c).
     private func buttonClicked(_ id: String) {
-        let primary = primaryTabs[id].flatMap { layout.model.owner(of: $0) != nil ? $0 : nil }
-        switch Self.buttonAction(primary: primary, state: primary.flatMap { terminal.tab($0)?.state }) {
-        case .activate(let tab):
-            activate(tab)
-        case .relaunch(let tab):
-            activate(tab)
-            // Refused only for a missing folder; the tab's banner says so.
-            try? terminal.relaunch(tab)
-        case .spawn:
-            spawn(id, cwd: workspace.root, primary: true)
-        }
+        spawn(id, cwd: workspace.root)
     }
 
-    private func activate(_ tab: TabID) {
+    /// git R34c: a click on an agent badge of the Changes panel.
+    func activate(_ tab: TabID) {
         guard let owner = layout.model.owner(of: tab) else { return }
         layout.activate(tab, in: owner)
     }
 
-    /// agents R4, R5: a new tab in the active group; the first one becomes the button's.
+    /// agents R4, R5: a new tab in the active group, numbered after the agent's open ones.
     @discardableResult
-    private func spawn(_ id: String, cwd: URL, primary: Bool, title: String? = nil) -> TabID? {
+    private func spawn(_ id: String, cwd: URL, title: String? = nil) -> TabID? {
         guard let agent = agent(id) else { return nil }
         guard
             let tab = terminal.spawn(
-                command: agent.command, cwd: cwd, kind: Self.kind(of: id), title: title ?? agent.title)
+                command: agent.command, cwd: cwd, kind: Self.kind(of: id),
+                title: title
+                    ?? Self.sessionTitle(agent.title, taken: openTabs(of: id).compactMap { terminal.tab($0)?.title }))
         else { return nil }
         agentOfTab[tab] = id
-        if primary, primaryTabs[id] == nil {
-            primaryTabs[id] = tab
-        }
         syncBadge(id)
         return tab
+    }
+
+    /// agents R4: `Claude`, then `Claude 2`, `Claude 3`… the first number no open tab holds.
+    nonisolated static func sessionTitle(_ title: String, taken: [String]) -> String {
+        guard taken.contains(title) else { return title }
+        var number = 2
+        while taken.contains("\(title) \(number)") {
+            number += 1
+        }
+        return "\(title) \(number)"
+    }
+
+    /// The agent's tabs still in the window, by title (agents R5).
+    private func openTabs(of id: String) -> [TabID] {
+        agentOfTab.filter { $0.value == id && layout.model.owner(of: $0.key) != nil }.keys
+            .sorted {
+                (terminal.tab($0)?.title ?? "").localizedStandardCompare(terminal.tab($1)?.title ?? "")
+                    == .orderedAscending
+            }
     }
 
     // MARK: - Worktrees (agents R12–R13)
@@ -283,7 +274,7 @@ final class AgentsFeature {
             report("Worktree not created", error.description)
             return
         }
-        guard let tab = spawn(id, cwd: folder, primary: false, title: Self.title(agent.title, branch: branch)) else {
+        guard let tab = spawn(id, cwd: folder, title: Self.title(agent.title, branch: branch)) else {
             return
         }
         worktrees[tab] = Worktree(
@@ -318,7 +309,7 @@ final class AgentsFeature {
         guard layout.model.owner(of: tab) == nil else { return }
         guard let repo = Workspace.url(forPersistedPath: worktree.repo, root: workspace.root) else { return }
         do {
-            try await git.removeWorktree(in: repo, folder: URL(filePath: worktree.folder))
+            try await git.removeWorktree(in: repo, folder: URL(filePath: worktree.folder), force: true)
         } catch {
             report("Worktree not removed", error.description)
         }
@@ -359,19 +350,22 @@ final class AgentsFeature {
         }
     }
 
-    /// agents R5: the secondary menu of the button.
+    /// agents R5 (amended 2026-10-16): the open sessions first, then the launches.
     private func menu(for id: String) -> [ToolbarMenuEntry] {
-        var entries = [
-            ToolbarMenuEntry(id: "agents.\(id).new", title: "New Session") { [weak self] in
-                guard let self else { return }
-                spawn(id, cwd: workspace.root, primary: false)
-            }
-        ]
+        var entries = openTabs(of: id).compactMap { tab -> ToolbarMenuEntry? in
+            guard let session = terminal.tab(tab) else { return nil }
+            let folder = session.cwd.standardizedFileURL == workspace.root.standardizedFileURL
+            return ToolbarMenuEntry(
+                id: "agents.\(id).open.\(tab.uuid.uuidString)", title: session.title,
+                subtitle: folder ? nil : Workspace.persistedPath(for: session.cwd, root: workspace.root),
+                badge: Self.badge(running: session.isRunning ? 1 : 0, marked: session.isMarked)
+            ) { [weak self] in self?.activate(tab) }
+        }
         for repo in workspace.config.repos {
             let name = repo.lastPathComponent
             entries.append(
                 ToolbarMenuEntry(id: "agents.\(id).in.\(name)", title: "Run in \(name)", subtitle: nil) {
-                    [weak self] in self?.spawn(id, cwd: repo, primary: false)
+                    [weak self] in self?.spawn(id, cwd: repo)
                 })
         }
         entries += worktreeEntries(for: id)
@@ -385,9 +379,6 @@ final class AgentsFeature {
     private func view(_ id: TabID, payload: String, agentID: String) -> AnyView? {
         if let view = terminal.view(for: id) {
             agentOfTab[id] = agentID
-            if primaryTabs[agentID] == nil {
-                primaryTabs[agentID] = id
-            }
             return view
         }
         // agents R8: restored idle in its folder, with today's command, never run by itself.
@@ -395,15 +386,15 @@ final class AgentsFeature {
             let decoded = try? JSONDecoder().decode(Payload.self, from: data),
             let cwd = Workspace.url(forPersistedPath: decoded.cwd, root: workspace.root)
         else { return nil }
+        let taken = openTabs(of: agentID).compactMap { terminal.tab($0)?.title }
         agentOfTab[id] = agentID
-        if primaryTabs[agentID] == nil {
-            primaryTabs[agentID] = id
-        }
         sessions[id] = decoded.session
         worktrees[id] = decoded.worktree
+        Task { [weak self] in self?.syncBadge(agentID) }
         return terminal.restore(
             id, kind: Self.kind(of: agentID),
-            title: decoded.worktree.map { Self.title(agent.title, branch: $0.branch) } ?? agent.title,
+            title: decoded.worktree.map { Self.title(agent.title, branch: $0.branch) }
+                ?? Self.sessionTitle(agent.title, taken: taken),
             command: agent.command, cwd: cwd)
     }
 
@@ -422,9 +413,6 @@ final class AgentsFeature {
         worktrees[id] = nil
         snapshots.removeValue(forKey: id)?.cancel()
         guard let agentID = agentOfTab.removeValue(forKey: id) else { return }
-        if primaryTabs[agentID] == id {
-            primaryTabs[agentID] = agentOfTab.first { $0.value == agentID }?.key
-        }
         syncBadge(agentID)
     }
 
@@ -499,15 +487,40 @@ final class AgentsFeature {
         return candidates.first { isLive($0.state) }?.id
     }
 
-    /// agents R6: running → green; a marked tab → orange; else none.
-    nonisolated static func badge(running: Bool, marked: Bool) -> ToolbarBadge {
-        running ? .dot(.green) : (marked ? .dot(.orange) : .none)
+    /// agents R6: running → green, with their count from two; a marked tab → orange; else none.
+    nonisolated static func badge(running: Int, marked: Bool) -> ToolbarBadge {
+        if running >= 2 { return .count(running, .green) }
+        return running == 1 ? .dot(.green) : (marked ? .dot(.orange) : .none)
     }
 
     private func syncBadge(_ agentID: String) {
         let tabs = agentOfTab.filter { $0.value == agentID }.keys.compactMap { terminal.tab($0) }
         layout.setBadge(
-            Self.badge(running: tabs.contains(where: \.isRunning), marked: tabs.contains(where: \.isMarked)),
+            Self.badge(running: tabs.count(where: \.isRunning), marked: tabs.contains(where: \.isMarked)),
             on: Self.kind(of: agentID))
+        publishSessions()
+    }
+
+    /// git R34c: every agent tab of the window, handed to the Changes panel.
+    private func publishSessions() {
+        let sessions = agentOfTab.compactMap { tab, agentID -> GitAgentSession? in
+            guard layout.model.owner(of: tab) != nil, let session = terminal.tab(tab), let agent = agent(agentID) else {
+                return nil
+            }
+            return GitAgentSession(
+                id: tab, title: session.title, icon: icon(of: agent), cwd: session.cwd, isRunning: session.isRunning,
+                isMarked: session.isMarked)
+        }
+        git.setAgentSessions(sessions.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending })
+    }
+
+    /// agents R5b: the tab's context menu.
+    private func tabMenu(_ id: TabID) -> [ToolbarMenuEntry] {
+        guard let cwd = terminal.tab(id)?.cwd, git.hasPanels else { return [] }
+        return [
+            ToolbarMenuEntry(id: "agents.showInChanges", title: "Show in Changes") { [weak self] in
+                self?.git.showInChanges(cwd: cwd)
+            }
+        ]
     }
 }

@@ -357,10 +357,12 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         case commitFile(sha: String, subject: String, path: String)
         /// git R31: the working tree against the tree snapshotted when an agent started.
         case session(base: String, title: String)
+        /// git R36b: what `head` would bring to `base` (`diff base...head`), refreshed with the repo.
+        case range(base: String, head: String)
 
         var isImmutable: Bool {
             switch self {
-            case .workingTree, .staged, .session: return false
+            case .workingTree, .staged, .session, .range: return false
             case .commit, .commitFile: return true
             }
         }
@@ -368,7 +370,7 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         var path: String? {
             switch self {
             case .workingTree(let path), .staged(let path), .commitFile(_, _, let path): return path
-            case .commit, .session: return nil
+            case .commit, .session, .range: return nil
             }
         }
     }
@@ -385,6 +387,7 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         case .commit(let sha, let subject): return "\(sha.prefix(7)) \(subject)"
         case .commitFile(let sha, _, let path): return "\(path) @ \(sha.prefix(7))"
         case .session(_, let title): return "\(title) · session"
+        case .range(let base, let head): return "\(head) vs \(base)"
         }
     }
 
@@ -405,6 +408,7 @@ nonisolated struct GitDiffPayload: Codable, Equatable, Sendable {
         case .commit(let sha, _): return config + show + options + [sha, "--"]
         case .commitFile(let sha, _, let path): return config + show + options + [sha, "--", path]
         case .session(let base, _): return config + ["diff"] + options + [base, currentTree ?? base, "--"]
+        case .range(let base, let head): return config + ["diff"] + options + ["\(base)...\(head)", "--"]
         }
     }
 

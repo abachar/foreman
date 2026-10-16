@@ -126,6 +126,23 @@ nonisolated enum GitCommand {
         ["stash", action.rawValue, ref]
     }
 
+    // MARK: - Worktrees (git R33–R38, agents R13)
+
+    /// git R37–R38 without `force` (git refuses a dirty worktree); agents R13 with it.
+    static func removeWorktree(_ folder: URL, force: Bool) -> [String] {
+        ["worktree", "remove"] + (force ? ["--force"] : []) + [folder.path(percentEncoded: false)]
+    }
+
+    /// git R36b: what `head` adds over `base`, the branch's own commits only.
+    static func range(base: String, head: String) -> String {
+        "\(base)..\(head)"
+    }
+
+    /// git R36b: the base a three-dot diff starts from.
+    static func mergeBase(_ base: String, _ head: String) -> [String] {
+        ["merge-base", base, head]
+    }
+
     /// git R9: *Abort* on the operation in progress.
     static func abort(_ operation: GitOperation) -> [String] {
         [subcommand(operation), "--abort"]

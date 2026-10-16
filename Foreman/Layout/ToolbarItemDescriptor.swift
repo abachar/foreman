@@ -41,6 +41,8 @@ struct ToolbarMenuEntry: Identifiable {
 nonisolated enum ToolbarBadge: Equatable, Sendable {
     case none
     case dot(BadgeColor)
+    /// agents R6: a dot carrying a number (two agents running or more).
+    case count(Int, BadgeColor)
 
     nonisolated enum BadgeColor: Sendable {
         case green

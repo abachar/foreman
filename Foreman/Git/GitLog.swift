@@ -60,6 +60,13 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
     var filter = ""
     /// git R20: a file's history, `log --follow`.
     var path: String?
+    /// git R36b: only the commits `head` adds over `base`.
+    var range: Range?
+
+    struct Range: Equatable, Sendable {
+        let base: String
+        let head: String
+    }
     /// git R18: how many commits each query already brought back.
     ///
     /// The pages are merged by sha, so a commit matching both the subject and the author is one
@@ -95,6 +102,9 @@ nonisolated struct GitLogQuery: Equatable, Sendable {
         }
         if path != nil {
             arguments.append("--follow")
+        }
+        if let range {
+            arguments.append(GitCommand.range(base: range.base, head: range.head))
         }
         arguments.append("--")
         if let path {

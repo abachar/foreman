@@ -48,6 +48,12 @@ struct GitRemoteTests {
         #expect(branches[2].isRemote)
         #expect(!branches[1].isRemote)
         #expect(RefParser.branches(Data()).isEmpty)
+        // git R36: the fifth field is the worktree holding the branch.
+        let held = RefParser.branches(
+            Data(
+                "refs/heads/fix\u{1f}fix\u{1f}\u{1f} \u{1f}/work/app-fix\nrefs/heads/main\u{1f}main\u{1f}\u{1f}*\u{1f}"
+                    .utf8))
+        #expect(held.map(\.worktreePath) == ["/work/app-fix", nil])
 
         // Bytes of `git stash list --format=<stashFormat>` on a repo with three stashes (git 2.43); the
         // first was pushed with a message holding the separator itself, which git passes through.

@@ -36,6 +36,14 @@ final class GitFeature {
     private var toolchain: Task<Toolchain?, Never>?
     private var clients: [String: GitCLI] = [:]
     private var gitDirectories: [String: URL] = [:]
+    /// git R35: each top-level repo's common git folder, whose `worktrees/` lists its worktrees.
+    private var commonDirectories: [String: URL] = [:]
+    /// git R35: the folders outside the root (worktrees, their git folders), on a stream of their own.
+    private var externalWatch: FSWatchService?
+    private var externalRoots: [URL] = []
+    private var rediscovery: Task<Void, Never>?
+    /// agents R5b: a working copy to reveal once the discovery answers.
+    private var pendingReveal: URL?
     private var coalescer = RefreshCoalescer()
     private var commitTasks: [String: Task<Void, Never>] = [:]
     private var remoteOperations = RemoteOperations()
@@ -201,7 +209,8 @@ final class GitFeature {
                 let version = try await probe.version()
                 guard version.isSupported else {
                     model.setBanner(
-                        "git \(version.major).\(version.minor).\(version.patch) found; 2.35 or newer is required.")
+                        "git \(version.major).\(version.minor).\(version.patch) found; \(GitVersion.minimum.major).\(GitVersion.minimum.minor) or newer is required."
+                    )
                     return nil
                 }
                 return Toolchain(executable: executable, environment: login, version: version)
@@ -218,12 +227,23 @@ final class GitFeature {
     private func discoverAndRefresh() async {
         guard let toolchain = await resolveToolchain() else { return }
         model.setDiscovering(true)
-        let repos = await GitRepo.discover(
+        let found = await GitRepo.discover(
             root: workspace.root, declared: workspace.config.repos, ignored: workspace.config.ignoredRepos)
         guard isActive, !Task.isCancelled else {
             model.setDiscovering(false)
             return
         }
+        for repo in found where clients[repo.id] == nil {
+            clients[repo.id] = GitCLI(
+                executable: toolchain.executable, repo: repo.url, loginEnvironment: toolchain.environment)
+        }
+        // git R33, R33a: every repo's worktrees become its children.
+        let lists = await Self.worktreeLists(of: found, clients: clients)
+        guard isActive, !Task.isCancelled else {
+            model.setDiscovering(false)
+            return
+        }
+        let repos = GitRepo.arrange(found, worktrees: lists, root: workspace.root)
         model.setRepos(repos)
         model.setDiscovering(false)
         for repo in repos where clients[repo.id] == nil {
@@ -236,9 +256,52 @@ final class GitFeature {
         let kept = Set(repos.map(\.id)).union(diffModels.values.map(\.payload.repo))
         clients = clients.filter { kept.contains($0.key) }
         gitDirectories = await Self.externalGitDirectories(of: repos)
+        commonDirectories = await Self.commonDirectories(of: repos.filter { $0.parent == nil })
         watch(repos)
         for repo in repos {
             refresh(repo.id)
+        }
+        if let cwd = pendingReveal {
+            pendingReveal = nil
+            reveal(cwd)
+        }
+    }
+
+    /// git R33: `worktree list` of each repo, in parallel; a failure reads as no worktree.
+    @concurrent
+    private static func worktreeLists(of repos: [GitRepo], clients: [String: GitCLI]) async -> [String: [GitWorktree]] {
+        await withTaskGroup(of: (String, [GitWorktree]).self) { group in
+            for repo in repos {
+                guard let client = clients[repo.id] else { continue }
+                group.addTask {
+                    let output = try? await client.run(WorktreeParser.arguments)
+                    return (repo.id, output.map { WorktreeParser.parse($0.stdout) } ?? [])
+                }
+            }
+            var result: [String: [GitWorktree]] = [:]
+            for await (id, list) in group {
+                result[id] = list
+            }
+            return result
+        }
+    }
+
+    @concurrent
+    private static func commonDirectories(of repos: [GitRepo]) async -> [String: URL] {
+        var result: [String: URL] = [:]
+        for repo in repos {
+            result[repo.id] = GitRepo.commonDirectory(of: repo.url)
+        }
+        return result
+    }
+
+    /// git R35: a worktree added, removed or locked elsewhere (terminal, agent) changes the
+    /// sections without a relaunch; one discovery at a time.
+    private func rediscover() {
+        guard isActive, rediscovery == nil else { return }
+        rediscovery = Task { [weak self] in
+            await self?.discoverAndRefresh()
+            self?.rediscovery = nil
         }
     }
 
@@ -254,18 +317,34 @@ final class GitFeature {
         return result
     }
 
-    /// git R4: one subscription per repo, plus one per external git folder; a hidden panel has none.
+    /// git R4, R35: one subscription per watched folder; a hidden panel has none.
+    ///
+    /// The repos, the git folders that live outside their repo (worktrees) and each common
+    /// folder's `worktrees/`; what lies outside the root goes through a stream of its own.
     private func watch(_ repos: [GitRepo]) {
         for watch in watches {
             watch.cancel()
         }
-        let locations = repos.map(\.url) + gitDirectories.values.filter { $0.path().hasPrefix(workspace.root.path()) }
-        let directories = gitDirectories
         let root = workspace.root
-        watches = locations.map { location in
-            Task { [weak self, fsWatch = workspace.fsWatch] in
-                for await batch in await fsWatch.changes(under: location) {
+        let locations =
+            repos.map(\.url) + Array(gitDirectories.values)
+            + commonDirectories.values.map { $0.appending(path: "worktrees") }
+        let isInside = { (url: URL) in Workspace.contains(url, under: root) }
+        let outside = locations.filter { !isInside($0) }
+        if outside.map(GitRepo.canonicalPath) != externalRoots.map(GitRepo.canonicalPath) {
+            externalRoots = outside
+            externalWatch = outside.isEmpty ? nil : FSWatchService(roots: outside)
+        }
+        let directories = gitDirectories
+        let commons = commonDirectories
+        watches = locations.compactMap { location in
+            guard let service = isInside(location) ? workspace.fsWatch : externalWatch else { return nil }
+            return Task { [weak self] in
+                for await batch in await service.changes(under: location) {
                     guard let self else { return }
+                    if !GitModel.reposToRediscover(batch, commonDirectories: commons).isEmpty {
+                        rediscover()
+                    }
                     for id in GitModel.reposToRefresh(batch, repos: repos, gitDirectories: directories, root: root)
                         .sorted()
                     {
@@ -307,6 +386,12 @@ final class GitFeature {
         } catch {
             logger.error("status failed for \(id, privacy: .public): \(error.description, privacy: .public)")
             model.setError(id, error)
+            // git R33, edge cases: a worktree folder deleted by hand leaves at the next read.
+            if section.repo.parent != nil,
+                !FileManager.default.fileExists(atPath: section.repo.url.path(percentEncoded: false))
+            {
+                rediscover()
+            }
         }
     }
 
@@ -316,6 +401,11 @@ final class GitFeature {
         var status = StatusParser.parse(output.stdout)
         status.operation = GitRepo.gitDirectory(of: repo.url).flatMap { GitOperation.current(inGitDirectory: $0) }
         return status
+    }
+
+    /// git R1b: the panels exist, so there is a repo to show.
+    var hasPanels: Bool {
+        arePanelsShown
     }
 
     /// git R28: nothing runs while git is missing or too old.
@@ -362,6 +452,10 @@ final class GitFeature {
                 self?.remoteOperations.finish(id)
                 self?.model.setRemoteOperation(id, nil)
                 self?.refresh(id)
+                // The refs are shared: a fetch or a pull moves every worktree's ↑n ↓m (R34).
+                for child in self?.model.children(of: id) ?? [] {
+                    self?.refresh(child.id)
+                }
             }
             do throws(GitError) {
                 _ = try await client.run(arguments, kind: .remote)
@@ -480,6 +574,7 @@ final class GitFeature {
     func showHistory(repo: String, path: String?) {
         history.repoID = repo
         history.query.path = path
+        history.query.range = nil
         history.selection = []
         if !layout.panels.isVisible(Self.historyPanelID) {
             layout.panels.show(Self.historyPanelID)
@@ -675,7 +770,7 @@ final class GitFeature {
             sendToAgent(.literal(String(sha.prefix(7))))
         case .workingTree(let path), .staged(let path), .commitFile(_, _, let path):
             sendToAgent(.path(fileURL(path, in: payload.repo), lines: nil, isDirectory: false))
-        case .session:
+        case .session, .range:
             // No single path: the lines have their own menu.
             break
         }
@@ -747,10 +842,12 @@ final class GitFeature {
             ["worktree", "add", "-b", branch, folder.path(percentEncoded: false), "HEAD"], kind: .write)
     }
 
-    /// agents R13: the worktree folder removed and forgotten by git; the branch stays.
-    func removeWorktree(in repoURL: URL, folder: URL) async throws(GitError) {
+    /// agents R13, git R37–R38: the worktree folder removed and forgotten by git, the branch kept.
+    ///
+    /// Without `force`, git refuses a worktree holding modified or untracked files.
+    func removeWorktree(in repoURL: URL, folder: URL, force: Bool) async throws(GitError) {
         guard let client = await client(for: GitRepo(url: repoURL, root: workspace.root)) else { throw .gitNotFound }
-        _ = try await client.run(["worktree", "remove", "--force", folder.path(percentEncoded: false)], kind: .write)
+        _ = try await client.run(GitCommand.removeWorktree(folder, force: force), kind: .write)
     }
 
     /// git R31a: the session diff tab, reused when already open.
@@ -787,6 +884,168 @@ final class GitFeature {
         let client = GitCLI(executable: toolchain.executable, repo: repo.url, loginEnvironment: toolchain.environment)
         clients[repo.id] = client
         return client
+    }
+
+    // MARK: - Worktrees (git R34c, R36–R39)
+
+    /// git R34c: set by `Agents/`, like `sendToAgent`.
+    var activateAgentTab: ((TabID) -> Void)?
+
+    /// git R34c: the agent tabs of the window, each matched to the working copy it runs in.
+    func setAgentSessions(_ sessions: [GitAgentSession]) {
+        model.setAgentSessions(sessions)
+    }
+
+    /// agents R5b: the panel shown, the working copy holding `cwd` opened and scrolled to; when the
+    /// discovery has not answered yet, once it does.
+    func showInChanges(cwd: URL) {
+        if !layout.panels.isVisible(Self.panelID) {
+            layout.panels.show(Self.panelID)
+        }
+        guard !model.sections.isEmpty else {
+            pendingReveal = cwd
+            return
+        }
+        reveal(cwd)
+    }
+
+    private func reveal(_ cwd: URL) {
+        guard let id = GitModel.owner(of: cwd, among: model.sections.map(\.repo)) else { return }
+        model.reveal(id)
+        workspace.setState("git", to: model.persisted)
+    }
+
+    /// git R36: *Show Changes* from the branch list.
+    func showChanges(of id: String) {
+        model.setBranchSheet(nil)
+        model.reveal(id)
+        workspace.setState("git", to: model.persisted)
+    }
+
+    /// git R36: the section holding `branch` in another working copy of the same repo, if any.
+    func holder(of branch: GitBranch, besides id: String) -> GitModel.Section? {
+        guard let path = branch.worktreePath, let section = model.section(id) else { return nil }
+        let group = section.repo.parent ?? section.id
+        return model.sections.first {
+            ($0.id == group || $0.repo.parent == group) && $0.id != id
+                && GitRepo.canonicalPath($0.repo.url) == GitRepo.canonicalPath(URL(filePath: path))
+        }
+    }
+
+    /// git R37: the worktree removed without `--force` (git refuses a dirty one, nothing else
+    /// happens), then its branch checked out in the parent.
+    func checkOutHere(_ id: String) {
+        model.setBranchSheet(nil)
+        guard let section = model.section(id), let parent = section.repo.parent, let client = clients[parent],
+            case .branch(let branch) = section.status?.head
+        else { return }
+        Task { [weak self] in
+            do throws(GitError) {
+                _ = try await client.run(GitCommand.removeWorktree(section.repo.url, force: false), kind: .write)
+            } catch {
+                self?.model.setActionError(parent, error)
+                return
+            }
+            do throws(GitError) {
+                _ = try await client.run(GitCommand.checkout(GitBranch(local: branch)), kind: .write)
+                self?.model.setActionError(parent, nil)
+            } catch {
+                self?.model.setActionError(
+                    parent,
+                    .commandFailed(
+                        "The worktree was removed (it was clean) and \u{201c}\(branch)\u{201d} is intact, but the "
+                            + "checkout was refused: \(error.description)"))
+            }
+            await self?.discoverAndRefresh()
+        }
+    }
+
+    /// git R38: confirmed with the folder and the branch; without `--force`; the branch is kept.
+    func removeWorktree(_ id: String) {
+        guard let section = model.section(id), let parent = section.repo.parent, section.repo.lockReason == nil,
+            let client = clients[parent]
+        else { return }
+        let branch = section.status.map(GitRepoSectionView.headText) ?? "?"
+        confirm(
+            "Remove the worktree \u{201c}\(section.repo.name)\u{201d}?",
+            "\(section.repo.url.path(percentEncoded: false)) is deleted; the branch \(branch) is kept. git refuses "
+                + "while the worktree holds modified or untracked files.",
+            "Remove Worktree"
+        ) { [weak self] in
+            Task {
+                do throws(GitError) {
+                    _ = try await client.run(GitCommand.removeWorktree(section.repo.url, force: false), kind: .write)
+                    self?.model.setActionError(parent, nil)
+                } catch {
+                    self?.model.setActionError(parent, error)
+                }
+                await self?.discoverAndRefresh()
+            }
+        }
+    }
+
+    /// git R39: the worktree folder in a window of its own, the path *File › Open…* takes.
+    func openAsWorkspace(_ id: String) {
+        guard let section = model.section(id) else { return }
+        (NSApp.delegate as? ForemanAppDelegate)?.openRecent(section.repo.url)
+    }
+
+    /// git R36b: the base *Compare with* offers first — the branch of the parent's main folder.
+    func defaultCompareBase(for id: String) -> String? {
+        guard let parent = model.section(id)?.repo.parent,
+            case .branch(let branch) = model.section(parent)?.status?.head
+        else { return nil }
+        return branch
+    }
+
+    /// git R36b: the history narrowed to what the child's branch adds, and one diff of all of it.
+    func compare(_ id: String, with base: String) {
+        guard let head = model.section(id)?.status.flatMap(Self.revision) else { return }
+        history.repoID = id
+        history.query.path = nil
+        history.query.range = GitLogQuery.Range(base: base, head: head)
+        history.selection = []
+        if !layout.panels.isVisible(Self.historyPanelID) {
+            layout.panels.show(Self.historyPanelID)
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            history.reload(with: await client(for: id))
+        }
+        openDiff(GitDiffPayload(repo: id, source: .range(base: base, head: head)), preview: false)
+    }
+
+    /// git R36b: *Compare with…*, the repo's local branches in a pop-up.
+    func chooseCompareBase(_ id: String) {
+        guard let client = clients[id] else { return }
+        Task { [weak self] in
+            let output = try? await client.run(GitCommand.branches)
+            let names = (output.map { RefParser.branches($0.stdout) } ?? []).filter { !$0.isRemote }.map(\.name)
+            guard let self, !names.isEmpty else { return }
+            let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 260, height: 26), pullsDown: false)
+            popup.addItems(withTitles: names)
+            if let base = defaultCompareBase(for: id) {
+                popup.selectItem(withTitle: base)
+            }
+            let alert = NSAlert()
+            alert.messageText = "Compare \u{201c}\(model.section(id)?.repo.name ?? id)\u{201d} with"
+            alert.accessoryView = popup
+            alert.addButton(withTitle: "Compare")
+            alert.addButton(withTitle: "Cancel")
+            present(alert) { [weak self] response in
+                guard response == .alertFirstButtonReturn, let base = popup.titleOfSelectedItem else { return }
+                self?.compare(id, with: base)
+            }
+        }
+    }
+
+    /// The branch, or the sha of a detached `HEAD`; nothing to compare on an unborn branch.
+    nonisolated static func revision(_ status: GitStatus) -> String? {
+        switch status.head {
+        case .branch(let name): return name
+        case .detached(let sha): return sha
+        case .unborn: return nil
+        }
     }
 
     // MARK: - Actions (git R7–R9)
@@ -843,6 +1102,12 @@ final class GitFeature {
 
     func toggleCollapsed(_ id: String) {
         model.toggleCollapsed(id)
+        workspace.setState("git", to: model.persisted)
+    }
+
+    /// git R34b: the whole group, persisted under the repo id.
+    func toggleGroupCollapsed(_ id: String) {
+        model.toggleGroupCollapsed(id)
         workspace.setState("git", to: model.persisted)
     }
 

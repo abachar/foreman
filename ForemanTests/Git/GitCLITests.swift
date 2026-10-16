@@ -78,9 +78,10 @@ struct GitCLITests {
         #expect(GitVersion.parse("") == nil)
     }
 
-    @Test func refusesBelow235() throws {
-        #expect(try #require(GitVersion.parse("git version 2.34.1")).isSupported == false)
-        #expect(try #require(GitVersion.parse("git version 2.35.0")).isSupported)
+    /// git R33: `worktree list -z` needs 2.36 (amended 2026-10-16, was 2.35).
+    @Test func refusesBelow236() throws {
+        #expect(try #require(GitVersion.parse("git version 2.35.9")).isSupported == false)
+        #expect(try #require(GitVersion.parse("git version 2.36.0")).isSupported)
         #expect(try #require(GitVersion.parse("git version 2.39.5 (Apple Git-154)")).isSupported)
     }
 

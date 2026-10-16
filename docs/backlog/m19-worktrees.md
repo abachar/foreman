@@ -1,0 +1,18 @@
+# M19 — Worktrees: several agents, one window
+
+Fourth round driven by use (2026-10-16). The author runs several agents at once, each in its own worktree, and wants to see from one window what each of them is doing. Before M19 the Changes panel showed a repo's main folder only, and an agent button reused one tab per agent.
+
+Domains: [`git`](../specs/git/) — [`02-study-worktrees.md`](../specs/git/02-study-worktrees.md) (R33–R39) — and [`agents`](../specs/agents/00-study.md) (R4, R5, R5b, R6 amended). No dependency added, no new folder; `Git/GitWorktree.swift` is new (~60 lines). The minimum git moves from 2.35 to 2.36 (`worktree list -z`).
+
+Size: S < ½ an agent-day, M ≈ 1 day, L ≈ 2 days. Status: ⚪ to do · 🟡 in progress · 🟢 done.
+
+| # | Task | Rules | Library / native | Tests | Size | Status | PR |
+|---|---|---|---|---|---|---|---|
+| 19.1 | **Worktrees as children**: `worktree list --porcelain -z` per repo through `GitCLI`, parsed by `WorktreeParser`; `GitRepo.arrange` puts each worktree under its repo (a scanned one moves under it, no duplicate); a repo with worktrees is a **group** whose main folder is the first child; each working copy titled by its branch, the folder in grey, `worktree`/`lock` tags right-aligned; folds persisted (`<id>` for the group, `<id>#main` for its main folder); a second `FSWatchService` for the folders outside the root; a change under `<common>/worktrees/` reads the list again | git R33–R35, R34a, R34b | `GitCLI`, `FSWatchService` (a second instance), SwiftUI `List` sections | `WorktreeParser` over every kind of entry; `arrange` (order, R33a in both directions, prunable/bare skipped); `reposToRediscover`; a child's git folder refreshing the child; fold persistence; a real repo with `worktree add` | L | 🟢 (2026-10-16) | |
+| 19.2 | **Worktree actions**: *Check Out Here* (remove without `--force`, then checkout in the parent), *Remove Worktree…* (confirmed, disabled when locked), *Open as Workspace*; the branch sheet tags a branch held by another working copy and offers *Check Out Here* / *Show Changes* instead of *Checkout* | git R36–R39 | `NSAlert`, `ForemanAppDelegate.openRecent` | R37 on a real repo: dirty → refused and kept, clean → removed and checked out in the parent; `for-each-ref`'s `worktreepath` field | M | 🟢 (2026-10-16) | |
+| 19.3 | **Compare with main**: the history narrowed to `<base>..<head>` with a `vs <base>` chip, and one `git.diff` tab of `<base>...<head>` (`GitDiffPayload.Source.range`, refreshed with the child); *Compare with…* picks another local branch | git R36b | `NSPopUpButton` in an `NSAlert` | on a real repo: the range lists the branch's two commits, the three-dot diff leaves out the base's own commit | M | 🟢 (2026-10-16) | |
+| 19.4 | **Several agent tabs, and who works where**: the button always opens a new numbered tab (`Claude`, `Claude 2`…); its menu lists the open sessions; the toolbar dot counts the running ones; `agents` hands its sessions to the Changes panel, each working copy carrying a badge per agent (state, bell, a click shows the tab), worktrees with an agent first; *Show in Changes* on an agent tab's context menu | agents R4, R5, R5b, R6; git R34c; layout R31, R35 | `CenterTabDescriptor.contextMenu`, `ToolbarBadge.count` | the titles' numbering; the badge; matching a session to the deepest working copy; the order moving on open/close only | M | 🟢 (2026-10-16) | |
+
+## Where it stands
+
+Built and tested on 2026-10-16; **to be checked by hand by the author** on the `ccoe` workspace (two repos, worktrees in the parent folder). Open points stay in [`git/questions.md`](../specs/git/questions.md): an agent that creates its own worktree after starting in the repo keeps its badge on the main folder.

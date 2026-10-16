@@ -3,22 +3,25 @@ import Testing
 
 @testable import Foreman
 
-/// The button's decision and the badge (agents R4, R6), the persisted payload (R8).
+/// The session titles and the badge (agents R4, R6), the persisted payload (R8).
 struct AgentsFeatureTests {
-    @Test func buttonActivatesRelaunchesOrSpawns() {
-        let tab = TabID()
-        #expect(AgentsFeature.buttonAction(primary: nil, state: nil) == .spawn)
-        #expect(AgentsFeature.buttonAction(primary: tab, state: nil) == .spawn)
-        // agents R8: a tab restored after a quit comes back idle and must be startable.
-        #expect(AgentsFeature.buttonAction(primary: tab, state: .idle) == .relaunch(tab))
-        #expect(AgentsFeature.buttonAction(primary: tab, state: .running(pid: 1)) == .activate(tab))
-        #expect(AgentsFeature.buttonAction(primary: tab, state: .exited(.code(0))) == .relaunch(tab))
+    /// agents R4 (amended 2026-10-16): every click opens a session, numbered after the open ones.
+    @Test func sessionTitlesTakeTheFirstFreeNumber() {
+        #expect(AgentsFeature.sessionTitle("Claude", taken: []) == "Claude")
+        #expect(AgentsFeature.sessionTitle("Claude", taken: ["Claude"]) == "Claude 2")
+        #expect(AgentsFeature.sessionTitle("Claude", taken: ["Claude", "Claude 2", "Claude 3"]) == "Claude 4")
+        // The first closed: its plain title is free again.
+        #expect(AgentsFeature.sessionTitle("Claude", taken: ["Claude 2"]) == "Claude")
+        #expect(AgentsFeature.sessionTitle("Claude", taken: ["Claude", "Claude 3"]) == "Claude 2")
+        // A worktree tab carries its branch and takes no number.
+        #expect(AgentsFeature.sessionTitle("Claude", taken: ["Claude (foreman/claude-1)"]) == "Claude")
     }
 
     @Test func badgeShowsRunningThenMarked() {
-        #expect(AgentsFeature.badge(running: true, marked: true) == .dot(.green))
-        #expect(AgentsFeature.badge(running: false, marked: true) == .dot(.orange))
-        #expect(AgentsFeature.badge(running: false, marked: false) == .none)
+        #expect(AgentsFeature.badge(running: 1, marked: true) == .dot(.green))
+        #expect(AgentsFeature.badge(running: 3, marked: false) == .count(3, .green))
+        #expect(AgentsFeature.badge(running: 0, marked: true) == .dot(.orange))
+        #expect(AgentsFeature.badge(running: 0, marked: false) == .none)
     }
 
     @Test func payloadRoundTripsWithARelativeFolder() throws {

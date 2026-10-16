@@ -14,7 +14,7 @@ Two agents on the same worktree step on each other; one agent on the user's work
 
 ## Functional rules
 
-- R12 — Entry: the button menu (`agents` R5) gets *New Session in a Worktree* for the workspace root when it is a git repo, and one per repo of `config.repos` (`git` R1) otherwise (`… in <repo>`). Creation = `git worktree add -b foreman/<agent>-<yyyyMMdd-HHmm> <folder> HEAD` through `GitCLI` (`git` R26); then `spawn` (`agents` R4) with `cwd` = the worktree folder, `primary: false`. Failure (dirty index is not one; a branch name clash is) → the error in an alert, no tab.
+- R12 — Entry: the button menu (`agents` R5) gets *New Session in a Worktree* for the workspace root when it is a git repo, and one per repo of `config.repos` (`git` R1) otherwise (`… in <repo>`). Creation = `git worktree add -b foreman/<agent>-<yyyyMMdd-HHmm> <folder> HEAD` through `GitCLI` (`git` R26); then `spawn` (`agents` R4) with `cwd` = the worktree folder. Failure (dirty index is not one; a branch name clash is) → the error in an alert, no tab.
 - R12a — The folder: `~/Library/Application Support/Foreman/worktrees/<workspace folder name>/<branch name without the prefix>`. Never under the workspace root (it would show as untracked in the main repo and in the explorer; `git` R29 forbids touching `.git/info/exclude`).
 - R12b — The tab is an ordinary agent tab (`agents` R6–R8): restored `idle` in the worktree folder; a missing folder at relaunch is the banner of `terminal` R8. Its title carries the branch in parentheses.
 - R13 — *Remove Worktree* (the button menu, one entry per worktree tab of the window, confirmed with the folder and the branch name): the tab is closed first (`terminal` R10, R11), then `git worktree remove --force <folder>` (uncommitted changes in the worktree are lost: the confirmation says so). The branch is **kept**; deleting it is `git` R23. `git worktree prune` is never run by Foreman.
@@ -29,7 +29,7 @@ Two agents on the same worktree step on each other; one agent on the user's work
 
 - Merging, rebasing, cherry-picking the branch from the menu (`git` R19, R23, the terminal).
 - Opening the worktree as a workspace (`File › Open…` does it).
-- Listing worktrees not created by Foreman.
+- Listing worktrees not created by Foreman — covered on 2026-10-16 by `git` R33 ([`../git/02-study-worktrees.md`](../git/02-study-worktrees.md)): every worktree, Foreman's or not, is a child section of its repo.
 
 ## Technical options
 

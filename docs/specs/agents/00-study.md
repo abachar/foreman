@@ -4,7 +4,7 @@
 
 Feature `agents`: launch and come back to the **CLI agents** (Claude Code, Antigravity CLI, OpenCode…) in a terminal tab dedicated to each agent, with one click on a toolbar button (`layout` R30). Built-in agents are known to Foreman and shown when they are installed; `config.agents` adds to them or overrides them.
 
-This is **not** `run`: a `run` command is defined by the user and lives in the palette; an agent is a tool Foreman knows, with its button, its icon and its reused tab.
+This is **not** `run`: a `run` command is defined by the user and lives in the palette; an agent is a tool Foreman knows, with its button, its icon and its tabs.
 
 ## User stories
 
@@ -32,9 +32,10 @@ This is **not** `run`: a `run` command is defined by the user and lives in the p
 
 ### Launching and the tab
 
-- R4 — Clicking the button: if an `agent.<id>` tab exists in the window → it is activated (and its group takes the focus); otherwise → `TerminalService.spawn(command:, cwd: root, kind: "agent.<id>", title:)` in the active group (`terminal` R16): the process starts immediately, without a shell. **One tab per agent per window** in normal use.
-- R5 — Button menu (right-click or long click): *New session* (forces a new `agent.<id>` tab, not reused afterwards: only the first tab created is the button's one), *Launch in …* for each repo in `config.repos`/auto-detection (cwd = the repo). The command is passed as is (`architecture.md`, security), with no `env` and no templating.
-- R6 — The state is the terminal tab's (`terminal` R6): `idle` / `running` / `exited(code)`. Badge: a dot on the button and on the tab while `running`; the bell of an inactive agent tab marks the tab (`terminal` R7) and the button. Agent exited (`exited`): the surface stays frozen with *Relaunch* (`terminal` R8); clicking the agent's button relaunches in that same tab.
+- R4 — **Amended 2026-10-16** (several agents at once, each in its worktree, `git` R34c): clicking the button **always opens a new** `agent.<id>` tab: `TerminalService.spawn(command:, cwd: root, kind: "agent.<id>", title:)` in the active group (`terminal` R16), the process started immediately, without a shell. No tab is reused, none is "the button's". Titles: the agent's title, then `<title> 2`, `<title> 3`… for the next ones open in the window (a worktree tab keeps its branch, `agents` R12b). *(Until 2026-10-16: one tab per agent per window, the click activating it when it existed.)*
+- R5 — Button menu (right-click or long click), **amended 2026-10-16**: first the agent's **open sessions** in the window, by title (title, a state dot, the folder when it is not the root) — choosing one activates its tab; then *Launch in …* for each repo in `config.repos`/auto-detection (cwd = the repo), then the worktree entries (R12–R13). *New session* is gone: it is the click. The command is passed as is (`architecture.md`, security), with no `env` and no templating.
+- R5b — An agent tab's context menu gets *Show in Changes*: the `git.changes` panel opens, the working copy containing the tab's cwd expands and scrolls into view (`git` R34c). Absent when the cwd is in no repo.
+- R6 — The state is the terminal tab's (`terminal` R6): `idle` / `running` / `exited(code)`. Badge: a dot on the button and on the tab while `running`; the bell of an inactive agent tab marks the tab (`terminal` R7) and the button. The button's dot shows while **any** of its sessions runs, and the count of running sessions when there are two or more. Agent exited (`exited`): the surface stays frozen with *Relaunch* (`terminal` R8), the only way to relaunch it — the button opens a new tab (R4, amended 2026-10-16).
 - R7 — Closing: `terminal` R10–R11 (a confirmation while the agent is running; a clean stop).
 - R8 — Restoration (`layout` R28): the tab is recreated in the `idle` state at the same cwd, the title kept, an empty surface with *Relaunch*; the command is **not** relaunched automatically (the same choice as `run` R13); no `resume` option (confirmed in use, decision 2026-08-27).
 - R9 — Shortcuts: `config.shortcuts["agents.<id>"]`, no default. Global scope. `cmd+opt+t` hides the toolbar (`layout` R32); the shortcuts stay active.
@@ -42,7 +43,7 @@ This is **not** `run`: a `run` command is defined by the user and lives in the p
 ## Edge cases
 
 - Binary present but the command fails (version, login required): the error appears in the surface, the state is `exited(code)`, no banner.
-- Two windows: one tab per agent **per window**, independent.
+- Two windows: each window lists and counts its own sessions only (R5, R6).
 - The user quits the agent (`/exit`): `exited(0)`, a frozen surface; the agent's button relaunches in the same tab.
 - An agent that launches sub-processes: they are in the PTY's process group and follow the tab (`terminal` R9, R11).
 - A `PATH` without the binary but with a shell alias/function: not detected; declare the agent in `config.agents` (no detection for a declared agent).

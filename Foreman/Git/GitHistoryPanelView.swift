@@ -36,8 +36,10 @@ struct GitHistoryPanelView: View {
                 selection: Binding(
                     get: { model.repoID ?? "" }, set: { feature.showHistory(repo: $0, path: nil) })
             ) {
+                // git R34a: the worktrees under their repo.
                 ForEach(changes.sections) { section in
-                    Text(section.repo.name).tag(section.id)
+                    Text(section.repo.parent == nil ? section.repo.name : "\u{2003}\(section.repo.name)").tag(
+                        section.id)
                 }
             }
             .labelsHidden()
@@ -47,6 +49,20 @@ struct GitHistoryPanelView: View {
                 Text(path)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                Button {
+                    feature.showHistory(repo: model.repoID ?? ".", path: nil)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .help("Whole history")
+            }
+            if let range = model.query.range {
+                // git R36b: only what the branch adds.
+                Text("vs \(range.base)")
+                    .lineLimit(1)
+                    .padding(.horizontal, 4)
+                    .background(.quaternary, in: Capsule())
                 Button {
                     feature.showHistory(repo: model.repoID ?? ".", path: nil)
                 } label: {

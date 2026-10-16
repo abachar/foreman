@@ -13,7 +13,7 @@ nonisolated struct GitOutput: Sendable {
 
 /// The version of the binary, from `git --version` (git, edge cases: ≥ 2.35 required).
 nonisolated struct GitVersion: Comparable, Sendable {
-    static let minimum = GitVersion(major: 2, minor: 35, patch: 0)
+    static let minimum = GitVersion(major: 2, minor: 36, patch: 0)
 
     let major: Int
     let minor: Int

@@ -145,8 +145,16 @@ final class GitDiffModel {
         -> [String: String]
     {
         var result: [String: String] = [:]
+        // git R36b: a range's old side is the merge base, read once per load.
+        var mergeBase: String?
+        if case .range(let base, let head) = payload.source, diff.files.contains(where: \.isBinary) {
+            mergeBase = try? await client.run(GitCommand.mergeBase(base, head)).text
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         for file in diff.files where file.isBinary {
-            async let old = objectSize(payload.oldObject(for: file), client: client)
+            let oldObject =
+                payload.oldObject(for: file) ?? mergeBase.flatMap { sha in file.oldPath.map { "\(sha):\($0)" } }
+            async let old = objectSize(oldObject, client: client)
             async let new =
                 payload.newObjectIsWorktree
                 ? diskSize(repo.url.appending(path: file.path))
@@ -280,6 +288,8 @@ extension GitDiffPayload {
         case .staged: return "HEAD:\(path)"
         case .commit(let sha, _), .commitFile(let sha, _, _): return "\(sha)^:\(path)"
         case .session(let base, _): return "\(base):\(path)"
+        // The merge base, which the model reads at each load.
+        case .range: return nil
         }
     }
 
@@ -287,6 +297,7 @@ extension GitDiffPayload {
         guard let path = file.newPath else { return nil }
         switch source {
         case .workingTree, .session: return nil
+        case .range(_, let head): return "\(head):\(path)"
         case .staged: return ":\(path)"
         case .commit(let sha, _), .commitFile(let sha, _, _): return "\(sha):\(path)"
         }
@@ -295,7 +306,7 @@ extension GitDiffPayload {
     nonisolated var newObjectIsWorktree: Bool {
         switch source {
         case .workingTree, .session: return true
-        case .staged, .commit, .commitFile: return false
+        case .staged, .commit, .commitFile, .range: return false
         }
     }
 }

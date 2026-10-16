@@ -122,6 +122,14 @@ struct TabBarView: View {
                                 Button(selection.title) { Task { await layout.closeTabs(selection, around: tab.id) } }
                                     .disabled(group.tabs(toClose: selection, around: tab.id).isEmpty)
                             }
+                            // agents R5b: what the tab's owner adds.
+                            let owned = layout.tabKinds[tab.kind]?.contextMenu(tab.id) ?? []
+                            if !owned.isEmpty {
+                                Divider()
+                                ForEach(owned) { entry in
+                                    Button(entry.title, action: entry.perform)
+                                }
+                            }
                         }
                     }
                     // layout R38: the empty part of the bar. It is a sibling of the tabs, not a

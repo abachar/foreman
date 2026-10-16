@@ -27,13 +27,21 @@ struct GitChangesPanelView: View {
                     Spacer()
                 }
             } else {
-                List {
-                    ForEach(model.sections) { section in
-                        GitRepoSectionView(section: section, feature: feature, theme: theme)
+                ScrollViewReader { proxy in
+                    List {
+                        ForEach(model.groups) { group in
+                            groupView(group)
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .onChange(of: model.revealed) { _, id in
+                        // git R36, agents R5b: once, then forgotten.
+                        guard let id else { return }
+                        proxy.scrollTo(id, anchor: .top)
+                        model.clearRevealed()
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .sheet(
@@ -44,6 +52,129 @@ struct GitChangesPanelView: View {
                 GitBranchesSheet(repo: repo, model: model, feature: feature, theme: theme)
             }
         }
+    }
+}
+
+extension GitChangesPanelView {
+    /// git R34b: a repo without worktrees is one section; with some, a group whose main folder is
+    /// its first child.
+    @ViewBuilder
+    fileprivate func groupView(_ group: GitRepoGroup) -> some View {
+        if group.children.isEmpty {
+            sectionView(group.top, style: .repo)
+        } else {
+            let isCollapsed = model.isGroupCollapsed(group.id)
+            Section {
+            } header: {
+                GitRepoGroupHeaderView(
+                    section: group.top, isCollapsed: isCollapsed, feature: feature, theme: theme)
+            }
+            if !isCollapsed {
+                sectionView(group.top, style: .main)
+                ForEach(group.children) { child in
+                    sectionView(child, style: .worktree)
+                }
+            }
+        }
+    }
+
+    fileprivate func sectionView(_ section: GitModel.Section, style: GitRepoSectionView.Style) -> some View {
+        GitRepoSectionView(
+            section: section, style: style, agents: model.agentSessions(in: section.id), feature: feature,
+            theme: theme)
+    }
+}
+
+/// git R34b: the header of a repo with worktrees — its name, *Fetch*, and a chevron folding it all.
+struct GitRepoGroupHeaderView: View {
+    let section: GitModel.Section
+    let isCollapsed: Bool
+    let feature: GitFeature
+    let theme: ThemeService
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button {
+                feature.toggleGroupCollapsed(section.id)
+            } label: {
+                Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                    .frame(width: 12)
+            }
+            .buttonStyle(.plain)
+            Text(section.repo.name)
+                .font(theme.font(.title, weight: .medium))
+                .lineLimit(1)
+            Spacer()
+            if section.remoteOperation == .fetch {
+                ProgressView()
+                    .controlSize(.mini)
+            }
+            Button {
+                feature.fetch(in: section.id)
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+            }
+            .buttonStyle(.borderless)
+            .help("Fetch (prune)")
+            .disabled(section.remoteOperation != nil || feature.isInert)
+        }
+        .padding(.vertical, 2)
+        .id(section.id + "#group")
+    }
+}
+
+/// git R34c: an agent tab working in a folder — its icon, its title, its state; a click shows it.
+struct GitAgentBadgeView: View {
+    let session: GitAgentSession
+    let theme: ThemeService
+    let activate: () -> Void
+
+    var body: some View {
+        HStack(spacing: 3) {
+            if let image = IconImage.resolve(session.icon) {
+                Image(nsImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 11, height: 11)
+            }
+            Text(session.title)
+                .lineLimit(1)
+            if session.isRunning {
+                Circle()
+                    .fill(theme.tokens.statusGreen.color)
+                    .frame(width: 6, height: 6)
+            }
+            if session.isMarked {
+                Image(systemName: "bell.fill")
+                    .foregroundStyle(theme.tokens.statusOrange.color)
+            }
+        }
+        .font(theme.font(.small))
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1)
+        .background(.quaternary, in: Capsule())
+        .contentShape(Capsule())
+        .onTapGesture(perform: activate)
+        .help("Show \(session.title)")
+        .fixedSize()
+    }
+}
+
+/// git R34: `worktree`, `lock` — a word in a thin capsule.
+struct GitTagView: View {
+    let text: String
+    let theme: ThemeService
+    var help: String?
+
+    var body: some View {
+        Text(text)
+            .font(theme.font(.small))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .overlay(Capsule().strokeBorder(.tertiary))
+            .help(help ?? "")
+            .fixedSize()
     }
 }
 
@@ -91,6 +222,8 @@ struct GitBranchesSheet: View {
 
     private var branchList: some View {
         List(shown) { branch in
+            // git R36: a branch checked out in another working copy of the repo.
+            let holder = feature.holder(of: branch, besides: repo)
             HStack(spacing: 6) {
                 Image(
                     systemName: branch.isCurrent
@@ -105,12 +238,28 @@ struct GitBranchesSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if let holder {
+                    GitTagView(text: holder.repo.name, theme: theme, help: holder.repo.url.path(percentEncoded: false))
+                }
             }
             .contentShape(Rectangle())
-            .onTapGesture(count: 2) { feature.checkout(branch, in: repo) }
+            .onTapGesture(count: 2) {
+                if let holder {
+                    feature.showChanges(of: holder.id)
+                } else {
+                    feature.checkout(branch, in: repo)
+                }
+            }
             .contextMenu {
-                Button("Checkout") { feature.checkout(branch, in: repo) }
-                    .disabled(branch.isCurrent)
+                if let holder {
+                    if holder.repo.parent == repo {
+                        Button("Check Out Here") { feature.checkOutHere(holder.id) }
+                    }
+                    Button("Show Changes") { feature.showChanges(of: holder.id) }
+                } else {
+                    Button("Checkout") { feature.checkout(branch, in: repo) }
+                        .disabled(branch.isCurrent)
+                }
                 if !branch.isRemote {
                     Button("Rename\u{2026}") { feature.renameBranch(branch, in: repo) }
                     Button("Set Upstream\u{2026}") { feature.setUpstream(of: branch, in: repo) }
@@ -124,7 +273,17 @@ struct GitBranchesSheet: View {
 
 /// One repo (git R2): the header, the banners, then Conflicts / Staged / Changes (R6).
 struct GitRepoSectionView: View {
+    /// git R34b: a repo alone, or one working copy of a group.
+    enum Style {
+        case repo
+        case main
+        case worktree
+    }
+
     let section: GitModel.Section
+    var style: Style = .repo
+    /// git R34c: the agent tabs working in this folder.
+    var agents: [GitAgentSession] = []
     let feature: GitFeature
     let theme: ThemeService
     /// git R6b: which folders are folded shut, per group; nothing is persisted.
@@ -138,10 +297,18 @@ struct GitRepoSectionView: View {
                 group("Staged", entries: sections.staged, kind: .staged)
                 group("Changes", entries: sections.changes, kind: .changes)
                 GitCommitView(section: section, feature: feature, theme: theme)
+                    .padding(.leading, inset)
             }
         } header: {
             header
+                .padding(.leading, inset)
+                .id(section.id)
         }
+    }
+
+    /// git R34b: a working copy of a group sits under the group's header.
+    private var inset: CGFloat {
+        style == .repo ? 0 : 14
     }
 
     private var header: some View {
@@ -155,25 +322,51 @@ struct GitRepoSectionView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(section.status.map { GitSections($0.entries).isEmpty } ?? true)
-                Text(section.repo.name)
-                    .font(theme.font(.title, weight: .medium))
-                    .lineLimit(1)
-                if let status = section.status {
-                    Text(Self.headText(status))
-                        .foregroundStyle(.secondary)
+                if style == .repo {
+                    Text(section.repo.name)
+                        .font(theme.font(.title, weight: .medium))
                         .lineLimit(1)
+                }
+                if let status = section.status {
+                    // git R34: in a group the branch names the row; the full name in the tooltip.
+                    Text(Self.headText(status))
+                        .font(style == .repo ? theme.font() : theme.font(weight: .medium))
+                        .foregroundStyle(style == .repo ? .secondary : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(Self.headText(status))
+                        .layoutPriority(1)
                     if status.ahead > 0 || status.behind > 0 {
                         Text(Self.aheadBehindText(ahead: status.ahead, behind: status.behind))
                             .font(theme.font(.small))
                             .foregroundStyle(.secondary)
+                            .fixedSize()
                     }
                 }
-                Spacer()
+                if style == .worktree {
+                    Text(section.repo.name)
+                        .font(theme.font(.small))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(section.repo.url.path(percentEncoded: false))
+                }
+                Spacer(minLength: 4)
+                ForEach(agents) { session in
+                    GitAgentBadgeView(session: session, theme: theme) { feature.activateAgentTab?(session.id) }
+                }
+                if style == .worktree {
+                    GitTagView(text: "worktree", theme: theme)
+                    if let reason = section.repo.lockReason {
+                        GitTagView(text: "lock", theme: theme, help: reason.isEmpty ? "Locked" : reason)
+                    }
+                }
                 if section.isLoading || section.remoteOperation != nil {
                     ProgressView()
                         .controlSize(.mini)
                 }
                 remoteButtons
+                    .fixedSize()
             }
             if let operation = section.remoteOperation {
                 Text("\(operation.rawValue)\u{2026}")
@@ -224,15 +417,18 @@ struct GitRepoSectionView: View {
         .padding(.vertical, 2)
     }
 
-    /// git R21, R23, R24: fetch / pull / push and the menu.
+    /// git R21, R23, R24: fetch / pull / push and the menu; in a group, *Fetch* is the group's
+    /// (R34b).
     private var remoteButtons: some View {
         HStack(spacing: 2) {
-            Button {
-                feature.fetch(in: section.id)
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
+            if style == .repo {
+                Button {
+                    feature.fetch(in: section.id)
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                }
+                .help("Fetch (prune)")
             }
-            .help("Fetch (prune)")
             Button {
                 feature.pull(in: section.id)
             } label: {
@@ -256,6 +452,9 @@ struct GitRepoSectionView: View {
                         feature.toggleStashList(in: section.id)
                     }
                 }
+                if style == .worktree {
+                    worktreeMenu
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -264,6 +463,23 @@ struct GitRepoSectionView: View {
         }
         .buttonStyle(.borderless)
         .disabled(section.remoteOperation != nil || feature.isInert)
+    }
+
+    /// git R36b–R39: what only a worktree offers.
+    @ViewBuilder
+    private var worktreeMenu: some View {
+        Divider()
+        if let base = feature.defaultCompareBase(for: section.id) {
+            Button("Compare with \(base)") { feature.compare(section.id, with: base) }
+        }
+        Button("Compare with\u{2026}") { feature.chooseCompareBase(section.id) }
+        Divider()
+        if case .branch = section.status?.head {
+            Button("Check Out Here") { feature.checkOutHere(section.id) }
+        }
+        Button("Remove Worktree\u{2026}") { feature.removeWorktree(section.id) }
+            .disabled(section.repo.lockReason != nil)
+        Button("Open as Workspace") { feature.openAsWorkspace(section.id) }
     }
 
     /// git R24: collapsed by default; apply, pop, drop.
@@ -324,6 +540,7 @@ struct GitRepoSectionView: View {
                 groupActions(entries, kind: kind)
             }
             .padding(.top, 4)
+            .padding(.leading, inset)
             // git R6b: one tree per group, open at first sight, no per-folder action.
             ForEach(PathTree.rows(of: entries, collapsed: collapsed[title] ?? [])) { row in
                 switch row {
@@ -343,7 +560,7 @@ struct GitRepoSectionView: View {
                         history: { feature.showHistory(repo: section.id, path: entry.path) }
                     )
                     // The chevron's width, so a file's letter lines up with its folder's icon.
-                    .padding(.leading, Self.indent(depth) + Self.chevronWidth)
+                    .padding(.leading, inset + Self.indent(depth) + Self.chevronWidth)
                 }
             }
         }
@@ -372,7 +589,7 @@ struct GitRepoSectionView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { toggle(path, in: group) }
-        .padding(.leading, Self.indent(depth))
+        .padding(.leading, inset + Self.indent(depth))
     }
 
     private func toggle(_ path: String, in group: String) {

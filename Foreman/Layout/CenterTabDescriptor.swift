@@ -20,6 +20,8 @@ struct CenterTabDescriptor {
     let isTerminal: Bool
     /// design R23: the tab's title is a file name, shown with its type icon.
     let showsFileIcon: Bool
+    /// The owner's entries at the end of the tab's context menu (agents R5b).
+    let contextMenu: (TabID) -> [ToolbarMenuEntry]
 
     init(
         kind: String,
@@ -28,8 +30,10 @@ struct CenterTabDescriptor {
         makeView: @escaping (TabID, String) -> AnyView?,
         serialize: @escaping (TabID) -> String?,
         confirmClose: @escaping (TabID) async -> Bool = { _ in true },
-        onClose: @escaping (TabID) -> Void = { _ in }
+        onClose: @escaping (TabID) -> Void = { _ in },
+        contextMenu: @escaping (TabID) -> [ToolbarMenuEntry] = { _ in [] }
     ) {
+        self.contextMenu = contextMenu
         self.kind = kind
         self.isTerminal = isTerminal
         self.showsFileIcon = showsFileIcon

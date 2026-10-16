@@ -254,10 +254,18 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     private func build(_ icon: String, badge: ToolbarBadge) -> NSImage? {
         guard let base = IconImage.resolve(icon) else { return nil }
-        guard case .dot(let color) = badge else { return base }
+        let color: ToolbarBadge.BadgeColor
+        var count: Int?
+        switch badge {
+        case .none: return base
+        case .dot(let dotColor): color = dotColor
+        case .count(let number, let dotColor):
+            color = dotColor
+            count = number
+        }
         let tint = theme.tokens.textPrimary.nsColor
         let dot = theme.tokens.status(color).nsColor
-        let size = NSSize(width: base.size.width + 4, height: base.size.height + 4)
+        let size = NSSize(width: base.size.width + 6, height: base.size.height + 6)
         let image = NSImage(size: size, flipped: false) { rect in
             let tinted = base.copy() as? NSImage ?? base
             tinted.isTemplate = false
@@ -267,7 +275,18 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             tinted.unlockFocus()
             tinted.draw(in: NSRect(x: 0, y: 0, width: base.size.width, height: base.size.height))
             dot.setFill()
-            NSBezierPath(ovalIn: NSRect(x: rect.maxX - 7, y: rect.maxY - 7, width: 6, height: 6)).fill()
+            guard let count else {
+                NSBezierPath(ovalIn: NSRect(x: rect.maxX - 7, y: rect.maxY - 7, width: 6, height: 6)).fill()
+                return true
+            }
+            // agents R6: the number of agents running, in the dot.
+            let disc = NSRect(x: rect.maxX - 11, y: rect.maxY - 11, width: 11, height: 11)
+            NSBezierPath(ovalIn: disc).fill()
+            let text = NSAttributedString(
+                string: count > 9 ? "9+" : "\(count)",
+                attributes: [.font: NSFont.systemFont(ofSize: 8, weight: .bold), .foregroundColor: NSColor.white])
+            let textSize = text.size()
+            text.draw(at: NSPoint(x: disc.midX - textSize.width / 2, y: disc.midY - textSize.height / 2))
             return true
         }
         image.isTemplate = false

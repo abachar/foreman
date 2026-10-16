@@ -84,6 +84,8 @@ struct WorkspaceView: View {
                 editor.sendToAgent = { [weak agents] in agents?.send($0) }
                 explorer.actions.sendToAgent = { [weak agents] in agents?.send($0) }
                 git.sendToAgent = { [weak agents] in agents?.send($0) }
+                // git R34c: a click on an agent badge of the Changes panel.
+                git.activateAgentTab = { [weak agents] in agents?.activate($0) }
                 browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
                 run = RunFeature(layout: layout, workspace: workspace, terminal: terminal, palette: palette)
                 restoreLayout()
