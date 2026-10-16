@@ -40,7 +40,7 @@ Each task depends on the previous ones unless noted. One branch `feat/redesign` 
 | 21.9 | **Indent guides, active block, matched braces**: one guide per indentation level of the visible lines (blank lines take the surrounding level, tab width honoured); the guide of the caret's innermost block brightened; the brace at or before the caret and its pair highlighted, skipping strings and comments | editor new rules | `CurrentLineTextView.drawBackground(in:)`, `Folding` regions, the highlight roles (strings / comments), TextKit 2 rendering attributes | guide levels for a buffer (pure), the active block from the caret and the regions, bracket matching across strings and comments. **By eye**: view 02 | L | 🟢 | `feat/redesign` |
 | 21.10 | **Fold markers**: an opening marker on a region's first line and a closing one on its last; the caret's block markers in `textPrimary`, the others in `textDisabled` | editor R27 amended | `LineNumberRulerView` | the markers per line for a set of regions (pure). **By eye**: view 02 | S | 🟢 | `feat/redesign` |
 | 21.11 | **Sticky lines**: the first lines of the enclosing regions (class, method…) scrolled above the viewport stay pinned at the top of the editor, on the editor's own ground with a separator under them, at most 3; a click scrolls to the line | editor new rule | an `NSView` over the `NSScrollView`'s clip view, `Folding` regions | the pinned lines for a top visible line and a set of regions (pure), the cap. **By eye**: view 02 | M | 🟢 | `feat/redesign` |
-| 21.12 | **Review against the reference views**: the author goes through `02-redesign/` view by view on a real workspace; the gaps found become dated decisions or a task of M22 | — | — | **By eye**: the thirteen views | S | ⚪ | |
+| 21.12 | **Review against the reference views**: the author goes through `02-redesign/` view by view on a real workspace; the gaps found become dated decisions or a task of M22 | — | — | **By eye**: the thirteen views | S | 🟡 (agent's pass 2026-10-17; the author's pass is the merge check) | `feat/redesign` |
 
 ## Decided during the milestone
 
@@ -52,6 +52,26 @@ Settled by the author on 2026-10-16, before 21.1; each is dated in the `decision
 - The config error banner stays, next to the *Foreman config* group of Problems (`config`). (21.7)
 - Sticky lines: 3 at most, for the languages with folding rules (`editor`). (21.11)
 
+## Review against the reference views (21.12, agent's pass, 2026-10-17)
+
+Captures of the installed Release build on the author's `ccoe` workspace and on a scratch workspace (Swift file with a language server, two run commands), compared with the renders of `02-redesign/`. **Conform** means the layout and the rules of the task are there; the gaps below are the ones seen, each a candidate for a dated decision or an M22 task — the author decides.
+
+| View | State | Gaps seen |
+|---|---|---|
+| 01 home | conform (unchanged since M9, toolbar and status bar new) | — |
+| 02 editor | conform: gutter line, print margin at 120, guides with the caret's block, matched braces, markers at both ends, sticky lines | the tab bar's trailing buttons (split, `…`) of the view do not exist |
+| 03 agent | not captured (no agent launched on the author's workspace) | to check by hand: agent icons on the right with their badges, the terminal's `title · cols×rows` in the status bar |
+| 04 changes | conform: Changes is the left slot's second tab with its orange count | — |
+| 05 history | conform but linear (lanes deferred, decision 2026-10-16): chips, message, author, date, hash; details and files beside the log; Current / All branches | — |
+| 06 database | not captured (no `postgres` section on `ccoe`) | to check by hand: *Database* alone in the right slot, its title, the state dot |
+| 07 search | tab moved, content unchanged since M1 | the view's option row (case / word / regex / file mask in one line) and per-file counts are not done — not part of a task |
+| 08 run | conform: Run widget, Run tab with one sub-tab per command and its state | the bottom slot's *Run* tab does not show ✗ after a failure (view 13), only a green dot while running |
+| 09 quick open | unchanged since M1 | — |
+| 10 markdown + browser | Browser icon on the right; split without the group stroke | not captured with a browser page (no `browser.url` on `ccoe`) |
+| 11 branch menu | conform: filter, worktrees with agents and ahead count, local and remote branches, remote actions, a submenu per worktree | the view's *Open terminal agent here*, *Merge into main…* and *New worktree…* entries are not in 21.4's scope |
+| 12 diagnostics | conform for the status bar counters and the server item | the config banner has no *Open config.json* button nor close cross (view 12) |
+| 13 problems | conform: scope, filters with counts, groups per file, server, `line:col`, *Foreman config* first | — |
+
 ## Where it stands
 
-Planned on 2026-10-16. 21.1 done the same day (panel tabs; Changes left, History bottom); 21.2 the status bar (`git` now follows the status while the window has a repo, so History works alone in its slot); 21.3 the toolbar (project, branch, agents, Browser, Run widgets); 21.4 the branch menu (git R40); 21.5 the Run panel (`cmd+.` now has the `panel` scope so the query tab keeps it); 21.6 History in columns with ref chips, details and files beside the log, Current / All branches. 21.7 the diagnostics store and the Problems panel (editor R50–R52). 21.8 the gutter's line, the print margin (`editor.printMargin`), no group stroke, the tab bar on the island. 21.9 indent guides, the caret's block, matched brackets (the pairs from the syntax tree; Swift's `if` now folds). 21.10 fold markers on both ends, the caret's block brighter. 21.11 sticky lines (3 at most).
+Planned on 2026-10-16. 21.1 done the same day (panel tabs; Changes left, History bottom); 21.2 the status bar (`git` now follows the status while the window has a repo, so History works alone in its slot); 21.3 the toolbar (project, branch, agents, Browser, Run widgets); 21.4 the branch menu (git R40); 21.5 the Run panel (`cmd+.` now has the `panel` scope so the query tab keeps it); 21.6 History in columns with ref chips, details and files beside the log, Current / All branches. 21.7 the diagnostics store and the Problems panel (editor R50–R52). 21.8 the gutter's line, the print margin (`editor.printMargin`), no group stroke, the tab bar on the island. 21.9 indent guides, the caret's block, matched brackets (the pairs from the syntax tree; Swift's `if` now folds). 21.10 fold markers on both ends, the caret's block brighter. 21.11 sticky lines (3 at most). 21.12: the agent's pass against the thirteen views is written above; the author's pass decides the gaps.
