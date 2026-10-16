@@ -98,6 +98,10 @@ struct PanelCountView: View {
             Circle()
                 .fill(tokens.status(color).color)
                 .frame(width: 6, height: 6)
+        case .symbol(let name, let color):
+            Image(systemName: name)
+                .font(theme.font(.small, weight: .medium))
+                .foregroundStyle(tokens.status(color).color)
         case .count(let count, let color):
             Text("\(count)")
                 .font(theme.font(.small, weight: .medium))

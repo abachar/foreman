@@ -270,6 +270,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         case .count(let number, let dotColor):
             color = dotColor
             count = number
+        case .symbol(_, let dotColor): color = dotColor
         }
         let tint = theme.tokens.textPrimary.nsColor
         let dot = theme.tokens.status(color).nsColor

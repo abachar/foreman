@@ -68,6 +68,8 @@ nonisolated enum ToolbarBadge: Equatable, Sendable {
     case dot(BadgeColor)
     /// agents R6: a dot carrying a number (two agents running or more).
     case count(Int, BadgeColor)
+    /// run R10 (amended 2026-10-17): a symbol in a state colour (✓, ✗), on a panel tab only.
+    case symbol(String, BadgeColor)
 
     nonisolated enum BadgeColor: Sendable {
         case green

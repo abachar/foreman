@@ -104,6 +104,15 @@ struct RunToolbarTests {
         #expect(RunWidget.Icon(.failed(nil)) == .failed)
     }
 
+    /// run R10 (amended 2026-10-17): the Run tab's mark.
+    @Test func theRunTabShowsRunningThenTheLastEnd() {
+        #expect(RunFeature.tabMark(isRunning: true, lastEnded: .failed(1)) == .dot(.orange))
+        #expect(RunFeature.tabMark(isRunning: false, lastEnded: .failed(1)) == .symbol("xmark", .red))
+        #expect(RunFeature.tabMark(isRunning: false, lastEnded: .failed(nil)) == .symbol("xmark", .red))
+        #expect(RunFeature.tabMark(isRunning: false, lastEnded: .succeeded) == .symbol("checkmark", .green))
+        #expect(RunFeature.tabMark(isRunning: false, lastEnded: nil) == .none)
+    }
+
     @Test func secondStopWithinTwoSecondsEscalatesToTerm() {
         let now = ContinuousClock.now
         #expect(RunFeature.stopSignal(lastStop: nil, now: now) == SIGINT)

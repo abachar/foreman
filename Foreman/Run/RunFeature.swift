@@ -81,6 +81,8 @@ final class RunFeature {
     private(set) var sessionOrder: [String] = []
     /// The sub-tab shown in the Run panel.
     private(set) var selected: String?
+    /// run R10 (amended 2026-10-17): how the last command to end ended, for the Run tab.
+    private(set) var lastEnded: RunState?
     /// run R13: sub-tabs read from `state.json`, waiting for their command to be known.
     private var pendingRestore: State?
     private var registeredShortcuts: Set<String> = []
@@ -357,9 +359,22 @@ final class RunFeature {
                 }))
     }
 
-    /// The Run tab's mark: green while a command runs.
+    /// run R10 (amended 2026-10-17): the Run tab's mark, from the sessions.
     private var panelBadge: ToolbarBadge {
-        sessions.values.contains { terminal.tab($0)?.isRunning == true } ? .dot(.green) : .none
+        Self.tabMark(isRunning: sessions.values.contains { terminal.tab($0)?.isRunning == true }, lastEnded: lastEnded)
+    }
+
+    /// run R10 (amended 2026-10-17): an orange dot while a command runs, else the state of the
+    /// last one to end — ✗ in red, ✓ in green — kept like the Run widget's icon (R6b).
+    nonisolated static func tabMark(isRunning: Bool, lastEnded: RunState?) -> ToolbarBadge {
+        if isRunning {
+            return .dot(.orange)
+        }
+        switch lastEnded {
+        case .failed: return .symbol("xmark", .red)
+        case .succeeded: return .symbol("checkmark", .green)
+        case .idle, .running, nil: return .none
+        }
     }
 
     /// run R9 from the panel's ■ and ↻: the sub-tab shown.
@@ -568,6 +583,9 @@ final class RunFeature {
             id = tab
         }
         guard sessions.values.contains(id) else { return }
+        if case .exited(_, let exit) = event, pendingRelaunches[id] == nil {
+            lastEnded = RunState(.exited(exit))
+        }
         if case .exited = event, let pending = pendingRelaunches.removeValue(forKey: id) {
             pending.cancel()
             try? terminal.relaunch(id)
