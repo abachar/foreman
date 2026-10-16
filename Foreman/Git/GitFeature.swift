@@ -182,15 +182,58 @@ final class GitFeature {
                     menu: { [weak self] in self?.branchMenu() ?? ToolbarMenu(entries: []) })))
     }
 
+    /// git R40: worktrees, branches and the remote actions of every repo, with a filter field.
     private func branchMenu() -> ToolbarMenu {
-        ToolbarMenu(entries: [
-            ToolbarMenuEntry(id: "git.branch.changes", title: "Show Changes") { [weak self] in
-                self?.layout.panels.show(Self.panelID)
-            },
-            ToolbarMenuEntry(id: "git.branch.history", title: "Show History") { [weak self] in
-                self?.layout.panels.show(Self.historyPanelID)
-            },
-        ])
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let target = model.commitTarget?.id
+        let repos = model.groups.map { group in
+            GitBranchMenu.Repo(
+                id: group.top.id, name: group.top.repo.name,
+                main: menuCopy(group.top, top: nil, target: target, home: home),
+                worktrees: group.children.map { menuCopy($0, top: group.top.repo.url, target: target, home: home) },
+                branches: model.refs[group.top.id] ?? [])
+        }
+        var actions = GitBranchMenu.Actions()
+        actions.showChanges = { [weak self] id in
+            self?.layout.panels.show(Self.panelID)
+            self?.showChanges(of: id)
+        }
+        actions.compare = { [weak self] id in
+            guard let self else { return }
+            if let base = defaultCompareBase(for: id) {
+                compare(id, with: base)
+            } else {
+                chooseCompareBase(id)
+            }
+        }
+        actions.checkOutInMain = { [weak self] in self?.checkOutHere($0) }
+        actions.reveal = { [weak self] id in
+            guard let url = self?.model.section(id)?.repo.url else { return }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+        actions.removeWorktree = { [weak self] in self?.removeWorktree($0) }
+        actions.checkout = { [weak self] branch, id in self?.checkout(branch, in: id) }
+        actions.fetch = { [weak self] in self?.fetch(in: $0) }
+        actions.pull = { [weak self] in self?.pull(in: $0) }
+        actions.push = { [weak self] in self?.push(in: $0) }
+        actions.newBranch = { [weak self] in self?.newBranch(in: $0) }
+        actions.stash = { [weak self] in self?.stash(includeUntracked: false, in: $0) }
+        return ToolbarMenu(
+            entries: GitBranchMenu.entries(
+                repos, compareBase: { [weak self] in self?.defaultCompareBase(for: $0) }, actions: actions),
+            filter: "Filter branches and worktrees")
+    }
+
+    private func menuCopy(_ section: GitModel.Section, top: URL?, target: String?, home: URL) -> GitBranchMenu.Copy {
+        let sessions = model.agentSessions(in: section.id)
+        let badge: ToolbarBadge =
+            sessions.contains(where: \.isMarked)
+            ? .dot(.orange) : sessions.contains(where: \.isRunning) ? .dot(.green) : .none
+        return GitBranchMenu.Copy(
+            id: section.id, head: section.status.map(GitRepoSectionView.headText) ?? section.repo.name,
+            path: GitBranchMenu.displayPath(section.repo.url, relativeTo: top, home: home),
+            ahead: section.status?.ahead ?? 0, agents: sessions.map(\.title), agentBadge: badge,
+            isCurrent: section.id == target, isLocked: section.repo.lockReason != nil)
     }
 
     isolated deinit {
@@ -425,6 +468,10 @@ final class GitFeature {
             model.setStatus(id, status)
             if let output = try? await client.run(GitCommand.stashList) {
                 model.setStashes(id, RefParser.stashes(output.stdout))
+            }
+            // git R40: the branch menu opens on what was read last, without waiting for git.
+            if section.repo.parent == nil, let output = try? await client.run(GitCommand.branches) {
+                model.setRefs(id, RefParser.branches(output.stdout))
             }
             let change = GitStatusChange(repo: section.repo, statuses: status.fileStatuses)
             for continuation in statusSubscribers.values {

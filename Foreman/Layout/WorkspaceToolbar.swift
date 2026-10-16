@@ -16,6 +16,8 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
     /// (bug: the second window crashed, 2026-08-27).
     private let toolbar = NSToolbar(identifier: "dev.crafters.foreman.toolbar.\(UUID().uuidString)")
     private var menuItemsByMenu: [ObjectIdentifier: String] = [:]
+    /// git R40: the filter of the menu open now, when it has one.
+    private var filter: ToolbarMenuFilter?
 
     init(layout: LayoutManager, theme: ThemeService) {
         self.layout = layout
@@ -178,17 +180,27 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard let id = menuItemsByMenu[ObjectIdentifier(menu)], let descriptor = layout.toolbarItem(id) else { return }
-        let entries: [ToolbarMenuEntry]
+        var content = ToolbarMenu(entries: [])
         switch descriptor.kind {
         case .menu(let provider):
-            entries = provider()
+            content.entries = provider()
         case .action(_, let secondaryMenu):
-            entries = secondaryMenu?() ?? []
+            content.entries = secondaryMenu?() ?? []
         case .widget(_, let provider):
-            entries = provider().entries
+            content = provider()
         }
         menu.removeAllItems()
-        fill(menu, with: entries)
+        filter = nil
+        if let placeholder = content.filter {
+            let filter = ToolbarMenuFilter(menu: menu, placeholder: placeholder)
+            menu.addItem(filter.item)
+            self.filter = filter
+        }
+        fill(menu, with: content.entries)
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        filter?.focus()
     }
 
     private func fill(_ menu: NSMenu, with entries: [ToolbarMenuEntry]) {

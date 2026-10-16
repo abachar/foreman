@@ -295,3 +295,102 @@ struct GitWorktreeRepoTests {
         #expect(head.trimmingCharacters(in: .whitespacesAndNewlines) == "fix")
     }
 }
+
+/// git R40 (2026-10-16, M21 21.4): the branch widget's menu as a value.
+@MainActor
+struct GitBranchMenuTests {
+    private func copy(
+        _ id: String, _ head: String, path: String = "", ahead: Int = 0, agents: [String] = [],
+        current: Bool = false
+    ) -> GitBranchMenu.Copy {
+        GitBranchMenu.Copy(
+            id: id, head: head, path: path, ahead: ahead, agents: agents,
+            agentBadge: agents.isEmpty ? .none : .dot(.green), isCurrent: current, isLocked: false)
+    }
+
+    private func branch(_ name: String, remote: Bool = false, upstream: String? = nil) -> GitBranch {
+        GitBranch(
+            name: name, ref: remote ? "refs/remotes/\(name)" : "refs/heads/\(name)", upstream: upstream,
+            isCurrent: false)
+    }
+
+    private var repo: GitBranchMenu.Repo {
+        GitBranchMenu.Repo(
+            id: "api", name: "orders-api",
+            main: copy("api", "main", path: "~/Projects/orders-api", ahead: 1, current: true),
+            worktrees: [copy("wt", "feat/lines", path: "../orders-api-wt/lines", ahead: 2, agents: ["Claude Code"])],
+            branches: [
+                branch("main", upstream: "origin/main"), branch("feat/lines"), branch("release/1.4"),
+                branch("origin/HEAD", remote: true), branch("origin/main", remote: true),
+            ])
+    }
+
+    @Test func listsWorktreesThenLocalThenRemoteThenTheActions() {
+        let entries = GitBranchMenu.entries([repo], compareBase: { _ in "main" }, actions: .init())
+        #expect(
+            entries.map(\.title) == [
+                "Worktrees", "main", "feat/lines", "Local branches", "main", "feat/lines", "release/1.4", "Remote",
+                "origin/main", "Fetch", "Pull", "Push", "New branch…", "Stash changes…",
+            ])
+        #expect(entries.filter(\.isHeader).map(\.title) == ["Worktrees", "Local branches", "Remote"])
+        #expect(entries[1].isChecked)
+        #expect(entries[1].subtitle == "~/Projects/orders-api \u{00B7} \u{2191}1")
+        #expect(entries[2].subtitle == "../orders-api-wt/lines \u{00B7} \u{2191}2 \u{00B7} Claude Code")
+        #expect(entries[2].badge == .dot(.green))
+        #expect(
+            entries[2].children.map(\.title) == [
+                "Compare with main", "Check out in main folder", "Reveal in Finder", "Remove worktree…",
+            ])
+        // The current branch is checked; the one a worktree holds says so.
+        #expect(entries[4].isChecked)
+        #expect(entries[4].subtitle == "origin/main")
+        #expect(entries[5].subtitle == "worktree")
+        #expect(entries.first { $0.title == "Push" }?.subtitle == "1 commit")
+        #expect(entries.first { $0.title == "Fetch" }?.startsSection == true)
+    }
+
+    @Test func aBranchHeldByAWorktreeLeadsToItsChanges() {
+        var shown: [String] = []
+        var checkedOut: [String] = []
+        var actions = GitBranchMenu.Actions()
+        actions.showChanges = { shown.append($0) }
+        actions.checkout = { branch, _ in checkedOut.append(branch.name) }
+        let entries = GitBranchMenu.entries([repo], compareBase: { _ in nil }, actions: actions)
+        entries.first { $0.id.hasSuffix("refs/heads/feat/lines") }?.perform()
+        entries.first { $0.id.hasSuffix("refs/heads/release/1.4") }?.perform()
+        #expect(shown == ["wt"])
+        #expect(checkedOut == ["release/1.4"])
+    }
+
+    @Test func severalReposGetASubmenuEach() {
+        let second = GitBranchMenu.Repo(id: "web", name: "web", main: copy("web", "dev"), worktrees: [], branches: [])
+        let entries = GitBranchMenu.entries([repo, second], compareBase: { _ in nil }, actions: .init())
+        #expect(entries.map(\.title) == ["orders-api", "web"])
+        #expect(entries[1].children.map(\.title) == ["Fetch", "Pull", "Push", "New branch…", "Stash changes…"])
+        #expect(entries[1].children.first?.startsSection == false)
+    }
+
+    @Test func pathsAreShortenedUnderTheHomeAndBesideTheRepo() {
+        let home = URL(filePath: "/Users/me")
+        #expect(GitBranchMenu.displayPath(URL(filePath: "/Users/me/p/api"), relativeTo: nil, home: home) == "~/p/api")
+        #expect(
+            GitBranchMenu.displayPath(
+                URL(filePath: "/Users/me/p/api-wt/x"), relativeTo: URL(filePath: "/Users/me/p/api"), home: home)
+                == "../api-wt/x")
+        #expect(GitBranchMenu.displayPath(URL(filePath: "/opt/x"), relativeTo: nil, home: home) == "/opt/x")
+    }
+
+    @Test func theFilterKeepsMatchesAndTheirHeaders() {
+        let rows: [ToolbarMenuFilter.Row] = [
+            .header, .item(["main", "~/p"]), .item(["feat/lines", "../wt"]), .separator, .header,
+            .item(["release/1.4"]), .separator, .item(["Fetch"]),
+        ]
+        #expect(ToolbarMenuFilter.visibility(of: rows, query: "") == Array(repeating: true, count: 8))
+        #expect(
+            ToolbarMenuFilter.visibility(of: rows, query: "LINES")
+                == [true, false, true, false, false, false, false, false])
+        #expect(
+            ToolbarMenuFilter.visibility(of: rows, query: "1.4")
+                == [false, false, false, false, true, true, false, false])
+    }
+}

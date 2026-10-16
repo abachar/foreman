@@ -37,8 +37,9 @@ struct ToolbarItemDescriptor {
 /// What a widget's menu holds (layout R30, git branch menu).
 struct ToolbarMenu {
     var entries: [ToolbarMenuEntry]
-    /// A filter field on top that hides the entries whose title does not contain its text.
-    var isFilterable = false
+    /// A filter field on top, with this placeholder, that hides the entries not containing its
+    /// text (`ToolbarMenuFilter`); `nil` for none.
+    var filter: String?
 }
 
 /// One line of a toolbar menu (layout R30).

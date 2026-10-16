@@ -339,6 +339,14 @@ final class GitModel {
         update(id) { $0.authRequired = value }
     }
 
+    /// git R40: each top-level repo's branches, read with its status, for the branch menu.
+    private(set) var refs: [String: [GitBranch]] = [:]
+
+    func setRefs(_ id: String, _ branches: [GitBranch]) {
+        guard refs[id] != branches else { return }
+        refs[id] = branches
+    }
+
     func setStashes(_ id: String, _ stashes: [GitStash]) {
         update(id) { $0.stashes = stashes }
     }
