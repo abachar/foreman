@@ -33,10 +33,15 @@ struct StatusBarView: View {
             toggle(.left, icon: "sidebar.left", help: "Left Panel")
             toggle(.bottom, icon: "rectangle.bottomthird.inset.filled", help: "Bottom Panel")
             toggle(.right, icon: "sidebar.right", help: "Right Panel")
-            if let tab, let counts = descriptor?.problemCounts(tab.id) {
+            if let counts = tab.flatMap({ descriptor?.problemCounts($0.id) }) ?? layout.projectProblemCounts?() {
                 tokens.border.color.frame(width: 1, height: 14)
                     .padding(.horizontal, 8)
-                counters(counts)
+                Button {
+                    layout.showProblems?()
+                } label: {
+                    counters(counts)
+                }
+                .buttonStyle(.plain)
             }
             Spacer(minLength: 8)
             if let tab, let items = descriptor?.statusItems(tab.id) {
@@ -95,6 +100,6 @@ struct StatusBarView: View {
                 Text("\(counts.warnings)")
             }
         }
-        .help("Errors and warnings in this file")
+        .help("Errors and warnings — click to open Problems")
     }
 }

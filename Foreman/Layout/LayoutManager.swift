@@ -174,6 +174,13 @@ final class LayoutManager {
     /// (R33): unset, the double click does nothing.
     var onNewTab: (() -> Void)?
 
+    /// layout R39 (amended 2026-10-16): what a click on the status bar's counters does.
+    ///
+    /// It shows the editor's Problems panel; the project's counters stand in for a tab that is not
+    /// a file. Set by the feature that owns the diagnostics; the layout knows no panel by name.
+    var showProblems: (() -> Void)?
+    var projectProblemCounts: (() -> ProblemCounts)?
+
     /// layout R38: an untitled tab in `group` — the group takes the focus first, so the tab opens
     /// where it was asked for and not in the one that happened to be active.
     func newTab(in group: GroupID) {

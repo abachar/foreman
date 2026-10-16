@@ -57,7 +57,9 @@ final class LSPServers {
     }
 
     /// editor R40, R41: a file's diagnostics after the version filter; set by `EditorFeature`.
-    var onDiagnostics: ((URL, [EditorDiagnostic]) -> Void)?
+    ///
+    /// The last argument names the server (its binary), for the Problems panel (R50).
+    var onDiagnostics: ((URL, [EditorDiagnostic], String) -> Void)?
 
     /// Test seam: how many tabs hold each open document (editor R37).
     var openDocuments: [DocumentUri: Int] {
@@ -229,7 +231,7 @@ final class LSPServers {
     /// binary, and whether it runs, is starting or failed (R39); `nil` for a file without one.
     func status(for url: URL) -> StatusItem? {
         guard let entry = config().entry(for: url) else { return nil }
-        let name = FormatterCatalog.binary(of: entry.command)
+        let name = Self.displayName(of: entry.command)
         let server = servers[ServerKey(command: entry.command, cwd: entry.cwd)]
         if let failure = server?.failure {
             return StatusItem(id: "editor.lsp", text: name, dot: .red, help: failure)
@@ -238,6 +240,17 @@ final class LSPServers {
         return StatusItem(
             id: "editor.lsp", text: name, dot: isRunning ? .green : .orange,
             help: isRunning ? "\(name) is running" : "\(name) is starting")
+    }
+
+    /// layout R39, editor R50: the server as the status bar and Problems name it — its binary,
+    /// past a launcher (`xcrun sourcekit-lsp` is `sourcekit-lsp`, `npx tsserver` is `tsserver`).
+    nonisolated static func displayName(of command: String) -> String {
+        let launchers: Set<String> = ["xcrun", "npx", "bunx", "pnpx", "env"]
+        let words = command.split(separator: " ").map {
+            ($0 as Substring).split(separator: "/").last.map(String.init) ?? ""
+        }
+        return words.first { !launchers.contains($0) && !$0.hasPrefix("-") && !$0.contains("=") }
+            ?? FormatterCatalog.binary(of: command)
     }
 
     /// editor R39: why this file has no LSP, once, or `nil` when it has one or wants none.
@@ -287,21 +300,29 @@ final class LSPServers {
     private func make(_ key: ServerKey, cwd: URL, catalog: LSPCatalog) -> LSPServer {
         let server = LSPServer(
             command: key.command, root: cwd, timeout: catalog.timeout, environment: environment)
+        let name = Self.displayName(of: key.command)
         server.onDiagnostics = { [weak self] uri, version, diagnostics in
-            self?.publish(uri: uri, version: version, diagnostics: diagnostics)
+            self?.publish(uri: uri, version: version, diagnostics: diagnostics, server: name)
         }
         servers[key] = server
         return server
     }
 
-    /// editor R40: a batch is dropped when its version is stale or its URI has no open tab.
+    /// editor R40: a batch is dropped when its version is stale.
     ///
     /// The version is the server's echo of the one Foreman sent with the last `didChange`; a
     /// server that sends none (they are allowed to) is trusted, since there is nothing to compare.
-    private func publish(uri: DocumentUri, version: Int?, diagnostics: [Diagnostic]) {
-        guard let document = documents[uri] else { return }
+    /// **Amended 2026-10-16** (R50): a batch about a file no tab has open is kept too — a project
+    /// server (jdtls) reports the whole project, and the Problems panel lists it.
+    private func publish(uri: DocumentUri, version: Int?, diagnostics: [Diagnostic], server: String) {
+        guard let document = documents[uri] else {
+            if let url = URL(string: uri), url.isFileURL {
+                onDiagnostics?(url, diagnostics.map(Self.convert), server)
+            }
+            return
+        }
         guard Self.isCurrent(version, of: document.version) else { return }
-        onDiagnostics?(document.url, diagnostics.map(Self.convert))
+        onDiagnostics?(document.url, diagnostics.map(Self.convert), server)
     }
 
     /// editor R40: whether a batch stamped `version` still describes the text at `current`.

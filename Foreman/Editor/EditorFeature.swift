@@ -9,6 +9,8 @@ import os
 final class EditorFeature {
     static let tabKind = "editor.file"
     static let searchPanelID: PanelID = "editor.search"
+    /// editor R51 (2026-10-16): the bottom slot's Problems tab.
+    static let problemsPanelID: PanelID = "editor.problems"
 
     private let layout: LayoutManager
     let workspace: Workspace
@@ -25,6 +27,10 @@ final class EditorFeature {
     let lsp: LSPServers
     /// editor R47: the workspace's stylesheets, indexed at the first `cmd+click` that needs them.
     let selectors: SelectorIndex
+    /// editor R50: every diagnostic the servers published, per file.
+    let problems = DiagnosticsStore()
+    /// editor R51: the Problems panel's filters.
+    let problemsPanel = ProblemsPanelModel()
     /// editor R41, R42: one popover for the whole window, whichever tab asked for it.
     let hoverPopover = HoverPopover()
     /// editor R42: the pending hover, cancelled by the next movement.
@@ -82,6 +88,38 @@ final class EditorFeature {
         publishRecents()
         watchDisk()
         registerSearchPanel()
+        registerProblemsPanel()
+    }
+
+    // MARK: - Problems (editor R50–R52)
+
+    private func registerProblemsPanel() {
+        let store = problems
+        let model = problemsPanel
+        layout.register(
+            panel: PanelDescriptor(
+                id: Self.problemsPanelID, title: "Problems", side: .bottom, icon: "exclamationmark.triangle",
+                order: 3,
+                badge: { [weak self] in
+                    guard let self else { return .none }
+                    let counts = store.projectCounts
+                    let config = workspace.configErrors.count + layout.shortcuts.problems.count
+                    let total = counts.errors + counts.warnings + config
+                    return total == 0 ? .none : .count(total, counts.errors + config > 0 ? .red : .orange)
+                },
+                makeView: { [weak self, layout, theme] in
+                    guard let self else { return AnyView(EmptyView()) }
+                    return AnyView(
+                        ProblemsPanelView(store: store, model: model, editor: self, layout: layout, theme: theme))
+                }))
+        // layout R39 (amended 2026-10-16): the status bar's counters open Problems on the current
+        // file; on a tab that is not a file they count the project.
+        layout.showProblems = { [weak self] in
+            guard let self else { return }
+            problemsPanel.filter.scope = activeTab == nil ? .project : .currentFile
+            layout.panels.show(Self.problemsPanelID)
+        }
+        layout.projectProblemCounts = { [weak self] in self?.problems.projectCounts ?? ProblemCounts() }
     }
 
     // MARK: - Content search (editor R20–R22)
@@ -813,12 +851,10 @@ final class EditorFeature {
         return items
     }
 
-    /// layout (status bar): the tab's errors and warnings (editor R40).
+    /// layout (status bar): the tab's errors and warnings (editor R40, R50).
     private func problemCounts(_ id: TabID) -> ProblemCounts? {
         guard let tab = tabs[id] else { return nil }
-        return ProblemCounts(
-            errors: tab.diagnostics.count { $0.severity == .error },
-            warnings: tab.diagnostics.count { $0.severity == .warning })
+        return Problems.counts(tab.diagnostics)
     }
 
     private func serialize(_ id: TabID) -> String? {

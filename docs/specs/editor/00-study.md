@@ -63,6 +63,12 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 - R21 — Results grouped by file, expanded, one row per match with the match highlighted; a click or `enter` opens the file at the line (as a preview), `cmd+enter` pins it. Cap of 2,000 matches (a "results truncated" message). A running search is cancelled by the next one or by closing the panel.
 - R22 — No multi-file replace in v1 (`sed`/`rg` in the terminal).
 
+### Problems (2026-10-16, M21 21.7, reference views 12 and 13)
+
+- R50 — **A diagnostics store** keeps, per file, the last list a language server published (R40) — for every file the server speaks about, open in a tab or not (a project server such as `jdtls` reports the whole project); a publication replaces the file's list, an empty one clears it, closing a tab leaves it as the server last said it. Each list carries the server's name (its binary past a launcher: `xcrun sourcekit-lsp` is `sourcekit-lsp`). Errors and warnings are problems; information and hints are not counted nor listed.
+- R51 — **The Problems panel** (`editor.problems`, the bottom slot's fourth tab, `layout` R2; its tab carries the number of problems, red with an error, orange otherwise): a scope *Current file* (the active tab's file) / *Project*, an error and a warning filter each showing its count for the scope, a message filter; then one group per file — its icon, name, folder and count; the files with an error first, then by path — each row the severity icon, the message, the server, `line:column`; the **Foreman config** group comes first in the *Project* scope, holding the config's errors (`config` R7) and the shortcut problems (`layout` R24). A click opens the file at the line, as a preview.
+- R52 — The status bar's ⊗ / ⚠ counters (`layout` R39) are the active file's from the store, and the project's on a tab that is not a file; a click on them shows Problems on *Current file* (on *Project* when the active tab is not a file).
+
 ### Shortcuts
 
 - R23 — The editor's shortcuts (`cmd+s`, `cmd+f`, `cmd+z`, `cmd+/`, `cmd+l`, `cmd+shift+v`…) are declared to the `ShortcutRegistry` with the scope **`editor.file` tab active**: they capture nothing while a terminal has the focus (`layout` R25). `cmd+p` and `cmd+shift+f` are global.

@@ -150,11 +150,13 @@ extension EditorFeature {
     ///
     /// Installed once, with the feature: the servers are the workspace's, not a tab's.
     func routeDiagnostics() {
-        lsp.onDiagnostics = { [weak self] url, diagnostics in
+        lsp.onDiagnostics = { [weak self] url, diagnostics, server in
             guard let self else { return }
             for tab in tabsShowing(url) {
                 tab.diagnostics = diagnostics
             }
+            // editor R50: every file the server spoke about, for the Problems panel.
+            problems.publish(diagnostics, for: url, source: server)
         }
     }
 
