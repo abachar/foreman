@@ -183,6 +183,17 @@ final class AgentsFeature {
         spawn(id, cwd: workspace.root)
     }
 
+    /// git R41 (2026-10-17): the agents shown in the toolbar, for the branch menu's
+    /// *Open terminal agent here*.
+    var shownAgents: [(id: String, title: String)] {
+        visibleIDs.compactMap { id in agent(id).map { (id, $0.title) } }
+    }
+
+    /// git R41: a new session of `id` in `folder` (a worktree), as the button does at the root.
+    func launch(_ id: String, in folder: URL) {
+        spawn(id, cwd: folder)
+    }
+
     /// git R34c: a click on an agent badge of the Changes panel.
     func activate(_ tab: TabID) {
         guard let owner = layout.model.owner(of: tab) else { return }

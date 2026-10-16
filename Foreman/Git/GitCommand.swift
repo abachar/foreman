@@ -139,6 +139,12 @@ nonisolated enum GitCommand {
     }
 
     /// git R36b: the base a three-dot diff starts from.
+    /// git R41 (2026-10-17): a worktree's branch merged into the main folder's, always as a merge
+    /// commit so the branch stays readable in the history.
+    static func merge(_ branch: String) -> [String] {
+        ["merge", "--no-ff", "--no-edit", branch]
+    }
+
     static func mergeBase(_ base: String, _ head: String) -> [String] {
         ["merge-base", base, head]
     }

@@ -42,54 +42,80 @@ enum GitBranchMenu {
         var push: (String) -> Void = { _ in }
         var newBranch: (String) -> Void = { _ in }
         var stash: (String) -> Void = { _ in }
+        /// git R40 (amended 2026-10-17): the three entries of M22 22.2.
+        var newWorktree: (String) -> Void = { _ in }
+        var merge: (String) -> Void = { _ in }
+        var openAgent: (_ agent: String, _ copy: String) -> Void = { _, _ in }
+    }
+
+    /// An agent of `config.agents` a worktree can be opened in (agents R2).
+    struct Agent: Equatable {
+        let id: String
+        let title: String
     }
 
     /// One repo: its entries inline; several: one submenu each, named after the repo.
     @MainActor
-    static func entries(_ repos: [Repo], compareBase: (String) -> String?, actions: Actions) -> [ToolbarMenuEntry] {
+    static func entries(
+        _ repos: [Repo], agents: [Agent] = [], compareBase: (String) -> String?, actions: Actions
+    ) -> [ToolbarMenuEntry] {
         guard repos.count > 1 else {
-            return repos.first.map { entries(of: $0, compareBase: compareBase, actions: actions) } ?? []
+            return repos.first.map { entries(of: $0, agents: agents, compareBase: compareBase, actions: actions) } ?? []
         }
         return repos.map { repo in
             ToolbarMenuEntry(
                 id: "git.menu.repo.\(repo.id)", title: repo.name, subtitle: repo.main.head,
-                children: entries(of: repo, compareBase: compareBase, actions: actions), perform: {})
+                children: entries(of: repo, agents: agents, compareBase: compareBase, actions: actions), perform: {})
         }
     }
 
     @MainActor
-    static func entries(of repo: Repo, compareBase: (String) -> String?, actions: Actions) -> [ToolbarMenuEntry] {
+    static func entries(
+        of repo: Repo, agents: [Agent] = [], compareBase: (String) -> String?, actions: Actions
+    ) -> [ToolbarMenuEntry] {
         var entries: [ToolbarMenuEntry] = []
-        // Worktrees: the main folder first, then each worktree with its submenu.
+        // Worktrees: the main folder first, then each worktree with its submenu, then *New worktree…*.
+        entries.append(header("Worktrees", in: repo))
         if !repo.worktrees.isEmpty {
-            entries.append(header("Worktrees", in: repo))
             entries.append(row(repo.main, in: repo, actions: actions))
             for copy in repo.worktrees {
                 var entry = row(copy, in: repo, actions: actions)
                 let base = compareBase(copy.id) ?? repo.main.head
-                entry.children = [
-                    ToolbarMenuEntry(id: "git.menu.compare.\(copy.id)", title: "Compare with \(base)") {
-                        actions.compare(copy.id)
-                    },
-                    ToolbarMenuEntry(id: "git.menu.checkout-main.\(copy.id)", title: "Check out in main folder") {
-                        actions.checkOutInMain(copy.id)
-                    },
-                    ToolbarMenuEntry(
-                        id: "git.menu.reveal.\(copy.id)", title: "Reveal in Finder", startsSection: true
-                    ) { actions.reveal(copy.id) },
-                    ToolbarMenuEntry(
-                        id: "git.menu.remove.\(copy.id)", title: "Remove worktree…", isEnabled: !copy.isLocked
-                    ) { actions.removeWorktree(copy.id) },
-                ]
+                entry.children =
+                    agentEntries(agents, copy: copy, actions: actions) + [
+                        ToolbarMenuEntry(
+                            id: "git.menu.compare.\(copy.id)", title: "Compare with \(base)",
+                            startsSection: !agents.isEmpty
+                        ) {
+                            actions.compare(copy.id)
+                        },
+                        ToolbarMenuEntry(id: "git.menu.checkout-main.\(copy.id)", title: "Check out in main folder") {
+                            actions.checkOutInMain(copy.id)
+                        },
+                        ToolbarMenuEntry(id: "git.menu.merge.\(copy.id)", title: "Merge into \(base)…") {
+                            actions.merge(copy.id)
+                        },
+                        ToolbarMenuEntry(
+                            id: "git.menu.reveal.\(copy.id)", title: "Reveal in Finder", startsSection: true
+                        ) { actions.reveal(copy.id) },
+                        ToolbarMenuEntry(
+                            id: "git.menu.remove.\(copy.id)", title: "Remove worktree…", isEnabled: !copy.isLocked
+                        ) { actions.removeWorktree(copy.id) },
+                    ]
                 entries.append(entry)
             }
         }
+        entries.append(
+            ToolbarMenuEntry(id: "git.menu.new-worktree.\(repo.id)", title: "New worktree…") {
+                actions.newWorktree(repo.id)
+            })
         // Branches: local then remote; a branch another worktree holds says so and leads there.
         let held = Dictionary(
             repo.worktrees.map { ($0.head, $0.id) } + [(repo.main.head, repo.main.id)]
         ) { first, _ in first }
         let local = repo.branches.filter { !$0.isRemote }
-        let remote = repo.branches.filter { $0.isRemote && !$0.name.hasSuffix("/HEAD") }
+        // `refs/remotes/origin/HEAD` reads as a bare `origin`: it is left out by its ref.
+        let remote = repo.branches.filter { $0.isRemote && !$0.ref.hasSuffix("/HEAD") }
         if !local.isEmpty {
             var first = header("Local branches", in: repo)
             first.startsSection = !entries.isEmpty
@@ -135,6 +161,41 @@ enum GitBranchMenu {
         entries.append(
             ToolbarMenuEntry(id: "git.menu.stash.\(repo.id)", title: "Stash changes…") { actions.stash(repo.id) })
         return entries
+    }
+
+    /// *Open terminal agent here*: the entry itself with one agent, a submenu with several.
+    @MainActor
+    private static func agentEntries(_ agents: [Agent], copy: Copy, actions: Actions) -> [ToolbarMenuEntry] {
+        guard agents.count > 1 else {
+            return agents.map { agent in
+                ToolbarMenuEntry(
+                    id: "git.menu.agent.\(copy.id).\(agent.id)", title: "Open \(agent.title) here"
+                ) { actions.openAgent(agent.id, copy.id) }
+            }
+        }
+        return [
+            ToolbarMenuEntry(
+                id: "git.menu.agents.\(copy.id)", title: "Open terminal agent here",
+                children: agents.map { agent in
+                    ToolbarMenuEntry(id: "git.menu.agent.\(copy.id).\(agent.id)", title: agent.title) {
+                        actions.openAgent(agent.id, copy.id)
+                    }
+                }, perform: {})
+        ]
+    }
+
+    /// git R41 (2026-10-17): the folder a new worktree goes to — beside the repo, in
+    /// `<repo>-wt/<branch>` with the branch's slashes turned into dashes (`../orders-api-wt/feat-lines`).
+    nonisolated static func worktreeFolder(repo: URL, branch: String) -> URL {
+        repo.standardizedFileURL.deletingLastPathComponent()
+            .appending(components: "\(repo.lastPathComponent)-wt", branch.replacingOccurrences(of: "/", with: "-"))
+    }
+
+    /// git R41: a merge is refused while the main folder holds tracked changes (untracked files
+    /// are git's own business: it refuses itself when one would be overwritten).
+    nonisolated static func canMerge(into status: GitStatus?) -> Bool {
+        guard let status else { return false }
+        return status.entries.allSatisfy(\.isUntracked)
     }
 
     @MainActor

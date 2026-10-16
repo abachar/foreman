@@ -321,7 +321,8 @@ struct GitBranchMenuTests {
             worktrees: [copy("wt", "feat/lines", path: "../orders-api-wt/lines", ahead: 2, agents: ["Claude Code"])],
             branches: [
                 branch("main", upstream: "origin/main"), branch("feat/lines"), branch("release/1.4"),
-                branch("origin/HEAD", remote: true), branch("origin/main", remote: true),
+                GitBranch(name: "origin", ref: "refs/remotes/origin/HEAD", upstream: nil, isCurrent: false),
+                branch("origin/main", remote: true),
             ])
     }
 
@@ -329,8 +330,8 @@ struct GitBranchMenuTests {
         let entries = GitBranchMenu.entries([repo], compareBase: { _ in "main" }, actions: .init())
         #expect(
             entries.map(\.title) == [
-                "Worktrees", "main", "feat/lines", "Local branches", "main", "feat/lines", "release/1.4", "Remote",
-                "origin/main", "Fetch", "Pull", "Push", "New branch…", "Stash changes…",
+                "Worktrees", "main", "feat/lines", "New worktree…", "Local branches", "main", "feat/lines",
+                "release/1.4", "Remote", "origin/main", "Fetch", "Pull", "Push", "New branch…", "Stash changes…",
             ])
         #expect(entries.filter(\.isHeader).map(\.title) == ["Worktrees", "Local branches", "Remote"])
         #expect(entries[1].isChecked)
@@ -339,12 +340,13 @@ struct GitBranchMenuTests {
         #expect(entries[2].badge == .dot(.green))
         #expect(
             entries[2].children.map(\.title) == [
-                "Compare with main", "Check out in main folder", "Reveal in Finder", "Remove worktree…",
+                "Compare with main", "Check out in main folder", "Merge into main…", "Reveal in Finder",
+                "Remove worktree…",
             ])
         // The current branch is checked; the one a worktree holds says so.
-        #expect(entries[4].isChecked)
-        #expect(entries[4].subtitle == "origin/main")
-        #expect(entries[5].subtitle == "worktree")
+        #expect(entries[5].isChecked)
+        #expect(entries[5].subtitle == "origin/main")
+        #expect(entries[6].subtitle == "worktree")
         #expect(entries.first { $0.title == "Push" }?.subtitle == "1 commit")
         #expect(entries.first { $0.title == "Fetch" }?.startsSection == true)
     }
@@ -366,8 +368,46 @@ struct GitBranchMenuTests {
         let second = GitBranchMenu.Repo(id: "web", name: "web", main: copy("web", "dev"), worktrees: [], branches: [])
         let entries = GitBranchMenu.entries([repo, second], compareBase: { _ in nil }, actions: .init())
         #expect(entries.map(\.title) == ["orders-api", "web"])
-        #expect(entries[1].children.map(\.title) == ["Fetch", "Pull", "Push", "New branch…", "Stash changes…"])
-        #expect(entries[1].children.first?.startsSection == false)
+        #expect(
+            entries[1].children.map(\.title) == [
+                "Worktrees", "New worktree…", "Fetch", "Pull", "Push", "New branch…", "Stash changes…",
+            ])
+    }
+
+    /// git R41 (2026-10-17): one agent is an entry, several a submenu, first in a worktree's submenu.
+    @Test func aWorktreeOpensAnAgentAndMergesIntoItsBase() {
+        var opened: [String] = []
+        var merged: [String] = []
+        var actions = GitBranchMenu.Actions()
+        actions.openAgent = { agent, copy in opened.append("\(agent)@\(copy)") }
+        actions.merge = { merged.append($0) }
+        let one = GitBranchMenu.entries(
+            [repo], agents: [.init(id: "claude", title: "Claude Code")], compareBase: { _ in "main" }, actions: actions)
+        let submenu = one[2].children
+        #expect(submenu.map(\.title).prefix(2) == ["Open Claude Code here", "Compare with main"])
+        #expect(submenu[1].startsSection)
+        submenu[0].perform()
+        submenu.first { $0.title == "Merge into main…" }?.perform()
+        #expect(opened == ["claude@wt"])
+        #expect(merged == ["wt"])
+
+        let two = GitBranchMenu.entries(
+            [repo], agents: [.init(id: "claude", title: "Claude Code"), .init(id: "pi", title: "Pi")],
+            compareBase: { _ in nil }, actions: actions)
+        #expect(two[2].children.first?.title == "Open terminal agent here")
+        #expect(two[2].children.first?.children.map(\.title) == ["Claude Code", "Pi"])
+    }
+
+    @Test func aNewWorktreeGoesBesideTheRepoAndAMergeNeedsACleanMainFolder() {
+        #expect(
+            GitBranchMenu.worktreeFolder(repo: URL(filePath: "/p/orders-api"), branch: "feat/order-lines")
+                == URL(filePath: "/p/orders-api-wt/feat-order-lines"))
+        #expect(GitCommand.merge("feat/x") == ["merge", "--no-ff", "--no-edit", "feat/x"])
+        let untracked = GitStatusEntry(path: "new.txt", index: .untracked, worktree: .untracked)
+        let modified = GitStatusEntry(path: "a.swift", index: .unmodified, worktree: .modified)
+        #expect(GitBranchMenu.canMerge(into: GitStatus(head: .branch("main"), entries: [untracked])))
+        #expect(!GitBranchMenu.canMerge(into: GitStatus(head: .branch("main"), entries: [untracked, modified])))
+        #expect(!GitBranchMenu.canMerge(into: nil))
     }
 
     @Test func pathsAreShortenedUnderTheHomeAndBesideTheRepo() {

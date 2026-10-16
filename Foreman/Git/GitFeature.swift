@@ -165,6 +165,57 @@ final class GitFeature {
                 deactivate: { [weak self] in self?.history.reload(with: nil) }))
     }
 
+    // MARK: - Worktrees from the branch menu (git R41, M22 22.2)
+
+    /// The agents a worktree can be opened in, and how to open one in a folder; set by the window
+    /// (architecture: features call each other through closures, agents R5).
+    var agents: (() -> [GitBranchMenu.Agent])?
+    var launchAgent: ((String, URL) -> Void)?
+
+    /// git R41: a branch name asked for, a new branch from `HEAD` checked out in a worktree beside
+    /// the repo (`<repo>-wt/<branch>`).
+    func newWorktree(in id: String) {
+        guard let repo = model.section(id)?.repo else { return }
+        askText("New Worktree of \u{201c}\(repo.name)\u{201d}", placeholder: "branch-name") { [weak self] branch in
+            let folder = GitBranchMenu.worktreeFolder(repo: repo.url, branch: branch)
+            Task {
+                do throws(GitError) {
+                    try await self?.addWorktree(in: repo.url, folder: folder, branch: branch)
+                    self?.model.setActionError(id, nil)
+                } catch {
+                    self?.model.setActionError(id, error)
+                }
+                await self?.discoverAndRefresh()
+            }
+        }
+    }
+
+    /// git R41: the worktree's branch merged into the main folder, confirmed; refused while the
+    /// main folder holds tracked changes.
+    func mergeIntoMain(_ id: String) {
+        guard let section = model.section(id), let parentID = section.repo.parent, let parent = model.section(parentID),
+            case .branch(let branch) = section.status?.head
+        else { return }
+        let base = parent.status.map(GitRepoSectionView.headText) ?? parent.repo.name
+        guard GitBranchMenu.canMerge(into: parent.status) else {
+            model.setActionError(
+                parentID,
+                .commandFailed(
+                    "\(parent.repo.name) has uncommitted changes: commit or stash them before merging \(branch)."))
+            layout.panels.show(Self.panelID)
+            showChanges(of: parentID)
+            return
+        }
+        confirm(
+            "Merge \u{201c}\(branch)\u{201d} into \u{201c}\(base)\u{201d}?",
+            "git merge --no-ff \(branch), in \(parent.repo.url.path(percentEncoded: false)). A conflict stops the merge "
+                + "and shows in Changes.",
+            "Merge"
+        ) { [weak self] in
+            self?.write([GitCommand.merge(branch)], in: parentID)
+        }
+    }
+
     // MARK: - Branch widget (git, branch menu, M21 21.3–21.4)
 
     static let branchWidgetID = "git.branch"
@@ -218,9 +269,16 @@ final class GitFeature {
         actions.push = { [weak self] in self?.push(in: $0) }
         actions.newBranch = { [weak self] in self?.newBranch(in: $0) }
         actions.stash = { [weak self] in self?.stash(includeUntracked: false, in: $0) }
+        actions.newWorktree = { [weak self] in self?.newWorktree(in: $0) }
+        actions.merge = { [weak self] in self?.mergeIntoMain($0) }
+        actions.openAgent = { [weak self] agent, id in
+            guard let url = self?.model.section(id)?.repo.url else { return }
+            self?.launchAgent?(agent, url)
+        }
         return ToolbarMenu(
             entries: GitBranchMenu.entries(
-                repos, compareBase: { [weak self] in self?.defaultCompareBase(for: $0) }, actions: actions),
+                repos, agents: agents?() ?? [], compareBase: { [weak self] in self?.defaultCompareBase(for: $0) },
+                actions: actions),
             filter: "Filter branches and worktrees")
     }
 

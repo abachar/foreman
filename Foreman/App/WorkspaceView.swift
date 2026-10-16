@@ -86,6 +86,11 @@ struct WorkspaceView: View {
                 git.sendToAgent = { [weak agents] in agents?.send($0) }
                 // git R34c: a click on an agent badge of the Changes panel.
                 git.activateAgentTab = { [weak agents] in agents?.activate($0) }
+                // git R41: the branch menu opens an agent in a worktree.
+                git.agents = { [weak agents] in
+                    agents?.shownAgents.map { GitBranchMenu.Agent(id: $0.id, title: $0.title) } ?? []
+                }
+                git.launchAgent = { [weak agents] id, folder in agents?.launch(id, in: folder) }
                 browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
                 run = RunFeature(
                     layout: layout, workspace: workspace, terminal: terminal, palette: palette, theme: theme)
