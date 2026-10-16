@@ -112,3 +112,28 @@ struct TabGroupTests {
         #expect(threeTabs().tabs(toClose: .all, around: TabID()).isEmpty)
     }
 }
+
+/// The tab bar's *…* menu (layout R16 amended 2026-10-17, M22 22.3).
+@MainActor
+struct TabBarMoreMenuTests {
+    @Test func closingEntriesThenTheSplitsAroundTheActiveTab() {
+        var group = TabGroup()
+        #expect(TabBarView.moreEntries(group).isEmpty)
+        let one = Tab(kind: "demo.hello", title: "one")
+        group.insert(one)
+        let alone = TabBarView.moreEntries(group)
+        #expect(
+            alone.map(\.title) == [
+                "Close", "Close Other Tabs", "Close All Tabs", "Close Unmodified Tabs", "Close Tabs to the Left",
+                "Close Tabs to the Right", "Split Right", "Split Down",
+            ])
+        // R9: one tab alone has nothing to split; nothing beside it to close.
+        #expect(alone.filter(\.isEnabled).map(\.title) == ["Close", "Close All Tabs", "Close Unmodified Tabs"])
+
+        group.insert(Tab(kind: "demo.hello", title: "two"))
+        let two = TabBarView.moreEntries(group)
+        #expect(two.first { $0.title == "Split Right" }?.isEnabled == true)
+        #expect(two.first { $0.title == "Close Tabs to the Left" }?.isEnabled == true)
+        #expect(two.first { $0.title == "Close Tabs to the Right" }?.isEnabled == false)
+    }
+}

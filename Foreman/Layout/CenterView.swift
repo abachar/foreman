@@ -91,7 +91,100 @@ struct TabBarView: View {
 
     var body: some View {
         let tokens = theme.tokens
-        ScrollViewReader { proxy in
+        HStack(spacing: 0) {
+            tabs
+            trailingButtons
+        }
+        .frame(height: tokens.barHeight)
+        // design R16 (amended 2026-10-16, view 02): the bar lies on the island's own surface.
+        .background(tokens.surface.color)
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
+    }
+
+    /// layout R16 (amended 2026-10-17, M22 22.3, view 02): *Split Right* and the *…* menu at the
+    /// right end of the bar, acting on this group.
+    private var trailingButtons: some View {
+        let tokens = theme.tokens
+        let active = group.activeTab
+        return HStack(spacing: 2) {
+            Button {
+                layout.activateGroup(group.id)
+                layout.split(.vertical)
+            } label: {
+                Image(systemName: "rectangle.split.2x1")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(group.tabs.count < 2)
+            .help(Self.help("Split Right", layout.shortcuts.shortcut(for: "layout.split.vertical")))
+            Menu {
+                ForEach(Self.moreEntries(group), id: \.title) { entry in
+                    Button(entry.title) {
+                        guard let active else { return }
+                        layout.activateGroup(group.id)
+                        switch entry.action {
+                        case .close: Task { await layout.closeTab(active) }
+                        case .closeTabs(let selection): Task { await layout.closeTabs(selection, around: active) }
+                        case .split(let orientation): layout.split(orientation)
+                        }
+                    }
+                    .disabled(!entry.isEnabled)
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 24, height: 24)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("More")
+        }
+        .foregroundStyle(tokens.textSecondary.color)
+        .padding(.horizontal, 6)
+    }
+
+    /// One entry of the *…* menu.
+    struct MoreEntry: Equatable {
+        enum Action: Equatable {
+            case close
+            case closeTabs(TabCloseSelection)
+            case split(SplitOrientation)
+        }
+
+        let title: String
+        let action: Action
+        let isEnabled: Bool
+    }
+
+    /// layout R16 (amended 2026-10-17): the *…* menu around the group's active tab — the closing
+    /// entries of the tab menu (R35), then the two splits (R9: two tabs at least).
+    static func moreEntries(_ group: TabGroup) -> [MoreEntry] {
+        guard let active = group.activeTab else { return [] }
+        let canSplit = group.tabs.count > 1
+        return [MoreEntry(title: "Close", action: .close, isEnabled: true)]
+            + TabCloseSelection.allCases.map { selection in
+                MoreEntry(
+                    title: selection.title, action: .closeTabs(selection),
+                    isEnabled: !group.tabs(toClose: selection, around: active).isEmpty)
+            }
+            + [
+                MoreEntry(title: "Split Right", action: .split(.vertical), isEnabled: canSplit),
+                MoreEntry(title: "Split Down", action: .split(.horizontal), isEnabled: canSplit),
+            ]
+    }
+
+    private static func help(_ title: String, _ shortcut: Shortcut?) -> String {
+        shortcut.map { "\(title) (\($0))" } ?? title
+    }
+
+    private var tabs: some View {
+        let tokens = theme.tokens
+        return ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
                     ForEach(group.tabs) { tab in
@@ -141,14 +234,6 @@ struct TabBarView: View {
                 guard let active else { return }
                 proxy.scrollTo(active)
             }
-        }
-        .frame(height: tokens.barHeight)
-        // design R16 (amended 2026-10-16, view 02): the bar lies on the island's own surface.
-        .background(tokens.surface.color)
-        .onGeometryChange(for: CGFloat.self) {
-            $0.size.width
-        } action: {
-            width = $0
         }
     }
 }
