@@ -618,10 +618,22 @@ final class EditorFeature {
     }
 
     private var insertFinalNewline: Bool {
-        struct Section: Decodable {
-            var insertFinalNewline: Bool?
+        (try? workspace.config.section("editor", as: Settings.self))?.insertFinalNewline ?? true
+    }
+
+    /// The `editor` section of `config.json` (`docs/config.md`).
+    nonisolated struct Settings: Decodable, Equatable, Sendable {
+        var insertFinalNewline: Bool?
+        /// editor R53 (2026-10-16): the print margin's column, 0 for none; 120 when absent.
+        var printMargin: Int?
+
+        static let defaultPrintMargin = 120
+
+        /// editor R53: the column to draw, `nil` for none; a negative value reads as none.
+        static func printMargin(in config: WorkspaceConfig) -> Int? {
+            let column = (try? config.section("editor", as: Settings.self))?.printMargin ?? defaultPrintMargin
+            return column > 0 ? column : nil
         }
-        return (try? workspace.config.section("editor", as: Section.self))?.insertFinalNewline ?? true
     }
 
     private func saveActive() {
@@ -825,6 +837,7 @@ final class EditorFeature {
         return AnyView(
             EditorTabView(
                 tab: tab, theme: theme, highlighter: highlighter, root: workspace.root,
+                printMargin: { [weak workspace] in workspace.flatMap { Settings.printMargin(in: $0.config) } },
                 onDirtyChange: { [weak self] in self?.syncDirty(id) },
                 onOpenFile: { [weak self] url in self?.open(url, preview: true) }))
     }

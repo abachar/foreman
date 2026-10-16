@@ -15,6 +15,10 @@ final class LineNumberRulerView: NSRulerView {
     var backgroundColor: NSColor = .clear {
         didSet { needsDisplay = true }
     }
+    /// design R25 (2026-10-16): the 1 pt line between the gutter and the text.
+    var separatorColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
     /// editor R27: a chevron on the first line of every region; folded ones point right.
     var foldRegions: [FoldRegion] = [] {
         didSet { needsDisplay = true }
@@ -74,6 +78,8 @@ final class LineNumberRulerView: NSRulerView {
         backgroundColor.setFill()
         bounds.intersection(dirtyRect).fill()
         drawHashMarksAndLabels(in: dirtyRect)
+        separatorColor.setFill()
+        NSRect(x: bounds.maxX - 1, y: dirtyRect.minY, width: 1, height: dirtyRect.height).fill()
     }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {

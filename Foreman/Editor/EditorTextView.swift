@@ -15,6 +15,8 @@ struct EditorTextView: NSViewRepresentable {
     /// editor R41: passed in rather than read off the tab, so the SwiftUI body observes it and
     /// `updateNSView` runs when a batch arrives.
     let diagnostics: [EditorDiagnostic]
+    /// editor R53: the column of the print margin, `nil` for none.
+    let printMargin: Int?
 
     /// editor R41, design R6: severity to token — the status colours the app already defines.
     static func color(for severity: EditorDiagnostic.Severity, tokens: ThemeService.Tokens) -> NSColor {
@@ -128,6 +130,9 @@ struct EditorTextView: NSViewRepresentable {
             textView.font = theme.editorFont
         }
         Self.paint(textView, ruler: scroll.verticalRulerView as? LineNumberRulerView, tokens: theme.tokens)
+        if textView.printMarginColumn != printMargin {
+            textView.printMarginColumn = printMargin
+        }
         if context.coordinator.reloadVersion != tab.reloadVersion, let document = tab.document {
             // editor R9: silent reload, cursor and scroll preserved.
             context.coordinator.reloadVersion = tab.reloadVersion
@@ -180,8 +185,11 @@ struct EditorTextView: NSViewRepresentable {
         textView.insertionPointColor = tokens.textPrimary.nsColor
         textView.selectedTextAttributes = [.backgroundColor: tokens.accent.nsColor(alpha: 0.35)]
         textView.currentLineColor = tokens.surfaceSunken.nsColor
+        // design R25 (2026-10-16): the print margin and the gutter's edge are separators.
+        textView.printMarginColor = tokens.separator.nsColor
         ruler?.textColor = tokens.textSecondary.nsColor
         ruler?.backgroundColor = background
+        ruler?.separatorColor = tokens.separator.nsColor
     }
 
     @MainActor

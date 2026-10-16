@@ -84,6 +84,7 @@ One object = one connection per workspace. Without `database` and `user` there i
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `insertFinalNewline` | `bool` | `true` | On save. Read on every use. |
+| `printMargin` | `int` | `120` | editor R53 (2026-10-16): the column of the print margin's line; `0` (or less) draws none. Hot-reloaded. |
 
 ## `formatter` — `Editor/FormatterCatalog.swift` (editor R25–R26, R30)
 

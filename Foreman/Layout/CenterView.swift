@@ -58,15 +58,8 @@ struct TabGroupView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay {
-            // layout R17, design R3: the active group is the only thing carrying the accent; a lone
-            // group has nothing to be told apart from, and the stroke follows the island's corners
-            // (decision 2026-08-27).
-            let isMarked = isActive && layout.model.groups.count > 1
-            RoundedRectangle(cornerRadius: tokens.islandRadius)
-                .strokeBorder(isMarked ? tokens.accent.color : .clear, lineWidth: 1)
-                .allowsHitTesting(false)
-        }
+        // layout R17, design R3 (amended 2026-10-16): no stroke around the active group any more;
+        // its active tab's accent rule says which group is active (`TabButton`).
         .contentShape(Rectangle())
         .onTapGesture {
             layout.activateGroup(groupID)
@@ -150,7 +143,8 @@ struct TabBarView: View {
             }
         }
         .frame(height: tokens.barHeight)
-        .background(tokens.surfaceRaised.color)
+        // design R16 (amended 2026-10-16, view 02): the bar lies on the island's own surface.
+        .background(tokens.surface.color)
         .onGeometryChange(for: CGFloat.self) {
             $0.size.width
         } action: {
@@ -191,7 +185,8 @@ extension EventModifiers {
 }
 
 /// design R5, R16: a flat rectangle; active = the island's surface and a 2 pt accent rule on its
-/// bottom edge; the close button only under the mouse.
+/// bottom edge — grey in a group that is not the active one (amended 2026-10-16); the close
+/// button under the mouse, and always on the active tab of the active group (view 02).
 private struct TabButton: View {
     let tab: Tab
     let tokens: ThemeService.Tokens
@@ -234,13 +229,13 @@ private struct TabButton: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(tokens.textSecondary.color)
-            .opacity(isHovered ? 1 : 0)
+            .opacity(isHovered || (isActive && isActiveGroup) ? 1 : 0)
         }
         .padding(.horizontal, 12)
         .frame(minWidth: Self.minimumWidth, maxWidth: Self.maximumWidth, maxHeight: .infinity)
         .background(isActive ? tokens.surface.color : .clear)
         .overlay(alignment: .bottom) {
-            (isActive ? tokens.accent.color : .clear).frame(height: 2)
+            (isActive ? (isActiveGroup ? tokens.accent : tokens.textDisabled).color : .clear).frame(height: 2)
         }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }

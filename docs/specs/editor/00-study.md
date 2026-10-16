@@ -63,6 +63,10 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 - R21 — Results grouped by file, expanded, one row per match with the match highlighted; a click or `enter` opens the file at the line (as a preview), `cmd+enter` pins it. Cap of 2,000 matches (a "results truncated" message). A running search is cancelled by the next one or by closing the panel.
 - R22 — No multi-file replace in v1 (`sed`/`rg` in the terminal).
 
+### Reading aids (2026-10-16, M21 21.8–21.11, reference view 02)
+
+- R53 — **Print margin**: a 1 pt `separator` line at the column `config.editor.printMargin` (120 by default, `0` for none), the full height of the text, under the text; its x is the text's left inset plus `column` times the advance of one character of the editor font. A 1 pt `separator` line also closes the gutter on the text's side (`design` R25).
+
 ### Problems (2026-10-16, M21 21.7, reference views 12 and 13)
 
 - R50 — **A diagnostics store** keeps, per file, the last list a language server published (R40) — for every file the server speaks about, open in a tab or not (a project server such as `jdtls` reports the whole project); a publication replaces the file's list, an empty one clears it, closing a tab leaves it as the server last said it. Each list carries the server's name (its binary past a launcher: `xcrun sourcekit-lsp` is `sourcekit-lsp`). Errors and warnings are problems; information and hints are not counted nor listed.

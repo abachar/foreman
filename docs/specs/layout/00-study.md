@@ -59,7 +59,7 @@ Define the structure of a workspace window: the toolbar, the zones, the split tr
 - R14 — A new tab is inserted just after the active tab and becomes active. Closing the active tab activates its left neighbour, or the first tab if there is none.
 - R15 — Closing an `isDirty` tab asks for confirmation (the wording belongs to the owning feature, the mechanism to the layout). Closing a group or a window chains the confirmations one by one.
 - R16 — The tab bar is a single component (`product` R3): tabs scroll horizontally when there are too many, the active tab is always visible, no tab is truncated below a minimum width.
-- R17 — There is exactly one **active group** per window; clicking in a group, moving into it from the keyboard or opening a tab in it makes it active. All tab commands (new, close, `cmd+1..9`) apply to the active group.
+- R17 — (**Amended 2026-10-16**, M21 21.8: the active group is told by its active tab's accent rule, not by a border, `design` R3, R5.) There is exactly one **active group** per window; clicking in a group, moving into it from the keyboard or opening a tab in it makes it active. All tab commands (new, close, `cmd+1..9`) apply to the active group.
 
 ### Resizing and sizes
 

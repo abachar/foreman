@@ -9,6 +9,17 @@ class CurrentLineTextView: NSTextView {
         didSet { needsDisplay = true }
     }
 
+    /// editor R53 (2026-10-16): the column of the print margin, `nil` for none.
+    var printMarginColumn: Int? {
+        didSet {
+            guard printMarginColumn != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+    var printMarginColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+
     /// editor R43: `cmd+click` reports the character under the pointer and stops there.
     ///
     /// The caret is deliberately left alone: a jump that also moved the selection would lose the
@@ -109,7 +120,29 @@ class CurrentLineTextView: NSTextView {
             currentLineColor.setFill()
             line.fill()
         }
+        drawPrintMargin(in: rect)
         drawUnderlines(in: rect)
+    }
+
+    /// editor R53: a 1 pt line at the margin's column, the full height of what is redrawn.
+    private func drawPrintMargin(in rect: NSRect) {
+        guard let column = printMarginColumn, let font else { return }
+        let x = Self.printMarginX(
+            column: column, advance: Self.advance(of: font), inset: textContainerInset.width,
+            padding: textContainer?.lineFragmentPadding ?? 0)
+        guard x >= rect.minX - 1, x <= rect.maxX + 1 else { return }
+        printMarginColor.setFill()
+        NSRect(x: x.rounded(.down), y: rect.minY, width: 1, height: rect.height).fill()
+    }
+
+    /// The width of one character of a monospaced font.
+    static func advance(of font: NSFont) -> CGFloat {
+        ("0" as NSString).size(withAttributes: [.font: font]).width
+    }
+
+    /// editor R53: where the margin's line goes — after `column` characters from the text's left.
+    nonisolated static func printMarginX(column: Int, advance: CGFloat, inset: CGFloat, padding: CGFloat) -> CGFloat {
+        inset + padding + CGFloat(column) * advance
     }
 
     /// editor R41: a wave under each diagnostic's range, clipped to what is being redrawn.

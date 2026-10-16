@@ -7,6 +7,8 @@ struct EditorTabView: View {
     let theme: ThemeService
     let highlighter: Highlighter
     let root: URL
+    /// editor R53: read in the body, so a config change redraws the margin.
+    let printMargin: () -> Int?
     /// Called on every change of `isDirty`; the feature mirrors it on the layout's tab.
     let onDirtyChange: () -> Void
     /// editor R14: a link to a workspace file opens it in Foreman.
@@ -27,7 +29,7 @@ struct EditorTabView: View {
                 } else {
                     EditorTextView(
                         tab: tab, document: document, theme: theme, highlighter: highlighter,
-                        diagnostics: tab.diagnostics)
+                        diagnostics: tab.diagnostics, printMargin: printMargin())
                 }
             case .failed(let error):
                 ContentUnavailableView {
