@@ -126,3 +126,5 @@ Both options are put side by side, with their cost, in the M8 backlog's "To deci
 See [decisions.md](decisions.md).
 
 Comparisons: [`01-markdown-vs-github.md`](01-markdown-vs-github.md) (2026-08-30, M16 16.3) — the markdown preview (R6, `editor` R14) construct by construct next to GitHub's, with its reference document and captures in [`01-markdown-reference/`](01-markdown-reference/).
+
+Redesign: [`02-redesign/`](02-redesign/) (2026-10-16) — thirteen reference views of the window (standalone HTML, editable) validated as the base of the next UI work; the rules above are not amended yet, the gaps are listed in its README.

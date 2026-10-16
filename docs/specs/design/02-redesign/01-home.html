@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Home</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{width:1440px;height:900px;box-sizing:border-box;background:#2B2D30;display:flex;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:12px;height:12px;stroke-width:1.6}
+.ic.xs{width:10px;height:10px;stroke-width:2}
+.ic .f{fill:currentColor;stroke:none}
+.fi{width:14px;height:14px;flex:none}
+.fi.j{fill:#E76F00}.fi.q{fill:#E0A63B}.fi.m{fill:#42A5F5}.fi.x{fill:#CB4B4B}
+.cl{color:#D97757;stroke-width:1.8}.oc{color:#DFE1E5}.ag{color:#7FB2F0}
+.dim{color:#9DA0A8}
+.hd{height:42px;flex:none;display:flex;align-items:center;gap:4px;padding:0 10px 0 14px}
+.tl{display:flex;gap:8px;margin-right:16px}.tl span{width:12px;height:12px;border-radius:50%}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.pj{width:20px;height:20px;border-radius:5px;background:#6B4F8E;color:#FFFFFF;font-size:10px;display:grid;place-items:center}
+.pill{font-size:11px;padding:1px 6px;border-radius:8px;background:#393B40;color:#9DA0A8}
+.act{width:440px;height:30px;border-radius:8px;background:#1E1F22;display:flex;align-items:center;gap:10px;padding:0 12px;position:relative;overflow:hidden;box-sizing:border-box}
+.act .tx{color:#9DA0A8;flex:1;white-space:nowrap;overflow:hidden}
+.vsep{width:1px;height:18px;background:#45484E;margin:0 8px}
+.runw{display:flex;align-items:center;height:30px;border-radius:7px;background:#393B40;padding:0 2px}
+.bd{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.isl{background:#1E1F22;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.ph{height:36px;flex:none;display:flex;align-items:stretch;gap:2px;padding:0 4px 0 6px;border-bottom:1px solid #343638}
+.pt{display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:#9DA0A8;padding:0 10px;white-space:nowrap}
+.pt.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.cnt{font-size:10px;font-weight:700;padding:0 5px;border-radius:7px;background:#E0A63B;color:#1E1F22;line-height:14px}
+.row{display:flex;align-items:center;gap:5px;height:24px;white-space:nowrap;padding-right:8px;border-radius:5px}
+.chev{width:16px;flex:none;color:#7A7E85;display:grid;place-items:center}
+.ft{height:28px;flex:none;display:flex;align-items:center;gap:2px;padding:0 10px;font-size:12px;color:#9DA0A8}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.sb.on{background:#43454A;color:#DFE1E5}
+.fsep{width:1px;height:14px;background:#4F5258;margin:0 8px}
+.fr{display:flex;align-items:center;gap:5px;margin-right:14px}
+.ft > :last-child{margin-right:0}
+.kbd{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:11px;color:#9DA0A8}
+.hl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7A7E85;margin:18px 0 6px}
+.he{display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;width:100%;text-align:left}
+.sc{display:flex;align-items:center;height:26px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;width:100%;text-align:left}
+.sc .kbd{margin-left:auto}
+</style>
+</head>
+<body>
+<div class="w">
+  <header class="hd">
+    <div class="tl" aria-hidden="true"><span style="background: #FF5F57"></span><span style="background: #FEBC2E"></span><span style="background: #28C840"></span></div>
+    <button class="tb" style="font-weight: 600"><span class="pj">OA</span>orders-api<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="tb"><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>main<span class="pill">2 worktrees</span><svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg></button>
+    <button class="ib" aria-label="OpenCode"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg></button>
+    <button class="ib" aria-label="Antigravity"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <span class="vsep"></span>
+    <div class="runw"><button class="tb">test<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="ib" aria-label="Run test" style="color: #5FB865"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path class="f" d="M5 3.5v9l7-4.5z"/></svg></button><button class="ib" aria-label="Stop" style="color: #6F737A"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect class="f" x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg></button></div>
+  </header>
+
+  <div class="bd">
+    <section class="isl" aria-label="Project and changes" style="width: 280px; flex: none">
+      <div class="ph" role="tablist" aria-label="Left panel">
+        <button class="pt on" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Project</button>
+        <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M1.5 8h4M10.5 8h4"/></svg>Changes</button>
+      </div>
+      <div style="flex: 1; padding: 2px 6px; overflow: hidden">
+        <div class="row" style="padding-left: 4px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg><span style="font-weight: 600">orders-api</span></div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>.foreman</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>AGENTS.md</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi x" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>pom.xml</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>README.md</div>
+      </div>
+    </section>
+
+    <section class="isl" aria-label="Home" style="flex: 1; min-width: 0">
+      <div style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 80px; padding: 24px">
+        <div style="width: 300px">
+          <div class="hl" style="margin-top: 0">Agents</div>
+          <button class="he"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg>Claude Code</button>
+          <button class="he"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg>OpenCode</button>
+          <button class="he"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg>Antigravity</button>
+          <button class="he"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6 4.5v8M10.5 4.5v6.5c0 1 .5 1.5 1.5 1.5"/></svg>Pi</button>
+          <div class="hl">Recent files</div>
+          <button class="he"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java<span class="dim" style="font-size: 12px">domain</span></button>
+          <button class="he"><svg class="fi q" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>V2__order_lines.sql<span class="dim" style="font-size: 12px">db/migration</span></button>
+          <button class="he"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderService.java<span class="dim" style="font-size: 12px">service</span></button>
+          <button class="he"><svg class="fi x" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>application.yml<span class="dim" style="font-size: 12px">resources</span></button>
+          <button class="he"><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>AGENTS.md<span class="dim" style="font-size: 12px">orders-api</span></button>
+        </div>
+        <div style="width: 380px">
+          <div class="hl" style="margin-top: 0">Layout</div>
+          <button class="sc">Close Tab<span class="kbd">⌘W</span></button>
+          <button class="sc">Tab N<span class="kbd">⌘1…9</span></button>
+          <button class="sc">Split Vertically · Horizontally<span class="kbd">⌘D · ⇧⌘D</span></button>
+          <button class="sc">Focus Group<span class="kbd">⌥⌘←→↑↓</span></button>
+          <div class="hl">Panels</div>
+          <button class="sc">Project · Changes<span class="kbd">⇧⌘E · ⇧⌘G</span></button>
+          <button class="sc">History · Search<span class="kbd">⇧⌘H · ⇧⌘F</span></button>
+          <button class="sc">Database<span class="kbd">⇧⌘B</span></button>
+          <div class="hl">Editor</div>
+          <button class="sc">Quick Open<span class="kbd">⌘P</span></button>
+          <button class="sc">New File<span class="kbd">⌘N</span></button>
+          <button class="sc">Markdown Preview<span class="kbd">⇧⌘V</span></button>
+          <div class="hl">Run · Database</div>
+          <button class="sc">Run Command<span class="kbd">⌘R</span></button>
+          <button class="sc">Stop<span class="kbd">⌘.</span></button>
+          <button class="sc">New Query<span class="kbd">⇧⌘Q</span></button>
+        </div>
+      </div>
+      <div class="dim" style="flex: none; text-align: center; font-size: 12px; padding-bottom: 18px">Double-click to open a new file</div>
+    </section>
+  </div>
+
+  <footer class="ft">
+    <button class="sb on" aria-label="Toggle left panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb" aria-label="Toggle bottom panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span class="fsep"></span>
+    <span class="fr" style="margin-right: 8px"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span class="fr"><svg class="ic sm" style="color: #E0A63B" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>0</span>
+    <div style="flex: 1"></div>
+  </footer>
+</div>
+</body>
+</html>

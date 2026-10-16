@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Changes and diff</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{width:1440px;height:900px;box-sizing:border-box;background:#2B2D30;display:flex;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:12px;height:12px;stroke-width:1.6}
+.ic.xs{width:10px;height:10px;stroke-width:2}
+.ic .f{fill:currentColor;stroke:none}
+.fi{width:14px;height:14px;flex:none}
+.fi.j{fill:#E76F00}.fi.q{fill:#E0A63B}.fi.m{fill:#42A5F5}.fi.x{fill:#CB4B4B}
+.cl{color:#D97757;stroke-width:1.8}.oc{color:#DFE1E5}.ag{color:#7FB2F0}
+.dim{color:#9DA0A8}
+.hd{height:42px;flex:none;display:flex;align-items:center;gap:4px;padding:0 10px 0 14px}
+.tl{display:flex;gap:8px;margin-right:16px}.tl span{width:12px;height:12px;border-radius:50%}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.ib.s{width:22px;height:22px}
+.pj{width:20px;height:20px;border-radius:5px;background:#6B4F8E;color:#FFFFFF;font-size:10px;display:grid;place-items:center}
+.pill{font-size:11px;padding:1px 6px;border-radius:8px;background:#393B40;color:#9DA0A8}
+.act{width:440px;height:30px;border-radius:8px;background:#1E1F22;display:flex;align-items:center;gap:10px;padding:0 12px;position:relative;overflow:hidden;box-sizing:border-box}
+.act .tx{color:#9DA0A8;flex:1;white-space:nowrap;overflow:hidden}
+.vsep{width:1px;height:18px;background:#45484E;margin:0 8px}
+.runw{display:flex;align-items:center;height:30px;border-radius:7px;background:#393B40;padding:0 2px}
+.badge{position:absolute;top:3px;right:2px;min-width:14px;height:14px;border-radius:7px;font-size:9px;font-weight:700;display:grid;place-items:center;color:#1E1F22;padding:0 3px;box-sizing:border-box}
+.bd{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.isl{background:#1E1F22;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.ph{height:36px;flex:none;display:flex;align-items:stretch;gap:2px;padding:0 4px 0 6px;border-bottom:1px solid #343638}
+.pt{display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:#9DA0A8;padding:0 10px;white-space:nowrap}
+.pt.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.cnt{font-size:10px;font-weight:700;padding:0 5px;border-radius:7px;background:#E0A63B;color:#1E1F22;line-height:14px}
+.tabs{height:36px;flex:none;display:flex;align-items:stretch;border-bottom:1px solid #343638}
+.tab{display:flex;align-items:center;gap:6px;padding:0 12px;white-space:nowrap;color:#9DA0A8}
+.tab.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.row{display:flex;align-items:center;gap:6px;height:24px;white-space:nowrap;padding:0 6px 0 8px;border-radius:5px}
+.row.sel{background:#2E436E}
+.sec{display:flex;align-items:center;gap:6px;height:24px;padding:0 8px 0 22px;font-size:12px;color:#9DA0A8}
+.sec a{color:#9DA0A8;text-decoration:none}
+.st{width:14px;font-size:11px;font-weight:700;text-align:center;flex:none}
+.ft{height:28px;flex:none;display:flex;align-items:center;gap:2px;padding:0 10px;font-size:12px;color:#9DA0A8}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.sb.on{background:#43454A;color:#DFE1E5}
+.fsep{width:1px;height:14px;background:#4F5258;margin:0 8px}
+.fr{display:flex;align-items:center;gap:5px;margin-right:14px}
+.ft > :last-child{margin-right:0}
+.l{display:flex;height:20px;line-height:20px;white-space:pre}
+.n{width:40px;flex:none;text-align:right;padding-right:10px;box-sizing:border-box;color:#5A5D63;border-right:1px solid #393B40}
+.cd{flex:1;padding-left:12px;overflow:hidden}
+.k{color:#CF8E6D}.a{color:#B3AE60}.s{color:#6AAB73}.p{color:#C77DBB}.fn{color:#56A8F5}.num{color:#2AACB8}
+.dl{background:#3A2427}.da{background:#21362A}
+.wd{background:#6A3237;border-radius:2px}.wa{background:#2E5A3B;border-radius:2px}
+.gap{background:#232428}
+</style>
+</head>
+<body>
+<div class="w">
+  <header class="hd">
+    <div class="tl" aria-hidden="true"><span style="background: #FF5F57"></span><span style="background: #FEBC2E"></span><span style="background: #28C840"></span></div>
+    <button class="tb" style="font-weight: 600"><span class="pj">OA</span>orders-api<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="tb"><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>main<span class="pill">2 worktrees</span><svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code, done"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg></button>
+    <button class="ib" aria-label="OpenCode, waiting for input"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg><span class="badge" style="background: #E0A63B">1</span></button>
+    <button class="ib" aria-label="Antigravity"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <span class="vsep"></span>
+    <div class="runw"><button class="tb">test<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="ib" aria-label="Run test" style="color: #5FB865"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path class="f" d="M5 3.5v9l7-4.5z"/></svg></button><button class="ib" aria-label="Stop" style="color: #6F737A"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect class="f" x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg></button></div>
+  </header>
+
+  <div class="bd">
+    <section class="isl" aria-label="Project and changes" style="width: 300px; flex: none">
+      <div class="ph" role="tablist" aria-label="Left panel">
+        <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Project</button>
+        <button class="pt on" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M1.5 8h4M10.5 8h4"/></svg>Changes<span class="cnt">4</span></button>
+      </div>
+      <div style="flex: 1; padding: 6px; overflow: hidden; display: flex; flex-direction: column; gap: 1px">
+        <div class="row" style="font-weight: 600; padding-right: 2px">
+          <svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>orders-api<span class="dim" style="font-weight: 400">main</span><span class="dim" style="font-weight: 400; font-size: 12px">↑1 ↓0</span>
+          <span style="flex: 1"></span>
+          <button class="ib s" aria-label="Fetch"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg></button>
+          <button class="ib s" aria-label="Pull"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v9M4.5 8L8 11.5 11.5 8M3 14h10"/></svg></button>
+          <button class="ib s" aria-label="Push, 1 commit"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.5v-9M4.5 8L8 4.5 11.5 8M3 2h10"/></svg></button>
+          <button class="ib s" aria-label="More"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle class="f" cx="3.5" cy="8" r="1.2"/><circle class="f" cx="8" cy="8" r="1.2"/><circle class="f" cx="12.5" cy="8" r="1.2"/></svg></button>
+        </div>
+        <div class="sec">Staged · 1<span style="flex: 1"></span><a href="#unstage">Unstage All</a></div>
+        <div class="row" style="padding-left: 22px"><span class="st" style="color: #5FB865">A</span><svg class="fi q" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>V3__order_line_price.sql</div>
+        <div class="sec" style="margin-top: 6px">Changes · 2<span style="flex: 1"></span><a href="#discard">Discard All</a><a href="#stage" style="margin-left: 10px">Stage All</a></div>
+        <div class="row sel" style="padding-left: 22px"><span class="st" style="color: #8FB6F2">M</span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderLine.java<span class="dim" style="font-size: 12px; color: #B4C3DC">domain</span><span style="flex: 1"></span><button class="ib s" aria-label="Discard" style="color: #DFE1E5"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6.5h6a3 3 0 010 6H7M6.5 4L4 6.5 6.5 9"/></svg></button><button class="ib s" aria-label="Stage" style="color: #DFE1E5"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button></div>
+        <div class="row" style="padding-left: 22px"><span class="st" style="color: #6EA6F0">M</span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java<span class="dim" style="font-size: 12px">domain</span></div>
+        <div class="sec" style="margin-top: 6px">Untracked · 1</div>
+        <div class="row" style="padding-left: 22px"><span class="st" style="color: #9DA0A8">U</span><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>pricing.md<span class="dim" style="font-size: 12px">docs</span></div>
+
+        <div class="sec" style="margin-top: 14px; padding-left: 8px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: 11px">Worktrees</div>
+        <div style="margin: 2px 0 4px 8px; padding: 8px 10px; border-radius: 7px; background: #26282C; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 6px"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><span style="font-weight: 600">feat/order-lines</span><span style="flex: 1"></span><svg class="ic sm cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg><span class="dot" style="background: #5FB865"></span></div>
+          <div class="dim" style="font-size: 12px; padding-left: 16px">../orders-api-wt/order-lines · 3 changes · ↑2</div>
+          <div style="display: flex; gap: 6px; padding-left: 16px">
+            <button style="height: 22px; padding: 0 8px; border: 1px solid #45484E; border-radius: 5px; background: transparent; color: #DFE1E5; font: inherit; font-size: 12px">Compare</button>
+            <button style="height: 22px; padding: 0 8px; border: 1px solid #45484E; border-radius: 5px; background: transparent; color: #DFE1E5; font: inherit; font-size: 12px">Check out</button>
+          </div>
+        </div>
+        <div style="margin: 0 0 0 8px; padding: 8px 10px; border-radius: 7px; background: #26282C; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 6px"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><span style="font-weight: 600">fix/status-length</span><span style="flex: 1"></span><svg class="ic sm oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg><span class="dot" style="background: #E0A63B"></span></div>
+          <div class="dim" style="font-size: 12px; padding-left: 16px">../orders-api-wt/status-length · 1 change</div>
+        </div>
+      </div>
+      <div style="flex: none; border-top: 1px solid #343638; padding: 10px; display: flex; flex-direction: column; gap: 8px">
+        <label style="display: block; height: 70px; border-radius: 6px; background: #151618; padding: 8px 10px; box-sizing: border-box; box-shadow: inset 0 0 0 1px #4A86E0">
+          <textarea aria-label="Commit message" style="width: 100%; height: 100%; border: 0; background: transparent; color: #DFE1E5; font: inherit; resize: none; outline: none; padding: 0">feat(orders): unit price on order lines</textarea>
+        </label>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px">
+          <span class="dim">39/72</span>
+          <label class="dim" style="display: flex; align-items: center; gap: 6px"><input type="checkbox" style="margin: 0">Amend</label>
+          <span style="flex: 1"></span>
+          <button style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border: 0; border-radius: 6px; background: #3A6FC4; color: #FFFFFF; font: inherit">Commit<span style="font-size: 11px; color: #D6E4FA">⌘↩</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="isl" aria-label="Diff" style="flex: 1; min-width: 0">
+      <div class="tabs">
+        <div class="tab on"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-style: italic">OrderLine.java</span><span class="dim" style="font-size: 12px">diff</span></div>
+        <div class="tab"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java</div>
+      </div>
+      <div style="height: 32px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 14px; border-bottom: 1px solid #343638; font-size: 12px">
+        <span class="dim">HEAD</span><span class="dim">↔</span><span>Working tree</span>
+        <span style="flex: 1"></span>
+        <span class="dim">2 changes</span>
+        <button class="ib s" aria-label="Previous change"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4"/></svg></button>
+        <button class="ib s" aria-label="Next change"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+        <span style="width: 1px; height: 14px; background: #45484E"></span>
+        <button class="tb" style="height: 24px; font-size: 12px; color: #9DA0A8">Side by side<svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+      </div>
+      <div class="mono" style="flex: 1; min-height: 0; display: flex; font-size: 13px; overflow: hidden">
+        <div style="flex: 1; min-width: 0; border-right: 1px solid #393B40; padding-top: 6px">
+          <div class="l"><span class="n">8</span><span class="cd"><span class="k">public class</span> OrderLine {</span></div>
+          <div class="l"><span class="n">9</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">10</span><span class="cd">    <span class="a">@Id</span></span></div>
+          <div class="l"><span class="n">11</span><span class="cd">    <span class="a">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)</span></div>
+          <div class="l"><span class="n">12</span><span class="cd">    <span class="k">private</span> Long <span class="p">id</span>;</span></div>
+          <div class="l"><span class="n">13</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">14</span><span class="cd">    <span class="a">@ManyToOne</span>(optional = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">15</span><span class="cd">    <span class="a">@JoinColumn</span>(name = <span class="s">"order_id"</span>)</span></div>
+          <div class="l"><span class="n">16</span><span class="cd">    <span class="k">private</span> Order <span class="p">order</span>;</span></div>
+          <div class="l"><span class="n">17</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">18</span><span class="cd">    <span class="a">@ManyToOne</span>(optional = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">19</span><span class="cd">    <span class="a">@JoinColumn</span>(name = <span class="s">"product_id"</span>)</span></div>
+          <div class="l"><span class="n">20</span><span class="cd">    <span class="k">private</span> Product <span class="p">product</span>;</span></div>
+          <div class="l"><span class="n">21</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">22</span><span class="cd">    <span class="a">@Column</span>(nullable = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">23</span><span class="cd">    <span class="k">private int</span> <span class="p">quantity</span>;</span></div>
+          <div class="l"><span class="n">24</span><span class="cd"> </span></div>
+          <div class="l dl"><span class="n">25</span><span class="cd">    <span class="a">@Column</span>(<span class="wd">nullable = false</span>, precision = <span class="num">12</span>, scale = <span class="num">2</span>)</span></div>
+          <div class="l dl"><span class="n">26</span><span class="cd">    <span class="k">private</span> BigDecimal <span class="wd">price</span>;</span></div>
+          <div class="l"><span class="n">27</span><span class="cd"> </span></div>
+          <div class="l dl"><span class="n">28</span><span class="cd">    <span class="k">public</span> BigDecimal <span class="wd">getPrice</span>() {</span></div>
+          <div class="l dl"><span class="n">29</span><span class="cd">        <span class="k">return</span> <span class="wd">price</span>;</span></div>
+          <div class="l"><span class="n">30</span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">31</span><span class="cd">}</span></div>
+        </div>
+        <div style="flex: 1; min-width: 0; padding-top: 6px">
+          <div class="l"><span class="n">8</span><span class="cd"><span class="k">public class</span> OrderLine {</span></div>
+          <div class="l"><span class="n">9</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">10</span><span class="cd">    <span class="a">@Id</span></span></div>
+          <div class="l"><span class="n">11</span><span class="cd">    <span class="a">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)</span></div>
+          <div class="l"><span class="n">12</span><span class="cd">    <span class="k">private</span> Long <span class="p">id</span>;</span></div>
+          <div class="l"><span class="n">13</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">14</span><span class="cd">    <span class="a">@ManyToOne</span>(optional = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">15</span><span class="cd">    <span class="a">@JoinColumn</span>(name = <span class="s">"order_id"</span>)</span></div>
+          <div class="l"><span class="n">16</span><span class="cd">    <span class="k">private</span> Order <span class="p">order</span>;</span></div>
+          <div class="l"><span class="n">17</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">18</span><span class="cd">    <span class="a">@ManyToOne</span>(optional = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">19</span><span class="cd">    <span class="a">@JoinColumn</span>(name = <span class="s">"product_id"</span>)</span></div>
+          <div class="l"><span class="n">20</span><span class="cd">    <span class="k">private</span> Product <span class="p">product</span>;</span></div>
+          <div class="l"><span class="n">21</span><span class="cd"> </span></div>
+          <div class="l"><span class="n">22</span><span class="cd">    <span class="a">@Column</span>(nullable = <span class="k">false</span>)</span></div>
+          <div class="l"><span class="n">23</span><span class="cd">    <span class="k">private int</span> <span class="p">quantity</span>;</span></div>
+          <div class="l"><span class="n">24</span><span class="cd"> </span></div>
+          <div class="l da"><span class="n">25</span><span class="cd">    <span class="a">@Column</span>(<span class="wa">name = <span class="s">"unit_price"</span></span>, precision = <span class="num">12</span>, scale = <span class="num">2</span>)</span></div>
+          <div class="l da"><span class="n">26</span><span class="cd">    <span class="k">private</span> BigDecimal <span class="wa"><span class="p">unitPrice</span></span>;</span></div>
+          <div class="l"><span class="n">27</span><span class="cd"> </span></div>
+          <div class="l da"><span class="n">28</span><span class="cd">    <span class="k">public</span> BigDecimal <span class="wa"><span class="fn">subtotal</span></span>() {</span></div>
+          <div class="l da"><span class="n">29</span><span class="cd">        <span class="k">return</span> <span class="wa"><span class="p">unitPrice</span>.multiply(BigDecimal.valueOf(<span class="p">quantity</span>))</span>;</span></div>
+          <div class="l"><span class="n">30</span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">31</span><span class="cd">}</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="ft">
+    <button class="sb on" aria-label="Toggle left panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb" aria-label="Toggle bottom panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span class="fsep"></span>
+    <span class="fr" style="margin-right: 8px"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span class="fr"><svg class="ic sm" style="color: #E0A63B" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>2</span>
+    <div style="flex: 1"></div>
+    <span class="fr">+4 −4</span>
+    <span class="fr">Java</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Markdown and browser</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{width:1440px;height:900px;box-sizing:border-box;background:#2B2D30;display:flex;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:12px;height:12px;stroke-width:1.6}
+.ic.xs{width:10px;height:10px;stroke-width:2}
+.ic .f{fill:currentColor;stroke:none}
+.fi{width:14px;height:14px;flex:none}
+.fi.j{fill:#E76F00}.fi.m{fill:#42A5F5}
+.cl{color:#D97757;stroke-width:1.8}.oc{color:#DFE1E5}.ag{color:#7FB2F0}
+.dim{color:#9DA0A8}
+.hd{height:42px;flex:none;display:flex;align-items:center;gap:4px;padding:0 10px 0 14px}
+.tl{display:flex;gap:8px;margin-right:16px}.tl span{width:12px;height:12px;border-radius:50%}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.ib.s{width:24px;height:24px}
+.pj{width:20px;height:20px;border-radius:5px;background:#6B4F8E;color:#FFFFFF;font-size:10px;display:grid;place-items:center}
+.pill{font-size:11px;padding:1px 6px;border-radius:8px;background:#393B40;color:#9DA0A8}
+.act{width:440px;height:30px;border-radius:8px;background:#1E1F22;display:flex;align-items:center;gap:10px;padding:0 12px;position:relative;overflow:hidden;box-sizing:border-box}
+.act .tx{color:#9DA0A8;flex:1;white-space:nowrap;overflow:hidden}
+.vsep{width:1px;height:18px;background:#45484E;margin:0 8px}
+.runw{display:flex;align-items:center;height:30px;border-radius:7px;background:#393B40;padding:0 2px}
+.bd{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.isl{background:#1E1F22;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.tabs{height:36px;flex:none;display:flex;align-items:stretch;border-bottom:1px solid #343638}
+.tab{display:flex;align-items:center;gap:6px;padding:0 12px;white-space:nowrap;color:#9DA0A8}
+.tab.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.tab.idle{color:#DFE1E5;box-shadow:inset 0 -2px 0 #5A5D63}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.ft{height:28px;flex:none;display:flex;align-items:center;gap:2px;padding:0 10px;font-size:12px;color:#9DA0A8}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.sb.on{background:#43454A;color:#DFE1E5}
+.fsep{width:1px;height:14px;background:#4F5258;margin:0 8px}
+.fr{display:flex;align-items:center;gap:5px;margin-right:14px}
+.ft > :last-child{margin-right:0}
+.seg{display:flex;align-items:center;height:24px;border-radius:6px;background:#2B2D30;padding:2px;font-size:12px}
+.seg button{height:20px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;font:inherit}
+.seg button.on{background:#43454A;color:#DFE1E5}
+.md{flex:1;min-height:0;overflow:hidden;padding:24px 32px;font-size:16px;line-height:24px;color:#DFE1E5}
+.md h1{font-size:32px;line-height:40px;font-weight:600;margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid #393B40}
+.md h2{font-size:24px;line-height:32px;font-weight:600;margin:24px 0 16px;padding-bottom:7px;border-bottom:1px solid #393B40}
+.md p{margin:0 0 16px}
+.md ol{margin:0 0 16px;padding-left:32px}
+.md li{margin-bottom:4px}
+.md a{color:#6EA6F0;text-decoration:underline}
+.md code{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13.6px;background:#151618;padding:1px 4px;border-radius:3px}
+.md pre{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13.6px;background:#151618;padding:16px;border-radius:6px;margin:0 0 16px;white-space:pre}
+.md table{border-collapse:collapse;font-size:15px}
+.md th,.md td{border:1px solid #393B40;padding:6px 13px;text-align:left}
+.md th{font-weight:700}
+.md tr:nth-child(even) td{background:#2B2D30}
+.web{flex:1;min-height:0;overflow:hidden;background:#F6F7F9;color:#1D232B;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;font-size:14px}
+.web table{width:100%;border-collapse:collapse;background:#FFFFFF;font-size:13px}
+.web th{text-align:left;font-weight:600;color:#4A5563;padding:10px 14px;border-bottom:1px solid #E3E6EA;background:#FAFBFC}
+.web td{padding:10px 14px;border-bottom:1px solid #EEF0F2}
+</style>
+</head>
+<body>
+<div class="w">
+  <header class="hd">
+    <div class="tl" aria-hidden="true"><span style="background: #FF5F57"></span><span style="background: #FEBC2E"></span><span style="background: #28C840"></span></div>
+    <button class="tb" style="font-weight: 600"><span class="pj">OA</span>orders-api<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="tb"><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>main<span class="pill">2 worktrees</span><svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg></button>
+    <button class="ib" aria-label="OpenCode"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg></button>
+    <button class="ib" aria-label="Antigravity"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <button class="ib" aria-label="Browser" style="color: #DFE1E5; background: #393B40"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5c-2 2.5-2 8.5 0 11M8 2.5c2 2.5 2 8.5 0 11"/></svg></button>
+    <span class="vsep"></span>
+    <div class="runw"><button class="tb"><span class="dot" style="background: #E0A63B"></span>backend:dev<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="ib" aria-label="Restart" style="color: #5FB865"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg></button><button class="ib" aria-label="Stop" style="color: #E5534B"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect class="f" x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg></button></div>
+  </header>
+
+  <div class="bd">
+    <section class="isl" aria-label="Editor area" style="flex: 1; min-width: 0; flex-direction: row">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div class="tabs">
+          <div class="tab idle"><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>README.md</div>
+          <div class="tab"><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>AGENTS.md</div>
+          <span style="flex: 1"></span>
+          <div style="display: flex; align-items: center; padding-right: 8px"><div class="seg"><button>Source</button><button class="on">Preview</button></div></div>
+        </div>
+        <article class="md">
+          <h1>orders-api</h1>
+          <p>Order management API for the back office. Spring Boot 3, Java 21, PostgreSQL 16, migrations with Flyway.</p>
+          <h2>Run locally</h2>
+          <ol>
+            <li>Start the database: <code>docker compose up -d db</code></li>
+            <li>Launch the API: <code>./mvnw spring-boot:run</code></li>
+            <li>Open <a href="#admin">localhost:8080/admin/orders</a></li>
+          </ol>
+          <pre>./mvnw test        # unit and slice tests
+./mvnw verify      # + integration tests</pre>
+          <h2>Endpoints</h2>
+          <table>
+            <thead><tr><th>Method</th><th>Path</th><th>Does</th></tr></thead>
+            <tbody>
+              <tr><td>GET</td><td><code>/orders</code></td><td>List, filtered by status</td></tr>
+              <tr><td>POST</td><td><code>/orders</code></td><td>Create a draft</td></tr>
+              <tr><td>POST</td><td><code>/orders/{id}/lines</code></td><td>Add a line</td></tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      <div style="width: 1px; flex: none; background: #343638"></div>
+
+      <div style="flex: 1.05; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+        <div class="tabs">
+          <div class="tab on"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5c-2 2.5-2 8.5 0 11M8 2.5c2 2.5 2 8.5 0 11"/></svg>Admin · Orders</div>
+        </div>
+        <div style="height: 40px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-bottom: 1px solid #343638">
+          <button class="ib s" aria-label="Back"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3l-5 5 5 5"/></svg></button>
+          <button class="ib s" aria-label="Forward" style="color: #5A5D63"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button>
+          <button class="ib s" aria-label="Reload"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg></button>
+          <label style="flex: 1; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 6px; background: #151618; font-size: 12px; color: #9DA0A8">
+            <input class="mono" aria-label="Address" value="http://localhost:8080/admin/orders" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #DFE1E5; font-size: 12px; outline: none">
+          </label>
+          <span class="dim" style="font-size: 11px; padding: 0 6px">Private</span>
+          <button class="ib s" aria-label="Inspect element"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v6M3 3v10h6"/><path d="M9 9l5 2-2 1-1 2z"/></svg></button>
+        </div>
+        <div class="web">
+          <div style="height: 48px; display: flex; align-items: center; gap: 24px; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E3E6EA">
+            <span style="font-weight: 700">Orders · Admin</span>
+            <span style="color: #2557C7; font-weight: 600">Orders</span>
+            <span style="color: #5B6573">Customers</span>
+            <span style="color: #5B6573">Products</span>
+          </div>
+          <div style="padding: 24px">
+            <div style="display: flex; align-items: center; margin-bottom: 16px">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 700">Draft orders</h1>
+              <span style="margin-left: 10px; font-size: 12px; color: #5B6573; background: #E9ECF0; border-radius: 10px; padding: 2px 8px">128</span>
+              <span style="flex: 1"></span>
+              <button style="height: 32px; padding: 0 14px; border: 0; border-radius: 6px; background: #2557C7; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600">New order</button>
+            </div>
+            <table>
+              <thead><tr><th>#</th><th>Customer</th><th style="text-align: right">Total</th><th>Created</th></tr></thead>
+              <tbody>
+                <tr><td>12408</td><td>[Customer A]</td><td style="text-align: right">249.90 €</td><td>Today 10:41</td></tr>
+                <tr><td>12406</td><td>[Customer B]</td><td style="text-align: right">1 080.00 €</td><td>Today 10:12</td></tr>
+                <tr><td>12401</td><td>[Customer C]</td><td style="text-align: right; color: #8A93A0">—</td><td>Today 09:58</td></tr>
+                <tr><td>12397</td><td>[Customer D]</td><td style="text-align: right">54.20 €</td><td>Today 09:20</td></tr>
+                <tr><td>12390</td><td>[Customer A]</td><td style="text-align: right">310.00 €</td><td>Yesterday 18:44</td></tr>
+                <tr><td>12385</td><td>[Customer E]</td><td style="text-align: right">72.50 €</td><td>Yesterday 17:02</td></tr>
+                <tr><td>12379</td><td>[Customer F]</td><td style="text-align: right">1 499.00 €</td><td>Yesterday 15:31</td></tr>
+                <tr><td>12371</td><td>[Customer B]</td><td style="text-align: right">18.90 €</td><td>Yesterday 11:09</td></tr>
+                <tr><td>12366</td><td>[Customer G]</td><td style="text-align: right">640.00 €</td><td>Yesterday 09:47</td></tr>
+                <tr><td>12358</td><td>[Customer C]</td><td style="text-align: right">95.00 €</td><td>Oct 14 19:15</td></tr>
+                <tr><td>12350</td><td>[Customer H]</td><td style="text-align: right">212.40 €</td><td>Oct 14 16:28</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="ft">
+    <button class="sb" aria-label="Toggle left panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb" aria-label="Toggle bottom panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span class="fsep"></span>
+    <span class="fr" style="margin-right: 8px"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span class="fr"><svg class="ic sm" style="color: #E0A63B" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>2</span>
+    <div style="flex: 1"></div>
+    <span class="fr">localhost:8080</span>
+  </footer>
+</div>
+</body>
+</html>

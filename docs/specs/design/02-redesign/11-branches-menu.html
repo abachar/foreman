@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Branches and worktrees</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{width:1440px;height:900px;box-sizing:border-box;background:#2B2D30;display:flex;flex-direction:column;overflow:hidden;position:relative;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:12px;height:12px;stroke-width:1.6}
+.ic.xs{width:10px;height:10px;stroke-width:2}
+.ic .f{fill:currentColor;stroke:none}
+.fi{width:14px;height:14px;flex:none}
+.fi.j{fill:#E76F00}.fi.x{fill:#CB4B4B}
+.cl{color:#D97757;stroke-width:1.8}.oc{color:#DFE1E5}.ag{color:#7FB2F0}
+.dim{color:#9DA0A8}
+.hd{height:42px;flex:none;display:flex;align-items:center;gap:4px;padding:0 10px 0 14px}
+.tl{display:flex;gap:8px;margin-right:16px}.tl span{width:12px;height:12px;border-radius:50%}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.pj{width:20px;height:20px;border-radius:5px;background:#6B4F8E;color:#FFFFFF;font-size:10px;display:grid;place-items:center}
+.pill{font-size:11px;padding:1px 6px;border-radius:8px;background:#393B40;color:#9DA0A8}
+.act{width:440px;height:30px;border-radius:8px;background:#1E1F22;display:flex;align-items:center;gap:10px;padding:0 12px;position:relative;overflow:hidden;box-sizing:border-box}
+.act .tx{color:#9DA0A8;flex:1;white-space:nowrap;overflow:hidden}
+.act .pg{position:absolute;left:0;bottom:0;height:2px;background:#4A86E0}
+.vsep{width:1px;height:18px;background:#45484E;margin:0 8px}
+.runw{display:flex;align-items:center;height:30px;border-radius:7px;background:#393B40;padding:0 2px}
+.badge{position:absolute;top:3px;right:2px;min-width:14px;height:14px;border-radius:7px;font-size:9px;font-weight:700;display:grid;place-items:center;color:#1E1F22;padding:0 3px;box-sizing:border-box}
+.bd{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.isl{background:#1E1F22;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.ph{height:36px;flex:none;display:flex;align-items:stretch;gap:2px;padding:0 4px 0 6px;border-bottom:1px solid #343638}
+.pt{display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:#9DA0A8;padding:0 10px;white-space:nowrap}
+.pt.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.tabs{height:36px;flex:none;display:flex;align-items:stretch;border-bottom:1px solid #343638}
+.tab{display:flex;align-items:center;gap:6px;padding:0 12px;white-space:nowrap;color:#9DA0A8}
+.tab.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.row{display:flex;align-items:center;gap:5px;height:24px;white-space:nowrap;padding-right:8px;border-radius:5px}
+.row.sel{background:#2E436E}
+.chev{width:16px;flex:none;color:#7A7E85;display:grid;place-items:center}
+.ft{height:28px;flex:none;display:flex;align-items:center;gap:2px;padding:0 10px;font-size:12px;color:#9DA0A8}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.sb.on{background:#43454A;color:#DFE1E5}
+.fsep{width:1px;height:14px;background:#4F5258;margin:0 8px}
+.fr{display:flex;align-items:center;gap:5px;margin-right:14px}
+.ft > :last-child{margin-right:0}
+.l{display:flex;height:20px;line-height:20px;white-space:pre}
+.n{width:44px;flex:none;text-align:right;padding-right:8px;box-sizing:border-box;color:#5A5D63}
+.fo{width:18px;flex:none;border-right:1px solid #393B40}
+.cd{position:relative;flex:1;padding-left:14px}
+.k{color:#CF8E6D}.a{color:#B3AE60}.s{color:#6AAB73}.p{color:#C77DBB}.pi{color:#C77DBB;font-style:italic}.num{color:#2AACB8}
+.menu{position:absolute;background:#2B2D30;border:1px solid #45484E;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.45);padding:6px;z-index:5;box-sizing:border-box}
+.mi{display:flex;align-items:center;gap:8px;width:100%;height:28px;padding:0 10px;border:0;border-radius:5px;background:transparent;color:#DFE1E5;font:inherit;text-align:left;box-sizing:border-box;white-space:nowrap}
+.mi .r{margin-left:auto;font-size:12px;color:#9DA0A8;display:flex;align-items:center;gap:6px}
+.mi.hv{background:#3A6FC4;color:#FFFFFF}
+.mi.hv .r{color:#DCE6F7}
+.msep{height:1px;background:#3D3F44;margin:6px 4px}
+.mh{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#7A7E85;padding:6px 10px 4px}
+.ck{width:14px;flex:none;display:grid;place-items:center}
+</style>
+</head>
+<body>
+<div class="w">
+  <header class="hd">
+    <div class="tl" aria-hidden="true"><span style="background: #FF5F57"></span><span style="background: #FEBC2E"></span><span style="background: #28C840"></span></div>
+    <button class="tb" style="font-weight: 600"><span class="pj">OA</span>orders-api<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="tb" aria-expanded="true" style="background: #393B40; box-shadow: inset 0 0 0 1px #4A86E0"><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>main<span class="pill" style="background: #45484E">2 worktrees</span><svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4"/></svg></button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code, 1 running"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg><span class="badge" style="background: #5FB865">1</span></button>
+    <button class="ib" aria-label="OpenCode, waiting for input"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg><span class="badge" style="background: #E0A63B">1</span></button>
+    <button class="ib" aria-label="Antigravity"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <span class="vsep"></span>
+    <div class="runw"><button class="tb">test<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="ib" aria-label="Run test" style="color: #5FB865"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path class="f" d="M5 3.5v9l7-4.5z"/></svg></button><button class="ib" aria-label="Stop" style="color: #6F737A"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect class="f" x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg></button></div>
+  </header>
+
+  <div class="menu" role="menu" aria-label="Branches and worktrees" style="top: 42px; left: 128px; width: 420px">
+    <label style="display: flex; align-items: center; gap: 8px; height: 30px; margin: 2px 2px 6px; padding: 0 10px; border-radius: 6px; background: #151618; color: #9DA0A8">
+      <svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3.5 3.5"/></svg>
+      <input aria-label="Filter branches" placeholder="Filter branches and worktrees" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #DFE1E5; font: inherit; outline: none">
+    </label>
+    <div class="mh">Worktrees</div>
+    <button class="mi" role="menuitem"><span class="ck"><svg class="ic sm" style="color: #4A86E0" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span style="font-weight: 600">main</span><span class="dim" style="font-size: 12px">~/Projects/orders-api</span><span class="r">↑1</span></button>
+    <button class="mi hv" role="menuitem" aria-haspopup="true"><span class="ck"></span><span style="font-weight: 600">feat/order-lines</span><span style="font-size: 12px; color: #DCE6F7">../orders-api-wt/order-lines</span><span class="r"><svg class="ic sm" style="color: #FFFFFF; stroke-width: 1.8" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg><span class="dot" style="background: #8FE09A"></span><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span></button>
+    <button class="mi" role="menuitem"><span class="ck"></span><span style="font-weight: 600">fix/status-length</span><span class="dim" style="font-size: 12px">../orders-api-wt/status-length</span><span class="r"><svg class="ic sm oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg><span class="dot" style="background: #E0A63B"></span><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span></button>
+    <button class="mi" role="menuitem" style="color: #9DA0A8"><span class="ck"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></span>New worktree…</button>
+    <div class="msep"></div>
+    <div class="mh">Local branches</div>
+    <button class="mi" role="menuitem"><span class="ck"><svg class="ic sm" style="color: #4A86E0" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span>main<span class="r">origin/main ↑1</span></button>
+    <button class="mi" role="menuitem"><span class="ck"></span>feat/order-lines<span class="r">worktree</span></button>
+    <button class="mi" role="menuitem"><span class="ck"></span>fix/status-length<span class="r">worktree</span></button>
+    <button class="mi" role="menuitem"><span class="ck"></span>release/1.4<span class="r">origin/release/1.4</span></button>
+    <div class="mh">Remote</div>
+    <button class="mi" role="menuitem"><span class="ck"></span>origin/main</button>
+    <button class="mi" role="menuitem"><span class="ck"></span>origin/release/1.4</button>
+    <div class="msep"></div>
+    <button class="mi" role="menuitem"><span class="ck"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg></span>Fetch</button>
+    <button class="mi" role="menuitem"><span class="ck"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v9M4.5 8L8 11.5 11.5 8"/></svg></span>Pull</button>
+    <button class="mi" role="menuitem"><span class="ck"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.5v-9M4.5 8L8 4.5 11.5 8"/></svg></span>Push<span class="r">1 commit</span></button>
+    <button class="mi" role="menuitem"><span class="ck"></span>New branch…</button>
+    <button class="mi" role="menuitem"><span class="ck"></span>Stash changes…</button>
+  </div>
+
+  <div class="menu" role="menu" aria-label="feat/order-lines" style="top: 154px; left: 552px; width: 250px">
+    <button class="mi" role="menuitem">Open terminal agent here</button>
+    <button class="mi" role="menuitem">Compare with main</button>
+    <button class="mi" role="menuitem">Check out in main folder</button>
+    <button class="mi" role="menuitem">Merge into main…</button>
+    <div class="msep"></div>
+    <button class="mi" role="menuitem">Reveal in Finder</button>
+    <button class="mi" role="menuitem" style="color: #F08A84">Remove worktree…</button>
+  </div>
+
+  <div class="bd">
+    <section class="isl" aria-label="Project and changes" style="width: 280px; flex: none">
+      <div class="ph" role="tablist" aria-label="Left panel">
+        <button class="pt on" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Project</button>
+        <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M1.5 8h4M10.5 8h4"/></svg>Changes</button>
+      </div>
+      <div style="flex: 1; padding: 2px 6px; overflow: hidden">
+        <div class="row" style="padding-left: 4px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg><span style="font-weight: 600">orders-api</span></div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/main/java</div>
+        <div class="row" style="padding-left: 40px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>com.acme.orders</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>domain</div>
+        <div class="row sel" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderLine.java</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>service</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi x" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>pom.xml</div>
+      </div>
+    </section>
+
+    <section class="isl" aria-label="Editor" style="flex: 1; min-width: 0">
+      <div class="tabs">
+        <div class="tab on"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java</div>
+      </div>
+      <div class="mono" style="flex: 1; min-height: 0; overflow: hidden; font-size: 13px; padding-top: 4px">
+        <div class="l"><span class="n">1</span><span class="fo"></span><span class="cd"><span class="k">package</span> com.acme.orders.domain;</span></div>
+        <div class="l"><span class="n">2</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">3</span><span class="fo"></span><span class="cd"><span class="k">import</span> jakarta.persistence.*;</span></div>
+        <div class="l"><span class="n">4</span><span class="fo"></span><span class="cd"><span class="k">import</span> java.math.BigDecimal;</span></div>
+        <div class="l"><span class="n">5</span><span class="fo"></span><span class="cd"><span class="k">import</span> java.time.Instant;</span></div>
+        <div class="l"><span class="n">6</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">7</span><span class="fo"></span><span class="cd"><span class="a">@Entity</span></span></div>
+        <div class="l"><span class="n">8</span><span class="fo"></span><span class="cd"><span class="a">@Table</span>(name = <span class="s">"orders"</span>)</span></div>
+        <div class="l"><span class="n">9</span><span class="fo"></span><span class="cd"><span class="k">public class</span> Order {</span></div>
+        <div class="l"><span class="n">10</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">11</span><span class="fo"></span><span class="cd">    <span class="a">@Id</span></span></div>
+        <div class="l"><span class="n">12</span><span class="fo"></span><span class="cd">    <span class="a">@GeneratedValue</span>(strategy = GenerationType.<span class="pi">IDENTITY</span>)</span></div>
+        <div class="l"><span class="n">13</span><span class="fo"></span><span class="cd">    <span class="k">private</span> Long <span class="p">id</span>;</span></div>
+        <div class="l"><span class="n">14</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">15</span><span class="fo"></span><span class="cd">    <span class="a">@ManyToOne</span>(optional = <span class="k">false</span>)</span></div>
+        <div class="l"><span class="n">16</span><span class="fo"></span><span class="cd">    <span class="a">@JoinColumn</span>(name = <span class="s">"customer_id"</span>)</span></div>
+        <div class="l"><span class="n">17</span><span class="fo"></span><span class="cd">    <span class="k">private</span> Customer <span class="p">customer</span>;</span></div>
+        <div class="l"><span class="n">18</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">19</span><span class="fo"></span><span class="cd">    <span class="a">@Enumerated</span>(EnumType.<span class="pi">STRING</span>)</span></div>
+        <div class="l"><span class="n">20</span><span class="fo"></span><span class="cd">    <span class="a">@Column</span>(length = <span class="num">20</span>, nullable = <span class="k">false</span>)</span></div>
+        <div class="l"><span class="n">21</span><span class="fo"></span><span class="cd">    <span class="k">private</span> OrderStatus <span class="p">status</span>;</span></div>
+        <div class="l" style="height: 400px"><span class="n"></span><span class="fo"></span><span class="cd"> </span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="ft">
+    <button class="sb on" aria-label="Toggle left panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb" aria-label="Toggle bottom panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span class="fsep"></span>
+    <span class="fr" style="margin-right: 8px"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span class="fr"><svg class="ic sm" style="color: #E0A63B" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>2</span>
+    <div style="flex: 1"></div>
+    <span class="fr">1:1</span>
+    <span class="fr">Java</span>
+    <span class="fr">UTF-8</span>
+  </footer>
+</div>
+</body>
+</html>

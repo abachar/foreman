@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Find in project</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{width:1440px;height:900px;box-sizing:border-box;background:#2B2D30;display:flex;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:12px;height:12px;stroke-width:1.6}
+.ic.xs{width:10px;height:10px;stroke-width:2}
+.ic .f{fill:currentColor;stroke:none}
+.fi{width:14px;height:14px;flex:none}
+.fi.j{fill:#E76F00}.fi.q{fill:#E0A63B}.fi.m{fill:#42A5F5}.fi.x{fill:#CB4B4B}
+.cl{color:#D97757;stroke-width:1.8}.oc{color:#DFE1E5}.ag{color:#7FB2F0}
+.dim{color:#9DA0A8}
+.hd{height:42px;flex:none;display:flex;align-items:center;gap:4px;padding:0 10px 0 14px}
+.tl{display:flex;gap:8px;margin-right:16px}.tl span{width:12px;height:12px;border-radius:50%}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.ib.s{width:22px;height:22px}
+.pj{width:20px;height:20px;border-radius:5px;background:#6B4F8E;color:#FFFFFF;font-size:10px;display:grid;place-items:center}
+.pill{font-size:11px;padding:1px 6px;border-radius:8px;background:#393B40;color:#9DA0A8}
+.act{width:440px;height:30px;border-radius:8px;background:#1E1F22;display:flex;align-items:center;gap:10px;padding:0 12px;position:relative;overflow:hidden;box-sizing:border-box}
+.act .tx{color:#9DA0A8;flex:1;white-space:nowrap;overflow:hidden}
+.vsep{width:1px;height:18px;background:#45484E;margin:0 8px}
+.runw{display:flex;align-items:center;height:30px;border-radius:7px;background:#393B40;padding:0 2px}
+.badge{position:absolute;top:3px;right:2px;min-width:14px;height:14px;border-radius:7px;font-size:9px;font-weight:700;display:grid;place-items:center;color:#1E1F22;padding:0 3px;box-sizing:border-box}
+.bd{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.isl{background:#1E1F22;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.ph{height:36px;flex:none;display:flex;align-items:center;gap:2px;padding:0 4px 0 6px;border-bottom:1px solid #343638}
+.pt{display:flex;align-items:center;gap:6px;height:36px;border:0;background:transparent;font:inherit;color:#9DA0A8;padding:0 10px;white-space:nowrap}
+.pt.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.tabs{height:36px;flex:none;display:flex;align-items:stretch;border-bottom:1px solid #343638}
+.tab{display:flex;align-items:center;gap:6px;padding:0 12px;white-space:nowrap;color:#9DA0A8}
+.tab.on{color:#DFE1E5;box-shadow:inset 0 -2px 0 #4A86E0}
+.row{display:flex;align-items:center;gap:5px;height:24px;white-space:nowrap;padding-right:8px;border-radius:5px}
+.row.sel{background:#2E436E}
+.chev{width:16px;flex:none;color:#7A7E85;display:grid;place-items:center}
+.ft{height:28px;flex:none;display:flex;align-items:center;gap:2px;padding:0 10px;font-size:12px;color:#9DA0A8}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.sb.on{background:#43454A;color:#DFE1E5}
+.fsep{width:1px;height:14px;background:#4F5258;margin:0 8px}
+.fr{display:flex;align-items:center;gap:5px;margin-right:14px}
+.ft > :last-child{margin-right:0}
+.l{display:flex;height:20px;line-height:20px;white-space:pre}
+.n{width:44px;flex:none;text-align:right;padding-right:8px;box-sizing:border-box;color:#5A5D63}
+.fo{width:18px;flex:none;display:grid;place-items:center;color:#5A5D63;border-right:1px solid #393B40}
+.cd{position:relative;flex:1;padding-left:14px}
+.g{position:absolute;top:0;bottom:0;width:1px;background:#393B40}
+.g4{left:calc(14px + 4ch)}.g8{left:calc(14px + 8ch)}
+.k{color:#CF8E6D}.a{color:#B3AE60}.s{color:#6AAB73}.p{color:#C77DBB}.pi{color:#C77DBB;font-style:italic}.fn{color:#56A8F5}
+.mt{background:#5A4B1C;color:#FFFFFF;border-radius:2px}
+.opt{display:grid;place-items:center;min-width:24px;height:22px;padding:0 4px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:11px;box-sizing:border-box}
+.opt.on{background:#2E436E;color:#DFE1E5}
+.fh{display:flex;align-items:center;gap:6px;height:24px;padding:0 12px;white-space:nowrap;font-size:12px}
+.rl{display:flex;align-items:center;gap:12px;height:22px;padding:0 12px 0 46px;white-space:pre;font-size:12px}
+.rl .ln{width:28px;text-align:right;color:#5A5D63;flex:none}
+.cnt2{font-size:11px;color:#9DA0A8;background:#2B2D30;border-radius:7px;padding:0 6px;line-height:16px}
+</style>
+</head>
+<body>
+<div class="w">
+  <header class="hd">
+    <div class="tl" aria-hidden="true"><span style="background: #FF5F57"></span><span style="background: #FEBC2E"></span><span style="background: #28C840"></span></div>
+    <button class="tb" style="font-weight: 600"><span class="pj">OA</span>orders-api<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="tb"><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>main<span class="pill">2 worktrees</span><svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code"><svg class="ic cl" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg></button>
+    <button class="ib" aria-label="OpenCode"><svg class="ic oc" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg></button>
+    <button class="ib" aria-label="Antigravity"><svg class="ic ag" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <span class="vsep"></span>
+    <div class="runw"><button class="tb">test<svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="ib" aria-label="Run test" style="color: #5FB865"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path class="f" d="M5 3.5v9l7-4.5z"/></svg></button><button class="ib" aria-label="Stop" style="color: #6F737A"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect class="f" x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg></button></div>
+  </header>
+
+  <div class="bd">
+    <section class="isl" aria-label="Project and changes" style="width: 280px; flex: none">
+      <div class="ph" role="tablist" aria-label="Left panel" style="align-items: stretch">
+        <button class="pt on" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Project</button>
+        <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M1.5 8h4M10.5 8h4"/></svg>Changes</button>
+      </div>
+      <div style="flex: 1; padding: 2px 6px; overflow: hidden">
+        <div class="row" style="padding-left: 4px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg><span style="font-weight: 600">orders-api</span></div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/main/java</div>
+        <div class="row" style="padding-left: 40px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>com.acme.orders</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>api</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>domain</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Customer.java</div>
+        <div class="row sel" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderLine.java</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderStatus.java</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>repository</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>service</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/main/resources</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg class="ic xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg class="ic dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/test/java</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi m" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>AGENTS.md</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg class="fi x" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>pom.xml</div>
+      </div>
+    </section>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+      <section class="isl" aria-label="Editor" style="flex: 1; min-height: 0">
+        <div class="tabs">
+          <div class="tab on"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>Order.java</div>
+          <div class="tab"><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg>OrderService.java</div>
+        </div>
+        <div class="mono" style="flex: none; font-size: 13px; border-bottom: 1px solid #393B40">
+          <div class="l"><span class="n">9</span><span class="fo"></span><span class="cd"><span class="k">public class</span> Order {</span></div>
+        </div>
+        <div class="mono" style="flex: 1; min-height: 0; overflow: hidden; font-size: 13px">
+          <div class="l"><span class="n">46</span><span class="fo"></span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">47</span><span class="fo"></span><span class="cd"> </span></div>
+          <div class="l"><span class="n">48</span><span class="fo"></span><span class="cd">    <span class="k">private void</span> <span class="fn">recomputeTotal</span>() {</span></div>
+          <div class="l"><span class="n">49</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">totalAmount</span> = <span class="p">lines</span>.stream()</span></div>
+          <div class="l"><span class="n">50</span><span class="fo"></span><span class="cd"><i class="g g4"></i>                .map(OrderLine::subtotal)</span></div>
+          <div class="l"><span class="n">51</span><span class="fo"></span><span class="cd"><i class="g g4"></i>                .reduce(BigDecimal.<span class="pi">ZERO</span>, BigDecimal::add);</span></div>
+          <div class="l"><span class="n">52</span><span class="fo"></span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">53</span><span class="fo"></span><span class="cd"> </span></div>
+          <div class="l"><span class="n">54</span><span class="fo"></span><span class="cd">    <span class="k">public void</span> <span class="fn">cancel</span>(String reason) {</span></div>
+          <div class="l"><span class="n">55</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="k">if</span> (<span class="p">status</span> == OrderStatus.<span class="pi">SHIPPED</span>) {</span></div>
+          <div class="l"><span class="n">56</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i>            <span class="k">throw new</span> IllegalStateException(<span class="s">"A shipped order cannot be cancelled"</span>);</span></div>
+          <div class="l"><span class="n">57</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        }</span></div>
+          <div class="l"><span class="n">58</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">status</span> = OrderStatus.<span class="pi">CANCELLED</span>;</span></div>
+          <div class="l"><span class="n">59</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">cancellationReason</span> = reason;</span></div>
+          <div class="l"><span class="n">60</span><span class="fo"></span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">61</span><span class="fo"></span><span class="cd"> </span></div>
+          <div class="l"><span class="n">62</span><span class="fo"></span><span class="cd">    <span class="k">public boolean</span> <span class="fn">isEditable</span>() {</span></div>
+          <div class="l" style="background: #26282E"><span class="n" style="color: #9DA0A8">63</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="k">return</span> <span class="p">status</span> == <span class="mt">OrderStatus.<span class="pi" style="color: #FFFFFF">DRAFT</span></span>;</span></div>
+          <div class="l"><span class="n">64</span><span class="fo"></span><span class="cd">    }</span></div>
+          <div class="l"><span class="n">65</span><span class="fo"></span><span class="cd">}</span></div>
+          <div class="l" style="height: 200px"><span class="n"></span><span class="fo"></span><span class="cd"> </span></div>
+        </div>
+      </section>
+
+      <section class="isl" aria-label="Search" style="height: 340px; flex: none">
+        <div class="ph" role="tablist" aria-label="Bottom panel">
+          <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg>History</button>
+          <button class="pt on" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3.5 3.5"/></svg>Search</button>
+          <button class="pt" role="tab"><svg class="ic sm" style="color: #5FB865" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>Run</button>
+          <button class="pt" role="tab"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3M8 11.8v.2"/></svg>Problems<span style="font-size: 11px; color: #9DA0A8">2</span></button>
+          <span style="flex: 1"></span>
+          <button class="ib s" aria-label="Hide panel"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9"/></svg></button>
+        </div>
+        <div style="height: 42px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #343638">
+          <label style="width: 420px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 8px; border-radius: 6px; background: #151618; box-shadow: inset 0 0 0 1px #4A86E0">
+            <svg class="ic sm dim" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3.5 3.5"/></svg>
+            <input class="mono" aria-label="Search text" value="OrderStatus.DRAFT" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #DFE1E5; font-size: 12px; outline: none">
+            <button class="opt on" aria-label="Match case" aria-pressed="true">Aa</button>
+            <button class="opt" aria-label="Whole words" aria-pressed="false">W</button>
+            <button class="opt" aria-label="Regular expression" aria-pressed="false">.*</button>
+          </label>
+          <label style="width: 140px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 6px; background: #151618; color: #9DA0A8; font-size: 12px">
+            <svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12L9.5 9v4l-3-1.5V9z"/></svg>
+            <input class="mono" aria-label="File mask" value="*.java" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #DFE1E5; font-size: 12px; outline: none">
+          </label>
+          <span style="flex: 1"></span>
+          <span class="dim" style="font-size: 12px">14 matches in 5 files</span>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 4px 0">
+          <div class="fh"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-weight: 600">Order.java</span><span class="dim">src/main/java/com/acme/orders/domain</span><span class="cnt2">2</span></div>
+          <div class="rl mono"><span class="ln">34</span><span><span class="k">if</span> (status != <span class="mt">OrderStatus.DRAFT</span>) {</span></div>
+          <div class="rl mono" style="background: #2E436E"><span class="ln" style="color: #B4C3DC">63</span><span><span class="k">return</span> status == <span class="mt">OrderStatus.DRAFT</span>;</span></div>
+          <div class="fh"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-weight: 600">OrderService.java</span><span class="dim">src/main/java/com/acme/orders/service</span><span class="cnt2">4</span></div>
+          <div class="rl mono"><span class="ln">28</span><span><span class="k">if</span> (order.getStatus() == <span class="mt">OrderStatus.DRAFT</span>) {</span></div>
+          <div class="rl mono"><span class="ln">41</span><span>.filter(o -&gt; o.getStatus() == <span class="mt">OrderStatus.DRAFT</span>)</span></div>
+          <div class="rl mono"><span class="ln">57</span><span>order.setStatus(<span class="mt">OrderStatus.DRAFT</span>);</span></div>
+          <div class="rl mono"><span class="ln">88</span><span><span class="k">return</span> repository.countByStatus(<span class="mt">OrderStatus.DRAFT</span>);</span></div>
+          <div class="fh"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-weight: 600">OrderController.java</span><span class="dim">src/main/java/com/acme/orders/api</span><span class="cnt2">2</span></div>
+          <div class="rl mono"><span class="ln">52</span><span>OrderStatus wanted = status.orElse(<span class="mt">OrderStatus.DRAFT</span>);</span></div>
+          <div class="rl mono"><span class="ln">74</span><span><span class="k">if</span> (order.getStatus() != <span class="mt">OrderStatus.DRAFT</span>) <span class="k">return</span> conflict();</span></div>
+          <div class="fh"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-weight: 600">OrderTest.java</span><span class="dim">src/test/java/com/acme/orders/domain</span><span class="cnt2">5</span></div>
+          <div class="fh"><svg class="ic xs dim" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><svg class="fi j" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z"/></svg><span style="font-weight: 600">OrderRepository.java</span><span class="dim">src/main/java/com/acme/orders/repository</span><span class="cnt2">1</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="ft">
+    <button class="sb on" aria-label="Toggle left panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb on" aria-label="Toggle bottom panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span class="fsep"></span>
+    <span class="fr" style="margin-right: 8px"><svg class="ic sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span class="fr"><svg class="ic sm" style="color: #E0A63B" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>2</span>
+    <div style="flex: 1"></div>
+    <span class="fr"><span class="dot" style="width: 6px; height: 6px; border-radius: 50%; background: #5FB865"></span>jdtls</span>
+    <span class="fr">63:25</span>
+    <span class="fr">Java</span>
+    <span class="fr">UTF-8</span>
+  </footer>
+</div>
+</body>
+</html>

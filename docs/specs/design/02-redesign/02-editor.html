@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman — Code editor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+html{background:#151618}
+body{margin:0;width:1440px}
+.w{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:13px;color:#DFE1E5}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.tb{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#DFE1E5;font:inherit;white-space:nowrap}
+.ib{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9DA0A8;padding:0;position:relative}
+.badge{position:absolute;top:3px;right:2px;min-width:14px;height:14px;border-radius:7px;font-size:9px;font-weight:700;display:grid;place-items:center;color:#1E1F22;padding:0 3px;box-sizing:border-box}
+.sb{display:grid;place-items:center;width:24px;height:20px;border:0;border-radius:4px;background:transparent;color:#9DA0A8;padding:0}
+.row{display:flex;align-items:center;gap:5px;height:24px;white-space:nowrap;padding-right:8px;border-radius:5px}
+.chev{width:16px;flex:none;color:#7A7E85;display:grid;place-items:center}
+.tab{display:flex;align-items:center;gap:6px;height:36px;padding:0 12px;white-space:nowrap;color:#9DA0A8;box-sizing:border-box}
+.l{display:flex;height:20px;line-height:20px;white-space:pre}
+.n{width:44px;flex:none;text-align:right;padding-right:8px;box-sizing:border-box;color:#5A5D63}
+.fo{width:18px;flex:none;display:grid;place-items:center;color:#5A5D63;border-right:1px solid #393B40}
+.cd{position:relative;flex:1;padding-left:14px}
+.g{position:absolute;top:0;bottom:0;width:1px;background:#393B40}
+.g4{left:calc(14px + 4ch)}.g8{left:calc(14px + 8ch)}.g12{left:calc(14px + 12ch)}
+.ga{background:#868A91}
+.k{color:#CF8E6D}.a{color:#B3AE60}.s{color:#6AAB73}.p{color:#C77DBB}.pi{color:#C77DBB;font-style:italic}.fn{color:#56A8F5}.num{color:#2AACB8}
+.mb{background:#3C4E6A;color:#FFFFFF;border-radius:2px}
+.caret{display:inline-block;width:2px;height:16px;background:#DFE1E5;vertical-align:-3px}
+</style>
+</head>
+<body>
+<div class="w" style="width: 1440px; height: 900px; box-sizing: border-box; background: #2B2D30; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 42px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 10px 0 14px">
+    <div style="display: flex; gap: 8px; margin-right: 16px" aria-hidden="true">
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57"></span>
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E"></span>
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #28C840"></span>
+    </div>
+    <button class="tb" style="font-weight: 600">
+      <span style="width: 20px; height: 20px; border-radius: 5px; background: #6B4F8E; color: #FFFFFF; font-size: 10px; display: grid; place-items: center">OA</span>
+      orders-api
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.5" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+    </button>
+    <button class="tb">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.5-6 1.5-6 4"/></svg>
+      main
+      <span style="font-size: 11px; padding: 1px 6px; border-radius: 8px; background: #393B40; color: #9DA0A8">2 worktrees</span>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.5" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+    </button>
+    <div style="flex: 1"></div>
+    <div style="flex: 1"></div>
+    <button class="ib" aria-label="Claude Code, 1 running"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg><span class="badge" style="background: #5FB865">1</span></button>
+    <button class="ib" aria-label="OpenCode, waiting for input"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#DFE1E5" stroke-width="1.4" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M6 6h4v4H6z"/></svg><span class="badge" style="background: #E0A63B">1</span></button>
+    <button class="ib" aria-label="Antigravity"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#7FB2F0" stroke-width="1.4" aria-hidden="true"><path d="M8 2.5L13.5 13h-11z"/></svg></button>
+    <span style="width: 1px; height: 18px; background: #45484E; margin: 0 8px"></span>
+    <div style="display: flex; align-items: center; height: 30px; border-radius: 7px; background: #393B40; padding: 0 2px">
+      <button class="tb">test<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.5" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
+      <button class="ib" aria-label="Run test" style="color: #5FB865"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg></button>
+      <button class="ib" aria-label="Stop" style="color: #6F737A"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg></button>
+    </div>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: flex; gap: 6px; padding: 0 6px 6px">
+
+    <section aria-label="Project and changes" style="width: 280px; flex: none; background: #1E1F22; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden">
+      <div role="tablist" aria-label="Left panel" style="height: 36px; flex: none; display: flex; align-items: stretch; gap: 2px; padding: 0 4px 0 6px; border-bottom: 1px solid #343638">
+        <button class="tab" role="tab" aria-selected="true" style="border: 0; background: transparent; font: inherit; padding: 0 10px; color: #DFE1E5; box-shadow: inset 0 -2px 0 #4A86E0"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Project</button>
+        <button class="tab" role="tab" style="border: 0; background: transparent; font: inherit; padding: 0 10px"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M1.5 8h4M10.5 8h4"/></svg>Changes<span style="font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 7px; background: #E0A63B; color: #1E1F22; line-height: 14px">3</span></button>
+        <div style="flex: 1"></div>
+        <button class="ib" aria-label="More" style="align-self: center"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="12.5" cy="8" r="1.2"/></svg></button>
+      </div>
+      <div style="flex: 1; padding: 2px 6px; display: flex; flex-direction: column; overflow: hidden">
+        <div class="row" style="padding-left: 4px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg><span style="font-weight: 600">orders-api</span></div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/main/java</div>
+        <div class="row" style="padding-left: 40px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>com.acme.orders</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>api</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>domain</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E76F00"/></svg>Customer.java</div>
+        <div class="row" style="padding-left: 76px; background: #2E436E"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E76F00"/></svg>Order.java</div>
+        <div class="row" style="padding-left: 76px; color: #6EA6F0"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E76F00"/></svg>OrderLine.java</div>
+        <div class="row" style="padding-left: 76px"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E76F00"/></svg>OrderStatus.java</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>repository</div>
+        <div class="row" style="padding-left: 58px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>service</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/main/resources</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.3" aria-hidden="true"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>src/test/java</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#42A5F5"/></svg>AGENTS.md</div>
+        <div class="row" style="padding-left: 22px"><span class="chev"></span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#CB4B4B"/></svg>pom.xml</div>
+      </div>
+    </section>
+
+    <section aria-label="Editor" style="flex: 1; min-width: 0; background: #1E1F22; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden">
+      <div style="height: 36px; flex: none; display: flex; align-items: stretch; border-bottom: 1px solid #343638">
+        <div class="tab" style="color: #DFE1E5; box-shadow: inset 0 -2px 0 #4A86E0"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E76F00"/></svg>Order.java<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#9DA0A8" stroke-width="1.5" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></div>
+        <div class="tab"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5h6.5l3.5 3.5v9.5H3z" fill="#E0A63B"/></svg>V2__order_lines.sql</div>
+        <div class="tab"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/></svg>Claude Code<span style="width: 6px; height: 6px; border-radius: 50%; background: #5FB865"></span></div>
+        <div style="flex: 1"></div>
+        <div style="display: flex; align-items: center; padding-right: 6px">
+          <button class="ib" aria-label="Split"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M8 3v10"/></svg></button>
+          <button class="ib" aria-label="More"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="12.5" cy="8" r="1.2"/></svg></button>
+        </div>
+      </div>
+      <div class="mono" style="flex: none; font-size: 13px; background: #1E1F22; border-bottom: 1px solid #393B40">
+        <div class="l"><span class="n">9</span><span class="fo"></span><span class="cd"><span class="k">public class</span> Order {</span></div>
+        <div class="l"><span class="n">33</span><span class="fo"></span><span class="cd">    <span class="k">public void</span> <span class="fn">addLine</span>(Product product, <span class="k">int</span> quantity) {</span></div>
+      </div>
+
+      <div class="mono" style="flex: 1; min-height: 0; overflow: hidden; font-size: 13px; position: relative">
+        <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: calc(77px + 120ch); width: 1px; background: #393B40"></div>
+        <div class="l"><span class="n">34</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd"><i class="g g4"></i>        <span class="k">if</span> (<span class="p">status</span> != OrderStatus.<span class="pi">DRAFT</span>) {</span></div>
+        <div class="l"><span class="n">35</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i>            <span class="k">throw new</span> IllegalStateException(<span class="s">"Order "</span> + <span class="p">id</span> + <span class="s">" is "</span> + <span class="p">status</span> + <span class="s">", lines can only be added to a draft"</span>);</span></div>
+        <div class="l"><span class="n">36</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd"><i class="g g4"></i>        }</span></div>
+        <div class="l"><span class="n">37</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd"><i class="g g4"></i>        <span class="k">for</span> (OrderLine line : <span class="p">lines</span>) {</span></div>
+        <div class="l" style="background: #26282E"><span class="n" style="color: #9DA0A8">38</span><span class="fo" style="color: #DFE1E5"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd"><i class="g g4"></i><i class="g g8"></i>            <span class="k">if</span> (line.getProduct().equals(product)) <span class="mb">{</span><span class="caret"></span></span></div>
+        <div class="l"><span class="n">39</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i><i class="g g12 ga"></i>                line.increase(quantity);</span></div>
+        <div class="l"><span class="n">40</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i><i class="g g12 ga"></i>                recomputeTotal();</span></div>
+        <div class="l"><span class="n">41</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i><i class="g g12 ga"></i>                <span class="k">return</span>;</span></div>
+        <div class="l"><span class="n">42</span><span class="fo" style="color: #DFE1E5"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd"><i class="g g4"></i><i class="g g8"></i>            <span class="mb">}</span></span></div>
+        <div class="l"><span class="n">43</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd"><i class="g g4"></i>        }</span></div>
+        <div class="l"><span class="n">44</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">lines</span>.add(<span class="k">new</span> OrderLine(<span class="k">this</span>, product, quantity));</span></div>
+        <div class="l"><span class="n">45</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        recomputeTotal();</span></div>
+        <div class="l"><span class="n">46</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd">    }</span></div>
+        <div class="l"><span class="n">47</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">48</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd">    <span class="k">private void</span> <span class="fn">recomputeTotal</span>() {</span></div>
+        <div class="l"><span class="n">49</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">totalAmount</span> = <span class="p">lines</span>.stream()</span></div>
+        <div class="l"><span class="n">50</span><span class="fo"></span><span class="cd"><i class="g g4"></i>                .map(OrderLine::subtotal)</span></div>
+        <div class="l"><span class="n">51</span><span class="fo"></span><span class="cd"><i class="g g4"></i>                .reduce(BigDecimal.<span class="pi">ZERO</span>, BigDecimal::add);</span></div>
+        <div class="l"><span class="n">52</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd">    }</span></div>
+        <div class="l"><span class="n">53</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">54</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd">    <span class="k">public void</span> <span class="fn">cancel</span>(String reason) {</span></div>
+        <div class="l"><span class="n">55</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd"><i class="g g4"></i>        <span class="k">if</span> (<span class="p">status</span> == OrderStatus.<span class="pi">SHIPPED</span>) {</span></div>
+        <div class="l"><span class="n">56</span><span class="fo"></span><span class="cd"><i class="g g4"></i><i class="g g8"></i>            <span class="k">throw new</span> IllegalStateException(<span class="s">"A shipped order cannot be cancelled"</span>);</span></div>
+        <div class="l"><span class="n">57</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd"><i class="g g4"></i>        }</span></div>
+        <div class="l"><span class="n">58</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">status</span> = OrderStatus.<span class="pi">CANCELLED</span>;</span></div>
+        <div class="l"><span class="n">59</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="p">cancellationReason</span> = reason;</span></div>
+        <div class="l"><span class="n">60</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd">    }</span></div>
+        <div class="l"><span class="n">61</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l"><span class="n">62</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></span><span class="cd">    <span class="k">public boolean</span> <span class="fn">isEditable</span>() {</span></div>
+        <div class="l"><span class="n">63</span><span class="fo"></span><span class="cd"><i class="g g4"></i>        <span class="k">return</span> <span class="p">status</span> == OrderStatus.<span class="pi">DRAFT</span>;</span></div>
+        <div class="l"><span class="n">64</span><span class="fo"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l5-5 5 5"/></svg></span><span class="cd">    }</span></div>
+        <div class="l"><span class="n">65</span><span class="fo"></span><span class="cd">}</span></div>
+        <div class="l"><span class="n">66</span><span class="fo"></span><span class="cd"> </span></div>
+        <div class="l" style="height: 400px"><span class="n"></span><span class="fo"></span><span class="cd"> </span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 10px; font-size: 12px; color: #9DA0A8">
+    <button class="sb" aria-label="Toggle left panel" style="background: #43454A; color: #DFE1E5"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="sb" aria-label="Toggle bottom panel"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 9.5h13"/></svg></button>
+    <button class="sb" aria-label="Toggle right panel"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+    <span style="width: 1px; height: 14px; background: #4F5258; margin: 0 8px"></span>
+    <span style="display: flex; align-items: center; gap: 4px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M6 6l4 4M10 6l-4 4"/></svg>0</span>
+    <span style="display: flex; align-items: center; gap: 4px; margin-left: 8px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#E0A63B" stroke-width="1.4" aria-hidden="true"><path d="M8 2.5l6 11H2z"/><path d="M8 7v3"/></svg>2</span>
+    <div style="flex: 1"></div>
+    <span style="display: flex; align-items: center; gap: 5px; margin-right: 14px"><span style="width: 6px; height: 6px; border-radius: 50%; background: #5FB865"></span>jdtls</span>
+    <span style="margin-right: 14px">38:57</span>
+    <span style="margin-right: 14px">Java</span>
+    <span>UTF-8</span>
+  </footer>
+</div>
+</body>
+</html>
