@@ -109,7 +109,11 @@ actor DAPSession {
         let capabilities: DAPCapabilities = try await send(
             "initialize", DAPInitializeArguments(adapterID: adapterID), as: DAPCapabilities.self)
         let launch = try await post(request.rawValue, arguments)
-        try await answer(to: Self.initializedKey, "the initialized event")
+        // debug R9 bounds `initialize` and the connection, not these two: an attach adapter
+        // waits for the program (`java-debug` retries the JDWP port for its own `timeout` while
+        // Spring Boot starts) before it sends `initialized`, and a launch answers after the
+        // program is up. ■ ends the wait (found on `ccoe`, 2026-10-18).
+        try await answer(to: Self.initializedKey, "the initialized event", bounded: false)
         var answers: [String: DAPSetBreakpointsResponse] = [:]
         for file in breakpoints {
             answers[file.path] = try await setBreakpoints(file)
@@ -117,7 +121,7 @@ actor DAPSession {
         if capabilities.supportsConfigurationDoneRequest != false {
             try await send("configurationDone", DAPEmpty())
         }
-        try await answer(to: launch, request.rawValue)
+        try await answer(to: launch, request.rawValue, bounded: false)
         return answers
     }
 
@@ -202,8 +206,9 @@ actor DAPSession {
     }
 
     @discardableResult
-    private func answer(to key: Int, _ what: String) async throws -> LSPAny {
+    private func answer(to key: Int, _ what: String, bounded: Bool = true) async throws -> LSPAny {
         let timer = Task { [timeout] in
+            guard bounded else { return }
             try await Task.sleep(for: timeout)
             self.deliver(key, .failure(Failure.timeout(what)))
         }
