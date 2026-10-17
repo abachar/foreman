@@ -51,4 +51,44 @@ struct GitDiffModelTests {
         #expect(GitDiffModel.needsRender(unchanged, previous: before, isRendered: false))
         #expect(GitDiffModel.needsRender(unchanged, previous: nil, isRendered: true))
     }
+
+    // MARK: - git R13b, R16 (M23 23.11)
+
+    private func hunk(_ id: String, rows: Int) -> RenderedHunk {
+        RenderedHunk(id: id, header: "@@ \(id) @@", rows: (0..<rows).map { RenderedRow(id: $0, left: nil, right: nil) })
+    }
+
+    @Test func rowsAreFlatAndInOrder() {
+        let diff = GitDiff(files: [file("a.swift", lines: 3), file("b.swift", lines: 2)])
+        let rendered = ["a.swift": [hunk("1-1", rows: 2), hunk("9-9", rows: 1)], "b.swift": [hunk("1-1", rows: 2)]]
+        let rows = GitDiffModel.rows(of: diff, expanded: { $0.id == "a.swift" }, rendered: rendered)
+        #expect(
+            rows.map(\.id) == [
+                "file:a.swift",
+                "hunk:a.swift:1-1", "row:a.swift:1-1:0", "row:a.swift:1-1:1",
+                "hunk:a.swift:9-9", "row:a.swift:9-9:0",
+                "file:b.swift",
+            ])
+    }
+
+    @Test func aFoldedFileContributesItsHeaderOnly() {
+        let diff = GitDiff(files: [file("a.swift", lines: 3)])
+        let rows = GitDiffModel.rows(of: diff, expanded: { _ in false }, rendered: ["a.swift": [hunk("1-1", rows: 3)]])
+        #expect(rows.map(\.id) == ["file:a.swift"])
+    }
+
+    @Test func aBinaryFileContributesOneLine() {
+        let diff = GitDiff(files: [binary("b.png")])
+        let rows = GitDiffModel.rows(of: diff, expanded: { _ in true }, rendered: [:])
+        #expect(rows.map(\.id) == ["file:b.png", "binary:b.png"])
+    }
+
+    @Test func rowIdsAreUniqueAcrossHunksAndFiles() {
+        // Two new files: both hunks are `0-1`, both first rows are 0.
+        let diff = GitDiff(files: [file("a.swift", lines: 2), file("b.swift", lines: 2)])
+        let rendered = ["a.swift": [hunk("0-1", rows: 2)], "b.swift": [hunk("0-1", rows: 2)]]
+        let ids = GitDiffModel.rows(of: diff, expanded: { _ in true }, rendered: rendered).map(\.id)
+        #expect(ids.count == 8)
+        #expect(Set(ids).count == ids.count)
+    }
 }

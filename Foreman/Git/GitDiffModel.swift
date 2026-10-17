@@ -35,6 +35,28 @@ nonisolated struct RenderedHunk: Sendable, Identifiable {
     let rows: [RenderedRow]
 }
 
+/// git R13b, R16 (M23 23.11): the diff tab's rows, flat, so one lazy stack builds only what is near
+/// the viewport — a lazy stack nested in a hunk's `VStack` was sized by its parent and built every row.
+///
+/// A hunk's id (`oldStart-newStart`) repeats across files (every new file is `0-1`), so the hunk and
+/// row ids carry the file's path.
+nonisolated enum DiffRow: Identifiable, Sendable {
+    case file(FileDiff)
+    /// git R16: the "binary, N KB → M KB" line of an open binary file.
+    case binary(FileDiff)
+    case hunk(RenderedHunk, path: String)
+    case row(RenderedRow, path: String, hunk: String)
+
+    var id: String {
+        switch self {
+        case .file(let file): "file:\(file.id)"
+        case .binary(let file): "binary:\(file.id)"
+        case .hunk(let hunk, let path): "hunk:\(path):\(hunk.id)"
+        case .row(let row, let path, let hunk): "row:\(path):\(hunk):\(row.id)"
+        }
+    }
+}
+
 /// What one `git.diff` tab shows (git R13, R14, R16, R17).
 @Observable
 @MainActor
@@ -116,6 +138,29 @@ final class GitDiffModel {
     /// the others when they are unfolded (audit 2026-10-17 M2).
     nonisolated static func filesToRender(_ diff: GitDiff, expanded: Set<String>) -> [FileDiff] {
         diff.files.filter { !$0.isBinary && (!diff.isLarge || expanded.contains($0.id)) }
+    }
+
+    /// git R13b, R16 (M23 23.11): the tab's flat rows, in diff order.
+    ///
+    /// Every file's header, then, if it is open, its binary line or its rendered hunks — each hunk's
+    /// header then its rows. A folded file, or one not rendered yet, contributes its header only.
+    nonisolated static func rows(
+        of diff: GitDiff, expanded: (FileDiff) -> Bool, rendered: [String: [RenderedHunk]]
+    ) -> [DiffRow] {
+        var rows: [DiffRow] = []
+        for file in diff.files {
+            rows.append(.file(file))
+            guard expanded(file) else { continue }
+            if file.isBinary {
+                rows.append(.binary(file))
+                continue
+            }
+            for hunk in rendered[file.id] ?? [] {
+                rows.append(.hunk(hunk, path: file.path))
+                rows.append(contentsOf: hunk.rows.map { .row($0, path: file.path, hunk: hunk.id) })
+            }
+        }
+        return rows
     }
 
     /// git R17: a refresh renders again only the files whose hunks changed; an unchanged file keeps

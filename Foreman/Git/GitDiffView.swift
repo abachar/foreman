@@ -29,21 +29,23 @@ struct GitDiffView: View {
     }
 
     /// git R13b (amended 2026-10-16): side by side only.
+    ///
+    /// M23 23.11: one lazy stack of flat rows, so only the rows near the viewport are built.
     private func content(_ diff: GitDiff) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(diff.files) { file in
-                    fileHeader(file, isLarge: diff.isLarge)
-                    if model.isExpanded(file) {
-                        if file.isBinary {
-                            Text(model.binarySizes[file.id] ?? "binary")
-                                .foregroundStyle(.secondary)
-                                .padding(8)
-                        } else {
-                            ForEach(model.rendered[file.id] ?? []) { hunk in
-                                hunkView(hunk, path: file.path)
-                            }
-                        }
+                ForEach(GitDiffModel.rows(of: diff, expanded: model.isExpanded, rendered: model.rendered)) { row in
+                    switch row {
+                    case .file(let file):
+                        fileHeader(file, isLarge: diff.isLarge)
+                    case .binary(let file):
+                        Text(model.binarySizes[file.id] ?? "binary")
+                            .foregroundStyle(.secondary)
+                            .padding(8)
+                    case .hunk(let hunk, _):
+                        hunkHeader(hunk)
+                    case .row(let row, let path, _):
+                        rowView(row, path: path)
                     }
                 }
             }
@@ -97,28 +99,26 @@ struct GitDiffView: View {
         return file.path
     }
 
-    private func hunkView(_ hunk: RenderedHunk, path: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(hunk.header)
-                .font(Font(theme.editorFont))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(theme.tokens.surfaceSunken.color)
-            // git R13b: one row per pair, both cells the height of the taller one, lines wrap.
-            LazyVStack(spacing: 0) {
-                ForEach(hunk.rows) { row in
-                    HStack(alignment: .top, spacing: 0) {
-                        cell(row.left, path: path)
-                        Divider()
-                        cell(row.right, path: path)
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.vertical, 2)
+    private func hunkHeader(_ hunk: RenderedHunk) -> some View {
+        Text(hunk.header)
+            .font(Font(theme.editorFont))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.tokens.surfaceSunken.color)
+            // The gap the hunk's rows kept above them when they were wrapped in a stack (M23 23.11).
+            .padding(.bottom, 2)
+    }
+
+    /// git R13b: one row per pair, both cells the height of the taller one, lines wrap.
+    private func rowView(_ row: RenderedRow, path: String) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            cell(row.left, path: path)
+            Divider()
+            cell(row.right, path: path)
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func cell(_ cell: RenderedCell?, path: String) -> some View {
