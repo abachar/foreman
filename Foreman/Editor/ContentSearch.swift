@@ -196,28 +196,36 @@ nonisolated enum ContentSearch {
             }
             Task.detached {
                 // Drained alongside stdout: a tool blocked on a full stderr pipe never exits.
+                // Both through `PipeIO`, never `FileHandle.bytes`: its iterations share one serial
+                // queue, so the stderr read held it while rg filled stdout's pipe and waited —
+                // every search with more than a pipe's worth of output hung (2026-10-17).
                 async let stderr = drainStderr(errors)
                 var count = 0
-                do {
-                    for try await line in pipe.fileHandleForReading.bytes.lines {
-                        let match: Match?
-                        switch tool {
-                        case .ripgrep:
-                            match = parseRipgrep(line)
-                        case .grep:
-                            match = parseGrep(line, options: options)
-                        }
-                        guard let match else { continue }
-                        continuation.yield(match)
-                        count += 1
-                        if count >= limit {
-                            process.terminate()
-                            break
-                        }
+                var buffer = LineBuffer()
+                func take(_ line: String) -> Bool {
+                    let match: Match?
+                    switch tool {
+                    case .ripgrep:
+                        match = parseRipgrep(line)
+                    case .grep:
+                        match = parseGrep(line, options: options)
                     }
-                } catch {
-                    continuation.finish(throwing: error)
-                    return
+                    guard let match else { return true }
+                    continuation.yield(match)
+                    count += 1
+                    guard count < limit else {
+                        process.terminate()
+                        return false
+                    }
+                    return true
+                }
+                reading: for await chunk in PipeIO.chunks(pipe.fileHandleForReading) {
+                    for line in buffer.append(chunk) where !take(line) {
+                        break reading
+                    }
+                }
+                if count < limit, let last = buffer.finish() {
+                    _ = take(last)
                 }
                 guard count == 0 else {
                     continuation.finish()
@@ -238,15 +246,30 @@ nonisolated enum ContentSearch {
 
     /// The first lines of stderr, enough for a summary; the rest is read and dropped.
     private static func drainStderr(_ pipe: Pipe) async -> String {
-        var lines: [String] = []
-        do {
-            for try await line in pipe.fileHandleForReading.bytes.lines where lines.count < 20 {
-                lines.append(line)
+        let text = String(decoding: await PipeIO.readToEnd(pipe.fileHandleForReading), as: UTF8.self)
+        return text.split(separator: "\n").prefix(20).joined(separator: "\n")
+    }
+
+    /// Lines out of the chunks a pipe delivers: a chunk ends anywhere, a line at `\n` only.
+    struct LineBuffer {
+        private var pending = Data()
+
+        /// The lines `chunk` completes; what follows the last `\n` waits for the next chunk.
+        mutating func append(_ chunk: Data) -> [String] {
+            pending.append(chunk)
+            guard let last = pending.lastIndex(of: 0x0A) else { return [] }
+            let complete = pending[pending.startIndex..<last]
+            pending = Data(pending[(last + 1)...])
+            return complete.split(separator: 0x0A, omittingEmptySubsequences: false).map {
+                String(decoding: $0, as: UTF8.self)
             }
-        } catch {
-            // A read error on the diagnostics channel: whatever was collected is the summary.
         }
-        return lines.joined(separator: "\n")
+
+        /// The last line when the output did not end with a newline.
+        mutating func finish() -> String? {
+            defer { pending = Data() }
+            return pending.isEmpty ? nil : String(decoding: pending, as: UTF8.self)
+        }
     }
 
     private static func relative(_ path: String) -> String {

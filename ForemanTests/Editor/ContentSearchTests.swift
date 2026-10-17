@@ -140,3 +140,35 @@ struct SearchSpeedTests {
         #expect(short.ranges == [NSRange(location: 4, length: 1)])
     }
 }
+
+/// The search's stdout cut into lines (editor R21, the hang fixed on 2026-10-17).
+struct SearchLineBufferTests {
+    @Test func linesAreCutAtNewlinesWhateverTheChunks() {
+        var buffer = ContentSearch.LineBuffer()
+        #expect(buffer.append(Data("{\"a\"".utf8)).isEmpty)
+        #expect(buffer.append(Data(":1}\n{\"b\":2}\n{\"c".utf8)) == [#"{"a":1}"#, #"{"b":2}"#])
+        #expect(buffer.append(Data("\":3}".utf8)).isEmpty)
+        #expect(buffer.finish() == #"{"c":3}"#)
+        #expect(buffer.finish() == nil)
+        #expect(buffer.append(Data("x\n\ny\n".utf8)) == ["x", "", "y"])
+    }
+
+    /// More than a pipe's worth of output, stdout and stderr read together: this hung forever
+    /// while both went through `FileHandle.bytes`.
+    @Test func aLargeOutputIsReadToTheCap() async throws {
+        let root = URL(filePath: NSTemporaryDirectory()).appending(path: "foreman-search-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let line = "let component = Component() // " + String(repeating: "x", count: 200) + "\n"
+        for index in 0..<30 {
+            try String(repeating: line, count: 100).write(
+                to: root.appending(path: "file\(index).swift"), atomically: true, encoding: .utf8)
+        }
+        let tool = ContentSearch.locateTool()
+        var count = 0
+        for try await _ in ContentSearch.run(ContentSearch.Options(query: "Component"), tool: tool, root: root) {
+            count += 1
+        }
+        #expect(count == ContentSearch.limit)
+    }
+}
