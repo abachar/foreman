@@ -21,7 +21,7 @@ final class DebugFeature {
 
     private let workspace: Workspace
     let run: RunFeature
-    private let editor: EditorFeature
+    let editor: EditorFeature
     let layout: LayoutManager
     let theme: ThemeService
     /// debug R6, R10: what the panel shows; an empty value until a session starts.
@@ -31,7 +31,7 @@ final class DebugFeature {
     private var store: BreakpointStore
     var mark = PausedMark()
     private var areShortcutsRegistered = false
-    private var commandID: String?
+    var commandID: String?
     let logger = Logger(subsystem: "dev.crafters.foreman", category: "debug")
     private(set) var catalog = DebugCatalog.empty
     private var configWatch: Task<Void, Never>?
@@ -236,6 +236,13 @@ final class DebugFeature {
             return
         }
         adapterKey = debug.adapter
+        let arguments: LSPAny
+        do {
+            arguments = try await launchArguments(for: command, debug: debug, adapter: adapter)
+        } catch {
+            fail(commandID, String(describing: error))
+            return
+        }
         if debug.request == .attach, !command.command.isEmpty {
             run.launch(commandID)
         }
@@ -251,14 +258,14 @@ final class DebugFeature {
         self.commandID = commandID
         request = debug.request
         didShowPanel = false
-        model.begin(.connecting(debug.request, arguments: debug.arguments)) { [session] command, arguments in
+        model.begin(.connecting(debug.request, arguments: arguments)) { [session] command, arguments in
             try await session.send(command, arguments)
         }
         listen(to: session)
         let keys = store.lines.keys.sorted()
         let files = keys.map { store.file($0, root: workspace.root) }
         do {
-            let answers = try await session.start(debug.request, arguments: debug.arguments, breakpoints: files)
+            let answers = try await session.start(debug.request, arguments: arguments, breakpoints: files)
             guard self.session === session else { return }
             for (key, file) in zip(keys, files) {
                 if let answer = answers[file.path] {
@@ -361,7 +368,7 @@ final class DebugFeature {
     /// R9: `disconnect` — the program is terminated for a launch, left running for an attach.
     func stop() async {
         guard let session else { return }
-        let terminate = request == .launch
+        let terminate = request?.terminatesDebuggee ?? false
         self.session = nil
         request = nil
         commandID = nil
@@ -392,9 +399,11 @@ final class DebugFeature {
                     logger.debug("\(message.event ?? "", privacy: .public)")
                     self?.handle(event: message.event ?? "")
                     await self?.ended(session)
+                case (.request, "runInTerminal"?):
+                    await self?.runInTerminal(message, in: session)
                 case (.request, let command?):
-                    logger.debug("reverse request \(command, privacy: .public) refused (27.5)")
-                    await session.respond(to: message, success: false, message: "not supported yet")
+                    logger.debug("reverse request \(command, privacy: .public) refused")
+                    await session.respond(to: message, success: false, message: "not supported")
                 default:
                     break
                 }

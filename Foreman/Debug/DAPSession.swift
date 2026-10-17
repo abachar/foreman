@@ -174,13 +174,13 @@ actor DAPSession {
         return try await answer(to: seq, command)
     }
 
-    /// Answers a reverse request; 27.1 only refuses, so an adapter never waits for a reply (debug R8).
-    func respond(to request: DAPMessage, success: Bool, message: String? = nil) async {
+    /// Answers a reverse request, so an adapter never waits for a reply (debug R8).
+    func respond(to request: DAPMessage, success: Bool, message: String? = nil, body: LSPAny? = nil) async {
         seq += 1
         await transmit(
             DAPMessage(
-                seq: seq, type: .response, command: request.command, requestSeq: request.seq, success: success,
-                message: message))
+                seq: seq, type: .response, command: request.command, body: body, requestSeq: request.seq,
+                success: success, message: message))
     }
 
     /// Numbers the request, makes room for its answer, then writes it: an answer that beats the

@@ -286,6 +286,24 @@ final class RunFeature {
         return session
     }
 
+    /// Runs the program the adapter asked a terminal for, in the command's sub-tab.
+    ///
+    /// Debug R8: a `debug`-only command gets its sub-tab now, the panel shown on it as `launch` does. The sub-tab of an
+    /// earlier session is replaced; the process id is the shell's.
+    func runDebuggee(commandID id: String, commandLine: String, cwd: URL, env: [String: String]) -> pid_t? {
+        if let previous = sessions[id] {
+            pendingRelaunches.removeValue(forKey: previous)?.cancel()
+            lastStops[previous] = nil
+            terminal.closed(previous)
+        }
+        banners[id] = nil
+        let session = terminal.start(command: commandLine, cwd: cwd, env: env, kind: Self.kind(of: id), title: id)
+        adopt(session, commandID: id)
+        select(id)
+        layout.panels.show(Self.panelID)
+        return try? terminal.pid(of: session)
+    }
+
     private func adopt(_ session: TabID, commandID: String) {
         sessions[commandID] = session
         if !sessionOrder.contains(commandID) {

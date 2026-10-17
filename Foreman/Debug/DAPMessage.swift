@@ -204,7 +204,7 @@ nonisolated struct DAPExitedEvent: Codable, Equatable, Sendable {
 
 // MARK: - Reverse request
 
-/// `runInTerminal` (debug R8): decoded here, answered by M27 27.5. `env` values may be `null`,
+/// `runInTerminal` (debug R8), served by `DebugFeature+Launch`. `env` values may be `null`,
 /// which the protocol means as "unset this variable".
 nonisolated struct DAPRunInTerminalArguments: Codable, Equatable, Sendable {
     var kind: String?
@@ -212,4 +212,9 @@ nonisolated struct DAPRunInTerminalArguments: Codable, Equatable, Sendable {
     var cwd: String
     var args: [String]
     var env: [String: String?]?
+}
+
+/// The reply to `runInTerminal`: the process the terminal started.
+nonisolated struct DAPRunInTerminalResponse: Codable, Equatable, Sendable {
+    var processId: Int?
 }

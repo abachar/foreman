@@ -184,6 +184,9 @@ One debug adapter per lowercased file extension, the `lsp` section's shape. Noth
       "api": {
         "run": "mvn spring-boot:run -Dspring-boot.run.jvmArguments=\"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005\"",
         "debug": { "adapter": "java", "request": "attach", "arguments": { "hostName": "localhost", "port": 5005 } }
+      },
+      "backend-debug": {
+        "debug": { "adapter": "java", "request": "launch", "arguments": { "vmArgs": "-Dspring.profiles.active=dev" } }
       }
     },
     ".": {
@@ -194,6 +197,8 @@ One debug adapter per lowercased file extension, the `lsp` section's shape. Noth
   }
 }
 ```
+
+A `launch` through a `server` adapter (M27 27.5): `mainClass`, `projectName` and `classPaths`/`modulePaths` come from `jdtls` (`vscode.java.resolveMainClass`, `vscode.java.resolveClasspath`) when absent from `arguments`, whatever the user writes winning; the repo's `$env` goes to the program (`env`, under the user's own), `cwd` defaults to the command's folder, and `console` defaults to `integratedTerminal`, which is the command's Run sub-tab.
 
 ## `git` — `Git/GitFeature.swift` (git R26)
 
