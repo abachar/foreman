@@ -7,6 +7,7 @@ what the fixes cite.
 | Date | Audit | Scope | Where the fixes are tracked |
 |---|---|---|---|
 | 2026-08-30 | [audit-2026-08-30.md](audit-2026-08-30.md) | the whole codebase (~27,000 lines, 209 files) after M16 | [M17](../backlog/m17-audit.md) |
+| 2026-10-17 | [audit-2026-10-17.md](audit-2026-10-17.md) | main-actor budget (120 Hz), concurrency model, memory (~28,400 lines) after M22, sized against the author's `ccoe` workspace | [M23](../backlog/m23-performance.md) |
 
 A second review was run on the same prompt the same day. It is not kept here: its central claim —
 that `@concurrent` is an invented attribute breaking the build — is false (SE-0461, shipped in
