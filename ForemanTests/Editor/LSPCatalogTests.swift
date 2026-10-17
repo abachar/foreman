@@ -1,9 +1,11 @@
 import Foundation
+import JSONRPC
+import LanguageServerProtocol
 import Testing
 
 @testable import Foreman
 
-/// The `lsp` section decoded (editor R35, R39; config R7).
+/// The `lsp` section decoded (editor R35, R39, R57; config R7).
 struct LSPCatalogTests {
     private func decode(_ json: String) throws -> LSPCatalog {
         try JSONDecoder().decode(LSPCatalog.self, from: Data(json.utf8))
@@ -112,5 +114,60 @@ struct LSPCatalogTests {
         #expect(LSPServers.languageId(for: URL(filePath: "/w/a.sh")) == "shellscript")
         #expect(LSPServers.languageId(for: URL(filePath: "/w/a.swift")) == "swift")
         #expect(LSPServers.languageId(for: URL(filePath: "/w/a.unknown")) == nil)
+    }
+
+    // MARK: - Settings (editor R57)
+
+    /// editor R57: the object is kept as written — nothing renamed, nothing validated.
+    @Test func keepsTheSettingsVerbatim() throws {
+        let catalog = try decode(
+            #"""
+            { "java": { "command": "jdtls", "cwd": "backend",
+                        "settings": { "java": { "import": { "exclusions": ["**/target/**"] }, "a": 1 } } } }
+            """#)
+        let entry = try #require(catalog.entry(for: URL(filePath: "/w/A.java")))
+        #expect(entry.settings == ["java": ["import": ["exclusions": ["**/target/**"]], "a": 1]])
+        #expect(catalog.settings(forCommand: "jdtls", cwd: "backend") == entry.settings)
+        #expect(catalog.settings(forCommand: "jdtls", cwd: nil) == nil)
+        #expect(catalog.warnings.isEmpty)
+    }
+
+    /// A string entry, or an object without the key, has none.
+    @Test func anEntryWithoutSettingsHasNone() throws {
+        let catalog = try decode(#"{ "swift": "xcrun sourcekit-lsp", "ts": { "command": "tsls --stdio" } }"#)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.swift"))?.settings == nil)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.ts"))?.settings == nil)
+    }
+
+    /// config R7 one level down: bad settings are dropped with a warning, the entry stays.
+    @Test(arguments: [#""verbose""#, "12", "[1, 2]", "true"])
+    func dropsSettingsThatAreNotAnObjectAndKeepsTheEntry(settings: String) throws {
+        let catalog = try decode(#"{ "java": { "command": "jdtls", "settings": \#(settings) } }"#)
+        let entry = try #require(catalog.entry(for: URL(filePath: "/w/A.java")))
+        #expect(entry.command == "jdtls")
+        #expect(entry.settings == nil)
+        #expect(catalog.warnings == ["lsp.java.settings ignored: expected an object."])
+    }
+
+    /// editor R36, R57: one server, one object — the first extension in key order that declares
+    /// settings owns them; one declaring none adopts them in silence, one declaring others is told.
+    @Test func twoExtensionsOnOneServerShareTheFirstsSettings() throws {
+        let catalog = try decode(
+            #"""
+            { "tsx": { "command": "tsls --stdio", "settings": { "preferences": { "quoteStyle": "double" } } },
+              "ts": { "command": "tsls --stdio", "settings": { "preferences": { "quoteStyle": "single" } } },
+              "js": { "command": "tsls --stdio" },
+              "mts": { "command": "tsls --stdio", "cwd": "server", "settings": { "other": true } } }
+            """#)
+        let single: LSPAny = ["preferences": ["quoteStyle": "single"]]
+        #expect(catalog.entry(for: URL(filePath: "/w/a.ts"))?.settings == single)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.tsx"))?.settings == single)
+        #expect(catalog.entry(for: URL(filePath: "/w/a.js"))?.settings == single)
+        // Another `cwd` is another server (R36), with its own settings.
+        #expect(catalog.entry(for: URL(filePath: "/w/a.mts"))?.settings == ["other": true])
+        #expect(
+            catalog.warnings == [
+                "lsp.tsx.settings ignored: `ts` names the same server with other settings, which win."
+            ])
     }
 }

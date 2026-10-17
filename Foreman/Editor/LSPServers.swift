@@ -270,6 +270,9 @@ final class LSPServers {
             logger.warning("\(warning, privacy: .public)")
         }
         let existing = servers[key]
+        // editor R57: a change of the entry's `settings` alone keeps the process and tells it;
+        // a change of its command or `cwd` is another key, so another process (R36).
+        existing?.update(settings: catalog.settings(forCommand: key.command, cwd: key.cwd))
         // editor R36, security: a `cwd` from `config.json` must stay under the root, which is what
         // `Workspace.url(forPersistedPath:root:)` already refuses to leave.
         guard let cwd = Self.workingDirectory(key.cwd, root: root) else {
@@ -299,7 +302,8 @@ final class LSPServers {
 
     private func make(_ key: ServerKey, cwd: URL, catalog: LSPCatalog) -> LSPServer {
         let server = LSPServer(
-            command: key.command, root: cwd, timeout: catalog.timeout, environment: environment)
+            command: key.command, root: cwd, timeout: catalog.timeout,
+            settings: catalog.settings(forCommand: key.command, cwd: key.cwd), environment: environment)
         let name = Self.displayName(of: key.command)
         server.onDiagnostics = { [weak self] uri, version, diagnostics in
             self?.publish(uri: uri, version: version, diagnostics: diagnostics, server: name)

@@ -96,14 +96,15 @@ One command per lowercased extension (or whole file name without one, e.g. `Dock
 | `timeout` | `number` seconds | `5` | `1…60`, clamped. |
 | `<ext>` | `string` | — | Shell command, `$SHELL -l -c`, cwd = the file's folder. |
 
-## `lsp` — `Editor/LSPCatalog.swift` (editor R35, R39)
+## `lsp` — `Editor/LSPCatalog.swift` (editor R35, R39, R57)
 
 One language server command per lowercased extension (or whole file name without one); the server is started at the first tab of that language and stopped with the last (editor R36). Read on every use. A server needing per-project state puts it on its own command line — `config.json` is per workspace, so the path is written once, here (`jdtls -data <this project>/.foreman/jdtls`).
 
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds `initialize` and the shutdown (editor R36, R39). |
-| `<ext>` | `string` or `{ command, cwd }` | — | Shell command, `$SHELL -l -c`. `cwd` is a folder under the root, for a repository whose project is not at its root (a monorepo's `server/`); without it the server runs at the root. It must be the server's **stdio** invocation: most need a flag for it (`--stdio`), and without it they print a usage message and exit — which the banner now quotes back (editor R39). |
+| `<ext>` | `string` or `{ command, cwd, settings }` | — | Shell command, `$SHELL -l -c`. `cwd` is a folder under the root, for a repository whose project is not at its root (a monorepo's `server/`); without it the server runs at the root. It must be the server's **stdio** invocation: most need a flag for it (`--stdio`), and without it they print a usage message and exit — which the banner now quotes back (editor R39). |
+| `<ext>.settings` | object | none | The server's settings, **verbatim** — the keys its own documentation names (`java.import.exclusions`, `preferences.quoteStyle`), nothing translated (editor R57, added 2026-10-17). Sent as `initializationOptions`, as `workspace/didChangeConfiguration` right after the handshake and again when this object alone changes, and as the answer to the server's `workspace/configuration` requests (its dotted `section` walked into the object; `null` where it leads nowhere). Two extensions naming the same command and `cwd` share one process, so one object: the first extension in key order that declares any owns it, one declaring none adopts it, one declaring others is a warning. Not an object → warning, dropped, the entry stays. |
 
 ```json
 {
@@ -126,6 +127,27 @@ A monorepo whose `package.json` and `node_modules` are one folder down — the s
   "lsp": {
     "ts": { "command": "typescript-language-server --stdio", "cwd": "server" },
     "tsx": { "command": "typescript-language-server --stdio", "cwd": "server" }
+  }
+}
+```
+
+A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settings the server writes `.project`, `.classpath` and `.settings/` into the team's repository, imports the Gradle project a generator leaves under `target/`, and has no JDK to pair with the project's `JavaSE-21`. The `env` prefix is because Foreman looks the command's **first word** up in the `PATH` (editor R39), so a bare `VAR=x cmd` reads as a missing binary:
+
+```json
+{
+  "lsp": {
+    "java": {
+      "command": "env JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home jdtls --jvm-arg=-javaagent:/Users/me/.m2/repository/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar -data /Users/me/Projects/ccoe/.foreman/jdtls",
+      "cwd": "ccoe-backend/src",
+      "settings": {
+        "java": {
+          "import": { "generatesMetadataFilesAtProjectRoot": false, "exclusions": ["**/target/**"] },
+          "configuration": {
+            "runtimes": [{ "name": "JavaSE-21", "path": "/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home", "default": true }]
+          }
+        }
+      }
+    }
   }
 }
 ```

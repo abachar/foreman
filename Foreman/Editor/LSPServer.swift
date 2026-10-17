@@ -24,6 +24,10 @@ final class LSPServer {
     let command: String
     private let root: URL
     private let timeout: Duration
+    /// editor R57: what the server is told, verbatim, by the three channels the protocol has —
+    /// `initializationOptions`, `workspace/didChangeConfiguration`, and its own
+    /// `workspace/configuration` requests. `nil` when the entry declares none.
+    private(set) var settings: LSPAny?
     /// Resolved inside `start()` rather than handed in.
     ///
     /// It was the only `await` on the creation path, and having it before the registry's lookup is
@@ -92,13 +96,45 @@ final class LSPServer {
     private(set) var isRunning = false
 
     init(
-        command: String, root: URL, timeout: Duration,
+        command: String, root: URL, timeout: Duration, settings: LSPAny? = nil,
         environment: @escaping @Sendable () async -> [String: String]
     ) {
         self.command = command
         self.root = root
         self.timeout = timeout
+        self.settings = settings
         self.environment = environment
+    }
+
+    /// editor R57: the entry's `settings` changed without its command or `cwd` — the same process
+    /// is told again, instead of being restarted (R36 restarts only on a change of its key).
+    func update(settings new: LSPAny?) {
+        guard new != settings else { return }
+        settings = new
+        guard isRunning, let connection else { return }
+        Task { try? await Self.sendSettings(new, to: connection) }
+    }
+
+    /// editor R57, channel 2: `workspace/didChangeConfiguration` with the whole object; settings
+    /// taken away are an empty object, so a server that applies them live sees the change.
+    private static func sendSettings(_ settings: LSPAny?, to connection: JSONRPCServerConnection) async throws {
+        try await connection.sendNotification(
+            .workspaceDidChangeConfiguration(DidChangeConfigurationParams(settings: settings ?? .hash([:]))))
+    }
+
+    /// editor R57, channel 3: the answer to `workspace/configuration` — one value per item, the
+    /// sub-object at the item's dotted `section` (`"java.import"` → `settings.java.import`),
+    /// `null` when the path leads nowhere or there are no settings; no section is the whole object.
+    nonisolated static func configuration(for items: [ConfigurationItem], in settings: LSPAny?) -> [LSPAny] {
+        items.map { item in
+            guard let section = item.section, !section.isEmpty else { return settings ?? .null }
+            var value = settings
+            for part in section.split(separator: ".", omittingEmptySubsequences: false) {
+                guard case .hash(let object)? = value else { return .null }
+                value = object[String(part)]
+            }
+            return value ?? .null
+        }
     }
 
     /// editor R36: started at the first use, never before; concurrent callers share one attempt.
@@ -273,22 +309,18 @@ final class LSPServer {
         failureKind = nil
         isRunning = true
         try? await connection.initialized(InitializedParams())
+        // editor R57: a server that reads its settings after `initialized` (jdtls does) hears
+        // them now; one that read `initializationOptions` hears the same object twice, harmlessly.
+        if let settings {
+            try? await Self.sendSettings(settings, to: connection)
+        }
         logger.debug("\(response.serverInfo?.name ?? self.command, privacy: .private) ready")
         return true
     }
 
     /// editor R39: `initialize` bounded by `lsp.timeout`; `nil` when it refused or never answered.
     private func handshake(_ connection: JSONRPCServerConnection) async -> InitializationResponse? {
-        let params = InitializeParams(
-            processId: Int(ProcessInfo.processInfo.processIdentifier),
-            clientInfo: InitializeParams.ClientInfo(name: "Foreman"),
-            locale: nil, rootPath: nil, rootUri: root.absoluteString, initializationOptions: nil,
-            // editor R38: nothing is announced about position encoding, and that is the point —
-            // a client silent on `general.positionEncodings` is UTF-16 by the specification, which
-            // is what `NSString` already counts. The library models no such capability anyway.
-            capabilities: ClientCapabilities(
-                workspace: nil, textDocument: nil, window: nil, general: nil, experimental: nil),
-            trace: nil, workspaceFolders: nil)
+        let params = Self.initializeParams(root: root, settings: settings)
         return await withTimeout(timeout) { [weak self] in
             do {
                 return try await connection.initialize(params)
@@ -298,6 +330,25 @@ final class LSPServer {
                 return nil
             }
         }
+    }
+
+    /// editor R38, R57: what `initialize` announces — the root, the settings as
+    /// `initializationOptions` (channel 1), and `workspace.configuration` so a server that pulls
+    /// its settings asks for them (channel 3) instead of assuming it has none.
+    nonisolated static func initializeParams(root: URL, settings: LSPAny?) -> InitializeParams {
+        InitializeParams(
+            processId: Int(ProcessInfo.processInfo.processIdentifier),
+            clientInfo: InitializeParams.ClientInfo(name: "Foreman"),
+            locale: nil, rootPath: nil, rootUri: root.absoluteString, initializationOptions: settings,
+            // editor R38: nothing is announced about position encoding, and that is the point —
+            // a client silent on `general.positionEncodings` is UTF-16 by the specification, which
+            // is what `NSString` already counts. The library models no such capability anyway.
+            capabilities: ClientCapabilities(
+                workspace: ClientCapabilities.Workspace(
+                    applyEdit: false, workspaceEdit: nil, didChangeConfiguration: nil, didChangeWatchedFiles: nil,
+                    symbol: nil, executeCommand: nil, workspaceFolders: nil, configuration: true, semanticTokens: nil),
+                textDocument: nil, window: nil, general: nil, experimental: nil),
+            trace: nil, workspaceFolders: nil)
     }
 
     private func refused(by error: any Error) {
@@ -332,11 +383,17 @@ final class LSPServer {
         }
     }
 
-    /// editor R40: diagnostics arrive here unasked; everything else is a log.
+    /// editor R40: diagnostics arrive here unasked; editor R57: a server asking for its settings
+    /// is answered, with `null`s when it has none; everything else is a log.
     private func handle(_ event: ServerEvent) {
         switch event {
         case .notification(.textDocumentPublishDiagnostics(let params)):
             onDiagnostics?(params.uri, params.version, params.diagnostics)
+        case .request(_, .workspaceConfiguration(let params, let handler)):
+            // Answered **always**, settings or not: a request left pending is a server waiting
+            // for a reply that never comes, which is what every server got before 2026-10-17.
+            let answer = Self.configuration(for: params.items, in: settings)
+            Task { await handler(.success(answer)) }
         case .error(let error):
             logger.debug("\(self.command, privacy: .private): \(error.localizedDescription, privacy: .private)")
         case .notification, .request:
