@@ -27,9 +27,12 @@ final class ExplorerModel {
 
     /// Relative path of the selected row, `nil` without selection.
     var selection: String?
-    /// Bumped at every change of `levels`; the outline view reloads `lastLoaded` when it moves.
+    /// Bumped at every change the tree shows; the outline view replays `journal` up to it.
     private(set) var version = 0
-    private(set) var lastLoaded: String?
+    /// explorer R9, R15 (M23 23.5): the last `journalLimit` changes, oldest first, one per
+    /// version; `journal.last` belongs to `version`.
+    private(set) var journal: [JournalEntry] = []
+    static let journalLimit = 64
 
     /// explorer R15: root-relative file path → status, from `Git.statusChanges`.
     private(set) var gitStatuses: [String: GitFileStatus] = [:]
@@ -153,23 +156,58 @@ final class ExplorerModel {
     }
 
     /// One repo's table replaces what that repo said before; the others are kept.
+    ///
+    /// explorer R15 (M23 23.5): only the rows whose status, dot or greying moved are journaled; a
+    /// status that changes nothing assigns nothing and bumps nothing.
     func applyGitStatus(_ change: GitStatusChange) {
         let prefix = change.repo.id == "." ? "" : change.repo.id + "/"
         let repoPath = Workspace.persistedPath(for: change.repo.url, root: root)
         guard !repoPath.hasPrefix("/") else { return }
-        gitStatuses = gitStatuses.filter { !Self.belongs($0.key, toRepoWithPrefix: prefix) }
-        ignoredPaths = ignoredPaths.filter { !Self.belongs($0, toRepoWithPrefix: prefix) }
+        var statuses = gitStatuses.filter { !Self.belongs($0.key, toRepoWithPrefix: prefix) }
+        var ignored = ignoredPaths.filter { !Self.belongs($0, toRepoWithPrefix: prefix) }
         for (path, status) in change.statuses {
             let rootPath = prefix + (path.hasSuffix("/") ? String(path.dropLast()) : path)
             if status == .ignored {
-                ignoredPaths.insert(rootPath)
+                ignored.insert(rootPath)
             } else {
-                gitStatuses[rootPath] = status
+                statuses[rootPath] = status
             }
         }
-        folderStatuses = Self.propagate(gitStatuses)
-        version += 1
-        lastLoaded = nil
+        let folders = Self.propagate(statuses)
+        let changedStatuses = Self.changedPaths(old: gitStatuses, new: statuses)
+        let changedFolders = Self.changedPaths(old: folderStatuses, new: folders)
+        let changedIgnored = ignoredPaths.symmetricDifference(ignored)
+        guard !changedStatuses.isEmpty || !changedFolders.isEmpty || !changedIgnored.isEmpty else { return }
+        if !changedStatuses.isEmpty {
+            gitStatuses = statuses
+        }
+        if !changedFolders.isEmpty {
+            folderStatuses = folders
+        }
+        if !changedIgnored.isEmpty {
+            ignoredPaths = ignored
+        }
+        // explorer R4: an entry greyed or ungreyed greys or ungreys every row shown below it.
+        bump(.rows(changedStatuses.union(changedFolders).union(changedIgnored).union(shownRows(under: changedIgnored))))
+    }
+
+    /// explorer R15: the keys added, removed or whose value differs between two tables.
+    nonisolated static func changedPaths(old: [String: GitFileStatus], new: [String: GitFileStatus]) -> Set<String> {
+        var changed = Set(old.keys).symmetricDifference(new.keys)
+        for (path, status) in new where old[path].map({ $0 != status }) == true {
+            changed.insert(path)
+        }
+        return changed
+    }
+
+    /// The rows of the loaded levels below `folders`: the only ones the tree can be showing.
+    private func shownRows(under folders: Set<String>) -> Set<String> {
+        guard !folders.isEmpty else { return [] }
+        var rows: Set<String> = []
+        for (path, level) in levels where folders.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) {
+            rows.formUnion(level.nodes.map(\.relativePath))
+        }
+        return rows
     }
 
     private nonisolated static func belongs(_ path: String, toRepoWithPrefix prefix: String) -> Bool {
@@ -262,11 +300,15 @@ final class ExplorerModel {
         defer { loading.remove(relativePath) }
         guard await read(relativePath, all: all) else { return }
         // explorer R9, R23: this read may have broken (or made) the chain of the rows above it.
-        for row in Self.rowsFolding(through: relativePath, in: chains).union([relativePath]) {
+        let rows = Self.rowsFolding(through: relativePath, in: chains).union([relativePath]).sorted()
+        for row in rows {
             await resolveChain(from: row)
         }
-        lastLoaded = relativePath
-        version += 1
+        // Each row whose chain was walked again shows other children, and maybe another label.
+        // The bumps land together, with no suspension between them.
+        for row in rows {
+            bump(.folder(row))
+        }
     }
 
     /// One level onto `levels`; `false` when the folder could not be read (explorer R19).
@@ -321,8 +363,58 @@ final class ExplorerModel {
             forgotten = true
         }
         guard forgotten else { return }
-        lastLoaded = relativePath
+        bump(.folder(relativePath))
+    }
+
+    // MARK: - Journal (explorer R9, R15; M23 23.5)
+
+    /// explorer R9, R15 (M23 23.5): what one bump of `version` changed, so the outline reloads just that.
+    nonisolated enum Change: Equatable, Sendable {
+        /// The children of this folder (a `load`, a `forget`, a chain change): `reloadItem(children: true)`.
+        case folder(String)
+        /// These rows' cells (a git status): `reloadItem(children: false)` on each one that is shown.
+        case rows(Set<String>)
+    }
+
+    nonisolated struct JournalEntry: Equatable, Sendable {
+        let version: Int
+        let change: Change
+    }
+
+    /// What the outline reloads to go from one version to another.
+    nonisolated enum ReloadPlan: Equatable, Sendable {
+        /// The whole tree: the journal no longer covers the gap (its first sync, an overrun).
+        case everything
+        /// These folders with their children, then these rows' cells.
+        case partial(folders: Set<String>, rows: Set<String>)
+    }
+
+    private func bump(_ change: Change) {
+        journal.append(JournalEntry(version: version + 1, change: change))
+        if journal.count > Self.journalLimit {
+            journal.removeFirst(journal.count - Self.journalLimit)
+        }
         version += 1
+    }
+
+    /// explorer R9, R15 (M23 23.5): the changes between `from` and `to`, unioned.
+    ///
+    /// A reloaded folder's own row, and every row under it, is dropped: `reloadItem(_:reloadChildren: true)`
+    /// rebuilds the whole subtree it heads.
+    nonisolated static func reloadPlan(from: Int, to: Int, journal: [JournalEntry]) -> ReloadPlan {
+        guard from != to else { return .partial(folders: [], rows: []) }
+        let entries = journal.filter { $0.version > from && $0.version <= to }
+        guard entries.count == to - from else { return .everything }
+        var folders: Set<String> = []
+        var rows: Set<String> = []
+        for entry in entries {
+            switch entry.change {
+            case .folder(let folder): folders.insert(folder)
+            case .rows(let changed): rows.formUnion(changed)
+            }
+        }
+        let uncovered = rows.filter { row in !folders.contains { $0.isEmpty || row == $0 || row.hasPrefix($0 + "/") } }
+        return .partial(folders: folders, rows: uncovered)
     }
 
     /// explorer R11: a persisted folder opens again once shown, a greyed one never does.

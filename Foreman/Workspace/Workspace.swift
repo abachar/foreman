@@ -89,7 +89,8 @@ final class Workspace {
     ///
     /// Features subscribe from a task they own; nothing is emitted for a rejected file.
     func configChanges() -> AsyncStream<WorkspaceConfig> {
-        let (stream, continuation) = AsyncStream<WorkspaceConfig>.makeStream()
+        // audit K3 (M23 23.5): every consumer re-reads the whole config, so a lagging one only needs the last.
+        let (stream, continuation) = AsyncStream<WorkspaceConfig>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let key = UUID()
         configSubscribers[key] = continuation
         continuation.onTermination = { [weak self] _ in

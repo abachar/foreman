@@ -54,7 +54,68 @@ struct ExplorerModelTests {
 
         #expect(model.children(of: "a") == nil)
         #expect(model.children(of: "") != nil)
-        #expect(model.lastLoaded == "a")
+        #expect(model.journal.last?.change == .folder("a"))
+    }
+
+    // MARK: - The journal the outline replays (explorer R9, R15; M23 23.5)
+
+    private func status(_ statuses: [String: GitFileStatus]) -> GitStatusChange {
+        GitStatusChange(repo: GitRepo(id: ".", url: model.root), statuses: statuses)
+    }
+
+    private func temporaryRoot(files: [String]) throws -> URL {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "ExplorerModelTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        for file in files {
+            let url = root.appending(path: file)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data().write(to: url)
+        }
+        return root
+    }
+
+    @Test func anIdenticalStatusBumpsNothing() {
+        model.applyGitStatus(status(["src/app/a.swift": .modified]))
+        model.applyGitStatus(status(["src/app/a.swift": .modified]))
+
+        #expect(model.version == 1)
+        // The file, and the folders its dot propagates onto.
+        #expect(model.journal == [.init(version: 1, change: .rows(["src/app/a.swift", "src/app", "src"]))])
+    }
+
+    @Test func aStatusChangingOneFileReloadsItsRowsOnly() {
+        model.applyGitStatus(status(["src/a.swift": .modified]))
+        model.applyGitStatus(status(["src/a.swift": .modified, "src/b.swift": .modified]))
+
+        // `src` already carried a modified dot and still does: only the new file's row moves.
+        #expect(model.version == 2)
+        #expect(model.journal.last == .init(version: 2, change: .rows(["src/b.swift"])))
+    }
+
+    @Test func aFolderNewlyIgnoredReloadsTheRowsShownBelowIt() async throws {
+        let root = try temporaryRoot(files: ["build/out.o", "README.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ExplorerModel(root: root)
+        await model.load("")
+        await model.load("build")
+
+        model.applyGitStatus(GitStatusChange(repo: GitRepo(id: ".", url: root), statuses: ["build/": .ignored]))
+
+        #expect(model.journal.last?.change == .rows(["build", "build/out.o"]))
+    }
+
+    @Test func loadingAFolderJournalsIt() async throws {
+        let root = try temporaryRoot(files: ["a/x.txt", "b.txt"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ExplorerModel(root: root)
+
+        await model.load("")
+        await model.load("a")
+        #expect(model.journal == [.init(version: 1, change: .folder("")), .init(version: 2, change: .folder("a"))])
+
+        model.forget("a")
+        #expect(model.journal.last == .init(version: 3, change: .folder("a")))
     }
 }
 
@@ -82,6 +143,44 @@ struct ExplorerReloadTests {
     @Test func ignoresPathsOutsideTheRoot() {
         let outside = ExplorerModel.foldersToReload([URL(filePath: "/elsewhere/x")], root: root, loaded: [""])
         #expect(outside == [])
+    }
+
+    // MARK: - What the outline replays (M23 23.5)
+
+    private func journal(_ changes: [ExplorerModel.Change], from first: Int = 1) -> [ExplorerModel.JournalEntry] {
+        changes.enumerated().map { .init(version: first + $0.offset, change: $0.element) }
+    }
+
+    @Test func theSameVersionReloadsNothing() {
+        let plan = ExplorerModel.reloadPlan(from: 2, to: 2, journal: journal([.folder("a"), .folder("b")]))
+        #expect(plan == .partial(folders: [], rows: []))
+    }
+
+    @Test func aGapBeyondTheJournalReloadsEverything() {
+        let entries = journal([.folder("a"), .rows(["b"])], from: 5)
+
+        #expect(ExplorerModel.reloadPlan(from: 3, to: 6, journal: entries) == .everything)
+        #expect(ExplorerModel.reloadPlan(from: -1, to: 0, journal: []) == .everything)
+    }
+
+    @Test func unionsTheFoldersAndTheRowsBetweenTwoVersions() {
+        let entries = journal([.folder("old"), .folder("a"), .rows(["b.txt"]), .rows(["c/d.txt", "c"])])
+
+        let plan = ExplorerModel.reloadPlan(from: 1, to: 4, journal: entries)
+
+        #expect(plan == .partial(folders: ["a"], rows: ["b.txt", "c/d.txt", "c"]))
+    }
+
+    @Test func dropsTheRowsAReloadedFolderRebuilds() {
+        let entries = journal([.rows(["src", "src/app/a.swift", "README.md"]), .folder("src"), .folder("doc")])
+
+        // `reloadItem(src, reloadChildren: true)` redraws `src` itself and its whole subtree.
+        #expect(
+            ExplorerModel.reloadPlan(from: 0, to: 3, journal: entries)
+                == .partial(folders: ["src", "doc"], rows: ["README.md"]))
+        #expect(
+            ExplorerModel.reloadPlan(from: 0, to: 2, journal: journal([.rows(["a", "b/c"]), .folder("")]))
+                == .partial(folders: [""], rows: []))
     }
 }
 

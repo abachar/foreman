@@ -342,24 +342,48 @@ struct ExplorerOutlineView: NSViewRepresentable {
                 return
             }
             guard version != self.version else { return }
-            // Several levels may have changed since the last update (explorer R9, a burst):
-            // then everything is reloaded; items keep their identity so nothing is lost (R10).
-            let isFullReload = version - self.version != 1
-            // Measured before anything is optimised (audit 2026-10-17 U4): an agent's status bursts land here.
-            let interval = Perf.signposter.beginInterval(
-                "explorer.reload", id: Perf.signposter.makeSignpostID(),
-                "\(isFullReload ? "full" : "partial", privacy: .public)")
-            defer { Perf.signposter.endInterval("explorer.reload", interval) }
-            let path = isFullReload ? "" : model.lastLoaded ?? ""
+            // explorer R9, R15 (M23 23.5): the journal says what moved since the last update; a gap
+            // it no longer covers reloads everything, items keep their identity so nothing is lost (R10).
+            let plan = ExplorerModel.reloadPlan(from: self.version, to: version, journal: model.journal)
             self.version = version
-            let reloaded = path.isEmpty ? nil : items[path]
-            if isFullReload {
+            // Measured before anything is optimised (audit 2026-10-17 U4): an agent's status bursts land here.
+            let label =
+                switch plan {
+                case .everything: "full"
+                case .partial(let folders, let rows): "folders=\(folders.count) rows=\(rows.count)"
+                }
+            let interval = Perf.signposter.beginInterval(
+                "explorer.reload", id: Perf.signposter.makeSignpostID(), "\(label, privacy: .public)")
+            defer { Perf.signposter.endInterval("explorer.reload", interval) }
+            switch plan {
+            case .everything:
                 forgetItems()
-            } else {
-                forgetItems(goneUnder: path)
+                outline.reloadItem(nil, reloadChildren: true)
+                restoreExpansion(under: "")
+            case .partial(let folders, let rows):
+                // Shallow first: a folder's reload comes before anything under it.
+                for folder in folders.sorted() {
+                    reload(folder: folder, in: outline)
+                }
+                // explorer R15: a status redraws the cells it changed, nothing else.
+                for row in rows {
+                    if let item = items[row] {
+                        outline.reloadItem(item, reloadChildren: false)
+                    }
+                }
             }
-            outline.reloadItem(reloaded, reloadChildren: true)
-            restoreExpansion(under: path)
+        }
+
+        /// explorer R9: one folder's children read again; the root's are the whole tree.
+        ///
+        /// A folder without an item has no row: not shown, or a segment inside a chain (R23), whose
+        /// row is journaled with it.
+        private func reload(folder: String, in outline: NSOutlineView) {
+            let item = folder.isEmpty ? nil : items[folder]
+            guard folder.isEmpty || item != nil else { return }
+            forgetItems(goneUnder: folder)
+            outline.reloadItem(item, reloadChildren: true)
+            restoreExpansion(under: folder)
         }
 
         /// The caches only exist to give the outline stable items across a reload, so what is no
