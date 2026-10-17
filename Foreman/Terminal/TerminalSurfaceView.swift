@@ -1,5 +1,6 @@
 import AppKit
 import SwiftTerm
+import os
 
 /// The SwiftTerm view of one process: PTY, process, rendering and input are the library's
 /// (terminal, technical options); Foreman only adds the scrollback size and the bell as an event.
@@ -37,8 +38,28 @@ final class TerminalSurfaceView: LocalProcessTerminalView {
     /// enabled the kitty keyboard protocol already receives `shift+enter` as `CSI 13;2u`.
     private var newlineMonitor: Any?
 
+    private let logger = Logger(subsystem: "dev.crafters.foreman", category: "terminal")
+    /// The Metal renderer is asked for once, when the view first enters a window (SwiftTerm:
+    /// « call this method after the view has been added to a window »); later moves are rebound
+    /// by the library itself.
+    private var triedMetal = false
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if window != nil, !triedMetal {
+            triedMetal = true
+            // terminal R14 (audit 2026-10-17 U1, M23 23.6): the GPU draws the cells. Measured on ccoe
+            // with two streaming agents: the CoreGraphics draw held 55 % of the main thread, the parser
+            // 2.5 %. The library falls back to CoreGraphics by itself if frames stall
+            // (`metalRendererStatus`). `metalBufferingMode` stays the library's default
+            // (`.perRowPersistent`); `.perFrameAggregated`, for full-screen TUIs, is for a later trace.
+            do {
+                try setUseMetal(true)
+            } catch {
+                logger.error(
+                    "metal renderer unavailable, CoreGraphics kept: \(String(describing: error), privacy: .public)")
+            }
+        }
         if let newlineMonitor {
             NSEvent.removeMonitor(newlineMonitor)
             self.newlineMonitor = nil
