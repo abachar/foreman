@@ -56,11 +56,7 @@ struct GitDiffView: View {
         HStack(spacing: 6) {
             if isLarge {
                 Button {
-                    if model.expandedFiles.contains(file.id) {
-                        model.expandedFiles.remove(file.id)
-                    } else {
-                        model.expandedFiles.insert(file.id)
-                    }
+                    model.toggleExpanded(file.id)
                 } label: {
                     Image(systemName: model.isExpanded(file) ? "chevron.down" : "chevron.right")
                         .frame(width: 12)

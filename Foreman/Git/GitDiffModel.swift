@@ -46,7 +46,7 @@ final class GitDiffModel {
     private(set) var error: GitError?
     private(set) var isLoading = false
     /// git R16: the files opened by hand in a large diff.
-    var expandedFiles: Set<String> = []
+    private(set) var expandedFiles: Set<String> = []
 
     private let client: () async -> GitCLI?
     private let repo: GitRepo
@@ -54,6 +54,8 @@ final class GitDiffModel {
     private let theme: ThemeService
     private var loading: Task<Void, Never>?
     private var refreshWatch: Task<Void, Never>?
+    /// git R16: the folded files of a large diff being rendered because they were just unfolded.
+    private var rendering: [String: Task<Void, Never>] = [:]
 
     init(
         payload: GitDiffPayload, client: @escaping () async -> GitCLI?, repo: GitRepo, highlighter: Highlighter,
@@ -78,12 +80,48 @@ final class GitDiffModel {
     isolated deinit {
         loading?.cancel()
         refreshWatch?.cancel()
+        for task in rendering.values {
+            task.cancel()
+        }
     }
 
     /// git R16: a file is shown open unless the diff is large and it was not opened by hand.
     func isExpanded(_ file: FileDiff) -> Bool {
         guard let diff, diff.isLarge else { return true }
         return expandedFiles.contains(file.id)
+    }
+
+    /// git R16: opens or folds a file of a large diff; a file opened for the first time is rendered
+    /// now, not with the diff.
+    func toggleExpanded(_ id: String) {
+        guard !expandedFiles.contains(id) else {
+            expandedFiles.remove(id)
+            return
+        }
+        expandedFiles.insert(id)
+        guard let diff, diff.isLarge, rendered[id] == nil, rendering[id] == nil,
+            let file = diff.files.first(where: { $0.id == id && !$0.isBinary })
+        else { return }
+        rendering[id] = Task { [weak self] in
+            await self?.render([file], previous: nil)
+            // A load cancelled this task and may have started another for the same file.
+            guard !Task.isCancelled else { return }
+            self?.rendering[id] = nil
+        }
+    }
+
+    /// git R16: the text files a load renders, in diff order.
+    ///
+    /// A diff under the threshold renders every one; a large diff only the files opened by hand,
+    /// the others when they are unfolded (audit 2026-10-17 M2).
+    nonisolated static func filesToRender(_ diff: GitDiff, expanded: Set<String>) -> [FileDiff] {
+        diff.files.filter { !$0.isBinary && (!diff.isLarge || expanded.contains($0.id)) }
+    }
+
+    /// git R17: a refresh renders again only the files whose hunks changed; an unchanged file keeps
+    /// what is on screen, so a diff an agent is writing to does not flicker (audit 2026-10-17 M2).
+    nonisolated static func needsRender(_ file: FileDiff, previous: GitDiff?, isRendered: Bool) -> Bool {
+        !isRendered || previous?.files.first(where: { $0.id == file.id }) != file
     }
 
     func load() {
@@ -95,10 +133,21 @@ final class GitDiffModel {
                 guard let client = await client() else { throw .gitNotFound }
                 let loaded = try await Self.fetch(payload, client: client, repo: repo)
                 guard !Task.isCancelled else { return }
+                let previous = diff
                 diff = loaded
                 error = nil
+                // What the previous diff was still rendering on demand is dropped.
+                for task in rendering.values {
+                    task.cancel()
+                }
+                rendering = [:]
+                // A changed file keeps its old hunks until the new ones replace them; a file that is
+                // gone, binary now, or folded loses them (a folded one is rendered when unfolded).
+                let files = Self.filesToRender(loaded, expanded: expandedFiles)
+                let kept = Set(files.map(\.id))
+                rendered = rendered.filter { kept.contains($0.key) }
                 binarySizes = await Self.sizes(of: loaded, payload: payload, client: client, repo: repo)
-                await render(loaded)
+                await render(files, previous: previous)
             } catch {
                 // A load the next one superseded: its cancellation is not a failure to show, and
                 // the spinner it would clear is the one the load that replaced it put up.
@@ -173,37 +222,45 @@ final class GitDiffModel {
 
     // MARK: - Rendering (git R13)
 
-    /// Highlights each file once (the grammar from its name, editor R12), then colors the lines.
-    private func render(_ diff: GitDiff) async {
+    /// Highlights each file once (the grammar from its name, editor R12), then colors the lines;
+    /// each file is shown as soon as it is rendered, not when the whole diff is (audit 2026-10-17 M2).
+    /// `previous` is the diff on screen before a refresh, `nil` for a file rendered on demand.
+    private func render(_ files: [FileDiff], previous: GitDiff?) async {
         let interval = Perf.signposter.beginInterval("diff.render", id: Perf.signposter.makeSignpostID())
         defer { Perf.signposter.endInterval("diff.render", interval) }
         // The theme is read once, here, so the slicing below needs nothing from the main actor.
         let tint = DiffTint(
             added: Color(nsColor: theme.diffLineBackground(added: true)),
             removed: Color(nsColor: theme.diffLineBackground(added: false)))
-        var rendered: [String: [RenderedHunk]] = [:]
-        for file in diff.files where !file.isBinary {
+        for file in files where Self.needsRender(file, previous: previous, isRendered: rendered[file.id] != nil) {
             let code = file.hunks.flatMap(\.lines).map(\.text).joined(separator: "\n")
             let language = Language.forFile(URL(filePath: file.path))
             let highlighted = language == nil ? nil : await highlighter.highlight(code, language: language ?? .json)
             guard !Task.isCancelled else { return }
-            rendered[file.id] = await Self.render(file, highlighted: highlighted, tint: tint)
+            let hunks = await Self.render(file, highlighted: highlighted, tint: tint)
+            // A load that superseded this one has reset `rendered`: nothing of this diff goes in.
+            guard !Task.isCancelled else { return }
+            rendered[file.id] = hunks
             // One event per file shows which file of a large diff holds the time (audit 2026-10-17 M2).
             Perf.signposter.emitEvent("diff.render.file")
         }
-        self.rendered = rendered
     }
 
-    /// The highlighted text sliced back per line, the `+`/`−` tint, then the side-by-side rows.
+    /// The highlighted text recoloured for SwiftUI and sliced back per line, the `+`/`−` tint,
+    /// then the side-by-side rows.
     ///
     /// Off the main actor: a large diff builds an `AttributedString` per line, and that ran
-    /// between the user and every frame (audit M3b).
+    /// between the user and every frame (audit M3b); so does the recolouring (audit 2026-10-17 M2).
     @concurrent
     private static func render(
         _ file: FileDiff, highlighted: AttributedString?, tint: DiffTint
     ) async
         -> [RenderedHunk]
     {
+        var highlighted = highlighted
+        if let neon = highlighted {
+            highlighted = await Highlighter.withSwiftUIColors(neon)
+        }
         var cursor = highlighted?.startIndex
         var result: [RenderedHunk] = []
         for hunk in file.hunks {

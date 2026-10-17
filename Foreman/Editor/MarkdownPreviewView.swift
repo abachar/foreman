@@ -275,7 +275,11 @@ private struct CodeBlockView: View {
                 let language = Language.forFile(URL(filePath: "x.\(language ?? "")"))
                     ?? Language(rawValue: language ?? "")
             else { return }
-            highlighted = await highlighter.highlight(code, language: language)
+            var colored: AttributedString?
+            if let neon = await highlighter.highlight(code, language: language) {
+                colored = await Highlighter.withSwiftUIColors(neon)
+            }
+            highlighted = colored
         }
     }
 }

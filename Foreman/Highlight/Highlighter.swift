@@ -44,16 +44,23 @@ final class Highlighter {
         }
     }
 
-    /// A static string colored once (markdown preview, editor R14); `nil` when the grammar is
-    /// unavailable (R13).
+    /// A static string colored once (markdown preview, editor R14; the diff, git R13).
+    ///
+    /// `nil` when the grammar is unavailable (R13). The colors are Neon's, AppKit ones: a SwiftUI
+    /// `Text` needs the string through `withSwiftUIColors` first.
     func highlight(_ code: String, language: Language) async -> AttributedString? {
         guard let configuration = try? await configuration(for: language) else { return nil }
-        guard
-            var string = try? await TreeSitterClient.highlight(
-                string: code, attributeProvider: { [theme] token in theme.attributes(forCapture: token.name) },
-                rootLanguageConfig: configuration, languageProvider: { _ in nil })
-        else { return nil }
-        // Neon sets AppKit colors; SwiftUI's `Text` reads its own.
+        return try? await TreeSitterClient.highlight(
+            string: code, attributeProvider: { [theme] token in theme.attributes(forCapture: token.name) },
+            rootLanguageConfig: configuration, languageProvider: { _ in nil })
+    }
+
+    /// Neon's AppKit colors as SwiftUI ones, which is what a `Text` reads.
+    ///
+    /// One pass over the runs of a whole file, so off the main actor (audit 2026-10-17 M2).
+    @concurrent
+    static func withSwiftUIColors(_ string: AttributedString) async -> AttributedString {
+        var string = string
         for run in string.runs {
             if let color = run.appKit.foregroundColor {
                 string[run.range].swiftUI.foregroundColor = Color(nsColor: color)
