@@ -33,6 +33,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 | Git | left panel *Changes*, bottom panel *History*; center tab: diff | `cmd+shift+g` / `cmd+shift+h` |
 | Postgres | right panel *Database*: schema; center tabs: query + results | `cmd+shift+b` / `cmd+shift+q` |
 | Browser | one center tab: the page of `config.browser.url` (`WKWebView`, private session) | `cmd+shift+o` |
+| Debug | none yet — a Debug panel at the bottom from M27 27.3 | none yet |
 
 Full shortcut table and their state: [`shortcuts.md`](shortcuts.md).
 
@@ -50,6 +51,7 @@ Foreman/
 ├── Highlight/    # tree-sitter → attributes, shared (editor, diff, sql)
 ├── Terminal/     # SwiftTerm surface + process, TerminalService
 ├── Explorer/  Editor/  Agents/  Run/  Git/  Postgres/  Browser/
+├── Debug/        # DAP client: envelope, session over a framed channel, `debug` config (M27)
 ForemanTests/         # same split
 cli/foreman           # shell script: `open -a Foreman "$(pwd)"`
 ```

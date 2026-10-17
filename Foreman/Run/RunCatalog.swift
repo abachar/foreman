@@ -1,4 +1,6 @@
 import Foundation
+import JSONRPC
+import LanguageServerProtocol
 
 /// One command of `config.commands`, resolved against the workspace (run R1–R3).
 nonisolated struct RunCommand: Equatable, Sendable, Identifiable {
@@ -16,6 +18,8 @@ nonisolated struct RunCommand: Equatable, Sendable, Identifiable {
     let problem: String?
     /// run R14: the manifest a detected command comes from; `nil` for `config.commands`.
     var source: String? = nil
+    /// debug R2: how to debug it; `nil` for a command that cannot be (and for detected ones, R14).
+    var debug: DebugCommand? = nil
 
     var title: String {
         "\(repo) › \(name)"
@@ -34,9 +38,17 @@ nonisolated enum RunCatalog {
     /// A value under a repo: `"cmd"`, `{ "run", "cwd"?, "env"? }`, or the `$env` object.
     enum Value: Decodable, Equatable, Sendable {
         struct Detailed: Decodable, Equatable, Sendable {
-            var run: String
+            var run: String?
             var cwd: String?
             var env: [String: String]?
+            /// debug R2: kept as the JSON it is, validated by `DebugCommand.parse`.
+            var debug: LSPAny?
+
+            /// A `$env` object may hold a lowercase variable called `debug`: only an object counts.
+            var declaresDebug: Bool {
+                if case .hash? = debug { return true }
+                return false
+            }
         }
 
         case short(String)
@@ -47,7 +59,9 @@ nonisolated enum RunCatalog {
             let container = try decoder.singleValueContainer()
             if let text = try? container.decode(String.self) {
                 self = .short(text)
-            } else if let detailed = try? container.decode(Detailed.self) {
+            } else if let detailed = try? container.decode(Detailed.self),
+                detailed.run != nil || detailed.declaresDebug
+            {
                 self = .detailed(detailed)
             } else {
                 self = .environment(try container.decode([String: String].self))
@@ -94,11 +108,22 @@ nonisolated enum RunCatalog {
                 let command: String
                 var cwd = repoURL
                 var env = repoEnvironment
+                var debug: DebugCommand?
+                var debugOnly = false
                 switch value {
                 case .short(let text):
                     command = text
                 case .detailed(let detailed):
-                    command = detailed.run
+                    command = detailed.run ?? ""
+                    if let declared = detailed.debug {
+                        let parsed = DebugCommand.parse(declared)
+                        debug = parsed.command
+                        if let warning = parsed.warning {
+                            warnings.append("commands.\(repo).\(name).debug ignored: \(warning)")
+                        }
+                    }
+                    // debug R2: `debug` alone is a launch; it has nothing to run, so the ▶ lists it greyed.
+                    debugOnly = detailed.run == nil && debug != nil
                     if let relative = detailed.cwd {
                         // architecture, security: a folder from the config never leaves the root.
                         guard let resolved = url(forDeclared: relative, under: repoURL), isUnder(resolved, root)
@@ -113,17 +138,25 @@ nonisolated enum RunCatalog {
                     warnings.append("commands.\(repo).\(name) ignored: \"run\" is required.")
                     continue
                 }
-                guard !command.isEmpty else {
-                    warnings.append("commands.\(repo).\(name) ignored: the command is empty.")
+                guard !command.isEmpty || debugOnly else {
+                    warnings.append(
+                        detailedWithoutRun(value)
+                            ? "commands.\(repo).\(name) ignored: \"run\" is required."
+                            : "commands.\(repo).\(name) ignored: the command is empty.")
                     continue
                 }
                 commands.append(
                     RunCommand(
                         id: id(repo: repo, name: name), repo: repo, name: name, command: command, cwd: cwd, env: env,
-                        problem: problem))
+                        problem: problem ?? (debugOnly ? "debug only" : nil), debug: debug))
             }
         }
         return Parsed(commands: commands, warnings: warnings)
+    }
+
+    private static func detailedWithoutRun(_ value: Value) -> Bool {
+        if case .detailed(let detailed) = value { return detailed.run == nil }
+        return false
     }
 
     // MARK: - Detection (run R14–R15)

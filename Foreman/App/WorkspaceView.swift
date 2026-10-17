@@ -23,6 +23,7 @@ struct WorkspaceView: View {
     @State private var agents: AgentsFeature?
     @State private var browser: BrowserFeature?
     @State private var run: RunFeature?
+    @State private var debug: DebugFeature?
     @State private var git: GitFeature?
     @State private var postgres: PostgresFeature?
     @State private var isStateLoaded = false
@@ -94,8 +95,11 @@ struct WorkspaceView: View {
                 }
                 git.launchAgent = { [weak agents] id, folder in agents?.launch(id, in: folder) }
                 browser = BrowserFeature(layout: layout, workspace: workspace, theme: theme, agents: agents)
-                run = RunFeature(
+                let run = RunFeature(
                     layout: layout, workspace: workspace, terminal: terminal, palette: palette, theme: theme)
+                self.run = run
+                // debug R10: created here, nothing shown and nothing running until a session starts.
+                debug = DebugFeature(workspace: workspace, run: run)
                 // layout R30 (amended 2026-10-16): the project widget leads the toolbar.
                 ProjectWidget.register(
                     in: layout, folder: folder, theme: theme, appDelegate: appDelegate,
@@ -111,6 +115,9 @@ struct WorkspaceView: View {
             }
             .onDisappear {
                 appDelegate.unregisterFlush(for: workspace)
+                // debug R9: the window closing ends the session, so no adapter outlives it.
+                let debug = debug
+                Task { await debug?.stop() }
                 // config R8: whatever is still pending is written when the window closes.
                 Task { await workspace.flushState() }
             }

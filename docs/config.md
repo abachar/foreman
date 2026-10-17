@@ -24,6 +24,7 @@ Example with every section (values are the defaults unless noted):
   "editor": { "insertFinalNewline": true },
   "formatter": { "timeout": 5, "swift": "swift format", "md": "npx --no-install prettier --stdin-filepath file.md" },
   "git": { "path": "/usr/bin/git" },
+  "debug": { "timeout": 10, "swift": { "command": "xcrun lldb-dap" } },
   "browser": { "url": "http://localhost:3000" },
   "terminal": { "font": "JetBrains Mono", "fontSize": 13, "theme": "system" },
   "theme": { "interfaceFontSize": 13, "accent": "#4A86E0" },
@@ -45,9 +46,10 @@ Example with every section (values are the defaults unless noted):
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `<name>` | `string` | — | Short form: the text passed as is to `$SHELL -l -c`, cwd = the repo. |
-| `<name>.run` | `string` | — | Long form. |
+| `<name>.run` | `string` | — | Long form. Optional when `debug` is given: a command with `debug` alone is a launch (the adapter starts the program), listed greyed in the ▶ menu. |
 | `<name>.cwd` | `string` | the repo | Relative to the repo. |
 | `<name>.env` | `{string: string}` | `{}` | Injected in the process environment, never on the command line. |
+| `<name>.debug` | `{ adapter, request, arguments }` | none | How to debug the command (debug R2, M27 27.1; nothing in the UI yet). `adapter` is the extension of an entry of the `debug` section below (required; missing → warning, the key is dropped, the command stays). `request` is `"attach"` or `"launch"`; missing, it is `attach` when `arguments` has a `port` or a `pid`, else `launch`. `arguments` is an object sent to the adapter **verbatim** as the body of its `attach` or `launch` request — the adapter's own names, nothing translated (`hostName` and `port` for `java-debug`'s attach, `program`, `args`, `env`, `stopOnEntry` for `lldb-dap`'s launch). An `adapter` naming no `debug` entry is reported when a session starts. |
 | `$env` | `{string: string}` | `{}` | Reserved key: environment for every command of the repo, under the command's own `env`. |
 
 Commands detected from manifests (run R14) need no config. Without any command there is no ▶ Run button and no `cmd+r` (run R6b).
@@ -155,6 +157,40 @@ A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settin
 ```
 
 A class in a jar opens from `jdtls` 1.61 or later (`workspace/textDocumentContent`); Foreman adds `extendedClientCapabilities.classFileContentsSupport` to the options itself (editor R61, R65).
+
+## `debug` — `Debug/DebugCatalog.swift` (debug R1, R2, R9)
+
+One debug adapter per lowercased file extension, the `lsp` section's shape. Nothing is detected and nothing runs before a session is started (debug R10). Read from the config and followed on every change.
+
+| Key | Type | Default | Note |
+|---|---|---|---|
+| `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds every request to the adapter, the TCP connection and `disconnect` before the process is `SIGTERM`ed (then `SIGKILL`ed a second later). |
+| `<ext>` | `string` or `{ command }` or `{ server }` | — | Exactly one of `command` and `server`; both or neither → warning, the entry is dropped, the section stays. A string is the short form of `command`. |
+| `<ext>.command` | `string` | — | An adapter speaking DAP on **stdio**: the text is run by `$SHELL -l -c` with the login environment (`xcrun lldb-dap`); its `stderr` goes to the `debug` log. The first word must be in the `PATH`. |
+| `<ext>.server` | `string` | — | A command id sent through `workspace/executeCommand` to the `lsp.<ext>` server, which answers the TCP port of an adapter it hosts (`vscode.java.startDebugSession` with the `java-debug` bundle). Decoded since M27 27.1, **not run until 27.4** (a session logs "not supported yet"). |
+
+```json
+{
+  "debug": {
+    "timeout": 10,
+    "swift": { "command": "xcrun lldb-dap" },
+    "java": { "server": "vscode.java.startDebugSession" }
+  },
+  "commands": {
+    "ccoe-backend": {
+      "run": {
+        "run": "mvn spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005",
+        "debug": { "adapter": "java", "request": "attach", "arguments": { "hostName": "localhost", "port": 5005 } }
+      }
+    },
+    ".": {
+      "foreman": {
+        "debug": { "adapter": "swift", "arguments": { "program": "/Users/me/Projects/foreman/DerivedData/Build/Products/Debug/Foreman.app/Contents/MacOS/Foreman", "stopOnEntry": false } }
+      }
+    }
+  }
+}
+```
 
 ## `git` — `Git/GitFeature.swift` (git R26)
 
