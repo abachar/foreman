@@ -88,8 +88,11 @@ audit had not named (`levels`, 23.8); the audit's §5 numbers stand.
 
 ## Where it stands
 
-Planned on 2026-10-17. 23.0–23.4 done the same day on `feat/m23`; the trace of 23.1 taken on
-`ccoe` with the author (two agents streaming) and recorded above: 23.5 goes, 23.6 is re-scoped to the
-Metal renderer and waits for the author, 23.8–23.10 added from the trace. Pre-existing and out of
-scope: four warnings in `HoverPopover.swift:109–114` (main-actor calls from a nonisolated context),
-present on `main` before M23.
+Planned on 2026-10-17 and built the same day on `feat/m23`, one commit per task: 23.0–23.4, then the
+trace of 23.1 on `ccoe` with the author (two agents streaming), then 23.10, 23.8, 23.6 (the author
+chose Metal), 23.5, 23.7, the study 23.9 and its lever 23.11. 740 tests green. Left: the « after »
+trace on the installed Release build, with the author streaming two agents again, to compare with the
+1 007 frames over budget of the « before » trace; and the by-eye checks of 23.6 (two agents
+streaming, a zoomed surface, light and dark) and 23.11 (a large diff scrolled, selection and *Send
+to Agent*). Pre-existing and out of scope: four warnings in `HoverPopover.swift:109–114`
+(main-actor calls from a nonisolated context), present on `main` before M23.
