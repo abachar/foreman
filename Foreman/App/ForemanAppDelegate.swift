@@ -18,6 +18,14 @@ import os
 /// exactly one window (product R1).
 @Observable
 final class ForemanAppDelegate: NSObject, NSApplicationDelegate {
+    /// The app is the host of the unit tests (`xcodebuild test`): it opens no workspace.
+    ///
+    /// The test host is built unsigned, so its code identity changes at every build and macOS
+    /// asked again, at every test run, for the folders the opened workspace's shell, git and
+    /// language servers touched (Desktop, Documents…) — 2026-10-17. The tests use the code
+    /// directly and need no window.
+    nonisolated static let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     /// The `$HOME` window created at launch that a folder replaced right away, if any.
     private(set) var supersededLaunchFolder: URL?
 

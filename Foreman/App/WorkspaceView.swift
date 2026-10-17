@@ -46,6 +46,8 @@ struct WorkspaceView: View {
                 minHeight: ZoneSizing.minimumWindow.height, maxHeight: .infinity
             )
             .task(id: folder) {
+                // The test host opens no workspace (see `ForemanAppDelegate.isTestHost`).
+                guard !ForemanAppDelegate.isTestHost else { return }
                 isFolderReachable = await Self.isDirectory(folder)
                 await workspace.reloadConfig()
                 await workspace.loadState()
