@@ -9,6 +9,8 @@ struct ProjectsPanelView: View {
     let theme: ThemeService
     /// A file of a project was chosen: open it (explorer R12, R13).
     let onOpen: (URL, ExplorerOpenMode) -> Void
+    /// The path of a tab's file, relative to the root, for *Follow Active Tab*.
+    let pathOfTab: (TabID) -> String?
     /// The actions of a project's tree, rooted at its folder.
     let actions: (WorkspaceProject) -> ExplorerActions
 
@@ -48,17 +50,46 @@ struct ProjectsPanelView: View {
                     Spacer(minLength: 0)
                 }
             }
-            // explorer R25 (amended 2026-10-17): the actions at the bottom, as in Xcode.
+            // explorer R25 (amended 2026-10-17): the actions at the bottom, as in Xcode — the
+            // Explorer's on the unfolded project, then the view's own.
             PanelFooterView(theme: theme) {
+                let project = model.expandedProject
+                Button {
+                    if let project {
+                        actions(project).newFile(near: nil)
+                    }
+                } label: {
+                    Image(systemName: "doc.badge.plus")
+                }
+                .disabled(project == nil)
+                .help("New File in the unfolded project")
+                Button {
+                    if let project {
+                        actions(project).newFolder(near: nil)
+                    }
+                } label: {
+                    Image(systemName: "folder.badge.plus")
+                }
+                .disabled(project == nil)
+                .help("New Folder in the unfolded project")
+                Toggle(isOn: Bindable(model).followsActiveTab) {
+                    Image(systemName: "scope")
+                }
+                .toggleStyle(.button)
+                .foregroundStyle((model.followsActiveTab ? theme.tokens.accent : theme.tokens.textSecondary).color)
+                .help("Follow Active Tab")
                 Button {
                     model.reload()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
                 .help("Look for projects again")
-                Text(model.projects.count == 1 ? "1 project" : "\(model.projects.count) projects")
-                    .font(theme.font(.small))
             }
+        }
+        // explorer R25: the project holding the active tab's file unfolds on it.
+        .onChange(of: layout.model.active.active?.id) { _, id in
+            guard model.followsActiveTab, let id, let path = pathOfTab(id) else { return }
+            model.reveal(path)
         }
     }
 

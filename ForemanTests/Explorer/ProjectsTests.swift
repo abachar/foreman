@@ -47,3 +47,21 @@ struct ProjectsTests {
         #expect(WorkspaceProject.declaredName(kind: .go, manifest: "module x") == nil)
     }
 }
+
+/// explorer R25 (amended 2026-10-17): following the active tab.
+struct ProjectOwnerTests {
+    private func project(_ path: String) -> WorkspaceProject {
+        WorkspaceProject(url: URL(filePath: "/ws/\(path)"), path: path, kind: .node)
+    }
+
+    @Test func theDeepestProjectHoldingTheFileIsTheOwner() throws {
+        let projects = [project("backend"), project("backend/api"), project("frontend")]
+        let owner = try #require(ProjectsModel.owner(of: "backend/api/src/A.java", among: projects))
+        #expect(owner.0.path == "backend/api")
+        #expect(owner.1 == "src/A.java")
+        #expect(ProjectsModel.owner(of: "frontend/src/app.ts", among: projects)?.1 == "src/app.ts")
+        #expect(ProjectsModel.owner(of: "docs/README.md", among: projects) == nil)
+        #expect(ProjectsModel.owner(of: "backendish/x", among: projects) == nil)
+        #expect(ProjectsModel.owner(of: "a/b.txt", among: [project(".")])?.1 == "a/b.txt")
+    }
+}

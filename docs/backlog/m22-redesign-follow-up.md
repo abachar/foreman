@@ -36,6 +36,7 @@ One branch `feat/m22` from `main`, one commit per task (author, 2026-10-17). **B
 - **A slot keeps its size** when its tabs are switched: the thickness is per slot again (layout R18 amended).
 - **The left slot like Xcode's navigators**: its tabs show icon and title and share the width, the actions of Explorer and Project sit in a bar at the bottom of the panel (replaces 22.6's icon-only tabs; design R17). The Changes tab no longer carries its count.
 - **Changes no longer widens the left slot**: the commit area's working-copy picker was as wide as its longest entry (a worktree's label) and pushed the whole panel past its slot, shifting the tabs; it truncates now.
+- **Explorer before Project**; the Project bar holds New File, New Folder, Follow Active Tab and the refresh; the bars' buttons stay left-aligned (explorer R1, R25 amended).
 - **No folder prompts during the tests**: the test host opens no workspace (product decision 2026-10-17).
 
 ## Decided with the author (2026-10-17)

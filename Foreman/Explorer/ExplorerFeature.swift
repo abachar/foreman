@@ -27,8 +27,8 @@ enum ExplorerFeature {
         let actions = ExplorerActions(model: model, root: workspace.root, editor: editor, layout: layout)
         layout.register(
             panel: PanelDescriptor(
-                // explorer R1 (amended 2026-10-17): the whole tree is the *Explorer* tab, second.
-                id: panelID, title: "Explorer", side: .left, icon: "folder", order: 1, defaultShortcut: "cmd+shift+e",
+                // explorer R1 (amended 2026-10-17): the whole tree is the *Explorer* tab, first.
+                id: panelID, title: "Explorer", side: .left, icon: "folder", order: 0, defaultShortcut: "cmd+shift+e",
                 makeView: {
                     AnyView(
                         ExplorerPanelView(
@@ -68,13 +68,14 @@ enum ExplorerFeature {
         var actions: [String: ExplorerActions] = [:]
         layout.register(
             panel: PanelDescriptor(
-                id: projectsPanelID, title: "Project", side: .left, icon: "shippingbox", order: 0,
+                id: projectsPanelID, title: "Project", side: .left, icon: "shippingbox", order: 1,
                 makeView: {
                     AnyView(
                         ProjectsPanelView(
                             model: model, layout: layout, theme: theme,
                             // explorer R12, R13: pinned, or a new group on the right; never a preview.
                             onOpen: { url, mode in editor.open(url, preview: false, newGroup: mode == .newGroup) },
+                            pathOfTab: { editor.path(of: $0) },
                             actions: { project in
                                 if let existing = actions[project.id] {
                                     return existing

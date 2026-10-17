@@ -140,6 +140,9 @@ final class ProjectsModel {
     private(set) var isLoading = false
     /// The project unfolded on its files; one at a time.
     var expanded: String?
+    /// explorer R25 (amended 2026-10-17): the view follows the active tab — the project holding
+    /// its file unfolds and the file is revealed.
+    var followsActiveTab = true
 
     private let root: URL
     private let repos: () -> [URL]
@@ -199,6 +202,35 @@ final class ProjectsModel {
         if expanded != nil {
             tree(for: project).activate()
         }
+    }
+
+    /// explorer R25: the project holding `path` (relative to the workspace root) unfolds on it.
+    func reveal(_ path: String) {
+        guard let (project, relative) = Self.owner(of: path, among: projects) else { return }
+        if expanded != project.id {
+            if let current = expanded {
+                trees[current]?.deactivate()
+            }
+            expanded = project.id
+            tree(for: project).activate()
+        }
+        tree(for: project).revealRequest = relative
+    }
+
+    /// The deepest project whose folder holds `path`, and the path inside it.
+    nonisolated static func owner(
+        of path: String, among projects: [WorkspaceProject]
+    ) -> (
+        WorkspaceProject, String
+    )? {
+        let candidates = projects.filter { $0.path == "." || path.hasPrefix($0.path + "/") }
+        guard let project = candidates.max(by: { $0.path.count < $1.path.count }) else { return nil }
+        return (project, project.path == "." ? path : String(path.dropFirst(project.path.count + 1)))
+    }
+
+    /// The unfolded project, if any.
+    var expandedProject: WorkspaceProject? {
+        projects.first { $0.id == expanded }
     }
 
     /// The project's own tree, the explorer's model rooted at its folder.

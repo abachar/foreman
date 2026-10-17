@@ -55,8 +55,7 @@ struct ExplorerPanelView: View {
                 Image(systemName: "folder.badge.plus")
             }
             .help("New Folder")
-            Spacer(minLength: 0)
-            // explorer R5: persisted, default visible.
+            // explorer R5: persisted, default visible; left-aligned with the others whatever the width.
             Toggle(isOn: Bindable(model).hidesExcluded) {
                 Image(systemName: "eye.slash")
             }
