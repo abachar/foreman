@@ -38,6 +38,7 @@ One branch `feat/m22` from `main`, one commit per task (author, 2026-10-17). **B
 - **Changes no longer widens the left slot**: the commit area's working-copy picker was as wide as its longest entry (a worktree's label) and pushed the whole panel past its slot, shifting the tabs; it truncates now.
 - **Explorer before Project**; the Project bar holds New File, New Folder, Follow Active Tab and the refresh; the bars' buttons stay left-aligned (explorer R1, R25 amended).
 - **No folder prompts during the tests**: the test host opens no workspace (product decision 2026-10-17).
+- **The branch widget follows the active tab** (author, on `ccoe`): it names the working copy holding the active tab's file — a diff tab's repo, an editor tab's folder, an agent tab's cwd — and keeps it while a tab outside every repo is active; the commit target of R10 stays the fallback and the commit area's own choice (git R40 amended). A worktree shows its own branch now, not its main folder's. `GitModel.shownCopy`, `GitFeature.followTab`, `EditorFeature.url(of:)`; tested in `GitModelTests`.
 
 ## Decided with the author (2026-10-17)
 

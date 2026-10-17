@@ -119,6 +119,33 @@ struct GitModelTests {
         #expect(try #require(model.section(".")).sections == GitSections(status.entries))
     }
 
+    // MARK: - git R40 (amended 2026-10-17): the branch widget follows the active tab
+
+    @Test @MainActor func theBranchWidgetNamesTheWorkingCopyOfTheActiveTab() throws {
+        var worktree = GitRepo(id: "/wt/orders", url: URL(filePath: "/wt/orders"))
+        worktree.parent = "libs/core"
+        let model = GitModel()
+        model.setRepos(repos + [worktree])
+        model.setStatus(".", GitStatus(head: .branch("main"), entries: []))
+        model.setStatus("libs/core", GitStatus(head: .branch("develop"), entries: []))
+        model.setStatus("/wt/orders", GitStatus(head: .branch("feat/orders"), entries: []))
+
+        // Before any tab: the commit target (R10), here the first working copy.
+        #expect(GitBranchWidget.label(of: model) == ("work / main", nil))
+        // An editor tab in `libs/core`: that repo, with its worktree count.
+        model.setActiveTabCopy(model.copy(containingCanonicalPath: "/work/libs/core/src"))
+        #expect(GitBranchWidget.label(of: model) == ("libs/core / develop", "1 worktree"))
+        // A tab in the worktree: its own branch, its repo's name and worktrees.
+        model.setActiveTabCopy(model.copy(containingCanonicalPath: "/wt/orders/src"))
+        #expect(GitBranchWidget.label(of: model) == ("libs/core / feat/orders", "1 worktree"))
+        // A tab outside every working copy (a browser, a terminal at home) keeps the last one.
+        model.setActiveTabCopy(model.copy(containingCanonicalPath: "/elsewhere"))
+        #expect(GitBranchWidget.label(of: model).title == "libs/core / feat/orders")
+        // The worktree removed: back to the commit target.
+        model.setRepos(repos)
+        #expect(GitBranchWidget.label(of: model) == ("work / main", nil))
+    }
+
     // MARK: - git R23
 
     /// The sheet is presented off the observed model, so opening it and its async load both invalidate.

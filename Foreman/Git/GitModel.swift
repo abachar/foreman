@@ -164,6 +164,8 @@ final class GitModel {
     private(set) var agentSessions: [GitAgentSession] = []
     /// git R10: the working copy the commit area commits in, as last chosen.
     private var chosenCommitTarget: String?
+    /// git R40 (amended 2026-10-17): the working copy holding the active tab's file, as last resolved.
+    private var activeTabCopy: String?
     /// git R36, agents R5b: the section to scroll to, once.
     private(set) var revealed: String?
     private var restoredCollapsed: Set<String> = []
@@ -243,6 +245,25 @@ final class GitModel {
     func setCommitTarget(_ id: String) {
         guard chosenCommitTarget != id else { return }
         chosenCommitTarget = id
+    }
+
+    /// git R40 (amended 2026-10-17): the working copy the branch widget names — the one holding
+    /// the active tab's file, kept while a tab outside every working copy is active; before any,
+    /// or once it is gone, the commit target (R10).
+    var shownCopy: Section? {
+        activeTabCopy.flatMap(section) ?? commitTarget
+    }
+
+    /// The working copy of the tab just activated; `nil` (a tab without a file in a working copy)
+    /// keeps the last one.
+    func setActiveTabCopy(_ id: String?) {
+        guard let id, activeTabCopy != id else { return }
+        activeTabCopy = id
+    }
+
+    /// The working copy holding `path` (the deepest), by its id; a worktree before its repo.
+    func copy(containingCanonicalPath path: String) -> String? {
+        Self.owner(ofCanonicalPath: path, among: sections.map(\.repo))
     }
 
     func children(of id: String) -> [Section] {

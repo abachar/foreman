@@ -219,17 +219,37 @@ final class GitFeature {
 
     static let branchWidgetID = "git.branch"
 
-    /// layout R30 (amended 2026-10-16): after the project, the branch of the working copy last
-    /// worked in (git R10) and how many worktrees its repo has.
+    /// layout R30 (amended 2026-10-16), git R40 (amended 2026-10-17): after the project, the branch
+    /// of the working copy holding the active tab's file and how many worktrees its repo has.
     private func registerBranchWidget() {
         let model = model
+        let layout = layout
         let theme = theme
         layout.register(
             toolbarItem: ToolbarItemDescriptor(
                 id: Self.branchWidgetID, title: "Branch", icon: "arrow.triangle.branch", placement: .leading,
                 kind: .widget(
-                    view: { openMenu in AnyView(GitBranchWidget(model: model, theme: theme, openMenu: openMenu)) },
+                    view: { [weak self] openMenu in
+                        AnyView(
+                            GitBranchWidget(
+                                model: model, layout: layout, theme: theme,
+                                followTab: { self?.followTab($0) }, openMenu: openMenu))
+                    },
                     menu: { [weak self] in self?.branchMenu() ?? ToolbarMenu(entries: []) })))
+    }
+
+    /// git R40 (amended 2026-10-17): the working copy of the active tab — a diff tab's repo, the
+    /// folder of an editor tab's file, an agent tab's cwd (R34c); any other tab keeps the last one.
+    private func followTab(_ id: TabID?) {
+        guard let id else { return }
+        if let payload = diffModels[id]?.payload {
+            model.setActiveTabCopy(payload.repo)
+        } else if let url = editor.url(of: id) {
+            let folder = GitRepo.canonicalPath(url.deletingLastPathComponent())
+            model.setActiveTabCopy(model.copy(containingCanonicalPath: folder))
+        } else if let session = model.agentSessions.first(where: { $0.id == id }) {
+            model.setActiveTabCopy(model.copy(containingCanonicalPath: session.canonicalCwd))
+        }
     }
 
     /// git R40: worktrees, branches and the remote actions of every repo, with a filter field.
@@ -393,6 +413,8 @@ final class GitFeature {
         let repos = GitRepo.arrange(found, worktrees: lists, root: workspace.root)
         model.setRepos(repos)
         model.setDiscovering(false)
+        // git R40 (amended 2026-10-17): a tab restored before the discovery finds its working copy now.
+        followTab(layout.model.active.active?.id)
         for repo in repos where clients[repo.id] == nil {
             clients[repo.id] = GitCLI(
                 executable: toolchain.executable, repo: repo.url, loginEnvironment: toolchain.environment)

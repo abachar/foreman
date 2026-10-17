@@ -786,6 +786,11 @@ final class EditorFeature {
         tabs[id]?.path
     }
 
+    /// git R40: the file of a tab as a URL (a worktree's file lies outside the root).
+    func url(of id: TabID) -> URL? {
+        tabs[id]?.url
+    }
+
     /// editor R2: a preview becomes pinned (double click, `cmd+k enter`, first edit).
     private func pin(_ id: TabID, _ tab: EditorTab) {
         guard !tab.isPinned, let owner = layout.model.owner(of: id),
