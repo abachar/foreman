@@ -95,6 +95,42 @@ struct QuickOpenIndexTests {
         #expect(await index.count == 1203)
     }
 
+    /// editor R18, M23 23.12: an excluded `.DS_Store` is left out without skipping anything — on
+    /// APFS this one is enumerated right before `pkg/sub`, whose file the old walk lost.
+    @Test func anExcludedFileDoesNotHideItsSiblings() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root.appending(path: "pkg/sub"), withIntermediateDirectories: true)
+        for file in ["pkg/.DS_Store", "pkg/a.swift", "pkg/b.swift", "pkg/sub/c.swift"] {
+            try Data().write(to: root.appending(path: file))
+        }
+        let index = QuickOpenIndex(root: root)
+        await index.build()
+        #expect(await index.count == 4 + 3)
+        #expect(await index.search("c.swift", limit: 5).paths.first == "pkg/sub/c.swift")
+    }
+
+    /// editor R18, M23 23.12: whatever the enumeration order, the entry after the `.DS_Store` is a
+    /// folder (unless the `.DS_Store` comes last), and its file is indexed.
+    @Test func anExcludedFileDoesNotHideTheFolderAfterIt() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data().write(to: root.appending(path: "docs/.DS_Store"))
+        try writeOneFilePerFolder(in: "docs")
+        let index = QuickOpenIndex(root: root)
+        await index.build()
+        #expect(await index.count == 4 + 200)
+    }
+
+    /// editor R18, M23 23.12: a symlink is not followed, and does not hide the folder after it.
+    @Test func aSymlinkDoesNotHideTheFolderAfterIt() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createSymbolicLink(
+            at: root.appending(path: "docs/link"), withDestinationURL: root.appending(path: "src"))
+        try writeOneFilePerFolder(in: "docs")
+        let index = QuickOpenIndex(root: root)
+        await index.build()
+        #expect(await index.count == 4 + 200)
+    }
+
     @Test func subsequencePrefilterIsCaseInsensitiveAndOrdered() {
         let needle = QuickOpenIndex.lowered("WSV")
         #expect(QuickOpenIndex.isSubsequence(needle, of: QuickOpenIndex.lowered("Foreman/App/WorkspaceView.swift")))
@@ -117,6 +153,14 @@ struct QuickOpenIndexTests {
     private func waitUntilTheWalkIsUnderway(_ index: QuickOpenIndex) async {
         while await index.count == 0 {
             await Task.yield()
+        }
+    }
+
+    private func writeOneFilePerFolder(in folder: String) throws {
+        for number in 0..<200 {
+            let subfolder = root.appending(path: "\(folder)/d\(number)")
+            try FileManager.default.createDirectory(at: subfolder, withIntermediateDirectories: true)
+            try Data().write(to: subfolder.appending(path: "f.txt"))
         }
     }
 

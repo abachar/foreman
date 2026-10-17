@@ -77,15 +77,18 @@ actor QuickOpenIndex {
                 }
             }
             let path = url.relativePath
-            if Self.isSkipped(path, rootIsHome: rootIsHome) || Self.isIgnored(path, in: ignored) {
-                enumerator.skipDescendants()
-                continue
-            }
             let values = try? url.resourceValues(forKeys: keys)
-            if values?.isDirectory == true || values?.isSymbolicLink == true {
-                if values?.isSymbolicLink == true {
+            let isDirectory = values?.isDirectory == true
+            if Self.isSkipped(path, rootIsHome: rootIsHome) || Self.isIgnored(path, in: ignored) {
+                // editor R18: `skipDescendants()` after a file or a symlink skips the folder
+                // enumerated next (checked 2026-10-17, M23 23.12), so only a folder's are skipped.
+                if isDirectory {
                     enumerator.skipDescendants()
                 }
+                continue
+            }
+            // The enumerator never descends into a symlink: its `isDirectory` is false (M23 23.12).
+            if isDirectory || values?.isSymbolicLink == true {
                 continue
             }
             if paths.count >= Self.limit {

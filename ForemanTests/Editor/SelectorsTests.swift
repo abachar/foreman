@@ -91,6 +91,26 @@ struct SelectorsTests {
         #expect(Selectors.reference(at: 12, in: empty) == nil)
     }
 
+    // MARK: - The index (R47, R18)
+
+    /// M23 23.12: an excluded `.DS_Store` hides neither the stylesheet next to it nor the folders
+    /// enumerated after it.
+    @Test func anExcludedFileDoesNotHideAStylesheet() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "SelectorsTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data().write(to: root.appending(path: ".DS_Store"))
+        try Data(".top { }".utf8).write(to: root.appending(path: "site.css"))
+        for number in 0..<200 {
+            let folder = root.appending(path: "d\(number)")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(".card { }".utf8).write(to: folder.appending(path: "page.css"))
+        }
+        let index = SelectorIndex(root: root)
+        #expect(await index.sites(of: "top", kind: .classSelector).count == 1)
+        #expect(await index.sites(of: "card", kind: .classSelector).count == 200)
+    }
+
     // MARK: - The word under a location
 
     @Test func takesTheWordUnderALocation() {

@@ -62,15 +62,18 @@ actor SelectorIndex {
                     return
                 }
             }
-            if QuickOpenIndex.isSkipped(url.relativePath, rootIsHome: rootIsHome) {
-                enumerator.skipDescendants()
-                continue
-            }
             let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-            if values?.isDirectory == true || values?.isSymbolicLink == true {
-                if values?.isSymbolicLink == true {
+            let isDirectory = values?.isDirectory == true
+            if QuickOpenIndex.isSkipped(url.relativePath, rootIsHome: rootIsHome) {
+                // editor R18: `skipDescendants()` after a file or a symlink skips the folder
+                // enumerated next (checked 2026-10-17, M23 23.12), so only a folder's are skipped.
+                if isDirectory {
                     enumerator.skipDescendants()
                 }
+                continue
+            }
+            // The enumerator never descends into a symlink: its `isDirectory` is false (M23 23.12).
+            if isDirectory || values?.isSymbolicLink == true {
                 continue
             }
             // editor R49: `.css` only — `.scss` and `.less` have no grammar (R11).
