@@ -76,7 +76,10 @@ final class TerminalTab {
     }
 
     func didSetTitle(_ title: String) {
-        subtitle = title.isEmpty ? nil : title
+        // An identical OSC 0/2 republishes nothing: `@Observable` notifies on `willSet`.
+        let new = title.isEmpty ? nil : title
+        guard new != subtitle else { return }
+        subtitle = new
     }
 
     /// terminal R8: same command, same folder, a new PTY; refused while the folder is missing.

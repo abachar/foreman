@@ -194,7 +194,7 @@ nonisolated enum ContentSearch {
                 continuation.finish(throwing: error)
                 return
             }
-            Task.detached {
+            Task {
                 // Drained alongside stdout: a tool blocked on a full stderr pipe never exits.
                 // Both through `PipeIO`, never `FileHandle.bytes`: its iterations share one serial
                 // queue, so the stderr read held it while rg filled stdout's pipe and waited —

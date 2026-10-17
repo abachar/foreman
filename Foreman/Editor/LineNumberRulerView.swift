@@ -3,7 +3,9 @@ import AppKit
 /// The gutter (editor R6): one number per paragraph, drawn from TextKit 2's layout fragments.
 ///
 /// Nothing native draws numbers on TextKit 2 and the libraries that do are whole text views,
-/// so this stays: ~80 lines, redrawn on scroll and on every edit.
+/// so this stays: ~80 lines, redrawn on scroll and on every edit. The line starts are the text
+/// view's (`CurrentLineTextView.lineStarts`), computed once per edit for the guides, the sticky
+/// lines and the gutter alike (audit 2026-10-17 U2).
 final class LineNumberRulerView: NSRulerView {
     private weak var textView: NSTextView?
     private let font: NSFont
@@ -44,8 +46,10 @@ final class LineNumberRulerView: NSRulerView {
     private static let dotDiameter: CGFloat = 6
     private static let chevronWidth: CGFloat = 14
     /// The UTF-16 offset where each line starts, line `i + 1` at `lineStarts[i]`: the draw looks
-    /// numbers up here instead of scanning the whole text on every pass.
-    private var lineStarts: [Int] = [0]
+    /// numbers up in the text view's copy instead of scanning the whole text on every pass.
+    private var lineStarts: [Int] {
+        (textView as? CurrentLineTextView)?.lineStarts ?? [0]
+    }
 
     init(textView: NSTextView, font: NSFont) {
         self.textView = textView
@@ -56,11 +60,10 @@ final class LineNumberRulerView: NSRulerView {
         // Views no longer clip by default (macOS 14): without this, the ground painted in
         // `draw(_:)` spills over the tab bar and the text (bug: invisible editor, 2026-08-27).
         clipsToBounds = true
-        rebuildLineStarts()
         let center = NotificationCenter.default
         observers.append(
             center.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.rebuildLineStarts() }
+                MainActor.assumeIsolated { self?.needsDisplay = true }
             })
         if let clip = textView.enclosingScrollView?.contentView {
             observers.append(
@@ -183,34 +186,8 @@ final class LineNumberRulerView: NSRulerView {
         onToggleFold?(marker.region.first)
     }
 
-    /// Re-reads the line starts from the text; the edit observer calls it on every change, and
-    /// the reload path must call it too — a programmatic `string` set posts no notification.
-    func rebuildLineStarts() {
-        guard let text = textView.map({ $0.string as NSString }) else { return }
-        var starts = [0]
-        var index = 0
-        while index < text.length {
-            let range = text.range(of: "\n", options: [], range: NSRange(location: index, length: text.length - index))
-            guard range.location != NSNotFound else { break }
-            starts.append(NSMaxRange(range))
-            index = NSMaxRange(range)
-        }
-        lineStarts = starts
-        needsDisplay = true
-    }
-
     /// The 1-based line containing the UTF-16 `offset`: the last cached start not past it.
     private func line(at offset: Int) -> Int {
-        var low = 0
-        var high = lineStarts.count - 1
-        while low < high {
-            let mid = (low + high + 1) / 2
-            if lineStarts[mid] <= offset {
-                low = mid
-            } else {
-                high = mid - 1
-            }
-        }
-        return low + 1
+        IndentGuides.line(at: offset, starts: lineStarts)
     }
 }

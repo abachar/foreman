@@ -59,6 +59,7 @@ struct EditorTextView: NSViewRepresentable {
         textView.smartInsertDeleteEnabled = false
         textView.textContainerInset = NSSize(width: 4, height: 6)
         textView.string = document.text
+        textView.textWasReplaced()
         textView.delegate = context.coordinator
         // editor R26: folded paragraphs are laid out through the coordinator.
         textView.textContentStorage?.delegate = context.coordinator
@@ -150,8 +151,10 @@ struct EditorTextView: NSViewRepresentable {
             let origin = scroll.contentView.bounds.origin
             textView.string = document.text
             textView.isEditable = !document.isReadOnly
-            // A programmatic `string` set posts no edit notification: the gutter is told.
-            (scroll.verticalRulerView as? LineNumberRulerView)?.rebuildLineStarts()
+            // A programmatic `string` set posts no edit notification: the text view re-reads its
+            // line starts, which the gutter draws from.
+            textView.textWasReplaced()
+            scroll.verticalRulerView?.needsDisplay = true
             textView.setSelectedRange(
                 NSRange(location: min(selection.location, (document.text as NSString).length), length: 0))
             scroll.contentView.scroll(to: origin)

@@ -60,6 +60,7 @@ No accents and no non-ASCII characters in code identifiers and file names.
 - Views, observed models, layout managers: `@MainActor`. Disk IO, git, network, parsing: `actor` or task off the main actor. No blocking IO on the main actor.
 - `Sendable` at isolation boundaries. `@unchecked Sendable`: only on a C handle wrapper, with the comment saying what serialises access.
 - Every long-running task is retained and cancelled by its owner; long loops check for cancellation.
+- Which tasks: a task whose end the user can see (a commit, a formatting, a snapshot) is retained and cancelled by its owner; an action whose result alone matters (`fetch`, `push`, a `status`) may be fired without being retained when it ends by itself (a `Process` with a time bound). Audit 2026-10-17 K4.
 - No `DispatchSemaphore`/`NSLock` for business logic. No `Task { @MainActor in }` to hide an isolation error. No synchronous waiting on async. No `Task.detached` without justification.
 - Streams are `AsyncStream`, not callbacks stored by the consumer. Debouncing happens at the producer.
 - A child process's pipes are read and written through `PipeIO` (`DispatchIO`), never `FileHandle.bytes`: Foundation runs every `AsyncBytes` iteration on one shared serial queue, so two pipes read at once take turns and the quiet one blocks the busy one until the child wedges (verified 2026-08-30, audit M2).

@@ -1,4 +1,6 @@
 import Foundation
+import Observation
+import Synchronization
 import Testing
 
 @testable import Foreman
@@ -63,6 +65,24 @@ struct TerminalTabTests {
         #expect(tab.subtitle == "vim README.md")
         tab.didSetTitle("")
         #expect(tab.subtitle == nil)
+    }
+
+    /// audit 2026-10-17 K2: a shell repeating its OSC title re-renders nothing.
+    @Test func anIdenticalTitleIsNotRepublished() {
+        let tab = tab()
+        tab.didSetTitle("x")
+        let changes = Mutex(0)
+        withObservationTracking {
+            _ = tab.subtitle
+        } onChange: {
+            changes.withLock { $0 += 1 }
+        }
+        tab.didSetTitle("x")
+        #expect(tab.subtitle == "x")
+        #expect(changes.withLock { $0 } == 0)
+        tab.didSetTitle("")
+        #expect(tab.subtitle == nil)
+        #expect(changes.withLock { $0 } == 1)
     }
 }
 

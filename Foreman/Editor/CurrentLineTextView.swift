@@ -67,6 +67,13 @@ class CurrentLineTextView: NSTextView {
         needsDisplay = true
     }
 
+    /// A programmatic `string` set (the first fill, a reload) calls no `didChangeText`: whoever
+    /// sets it calls this, so the levels and the line starts the gutter reads follow the text.
+    func textWasReplaced() {
+        rebuildLines()
+        needsDisplay = true
+    }
+
     private func rebuildLines() {
         guideLevels = IndentGuides.levels(of: string, width: indentWidth)
         lineStarts = IndentGuides.lineStarts(of: string as NSString)
