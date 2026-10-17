@@ -145,7 +145,6 @@ final class GitFeature {
             panel: PanelDescriptor(
                 // git (surfaces, amended 2026-10-16): Changes is the left slot's second tab.
                 id: Self.panelID, title: "Changes", side: .left, icon: "arrow.triangle.branch", order: 1,
-                badge: { model.changedFileCount > 0 ? .count(model.changedFileCount, .orange) : .none },
                 defaultShortcut: "cmd+shift+g",
                 makeView: { [weak self] in
                     guard let self else { return AnyView(EmptyView()) }

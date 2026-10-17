@@ -15,13 +15,7 @@ struct ProjectsPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             PanelHeaderView(panels: layout.panels, current: ExplorerFeature.projectsPanelID, theme: theme) {
-                Button {
-                    model.reload()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Look for projects again")
+                EmptyView()
             }
             if model.projects.isEmpty {
                 if model.isLoading {
@@ -53,6 +47,17 @@ struct ProjectsPanelView: View {
                 if model.expanded == nil {
                     Spacer(minLength: 0)
                 }
+            }
+            // explorer R25 (amended 2026-10-17): the actions at the bottom, as in Xcode.
+            PanelFooterView(theme: theme) {
+                Button {
+                    model.reload()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Look for projects again")
+                Text(model.projects.count == 1 ? "1 project" : "\(model.projects.count) projects")
+                    .font(theme.font(.small))
             }
         }
     }

@@ -22,6 +22,7 @@ struct ExplorerPanelView: View {
                 isFocused: layout.panels.focus == .panel(ExplorerFeature.panelID),
                 onOpen: onOpen,
                 operations: operations)
+            footer
         }
         .onChange(of: model.persisted) { _, state in
             onStateChange(state)
@@ -34,21 +35,40 @@ struct ExplorerPanelView: View {
     }
 
     private var header: some View {
-        PanelHeaderView(panels: layout.panels, current: ExplorerFeature.panelID, theme: theme) {
-            // explorer R16 (amended 2026-10-17, M22 22.7): New File and New Folder join the panel
-            // menu, so three tabs and the menu fit a narrow left slot.
-            Menu {
-                Button("New File…") { operations.newFile(near: nil) }
-                Button("New Folder…") { operations.newFolder(near: nil) }
-                Divider()
-                // explorer R5: persisted, default visible.
-                Toggle("Hide Ignored Files", isOn: Bindable(model).hidesExcluded)
-                Toggle("Follow Active Tab", isOn: Bindable(model).followsActiveTab)
+        PanelHeaderView(panels: layout.panels, current: ExplorerFeature.panelID, theme: theme) { EmptyView() }
+    }
+
+    /// explorer R16, R5 (amended 2026-10-17, author): the actions in a bar at the bottom of the
+    /// panel, as in Xcode's navigators.
+    private var footer: some View {
+        let tokens = theme.tokens
+        return PanelFooterView(theme: theme) {
+            Button {
+                operations.newFile(near: nil)
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Image(systemName: "doc.badge.plus")
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .help("New File")
+            Button {
+                operations.newFolder(near: nil)
+            } label: {
+                Image(systemName: "folder.badge.plus")
+            }
+            .help("New Folder")
+            Spacer(minLength: 0)
+            // explorer R5: persisted, default visible.
+            Toggle(isOn: Bindable(model).hidesExcluded) {
+                Image(systemName: "eye.slash")
+            }
+            .toggleStyle(.button)
+            .foregroundStyle((model.hidesExcluded ? tokens.accent : tokens.textSecondary).color)
+            .help("Hide Ignored Files")
+            Toggle(isOn: Bindable(model).followsActiveTab) {
+                Image(systemName: "scope")
+            }
+            .toggleStyle(.button)
+            .foregroundStyle((model.followsActiveTab ? tokens.accent : tokens.textSecondary).color)
+            .help("Follow Active Tab")
         }
     }
 }

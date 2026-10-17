@@ -34,6 +34,7 @@ One branch `feat/m22` from `main`, one commit per task (author, 2026-10-17). **B
 - **History's actions** in a row of their own under the tabs, like Search and Problems (git R18 amended).
 - **The search hang**: see 22.4.
 - **A slot keeps its size** when its tabs are switched: the thickness is per slot again (layout R18 amended).
+- **The left slot like Xcode's navigators**: its tabs show icon and title and share the width, the actions of Explorer and Project sit in a bar at the bottom of the panel (replaces 22.6's icon-only tabs; design R17). The Changes tab no longer carries its count.
 
 ## Decided with the author (2026-10-17)
 
