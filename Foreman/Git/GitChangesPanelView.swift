@@ -715,7 +715,10 @@ struct GitCommitView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .fixedSize()
+            // Not `fixedSize`: a pop-up is as wide as its longest entry, and a worktree's label
+            // made the whole panel wider than its slot — the left slot's tabs and rows shifted
+            // and were cut when Changes was shown (2026-10-17). It truncates within the panel.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .controlSize(.small)
             TextEditor(
                 text: Binding(get: { section.message }, set: { feature.setMessage($0, in: section.id) })
