@@ -147,7 +147,7 @@ nonisolated enum Language: String, CaseIterable, Sendable {
     func makeConfiguration() throws -> LanguageConfiguration {
         switch self {
         case .java:
-            return try LanguageConfiguration(tree_sitter_java(), name: "Java")
+            return try Self.ownConfiguration(tree_sitter_java(), name: "Java", highlights: "java.highlights")
         case .kotlin:
             return try LanguageConfiguration(tree_sitter_kotlin(), name: "Kotlin")
         case .typescript:
@@ -201,6 +201,31 @@ nonisolated enum Language: String, CaseIterable, Sendable {
             .reduce(into: Data()) { $0.append($1) }
         return LanguageConfiguration(
             language, name: name, queries: [.highlights: try Query(language: language, data: highlights)])
+    }
+
+    /// A grammar with **Foreman's own** `highlights.scm` instead of the package's (editor R12,
+    /// amended 2026-10-17): the file `Highlight/Queries/<highlights>.scm`, shipped in the app's
+    /// resources, written against what the author's eye expects (IntelliJ's Java page, M25 25.1).
+    ///
+    /// Only the highlights change; the grammar, its folding and everything else stay the package's.
+    private static func ownConfiguration(
+        _ tsLanguage: OpaquePointer, name: String, highlights: String
+    ) throws -> LanguageConfiguration {
+        let language = SwiftTreeSitter.Language(tsLanguage)
+        let data = try Data(contentsOf: try ownQuery(highlights))
+        return LanguageConfiguration(
+            language, name: name, queries: [.highlights: try Query(language: language, data: data)])
+    }
+
+    /// `Highlight/Queries/<name>.scm`, looked up like the packages' bundles: the test host is not
+    /// the app bundle.
+    private static func ownQuery(_ name: String) throws -> URL {
+        for bundle in Bundle.allBundles + Bundle.allFrameworks {
+            if let url = bundle.url(forResource: name, withExtension: "scm") {
+                return url
+            }
+        }
+        throw HighlightError.bundleNotFound("\(name).scm")
     }
 
     private static func queriesDirectory(_ bundleName: String) throws -> URL {
