@@ -50,22 +50,49 @@ struct QuickOpenIndexTests {
         #expect(await index.search("new", limit: 5).paths == ["docs/new.md"])
     }
 
-    /// editor R18: a cancelled walk stops early and leaves the index unbuilt for the next caller.
-    @Test func aCancelledBuildLeavesTheIndexUnbuilt() async throws {
+    /// editor R18: the palette cancels its search at each keystroke; that must not reach the
+    /// shared walk, which the next search finds complete.
+    @Test func aCancelledCallerDoesNotEmptyTheIndex() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
-        for number in 0..<1200 {
-            try Data().write(to: root.appending(path: "docs/f\(number).txt"))
-        }
+        try writeManyFiles(in: "docs")
         let index = QuickOpenIndex(root: root)
-        let cancelled = Task {
-            withUnsafeCurrentTask { $0?.cancel() }
-            await index.build()
-        }
-        await cancelled.value
-        #expect(await index.count == 0)
-
-        await index.build()
+        let first = Task { await index.search("f1", limit: 5) }
+        await waitUntilTheWalkIsUnderway(index)
+        first.cancel()
+        let second = await index.search("f1", limit: 5)
         #expect(await index.count == 1204)
+        #expect(!second.paths.isEmpty)
+        _ = await first.value
+        #expect(await index.count == 1204)
+    }
+
+    /// editor R18: a search arriving during the walk waits for it instead of scoring half an index.
+    @Test func twoOverlappingSearchesSeeTheFullIndex() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try writeManyFiles(in: "docs")
+        let index = QuickOpenIndex(root: root)
+        let first = Task { await index.search("f1", limit: 5) }
+        await waitUntilTheWalkIsUnderway(index)
+        let second = await index.search("f2", limit: 5)
+        #expect(await index.count == 1204)
+        #expect(!second.paths.isEmpty)
+        #expect(await !first.value.paths.isEmpty)
+    }
+
+    /// editor R18: a new ignored set abandons the walk in progress, which then leaves alone the
+    /// index the next build fills with the new set.
+    @Test func setIgnoredDuringABuildRestartsIt() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try writeManyFiles(in: "src")
+        let index = QuickOpenIndex(root: root)
+        let building = Task { await index.build() }
+        await waitUntilTheWalkIsUnderway(index)
+        await index.setIgnored(["docs"])
+        await index.build()
+        #expect(await index.count == 1203)
+        #expect(await index.search("userguide", limit: 5).paths.isEmpty)
+        await building.value
+        #expect(await index.count == 1203)
     }
 
     @Test func subsequencePrefilterIsCaseInsensitiveAndOrdered() {
@@ -83,5 +110,19 @@ struct QuickOpenIndexTests {
         #expect(QuickOpenIndex.isSkipped("a/.foreman", rootIsHome: false))
         #expect(QuickOpenIndex.isSkipped("node_modules", rootIsHome: false))
         #expect(!QuickOpenIndex.isSkipped("src", rootIsHome: false))
+    }
+
+    /// Returns at the walk's first yield (every 512 entries): the only moment another call can
+    /// reach the actor while the index is half built.
+    private func waitUntilTheWalkIsUnderway(_ index: QuickOpenIndex) async {
+        while await index.count == 0 {
+            await Task.yield()
+        }
+    }
+
+    private func writeManyFiles(in folder: String) throws {
+        for number in 0..<1200 {
+            try Data().write(to: root.appending(path: "\(folder)/f\(number).txt"))
+        }
     }
 }

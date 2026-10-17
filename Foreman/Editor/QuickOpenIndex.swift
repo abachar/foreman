@@ -22,6 +22,8 @@ actor QuickOpenIndex {
     private var ignored: Set<String> = []
     private(set) var isTruncated = false
     private(set) var isBuilt = false
+    /// editor R18: the walk in progress, shared by every `build()` that arrives while it runs.
+    private var building: Task<Void, Never>?
     private let matcher = FuzzyMatcher(config: .smithWaterman)
 
     init(root: URL) {
@@ -33,27 +35,44 @@ actor QuickOpenIndex {
         paths.count
     }
 
-    /// Walks the workspace once, skipping the shared exclusion list; a second call is a no-op.
+    /// Walks the workspace once, skipping the shared exclusion list; a call once built is a no-op.
     ///
-    /// The walk yields regularly — a 200,000-file scan must not monopolise a pool thread — and a
-    /// cancelled walk leaves the index unbuilt for the next caller.
+    /// editor R18: the walk is one task shared by every caller that arrives while it runs and
+    /// cancelled by none of them — the palette cancels its own search at each keystroke, and that
+    /// must not reach the walk (awaiting a task's value does not forward the caller's
+    /// cancellation). Only `setIgnored` cancels it; the next call then starts a new walk.
     func build() async {
         guard !isBuilt else { return }
-        isBuilt = true
+        if let building {
+            await building.value
+            return
+        }
+        let walk = Task { await self.walk() }
+        building = walk
+        await walk.value
+        if building == walk {
+            building = nil
+        }
+    }
+
+    /// The walk behind `build()`; it yields regularly — a 200,000-file scan must not monopolise
+    /// a pool thread — and stops at a yield once `setIgnored` has cancelled it.
+    private func walk() async {
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
         guard
             let enumerator = FileManager.default.enumerator(
                 at: root, includingPropertiesForKeys: Array(keys), options: [.producesRelativePathURLs])
-        else { return }
+        else {
+            isBuilt = true
+            return
+        }
         var visited = 0
         while let url = enumerator.nextObject() as? URL {
             visited += 1
             if visited.isMultiple(of: 512) {
                 await Task.yield()
+                // `setIgnored` already reset the index, and a newer walk may be filling it: leave it alone.
                 if Task.isCancelled {
-                    paths = [:]
-                    isTruncated = false
-                    isBuilt = false
                     return
                 }
             }
@@ -71,14 +90,17 @@ actor QuickOpenIndex {
             }
             if paths.count >= Self.limit {
                 isTruncated = true
+                isBuilt = true
                 return
             }
             paths[path] = Self.lowered(path)
         }
+        isBuilt = true
     }
 
     /// One FSEvents batch: files that appeared are added, files that are gone are removed.
     func apply(_ changes: [URL]) {
+        // A batch during the walk is dropped: the walk sees the file or not, the next batch catches up.
         guard isBuilt else { return }
         for url in changes {
             let path = Workspace.persistedPath(for: url, root: root)
@@ -103,6 +125,9 @@ actor QuickOpenIndex {
     func setIgnored(_ ignored: Set<String>) {
         guard ignored != self.ignored else { return }
         self.ignored = ignored
+        // An unfinished walk with the old set is abandoned; the next search starts a new one.
+        building?.cancel()
+        building = nil
         paths = [:]
         isTruncated = false
         isBuilt = false

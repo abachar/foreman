@@ -54,7 +54,7 @@ Center tab `editor.file`: read and edit the workspace's text files with tree-sit
 ### Quick open (`cmd+p`)
 
 - R17 — Shared palette (`Palette/`, `architecture.md`, also used by `run`); fuzzy search over the workspace's relative paths, case-insensitive, scored by the chosen fuzzy library (subsequence with bonuses on `/`, `.`, `_`, `-` and camelCase boundaries, and on the file name). The 50 best results are shown; `↑↓` navigate, `enter` opens (pinned), `cmd+enter` opens in a new group, `escape` closes.
-- R18 — The path index is built **the first time the palette is opened**, off the main actor, by walking the workspace with the shared exclusion list (`architecture.md`) plus the known gitignored entries (through `Git.statusChanges`, otherwise ignored); it is then maintained by `FSWatchService`. Cap: 200,000 entries; beyond that the index is truncated with a warning in the palette.
+- R18 — The path index is built **the first time the palette is opened**, off the main actor, by walking the workspace with the shared exclusion list (`architecture.md`) plus the known gitignored entries (through `Git.statusChanges`, otherwise ignored); it is then maintained by `FSWatchService`. Cap: 200,000 entries; beyond that the index is truncated with a warning in the palette. The walk is one task shared by every search that arrives while it runs and cancelled by none of them (the palette cancels its own search at each keystroke, 23.10, 2026-10-17); only a change of the ignored set abandons it.
 - R19 — Empty palette (nothing typed): this workspace's recently opened files, most recent first (a list of 50 persisted in `state.json`).
 
 ### Content search (`cmd+shift+f`)
