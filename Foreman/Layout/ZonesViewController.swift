@@ -102,6 +102,8 @@ final class ZonesViewController: GutterSplitViewController {
     /// update, every layout pass and whenever the property flips (2026-08-29).
     private func assertGround() {
         guard let window = view.window, let configuration else { return }
+        // design R14 (full screen, 2026-10-17): the toolbar's own full-screen window is grounded
+        // by `WorkspaceToolbar`, the moment its items land there.
         if window.backgroundColor != configuration.windowBackground {
             window.backgroundColor = configuration.windowBackground
         }

@@ -14,6 +14,13 @@ final class ToolbarButton: NSButton {
     }
     private var trackingArea: NSTrackingArea?
     private var widthConstraint: NSLayoutConstraint?
+    /// design R14 (full screen): the toolbar grounds the window the item lands in.
+    var onWindowChange: (() -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindowChange?()
+    }
 
     init() {
         super.init(frame: .zero)

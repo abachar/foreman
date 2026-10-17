@@ -30,10 +30,33 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
 
     /// Installs the toolbar and keeps it in sync with the manager.
     func attach(to window: NSWindow) {
+        attachedWindow = window
         window.toolbar = toolbar
         // design R4, R15: the thin bar; its ground is the window's (R14).
         window.toolbarStyle = .unifiedCompact
         sync()
+    }
+
+    private weak var attachedWindow: NSWindow?
+
+    /// design R14 (full screen, 2026-10-17): the toolbar's full-screen window gets the ground.
+    ///
+    /// In full screen AppKit moves the items into a window of its own (`NSToolbarFullScreenWindow`),
+    /// which paints its own material — a darker bar until the menu bar's first reveal. The moment
+    /// an item lands in a window that is not the workspace's, that window gets the workspace's
+    /// ground; a theme change re-applies it.
+    private func groundHostWindow() {
+        guard let host = toolbar.items.lazy.compactMap(\.view?.window).first, host !== attachedWindow else { return }
+        let ground = theme.tokens.windowBackground.nsColor
+        if host.backgroundColor != ground {
+            host.backgroundColor = ground
+        }
+        if !host.titlebarAppearsTransparent {
+            host.titlebarAppearsTransparent = true
+        }
+        if host.titlebarSeparatorStyle != .none {
+            host.titlebarSeparatorStyle = .none
+        }
     }
 
     /// The icons already built, keyed by the icon and its badge; dropped when the theme changes.
@@ -49,6 +72,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         if imagesTokens != theme.tokens {
             imagesTokens = theme.tokens
             images.removeAll()
+            groundHostWindow()
         }
         let wanted = identifiers
         if toolbar.items.map(\.itemIdentifier) != wanted {
@@ -115,12 +139,13 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         if case .widget(let view, _) = descriptor.kind {
             // layout R30 (amended 2026-10-16): the feature's SwiftUI, sized by its content; its menu
             // opens under it, through the same `NSMenu` as the other items.
-            let host = NSHostingView(rootView: AnyView(EmptyView()))
+            let host = ToolbarHostingView(rootView: AnyView(EmptyView()))
             host.rootView = view { [weak self, weak host] in
                 guard let self, let host else { return }
                 popUp(menu(for: descriptor.id), under: host)
             }
             host.sizingOptions = [.intrinsicContentSize]
+            host.onWindowChange = { [weak self] in self?.groundHostWindow() }
             item.view = host
             item.label = descriptor.title
             item.isBordered = false
@@ -134,6 +159,7 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
         button.image = image(descriptor.icon, badge: layout.badge(of: descriptor.id))
         button.target = self
         button.action = #selector(performButton(_:))
+        button.onWindowChange = { [weak self] in self?.groundHostWindow() }
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.fit()
         item.view = button
@@ -309,5 +335,16 @@ final class WorkspaceToolbar: NSObject, NSToolbarDelegate, NSMenuDelegate {
             NSBezierPath(ovalIn: rect).fill()
             return true
         }
+    }
+}
+
+/// A widget's hosting view: tells the toolbar when it lands in another window (design R14, full screen).
+@MainActor
+private final class ToolbarHostingView: NSHostingView<AnyView> {
+    var onWindowChange: (() -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindowChange?()
     }
 }
