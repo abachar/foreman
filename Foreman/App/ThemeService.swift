@@ -184,6 +184,20 @@ final class ThemeService {
         (tokens.syntax[role] ?? tokens.codeText).nsColor
     }
 
+    /// editor R60: a server's token, as attributes.
+    ///
+    /// Its role's colour (the code's text when it has none) and a strikethrough for a deprecated
+    /// symbol. Rendering attributes only: no font (R60's note).
+    func attributes(forSemanticToken token: SemanticToken) -> [NSAttributedString.Key: Any] {
+        let color = token.role.map(color(for:)) ?? tokens.codeText.nsColor
+        var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: color]
+        if token.traits.contains(.strikethrough) {
+            attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            attributes[.strikethroughColor] = color
+        }
+        return attributes
+    }
+
     // MARK: - Code surfaces (design R6, R9; M25 25.3)
 
     /// The paragraph style of every code text view.

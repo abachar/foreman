@@ -91,8 +91,12 @@ struct EditorTextView: NSViewRepresentable {
         if document.isHighlightable, let language = tab.language {
             // The grammar comes when it is ready (M6 6.5): plain text until then, no freeze.
             context.coordinator.attaching = Task {
-                [highlighter, weak textView, weak coordinator = context.coordinator] in
-                guard let textView, let attached = await highlighter.attach(to: textView, language: language),
+                [
+                    highlighter, weak textView, weak coordinator = context.coordinator,
+                    semantics = context.coordinator.semantics
+                ] in
+                guard let textView,
+                    let attached = await highlighter.attach(to: textView, language: language, semantics: semantics),
                     !Task.isCancelled, let coordinator
                 else { return }
                 coordinator.highlighter = attached
@@ -269,8 +273,17 @@ struct EditorTextView: NSViewRepresentable {
         var scroll: NSScrollView?
         /// Kept alive for the life of the tab: Neon only holds the text view weakly.
         var highlighter: TextViewHighlighter?
+        /// editor R59: the server's tokens for this text view, read by the highlighter's provider.
+        let semantics = SemanticTokenStore()
         /// editor R56: the pinned lines over the top of the editor.
         var sticky: StickyLinesView?
+
+        /// editor R59: a new batch in; the highlighter asks again about what changed.
+        func applySemanticTokens(_ tokens: [SemanticToken]) {
+            let changed = semantics.replace(with: tokens)
+            guard !changed.isEmpty else { return }
+            highlighter?.invalidate(.set(changed))
+        }
         var attaching: Task<Void, Never>?
         var scrollObserver: (any NSObjectProtocol)?
         /// editor R4: bounds changes count only once the saved position was restored.

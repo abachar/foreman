@@ -27,14 +27,23 @@ final class Highlighter {
     ///
     /// Compiling a grammar's queries takes up to a second (Swift, measured 1.06 s on the main
     /// thread, M6 6.5): it happens off the main actor, the view shows plain text meanwhile.
-    func attach(to textView: NSTextView, language: Language) async -> TextViewHighlighter? {
+    func attach(
+        to textView: NSTextView, language: Language, semantics: SemanticTokenStore? = nil
+    ) async -> TextViewHighlighter? {
         do {
             let configuration = try await self.configuration(for: language)
             return try TextViewHighlighter(
                 textView: textView,
                 configuration: TextViewHighlighter.Configuration(
                     languageConfiguration: configuration,
-                    attributeProvider: { [theme] token in theme.attributes(forCapture: token.name) },
+                    // editor R59: the server's token covering this one wins over the capture;
+                    // Neon's styler calls this on the main actor, where the store lives.
+                    attributeProvider: { [theme] token in
+                        if let semantic = semantics?.token(covering: token.range) {
+                            return theme.attributes(forSemanticToken: semantic)
+                        }
+                        return theme.attributes(forCapture: token.name)
+                    },
                     locationTransformer: { _ in nil }))
         } catch {
             logger.debug(

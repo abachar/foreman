@@ -49,14 +49,12 @@ struct JavaHighlightsTests {
         // context every identifier would come out as a `constant`.
         let context = Predicate.Context(
             textProvider: { range, _ in text.substring(with: range) }, groupMembershipProvider: { _, _, _ in false })
-        var result: [(String, String)] = []
-        for match in query.execute(in: tree) where match.allowed(in: context) {
-            for capture in match.captures {
-                guard let name = capture.name else { continue }
-                result.append((name, text.substring(with: capture.node.range)))
-            }
+        // Sorted the way Neon applies them (SwiftTreeSitter's `highlights()`): by position, then
+        // from the less specific capture to the more specific, the last applied winning.
+        let captures = query.execute(in: tree).filter { $0.allowed(in: context) }.flatMap(\.captures).sorted()
+        return captures.compactMap { capture in
+            capture.name.map { ($0, text.substring(with: capture.node.range)) }
         }
-        return result
     }
 
     private func names(of text: String) throws -> Set<String> {
@@ -69,27 +67,29 @@ struct JavaHighlightsTests {
         let all = try captures()
         let properties = all.filter { $0.name == "property" }.map(\.text)
         #expect(properties.sorted() == ["MAX_RETRIES", "names", "names", "repository", "repository"])
-        #expect(try names(of: "count").isEmpty)
-        #expect(try names(of: "first").isEmpty)
+        // editor R59: a local or a parameter is a `variable` token — the code's own colour — so
+        // the server has a token to speak over; nothing else claims it.
+        #expect(try names(of: "count") == ["variable"])
+        #expect(try names(of: "first") == ["variable"])
     }
 
     /// A method declaration is coloured; its calls are plain text, like IntelliJ.
     @Test func declarationsAreColouredCallsAreNot() throws {
-        #expect(try names(of: "run") == ["function.method"])
-        #expect(try names(of: "OrderService") == ["type", "function.method"])
-        #expect(try names(of: "size").isEmpty)
-        #expect(try names(of: "save").isEmpty)
-        #expect(try names(of: "get").isEmpty)
+        #expect(try names(of: "run") == ["function.method", "variable"])
+        #expect(try names(of: "OrderService") == ["type", "function.method", "variable"])
+        #expect(try names(of: "size") == ["variable"])
+        #expect(try names(of: "save") == ["variable"])
+        #expect(try names(of: "get") == ["variable"])
     }
 
     /// A type in use is plain text; a declared name is a `type`.
     @Test func onlyDeclaredTypesAreTypes() throws {
-        #expect(try names(of: "OrderRepository").isEmpty)
-        #expect(try names(of: "String").isEmpty)
-        #expect(try names(of: "List").isEmpty)
-        #expect(try names(of: "Base").isEmpty)
-        #expect(try names(of: "Line") == ["type"])
-        #expect(try names(of: "Status") == ["type"])
+        #expect(try names(of: "OrderRepository") == ["variable"])
+        #expect(try names(of: "String") == ["variable"])
+        #expect(try names(of: "List") == ["variable"])
+        #expect(try names(of: "Base") == ["variable"])
+        #expect(try names(of: "Line") == ["type", "variable"])
+        #expect(try names(of: "Status") == ["type", "variable"])
     }
 
     /// IntelliJ's keyword colour: `this`, `super`, the primitives and the literals.
@@ -101,21 +101,30 @@ struct JavaHighlightsTests {
 
     /// Constants, annotations with their `@`, and the string/number/comment basics.
     @Test func constantsAnnotationsAndLiterals() throws {
-        #expect(try names(of: "MAX_RETRIES") == ["constant", "property"])
-        #expect(try names(of: "OPEN") == ["constant"])
-        #expect(try names(of: "Service") == ["attribute"])
-        #expect(try names(of: "Override") == ["attribute"])
+        #expect(try names(of: "MAX_RETRIES") == ["constant", "property", "variable"])
+        #expect(try names(of: "OPEN") == ["constant", "variable"])
+        #expect(try names(of: "Service") == ["attribute", "variable"])
+        #expect(try names(of: "Override") == ["attribute", "variable"])
         #expect(try names(of: "@") == ["attribute"])
         #expect(try names(of: "3") == ["number"])
         #expect(try names(of: "0") == ["number"])
     }
 
-    /// The file is Foreman's, found in the app's resources from the test host too.
+    /// The file is Foreman's, found in the app's resources from the test host too: the package's
+    /// query captures `super` as `function.builtin` and `this` as `variable.builtin`; ours never.
     @Test func theQueryIsForemansOwn() throws {
         let configuration = try Language.java.makeConfiguration()
         let query = try #require(configuration.queries[.highlights])
-        // The package's query has one `(identifier) @variable` pattern; ours has none.
-        #expect(try captures().allSatisfy { $0.name != "variable" })
+        #expect(try captures().allSatisfy { !$0.name.hasSuffix(".builtin") })
         #expect(query.patternCount > 10)
+    }
+
+    /// editor R59: the specific capture is listed after the plain `variable` one, so Neon's last
+    /// application wins — the order the package's own queries rely on.
+    @Test func theSpecificCaptureComesAfterThePlainOne() throws {
+        let all = try captures()
+        let names = all.filter { $0.text == "repository" }.map(\.name)
+        #expect(names.first == "variable")
+        #expect(names.contains("property"))
     }
 }

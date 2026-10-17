@@ -9,6 +9,13 @@
 ; A parameter or a local has no capture: plain text, like IntelliJ.
 ; Loaded by `Language.makeConfiguration` instead of the package's `highlights.scm`.
 
+; Every identifier is a token, plain by colour (`variable` is the code's own text), so that the
+; language server's semantic tokens have a token to speak over (editor R59, M25 25.2): Neon only
+; asks its attribute provider about what the grammar captured. The patterns below override it.
+
+(identifier) @variable
+(type_identifier) @variable
+
 ; Comments and literals
 
 [

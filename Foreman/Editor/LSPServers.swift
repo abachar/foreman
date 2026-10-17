@@ -45,6 +45,9 @@ final class LSPServers {
         var version: Int
         /// editor R37: how many tabs have it open; the last one to go sends `didClose`.
         var tabs: Int
+        /// editor R58: the last semantic tokens answer, for the next delta.
+        var semanticResultId: String?
+        var semanticData: [UInt32] = []
     }
 
     init(
@@ -60,6 +63,9 @@ final class LSPServers {
     ///
     /// The last argument names the server (its binary), for the Problems panel (R50).
     var onDiagnostics: ((URL, [EditorDiagnostic], String) -> Void)?
+    /// editor R58, R59: a file's semantic tokens, decoded against the text they describe; set by
+    /// `EditorFeature`, which hands them to every tab showing the file.
+    var onSemanticTokens: ((URL, [SemanticToken]) -> Void)?
 
     /// Test seam: how many tabs hold each open document (editor R37).
     var openDocuments: [DocumentUri: Int] {
@@ -83,7 +89,38 @@ final class LSPServers {
             guard let self, let server = await server(for: command), let document = documents[uri] else { return }
             await server.didOpen(
                 uri: uri, languageId: document.languageId, version: document.version, text: text)
+            // editor R58: the first tokens, once the document is open.
+            await refreshSemanticTokens(uri: uri, text: text)
         }
+    }
+
+    /// editor R58, R40, R45: the server's tokens for the text just sent — a delta when it offers
+    /// one, the whole array otherwise — decoded off the main actor and dropped when the document
+    /// moved on while the server worked.
+    private func refreshSemanticTokens(uri: DocumentUri, text: String) async {
+        guard let document = documents[uri], let server = servers[document.command], server.isRunning,
+            let legend = server.semanticLegend
+        else { return }
+        let version = document.version
+        let previous = server.supportsSemanticDelta ? document.semanticResultId : nil
+        guard let answer = await server.semanticTokens(uri: uri, previousResultId: previous),
+            var current = documents[uri], current.version == version
+        else { return }
+        switch answer {
+        case .full(let tokens):
+            current.semanticData = tokens.data
+            current.semanticResultId = tokens.resultId
+        case .delta(let delta):
+            current.semanticData = SemanticTokenDecoder.apply(delta.edits, to: current.semanticData)
+            current.semanticResultId = delta.resultId
+        }
+        documents[uri] = current
+        let data = current.semanticData
+        let tokens = await Task.detached(priority: .userInitiated) {
+            SemanticTokenDecoder.tokens(data: data, legend: legend, text: text as NSString)
+        }.value
+        guard documents[uri]?.version == version else { return }
+        onSemanticTokens?(current.url, tokens)
     }
 
     /// editor R37, R45: debounced at the producer, so typing sends nothing synchronously.
@@ -99,7 +136,10 @@ final class LSPServers {
             }
             document.version += 1
             documents[uri] = document
-            await server.didChange(uri: uri, version: document.version, text: text())
+            let current = text()
+            await server.didChange(uri: uri, version: document.version, text: current)
+            // editor R58: the tokens follow the text, behind the same debounce.
+            await refreshSemanticTokens(uri: uri, text: current)
         }
     }
 

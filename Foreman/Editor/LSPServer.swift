@@ -229,6 +229,60 @@ final class LSPServer {
         return response ?? nil
     }
 
+    // MARK: - Semantic tokens (editor R58)
+
+    /// editor R58: the legend of a server that announced the provider; `nil` means no tokens.
+    var semanticLegend: SemanticTokensLegend? {
+        switch capabilities?.semanticTokensProvider {
+        case .optionA(let options): return options.legend
+        case .optionB(let options): return options.legend
+        case nil: return nil
+        }
+    }
+
+    /// editor R58: whether the server offers `full/delta`.
+    var supportsSemanticDelta: Bool {
+        let full: SemanticTokensClientCapabilities.Requests.FullOption?
+        switch capabilities?.semanticTokensProvider {
+        case .optionA(let options): full = options.full
+        case .optionB(let options): full = options.full
+        case nil: full = nil
+        }
+        switch full {
+        case .optionB(let option): return option.delta == true
+        case .optionA, nil: return false
+        }
+    }
+
+    /// What a semantic tokens request came back with (editor R58).
+    enum SemanticAnswer {
+        case full(SemanticTokens)
+        case delta(SemanticTokensDelta)
+    }
+
+    /// editor R58, R45: the file's tokens — a delta against `previousResultId` when the server
+    /// offers it and one is known, the whole array otherwise; bounded by `lsp.timeout` like the
+    /// other requests, `nil` for no answer or no provider.
+    func semanticTokens(uri: DocumentUri, previousResultId: String?) async -> SemanticAnswer? {
+        guard let connection, semanticLegend != nil else { return nil }
+        let document = TextDocumentIdentifier(uri: uri)
+        if let previousResultId, supportsSemanticDelta {
+            let response: SemanticTokensDeltaResponse? = await withTimeout(timeout) {
+                try? await connection.semanticTokensFullDelta(
+                    SemanticTokensDeltaParams(textDocument: document, previousResultId: previousResultId))
+            }
+            switch response ?? nil {
+            case .optionA(let tokens)?: return .full(tokens)
+            case .optionB(let delta)?: return .delta(delta)
+            case nil: return nil
+            }
+        }
+        let response: SemanticTokensResponse? = await withTimeout(timeout) {
+            try? await connection.semanticTokensFull(SemanticTokensParams(textDocument: document))
+        }
+        return (response ?? nil).map(SemanticAnswer.full)
+    }
+
     /// editor R42, R45: bounded like the rest; a slow server makes the popover late, never stuck.
     func hover(uri: DocumentUri, position: Position) async -> HoverResponse {
         guard let connection, hasHoverProvider else { return nil }
@@ -347,7 +401,13 @@ final class LSPServer {
                 workspace: ClientCapabilities.Workspace(
                     applyEdit: false, workspaceEdit: nil, didChangeConfiguration: nil, didChangeWatchedFiles: nil,
                     symbol: nil, executeCommand: nil, workspaceFolders: nil, configuration: true, semanticTokens: nil),
-                textDocument: nil, window: nil, general: nil, experimental: nil),
+                // editor R58: full and delta, relative, one line per token, no overlap; the
+                // standard type and modifier lists — the server's legend names the rest.
+                textDocument: TextDocumentClientCapabilities(
+                    semanticTokens: SemanticTokensClientCapabilities(
+                        requests: .init(range: false, delta: true), overlappingTokenSupport: false,
+                        multilineTokenSupport: false)),
+                window: nil, general: nil, experimental: nil),
             trace: nil, workspaceFolders: nil)
     }
 

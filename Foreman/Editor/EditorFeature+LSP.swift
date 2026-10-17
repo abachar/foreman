@@ -158,6 +158,14 @@ extension EditorFeature {
             // editor R50: every file the server spoke about, for the Problems panel.
             problems.publish(diagnostics, for: url, source: server)
         }
+        // editor R59: the server's tokens reach every text view showing the file; each one's
+        // highlighter asks again about the ranges that changed, and nothing else.
+        lsp.onSemanticTokens = { [weak self] url, tokens in
+            guard let self else { return }
+            for tab in tabsShowing(url) {
+                tab.textCoordinator?.applySemanticTokens(tokens)
+            }
+        }
     }
 
     /// editor R43, R48: `ctrl+cmd+j` — the same jump from the keyboard, at the caret.
