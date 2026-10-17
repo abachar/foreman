@@ -6,7 +6,8 @@ axes the author asked for (120 Hz budget, concurrency model, memory), sized agai
 repos, 2 002 files in scope, P95 file 49 KB, 2–3 agents at a time, session diffs up to 228 files).
 
 The audit's own rule applies first: **measure before optimising** (`architecture.md` → Performance).
-23.1 adds the intervals; 23.4 and 23.5 are decided on its trace, not on the reading.
+23.1 adds the intervals; 23.5 and 23.6 are decided on its trace, not on the reading (see
+[Measured](#measured-on-ccoe-2026-10-17)).
 
 Domains: [`terminal`](../specs/terminal/00-study.md) (R14, the surfaces' queue), [`git`](../specs/git/00-study.md)
 (R13, R16: the diff's rendering), [`explorer`](../specs/explorer/00-study.md) (R9, R15: the reload on
@@ -24,13 +25,47 @@ One branch `feat/m23` from `main`, one commit per task; each commit cites its fi
 | # | Task | Findings | Library / native | Tests | Size | Status | PR |
 |---|---|---|---|---|---|---|---|
 | 23.0 | **The audit is a record**: `docs/audits/audit-2026-10-17.md`, its row in the audits README, this milestone and its row in the backlog README | — | — | — | S | 🟡 | |
-| 23.1 | **Measure**: three `os_signpost` intervals in `Perf` — `explorer.reload` (around `ExplorerOutlineView.Coordinator.sync`), `diff.render` (`GitDiffModel.render`, per file as an event), `editor.keystroke` (`CurrentLineTextView.didChangeText` to the end of `rebuildLines`) — then one `xctrace` run on `ccoe` with two agents streaming and the explorer unfolded; the numbers written in the `explorer`, `git` and `editor` decisions and in §5 of the audit's follow-up here | U1, U2, U4, M2 | `OSSignposter`, `xctrace` (attach, never `--launch`) | — (the numbers are the deliverable) | S | 🟡 | |
+| 23.1 | **Measure**: three `os_signpost` intervals in `Perf` — `explorer.reload` (around `ExplorerOutlineView.Coordinator.sync`), `diff.render` (`GitDiffModel.render`, per file as an event), `editor.keystroke` (`CurrentLineTextView.didChangeText` to the end of `rebuildLines`) — then one `xctrace` run on `ccoe` with two agents streaming and the explorer unfolded; the numbers written in the `explorer`, `git` and `editor` decisions and in [Measured](#measured-on-ccoe-2026-10-17) here | U1, U2, U4, M2 | `OSSignposter`, `xctrace` (attach, never `--launch`) | — (the numbers are the deliverable) | S | 🟢 | |
 | 23.2 | **Diff rendered as it goes**: `GitDiffModel.render` renders the expanded files first and publishes `rendered[file.id]` as each completes; a folded file of a large diff is rendered when `expandedFiles` gains it, not before; the `for run in string.runs` recolouring moves into the `@concurrent` render | M2 | `@concurrent`, `Task` per expansion, `@Observable` dictionary | the order of rendering (expanded first), a folded file not rendered until expanded, a load superseded mid-render leaves no partial state | M | 🟢 | |
 | 23.3 | **Derived values cached**: `ThemeService.tokens` stored, recomputed in `apply` and when `systemIsDark` changes (not per access); `GitRepo.canonicalPath` resolved once per `GitRepo` (a stored property, set at its creation) and an agent session's `canonicalCwd` once when it is built, so `GitModel.groups` and `agentSessions(in:)` do no syscall in a body; `GitModel.Section.sections` computed once per status | U5 | `@Observable` stored properties, `didSet` | `tokens` follows `apply` and is stable between reads, a repo's stored `canonicalPath` equals the static one, `owner(ofCanonicalPath:)` on strings, a section's lists follow its status | S | 🟢 | |
 | 23.4 | **One `lineStarts`**: `LineNumberRulerView` and `StickyLinesView` read `CurrentLineTextView.lineStarts` instead of computing or copying their own; `TerminalTab.didSetTitle` tests equality before assigning; `ContentSearch.run` uses `Task {}` (or justifies `detached` in a comment); the criterion « a task is retained and cancelled by its owner when the user can see it end » written in `coding-rules.md` → Concurrency | U2, K2, K4 | — | the ruler's numbers after an edit (unchanged behaviour), `subtitle` not republished for an identical title | S | 🟢 | |
-| 23.5 | **Explorer reload under an agent** — *only if 23.1 shows `explorer.reload` over ~2 ms*: `GitFeature.statusChanges()` and `Workspace.configChanges()` built with `bufferingPolicy: .bufferingNewest(1)` (never `TerminalService.events()`); `applyGitStatus` keeps `lastLoaded` when a status changes no visible row, so `sync` reloads the touched folders rather than the root | U4, K3 | `AsyncStream.Continuation.BufferingPolicy` | a rafale of three statuses applies the last one; a status with no change reloads nothing | M | ⚪ | |
-| 23.6 | **Terminal parsing off the main thread** — *decided on 23.1's trace*: read `AppleTerminalView` / `LocalProcessTerminalView` for `usesMainQueue == false` (how the view reads the buffer while the parser mutates it); if the library supports it, `TerminalSurfaceView` hands `LocalProcess` a serial queue per surface; validated on Claude Code, OpenCode and a `cargo build`-class stream, with the 120 Hz trace before and after. If the library does not support it, the task is closed with the reading as its reason | U1 | SwiftTerm `LocalProcess(delegate:dispatchQueue:)` | the surface's output unchanged on a VT fixture; **by eye**: two agents streaming, the editor typing | L | ⚪ | |
-| 23.7 | **Orders of magnitude written**: `architecture.md` → Performance gains the measured costs — a full terminal surface ≈ 30 MB, an editor tab ≈ 3× its file, the quick-open index ≈ 150 B a file — and the `ccoe` numbers of the audit's §5 as the reference workspace | M1, M3, M4 | — | — | S | ⚪ | |
+| 23.5 | **Explorer reload under an agent** — *measured on 2026-10-17: a partial reload is 3.9 ms at the median and 42.8 ms at worst, the threshold is met*: `GitFeature.statusChanges()` and `Workspace.configChanges()` built with `bufferingPolicy: .bufferingNewest(1)` (never `TerminalService.events()`); `applyGitStatus` keeps `lastLoaded` when a status changes no visible row, so `sync` reloads the touched folders rather than the root | U4, K3 | `AsyncStream.Continuation.BufferingPolicy` | a rafale of three statuses applies the last one; a status with no change reloads nothing | M | ⚪ | |
+| 23.6 | **Terminal rendering on the GPU** — *re-scoped on 23.1's trace (2026-10-17)*: the parser is 2.5 % of the main thread under two streaming agents, the CoreGraphics draw (`TerminalView.draw` → `drawTerminalContents`, one `NSAttributedString` per row per frame, the box-drawing renderer) is nine tenths of it; moving the parser off the main thread (U1 as written) would gain nothing visible. SwiftTerm ships a Metal renderer (`MacTerminalView.setUseMetal(_:)`, `metalBufferingMode`, `metalRendererStatus`, a documented API): `TerminalSurfaceView` enables it at creation, falls back to CoreGraphics when `setUseMetal` throws, and the surface's zoom and theme font keep working; validated on Claude Code, OpenCode and a `cargo build`-class stream, with the 120 Hz trace before and after. *Awaiting the author's decision: the pixels change renderer* | U1 | SwiftTerm `setUseMetal(true)` | `isUsingMetalRenderer` after creation; **by eye**: two agents streaming, the editor typing, a zoomed surface, light and dark | M | ⚪ | |
+| 23.7 | **Orders of magnitude written**: `architecture.md` → Performance gains the measured costs — a full terminal surface ≈ 30 MB, an editor tab ≈ 3× its file, the quick-open index ≈ 150 B a file — and the `ccoe` numbers of the audit's §5 and of [Measured](#measured-on-ccoe-2026-10-17) as the reference workspace | M1, M3, M4 | — | — | S | ⚪ | |
+| 23.8 | **A keystroke scans bytes, not characters** — *found by 23.1*: `editor.keystroke` is 10 ms at the median and 19 ms at worst on a 55 KB Java file, over the 8.33 ms frame; the time is `IndentGuides.levels(of:)` — `String.split` then `for character in line`, a grapheme walk of the whole buffer — not `lineStarts`. `levels` walks `utf8` (a line's indentation is ASCII spaces and tabs, a non-ASCII byte ends it like any other). Second, smaller: the ruler's one `offset(from:to:)` per draw walks `String` indices (≈ 1 ms a draw on the same file), to be replaced by a UTF-16 offset if TextKit 2 gives one | U2 | `String.UTF8View`, `withContiguousStorageIfAvailable` | the levels unchanged on the existing fixtures (tabs, mixed, empty lines, non-ASCII leading text); `editor.keystroke` under 1 ms on the 55 KB file, measured | S | ⚪ | |
+| 23.9 | **Scrolling a large diff** — *found by 23.1, to study*: scrolling the rendered diff gives frames of 8–15 ms, in `GitDiffView.hunkView` (one `HStack` of SwiftUI `Text` per line inside a `LazyVStack`, built as rows scroll in); the study weighs one `Text` per hunk (one attributed string with the gutter in a tab stop) against an `NSTextView` per file. No change before the study | M2 | — | — | S (study) | ⚪ | |
+| 23.10 | **Quick open under typing** — *found on the way, 2026-10-17*: `QuickOpenIndex.build()` sets `isBuilt` before walking and yields every 512 files; the palette cancels the previous search at each keystroke, so the walk started by one keystroke sees `Task.isCancelled` at its next yield and **empties the index**, while the next keystroke's `search`, finding `isBuilt == true`, scores a half-built index and shows nothing (`cmd+p` then a full class name on `ccoe`: no result; the matcher itself finds the file at 0.96). The build becomes one shared `Task` on the actor, awaited by every search and cancelled by none of them; an unfinished build is restarted by the next search | — | `actor`, one retained `Task<Void, Never>` | two overlapping searches during a build both see the full index; a cancelled search leaves the index built; `setIgnored` during a build restarts it | S | ⚪ | |
+
+## Measured on `ccoe` (2026-10-17)
+
+Two `xctrace` captures (Time Profiler + `os_signpost`, attached to the Release build `8ff2382`
+installed in `/Applications`, the author at the keyboard), on `/Users/abachar/Projects/ThalesDigital/ccoe`,
+explorer unfolded on both repos. Traces and the export scripts in the session's scratchpad
+(`trace/m23.trace`, `trace/m23b.trace`, `profile2.py`, `signposts.py`), not kept in the repo.
+
+**Capture 1 — 75 s, nothing running** (two Claude Code sessions open and idle, the author scrolling a
+large diff): the main thread is busy 2.6 % of the time. Ten frames of 8–15 ms, all while scrolling
+the diff, in `GitDiffView.hunkView` (23.9). One partial `explorer.reload` of 27 ms inside a 68 ms
+frame.
+
+**Capture 2 — 120 s, two Claude Code sessions streaming** (a full build asked in each), the author
+typing in a 55 KB Java file and unfolding folders:
+
+| What | Measure |
+|---|---|
+| Main thread busy | 17.9 % (21.7 s of 121 s) |
+| AppKit update cycles over 8.33 ms (`UpdateCycle.Stalls`) | 1 007, median 17.9 ms, P95 26.9 ms, worst 213 ms |
+| Main-thread samples entering through `TerminalView.draw` | 55 % (12 001 of 21 674) — CoreGraphics draw: `drawTerminalContents`, one `NSAttributedString` per row, `BoxDrawingRenderer` for the agents' frames |
+| Main-thread samples with no Foreman frame (AppKit's own cycle: layer tree, tracking areas, autolayout, SwiftUI graph) | 37 % (7 949) — the cycle the terminal's invalidations run at 60 Hz |
+| Main-thread samples in the VT parser (`LocalProcess.enqueueReceivedData` → `Terminal.feed`) | **2.5 %** (537) |
+| `editor.keystroke` (42 keystrokes, 55 KB file) | median 10.1 ms, P95 17.2 ms, worst 19.4 ms — `IndentGuides.levels(of:)`'s character walk, not `lineStarts` |
+| `explorer.reload` partial (5) | median 3.9 ms, worst 42.8 ms (inside the 213 ms frame, with the outline cells' creation) |
+| `diff.render` (1) | 0.04 ms — a refresh with no changed file re-renders nothing (23.2 holds) |
+
+What the trace decides: **U1 is not the main thread's problem** — the parser is 2.5 %, the
+rendering is nine tenths, so 23.6 is re-scoped to SwiftTerm's Metal renderer (awaiting the author);
+**23.5 goes** (3.9 ms median, 42.8 ms worst against a 2 ms threshold); **U2 reopens** on a part the
+audit had not named (`levels`, 23.8); the audit's §5 numbers stand.
 
 ## Closed without a change (2026-10-17, with the author)
 
@@ -52,4 +87,8 @@ One branch `feat/m23` from `main`, one commit per task; each commit cites its fi
 
 ## Where it stands
 
-Planned on 2026-10-17. 23.0 in progress (the audit and this file written, not yet committed).
+Planned on 2026-10-17. 23.0–23.4 done the same day on `feat/m23`; the trace of 23.1 taken on
+`ccoe` with the author (two agents streaming) and recorded above: 23.5 goes, 23.6 is re-scoped to the
+Metal renderer and waits for the author, 23.8–23.10 added from the trace. Pre-existing and out of
+scope: four warnings in `HoverPopover.swift:109–114` (main-actor calls from a nonisolated context),
+present on `main` before M23.
