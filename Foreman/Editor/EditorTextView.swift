@@ -46,6 +46,10 @@ struct EditorTextView: NSViewRepresentable {
         context.coordinator.scroll = scroll
         guard let textView = scroll.documentView as? CurrentLineTextView else { return scroll }
         textView.font = theme.editorFont
+        // design R6 (M25 25.3): the line height goes in **before** the text, so TextKit's first
+        // estimate of the document's height is at the right pitch — set after, the view kept the
+        // frame of the bare height and drew nothing under it until the first scroll (2026-10-17).
+        Self.applyLineHeight(theme.tokens.codeLineHeight, to: textView)
         textView.isEditable = !document.isReadOnly
         textView.isRichText = false
         textView.allowsUndo = true
@@ -250,9 +254,13 @@ struct EditorTextView: NSViewRepresentable {
         style.lineHeightMultiple = multiple
         textView.defaultParagraphStyle = style
         textView.typingAttributes[.paragraphStyle] = style
-        if let storage = textView.textStorage, storage.length > 0 {
-            storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: storage.length))
-        }
+        guard let storage = textView.textStorage, storage.length > 0 else { return }
+        storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: storage.length))
+        // The text already laid out changes height under the viewport: TextKit 2 sizes the view
+        // again on its next viewport pass, which nothing else asks for, and the gutter draws from
+        // the fragments, so both are asked now (a live change of `codeLineHeight`).
+        textView.textLayoutManager?.textViewportLayoutController.layoutViewport()
+        textView.enclosingScrollView?.verticalRulerView?.needsDisplay = true
     }
 
     @MainActor

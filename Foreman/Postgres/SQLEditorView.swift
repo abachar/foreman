@@ -28,6 +28,8 @@ struct SQLEditorView: NSViewRepresentable {
         let scroll = SQLTextView.scrollableTextView()
         guard let textView = scroll.documentView as? SQLTextView else { return scroll }
         textView.font = theme.editorFont
+        // design R6 (M25 25.3): before the text, like the file editor — see `EditorTextView`.
+        EditorTextView.applyLineHeight(theme.tokens.codeLineHeight, to: textView)
         textView.isRichText = false
         textView.allowsUndo = true
         textView.usesFindBar = true

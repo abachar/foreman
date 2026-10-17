@@ -62,5 +62,5 @@ rows and hunk headers at `codeLinePitch`, the preview's code blocks with the mat
 a selection change. The `variable` / `operator` / `punctuation` roles left the sets and resolve to
 `codeText`, so one override moves them too. Found on the way: TextKit rounds a font's line height
 **up** before applying the multiple (16 × 1.2 = 19.2 for the system mono at 13), so `linePitch`
-does the same or a SwiftUI row and a text view disagree by a point. Left: the author's look at
+does the same or a SwiftUI row and a text view disagree by a point. And the style must go in **before** the text: set after `string =`, TextKit 2 kept the document frame of the bare height and drew nothing under it until the first scroll (seen on launch, by window capture, 2026-10-17); a live change asks the viewport for a pass and the gutter for a redraw. Left: the author's look at
 `ccoe-backend` next to IntelliJ (25.1 and 25.3 together), then 25.2.
