@@ -19,10 +19,11 @@ extension LayoutManager {
             groups: groups,
             activeGroup: model.activeGroup,
             panels: panels.visible,
-            panelSizes: panelSizes,
+            panelSizes: [:],
             windowFrame: windowFrame,
             isToolbarVisible: isToolbarVisible,
-            lastPanels: panels.last
+            lastPanels: panels.last,
+            slotSizes: slotSizes
         )
     }
 
@@ -55,10 +56,12 @@ extension LayoutManager {
         }
         model = LayoutModel(tree: tree, groups: groups, activeGroup: state.activeGroup)
         panels.restore(visible: state.panels, last: state.lastPanels ?? [:])
-        // layout R18: a size of a panel that no longer exists (or a pre-2026-08-28 per-slot key) is dropped.
-        for (id, size) in state.panelSizes where panels[id] != nil {
-            setPanelSize(size, of: id)
-        }
+        // layout R18 (amended 2026-10-17): the slots' sizes; an older state gives each slot the
+        // size its shown panel had.
+        let sizes =
+            state.slotSizes
+            ?? state.panels.reduce(into: [:]) { sizes, entry in sizes[entry.key] = state.panelSizes[entry.value] }
+        slotSizes = sizes.mapValues { max($0, ZoneSizing.minimumPanel) }
         windowFrame = state.windowFrame
         isToolbarVisible = state.isToolbarVisible
         panels.focusCenter()

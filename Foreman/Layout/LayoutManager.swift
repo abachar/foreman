@@ -27,8 +27,9 @@ final class LayoutManager {
     /// not to whichever one is key; `nil` until the first frame.
     @ObservationIgnored weak var window: NSWindow?
 
-    /// layout R18 (amended 2026-08-28): one persisted thickness per panel.
-    private(set) var panelSizes: [PanelID: CGFloat] = [:]
+    /// layout R18 (amended again 2026-10-17): one persisted thickness per **slot** — the panels of a
+    /// slot are its tabs, and switching tabs must not resize it.
+    var slotSizes: [PanelSide: CGFloat] = [:]
     /// The room the center zone currently has; geometry (R11, R12) depends on it.
     var centerSize = CGSize(width: 1100, height: 700)
 
@@ -246,21 +247,17 @@ final class LayoutManager {
         _ = model.moveActiveTab(direction, in: centerSize)
     }
 
-    /// The thickness each visible slot asks for: its panel's, or the slot's default (layout R18, R19).
+    /// The thickness each visible slot asks for: its own, or the slot's default (layout R18, R19).
     var requestedSizes: [PanelSide: CGFloat] {
-        panels.visible.reduce(into: [:]) { sizes, entry in
-            sizes[entry.key] = panelSizes[entry.value] ?? ZoneSizing.defaults[entry.key]
+        panels.visible.keys.reduce(into: [:]) { sizes, side in
+            sizes[side] = slotSizes[side] ?? ZoneSizing.defaults[side]
         }
     }
 
     /// The user dragged a divider (layout R18); automatic adjustments never come through here.
     func setPanelSize(_ size: CGFloat, for side: PanelSide) {
-        guard let id = panels.visible[side] else { return }
-        setPanelSize(size, of: id)
-    }
-
-    func setPanelSize(_ size: CGFloat, of id: PanelID) {
-        panelSizes[id] = max(size, ZoneSizing.minimumPanel)
+        guard panels.visible[side] != nil else { return }
+        slotSizes[side] = max(size, ZoneSizing.minimumPanel)
     }
 
     // MARK: - Layout actions (layout R23)

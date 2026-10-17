@@ -21,10 +21,13 @@ nonisolated struct LayoutState: Codable, Equatable, Sendable {
     var groups: [GroupState]
     var activeGroup: GroupID
     var panels: [PanelSide: PanelID]
-    /// layout R18: one thickness per panel, keyed by its id.
+    /// layout R18 (2026-08-28 to 2026-10-17): one thickness per panel, read once to seed
+    /// `slotSizes` from an older state, written empty since.
     var panelSizes: [PanelID: CGFloat]
     var windowFrame: CGRect?
     var isToolbarVisible: Bool
     /// layout (status bar, 2026-10-16): the last panel of each slot; absent from older states.
     var lastPanels: [PanelSide: PanelID]? = nil
+    /// layout R18 (amended 2026-10-17): one thickness per slot; absent from older states.
+    var slotSizes: [PanelSide: CGFloat]? = nil
 }

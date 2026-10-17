@@ -55,7 +55,7 @@ struct LayoutStateTests {
         #expect(restored.panels.visible == [.left: "git.status"])
         // layout (status bar, 2026-10-16): the last panel of each slot comes back with the rest.
         #expect(restored.panels.last == [.left: "git.status"])
-        #expect(restored.panelSizes["git.status"] == 300)
+        #expect(restored.slotSizes[.left] == 300)
         #expect(restored.requestedSizes[.left] == 300)
         #expect(!restored.isToolbarVisible)
     }
@@ -74,27 +74,32 @@ struct LayoutStateTests {
         #expect(restored.model.active.tabs.map(\.title) == ["kept"])
     }
 
-    @Test func eachPanelOfASlotKeepsItsOwnSize() throws {
+    /// layout R18 (amended 2026-10-17): the panels of a slot are its tabs; switching keeps the size.
+    @Test func switchingTheTabsOfASlotKeepsItsSize() throws {
         let layout = manager(kinds: [])
         layout.register(
             panel: PanelDescriptor(
                 id: "postgres.schema", title: "Schema", side: .left, makeView: { AnyView(EmptyView()) }))
         layout.panels.toggle("git.status")
         layout.setPanelSize(300, for: .left)
-        layout.panels.toggle("postgres.schema")
-        // layout R18 (2026-08-28): the replacing panel starts at the slot's default, not at 300.
-        #expect(layout.requestedSizes[.left] == ZoneSizing.defaults[.left])
-        layout.setPanelSize(420, for: .left)
-        layout.panels.toggle("git.status")
+        layout.panels.show("postgres.schema")
         #expect(layout.requestedSizes[.left] == 300)
 
         let data = try JSONEncoder().encode(layout.snapshot())
-        // layout R18: an object keyed by panel id, readable by hand in state.json.
-        #expect(String(decoding: data, as: UTF8.self).contains(#""git.status":300"#))
         let restored = manager(kinds: [])
         restored.restore(try JSONDecoder().decode(LayoutState.self, from: data))
-        // The schema panel is unknown to this window: its size is dropped, git's stays.
-        #expect(restored.panelSizes == ["git.status": 300])
+        #expect(restored.slotSizes == [.left: 300])
+    }
+
+    /// An older state, sized per panel, seeds each slot with its shown panel's size.
+    @Test func anOlderStateSeedsTheSlotsFromTheShownPanels() {
+        var state = manager(kinds: []).snapshot()
+        state.slotSizes = nil
+        state.panels = [.left: "git.status"]
+        state.panelSizes = ["git.status": 340, "postgres.schema": 500]
+        let restored = manager(kinds: [])
+        restored.restore(state)
+        #expect(restored.slotSizes == [.left: 340])
     }
 
     @Test func keepsTheLastGroupEvenWhenEveryTabIsIgnored() {

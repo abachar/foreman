@@ -43,3 +43,4 @@
 | 2026-10-16 | The active group is shown by its tab's accent rule alone (R17 amended, `design` R3, R5, M21 21.8) | The accent border of 2026-08-27 | Reference views; see `design` decisions |
 | 2026-10-17 | *Split Right* and a *…* menu at the right end of each tab bar (R16 amended, M22 22.3) | Splits from the keyboard and the menu bar only | Author's pass on M21 (view 02): the split is one click from the group it splits; the menu reuses R35's closing selection |
 | 2026-10-17 | Tabs fit their title, up to 180 pt of title truncated in the middle (R16 amended, M22 22.5) | 120 pt minimum and 240 pt maximum (M8, audit L7) | Author's pass on M21: a short name left an empty band; the middle truncation keeps both the start and the extension of a long file name |
+| 2026-10-17 | Panel thickness per slot again (R18 amended) | Per panel (2026-08-28) | Author: with the slot's panels shown as tabs, a tab switch resized the panel; one width per slot is what a tab strip implies |
