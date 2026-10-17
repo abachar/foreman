@@ -49,12 +49,42 @@ struct ThemeTokensTests {
         }
     }
 
-    @Test func bothSetsNameEveryHighlightRole() {
+    /// design R9 (M25 25.3): the three roles that are the code's own text are not named by the
+    /// sets — `ThemeService.color(for:)` gives them `codeText`, so one override moves them too.
+    @Test func bothSetsNameEveryHighlightRoleButTheCodeTextOnes() {
+        let codeTextRoles: Set<HighlightRole> = [.variable, .operator, .punctuation]
         for role in HighlightRole.allCases {
-            #expect(ThemeService.Tokens.dark.syntax[role] != nil)
-            #expect(ThemeService.Tokens.light.syntax[role] != nil)
+            #expect((ThemeService.Tokens.dark.syntax[role] != nil) == !codeTextRoles.contains(role), "\(role)")
+            #expect((ThemeService.Tokens.light.syntax[role] != nil) == !codeTextRoles.contains(role), "\(role)")
         }
         #expect(ThemeService.Tokens.dark != ThemeService.Tokens.light)
+    }
+
+    /// design R9 (M25 25.3): the code's text is a step under the chrome's and still readable on
+    /// the island and on the current line, in both sets.
+    @Test func theCodeTextIsUnderThePrimaryAndReadable() {
+        let dark = ThemeService.Tokens.dark
+        #expect(dark.codeText == ThemeColor(0xBCBE_C4))
+        #expect(dark.codeText.relativeLuminance < dark.textPrimary.relativeLuminance)
+        for tokens in [dark, ThemeService.Tokens.light] {
+            #expect(ThemeColor.contrastRatio(tokens.codeText, tokens.surface) >= 4.5)
+            #expect(ThemeColor.contrastRatio(tokens.codeText, tokens.surfaceSunken) >= 4.5)
+        }
+        #expect(dark.contrastPairs.contains { $0.name == "codeText/surface" })
+    }
+
+    /// design R6 (M25 25.3): the line height is a multiple in `1…2`, 1.2 by default.
+    @Test func appliesTheCodeLineHeightAndTheCodeText() throws {
+        #expect(ThemeService.Tokens.dark.codeLineHeight == 1.2)
+        #expect(ThemeService.Tokens.light.codeLineHeight == 1.2)
+        let overrides = try decodeOverrides(##"{ "codeLineHeight": 1.5, "codeText": "#abc" }"##)
+        #expect(overrides.warnings.isEmpty)
+        let tokens = ThemeService.Tokens.dark.applying(overrides)
+        #expect(tokens.codeLineHeight == 1.5)
+        #expect(tokens.codeText == ThemeColor(0xAABB_CC))
+        let rejected = try decodeOverrides(##"{ "codeLineHeight": 3, "codeText": 12 }"##)
+        #expect(rejected.warnings.count == 2)
+        #expect(ThemeService.Tokens.dark.applying(rejected) == .dark)
     }
 
     /// design R6 (2026-08-29): the preview's scale, overridable through `theme.readingFontSize`.

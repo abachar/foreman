@@ -265,6 +265,8 @@ private struct CodeBlockView: View {
         ScrollView(.horizontal) {
             Text(highlighted ?? AttributedString(code))
                 .font(Font(theme.readingCodeFont(scale: scale)))
+                // design R6 (M25 25.3): the same air between lines as the editor's.
+                .lineSpacing(theme.codeLineSpacing(for: theme.readingCodeFont(scale: scale)))
                 .padding(metrics.codePadding)
         }
         // design R8: the sunken shade, opaque (the tint let text show through, M8 8.7).

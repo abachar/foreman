@@ -105,7 +105,7 @@ struct GitDiffView: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: theme.codeLinePitch, alignment: .leading)
             .background(theme.tokens.surfaceSunken.color)
             // The gap the hunk's rows kept above them when they were wrapped in a stack (M23 23.11).
             .padding(.bottom, 2)
@@ -123,16 +123,19 @@ struct GitDiffView: View {
 
     private func cell(_ cell: RenderedCell?, path: String) -> some View {
         HStack(alignment: .top, spacing: 0) {
+            // design R6 (M25 25.3): a row is at least one code line tall, like the editor's lines.
             Text(cell?.number ?? "")
                 .font(Font(theme.editorFont))
                 .foregroundStyle(.tertiary)
                 .frame(width: 44, alignment: .trailing)
+                .frame(minHeight: theme.codeLinePitch)
                 .padding(.trailing, 4)
             Text(cell?.text ?? AttributedString(" "))
                 .font(Font(theme.editorFont))
+                .lineSpacing(theme.codeLineSpacing(for: theme.editorFont))
                 .textSelection(.enabled)
                 .padding(.leading, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: theme.codeLinePitch, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cellBackground(cell?.kind))

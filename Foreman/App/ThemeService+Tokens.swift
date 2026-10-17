@@ -15,6 +15,10 @@ extension ThemeService {
         var textPrimary: ThemeColor
         var textSecondary: ThemeColor
         var textDisabled: ThemeColor
+        /// design R9 (2026-10-17, M25 25.3): the code's own text — plain code, the caret, and the
+        /// `variable`, `operator` and `punctuation` roles — a step under `textPrimary`, as IntelliJ
+        /// never paints code white; the chrome keeps `textPrimary`.
+        var codeText: ThemeColor
         var separator: ThemeColor
         var border: ThemeColor
         // Accent and states
@@ -38,7 +42,11 @@ extension ThemeService {
         var interfaceFontSize: Double
         /// design R6 (2026-08-29): the markdown preview's body size.
         var readingFontSize: Double
-        /// editor R12: the highlighting colors join the set (backlog M8, 8.2).
+        /// design R6 (2026-10-17, M25 25.3): the code's line height as a multiple of the font's,
+        /// on every code surface — 1.2 is IntelliJ's, and the font's bare height read as cramped.
+        var codeLineHeight: Double
+        /// editor R12: the highlighting colors join the set (backlog M8, 8.2); the roles the set
+        /// does not name (`variable`, `operator`, `punctuation`) are `codeText`.
         var syntax: [HighlightRole: ThemeColor]
 
         static let dark = Tokens(
@@ -46,16 +54,15 @@ extension ThemeService {
             surfaceRaised: ThemeColor(0x2B2D_30),
             surfaceSunken: ThemeColor(0x1516_18), surfaceOverlay: ThemeColor(0x2628_2C),
             textPrimary: ThemeColor(0xDFE1_E5), textSecondary: ThemeColor(0x9DA0_A8),
-            textDisabled: ThemeColor(0x6F73_7A),
+            textDisabled: ThemeColor(0x6F73_7A), codeText: ThemeColor(0xBCBE_C4),
             separator: ThemeColor(0x3436_3A), border: ThemeColor(0x4548_4E),
             accent: ThemeColor(0x4A86_E0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x5FB8_65),
             statusOrange: ThemeColor(0xE0A6_3B), statusRed: ThemeColor(0xE553_4B), statusBlue: ThemeColor(0x4A86_E0),
             islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
-            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16,
+            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16, codeLineHeight: 1.2,
             syntax: [
                 .keyword: ThemeColor(0xCF8E_6D), .string: ThemeColor(0x6AAB_73), .comment: ThemeColor(0x7A7E_85),
                 .type: ThemeColor(0x56A8_F5), .function: ThemeColor(0x57AA_F7), .number: ThemeColor(0x2AAC_B8),
-                .variable: ThemeColor(0xDFE1_E5), .punctuation: ThemeColor(0x9DA0_A8), .operator: ThemeColor(0xDFE1_E5),
                 .constant: ThemeColor(0xC77D_BB), .property: ThemeColor(0xC77D_BB), .attribute: ThemeColor(0xB3AE_60),
                 .tag: ThemeColor(0xD5B7_78), .label: ThemeColor(0xE8BF_6A), .markup: ThemeColor(0x6AAB_73),
             ])
@@ -66,16 +73,15 @@ extension ThemeService {
             surfaceRaised: ThemeColor(0xE8E9_ED),
             surfaceSunken: ThemeColor(0xDDDF_E4), surfaceOverlay: ThemeColor(0xF7F8_FA),
             textPrimary: ThemeColor(0x1E1F_22), textSecondary: ThemeColor(0x5A5D_63),
-            textDisabled: ThemeColor(0x9A9D_A3),
+            textDisabled: ThemeColor(0x9A9D_A3), codeText: ThemeColor(0x0808_08),
             separator: ThemeColor(0xD9DB_E0), border: ThemeColor(0xC9CC_D2),
             accent: ThemeColor(0x3574_F0), accentText: ThemeColor(0xFFFF_FF), statusGreen: ThemeColor(0x2E8B_3E),
             statusOrange: ThemeColor(0xB9711_A), statusRed: ThemeColor(0xC93B_34), statusBlue: ThemeColor(0x3574_F0),
             islandRadius: 8, gutter: 6, toolbarGap: 2, barHeight: 36, rowHeight: 24, contentInset: 12,
-            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16,
+            interfaceFontName: nil, interfaceFontSize: 13, readingFontSize: 16, codeLineHeight: 1.2,
             syntax: [
                 .keyword: ThemeColor(0x0033_B3), .string: ThemeColor(0x067D_17), .comment: ThemeColor(0x8C8C_8C),
                 .type: ThemeColor(0x0072_86), .function: ThemeColor(0x0060_A6), .number: ThemeColor(0x1750_EB),
-                .variable: ThemeColor(0x1E1F_22), .punctuation: ThemeColor(0x5A5D_63), .operator: ThemeColor(0x1E1F_22),
                 .constant: ThemeColor(0x871D_94), .property: ThemeColor(0x871D_94), .attribute: ThemeColor(0x8A6A_00),
                 .tag: ThemeColor(0x0033_B3), .label: ThemeColor(0x9E88_0D), .markup: ThemeColor(0x067D_17),
             ])
@@ -96,6 +102,9 @@ extension ThemeService {
                 ContrastPair(
                     name: "textPrimary/windowBackground", foreground: textPrimary, background: windowBackground,
                     minimum: 4.5),
+                ContrastPair(name: "codeText/surface", foreground: codeText, background: surface, minimum: 4.5),
+                ContrastPair(
+                    name: "codeText/surfaceSunken", foreground: codeText, background: surfaceSunken, minimum: 4.5),
                 ContrastPair(name: "textSecondary/surface", foreground: textSecondary, background: surface, minimum: 3),
                 ContrastPair(
                     name: "textSecondary/surfaceRaised", foreground: textSecondary, background: surfaceRaised,
@@ -124,7 +133,8 @@ extension ThemeService {
         static let colorKeys: [String: WritableKeyPath<Tokens, ThemeColor> & Sendable] = [
             "windowBackground": \.windowBackground, "surface": \.surface, "surfaceRaised": \.surfaceRaised,
             "surfaceSunken": \.surfaceSunken, "surfaceOverlay": \.surfaceOverlay, "textPrimary": \.textPrimary,
-            "textSecondary": \.textSecondary, "textDisabled": \.textDisabled, "separator": \.separator,
+            "textSecondary": \.textSecondary, "textDisabled": \.textDisabled, "codeText": \.codeText,
+            "separator": \.separator,
             "border": \.border, "accent": \.accent, "accentText": \.accentText, "statusGreen": \.statusGreen,
             "statusOrange": \.statusOrange, "statusRed": \.statusRed, "statusBlue": \.statusBlue,
         ]
@@ -135,6 +145,7 @@ extension ThemeService {
                 "toolbarGap": (0...32, \.toolbarGap), "barHeight": (24...64, \.barHeight),
                 "rowHeight": (16...48, \.rowHeight), "contentInset": (0...48, \.contentInset),
                 "interfaceFontSize": (10...24, \.interfaceFontSize), "readingFontSize": (10...32, \.readingFontSize),
+                "codeLineHeight": (1...2, \.codeLineHeight),
             ]
 
         /// design R11: the font keys take a family name.

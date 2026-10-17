@@ -204,12 +204,16 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     static func paint(_ textView: CurrentLineTextView, ruler: LineNumberRulerView?, tokens: ThemeService.Tokens) {
+        applyLineHeight(tokens.codeLineHeight, to: textView)
         let background = tokens.surface.nsColor
-        guard textView.backgroundColor != background || textView.currentLineColor != tokens.surfaceSunken.nsColor
-        else { return }
+        let colorsChanged =
+            textView.backgroundColor != background || textView.currentLineColor != tokens.surfaceSunken.nsColor
+            || textView.textColor != tokens.codeText.nsColor
+        guard colorsChanged else { return }
         textView.backgroundColor = background
-        textView.textColor = tokens.textPrimary.nsColor
-        textView.insertionPointColor = tokens.textPrimary.nsColor
+        // design R9 (M25 25.3): the code's text is `codeText`, a step under the chrome's.
+        textView.textColor = tokens.codeText.nsColor
+        textView.insertionPointColor = tokens.codeText.nsColor
         textView.selectedTextAttributes = [.backgroundColor: tokens.accent.nsColor(alpha: 0.35)]
         textView.currentLineColor = tokens.surfaceSunken.nsColor
         // design R25 (2026-10-16): the print margin and the gutter's edge are separators.
@@ -217,11 +221,38 @@ struct EditorTextView: NSViewRepresentable {
         textView.guideColor = tokens.separator.nsColor
         textView.activeGuideColor = tokens.textDisabled.nsColor
         textView.bracketColor = tokens.accent.nsColor(alpha: 0.3)
-        ruler?.textColor = tokens.textSecondary.nsColor
+        // design R9 (M25 25.3): the numbers step back, the caret's line's number steps forward.
+        ruler?.textColor = tokens.textDisabled.nsColor
+        ruler?.currentLineTextColor = tokens.textSecondary.nsColor
         ruler?.backgroundColor = background
         ruler?.separatorColor = tokens.separator.nsColor
         ruler?.activeMarkerColor = tokens.textPrimary.nsColor
         ruler?.markerColor = tokens.textDisabled.nsColor
+    }
+
+    /// design R6 (M25 25.3): the code's line height, `multiple` times the font's, on a text view.
+    ///
+    /// Three places, each for a reason: the default style for text that has none, the typing
+    /// attributes because Neon re-applies them under every token it colours (a style anywhere
+    /// else is wiped at the first highlight), and the storage because `string =` and a font
+    /// change do not revisit the paragraph style of the text already there. Idempotent and
+    /// cheap: the storage is touched only when its first paragraph does not carry the multiple.
+    static func applyLineHeight(_ multiple: Double, to textView: NSTextView) {
+        let applied = (textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle)?.lineHeightMultiple
+        let first =
+            textView.textStorage.flatMap { storage -> NSParagraphStyle? in
+                guard storage.length > 0 else { return nil }
+                return storage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+            }?.lineHeightMultiple
+        let storageLacksIt = (textView.textStorage?.length ?? 0) > 0 && first != multiple
+        guard applied != multiple || storageLacksIt else { return }
+        let style = NSMutableParagraphStyle()
+        style.lineHeightMultiple = multiple
+        textView.defaultParagraphStyle = style
+        textView.typingAttributes[.paragraphStyle] = style
+        if let storage = textView.textStorage, storage.length > 0 {
+            storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: storage.length))
+        }
     }
 
     @MainActor

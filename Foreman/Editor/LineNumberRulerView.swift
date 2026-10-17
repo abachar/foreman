@@ -14,6 +14,10 @@ final class LineNumberRulerView: NSRulerView {
     var textColor = NSColor.secondaryLabelColor {
         didSet { needsDisplay = true }
     }
+    /// design R9 (M25 25.3): the caret's line is the one number that steps forward.
+    var currentLineTextColor = NSColor.labelColor {
+        didSet { needsDisplay = true }
+    }
     /// editor R27 (amended 2026-10-16): the caret's block markers, then the others.
     var activeMarkerColor = NSColor.labelColor {
         didSet { needsDisplay = true }
@@ -65,6 +69,12 @@ final class LineNumberRulerView: NSRulerView {
             center.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.needsDisplay = true }
             })
+        // design R9 (M25 25.3): the current line's number follows the caret.
+        observers.append(
+            center.addObserver(forName: NSTextView.didChangeSelectionNotification, object: textView, queue: .main) {
+                [weak self] _ in
+                MainActor.assumeIsolated { self?.needsDisplay = true }
+            })
         if let clip = textView.enclosingScrollView?.contentView {
             observers.append(
                 center.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) {
@@ -98,6 +108,8 @@ final class LineNumberRulerView: NSRulerView {
         else { return }
         let visible = textView.visibleRect
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
+        let currentAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: currentLineTextColor]
+        let caretLine = textView.selectedRange().length == 0 ? line(at: textView.selectedRange().location) : nil
         let inset = textView.textContainerInset
         let width =
             max(44, CGFloat(String(max(1, lineStarts.count)).count + 2) * font.pointSize * 0.7) + Self.chevronWidth
@@ -124,12 +136,13 @@ final class LineNumberRulerView: NSRulerView {
             guard frame.height >= 1 else { return true }
             let y = frame.minY + inset.height - visible.minY
             let label = "\(current)" as NSString
-            let size = label.size(withAttributes: attributes)
+            let labelAttributes = current == caretLine ? currentAttributes : attributes
+            let size = label.size(withAttributes: labelAttributes)
             let lineHeight = fragment.textLineFragments.first?.typographicBounds.height ?? size.height
             label.draw(
                 at: NSPoint(
                     x: ruleThickness - Self.chevronWidth - size.width - 4, y: y + lineHeight / 2 - size.height / 2),
-                withAttributes: attributes)
+                withAttributes: labelAttributes)
             // editor R41: the dot sits left of the numbers, where nothing else draws.
             if let color = diagnosticDots[current] {
                 color.setFill()

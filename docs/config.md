@@ -189,7 +189,8 @@ Colors (defaults of the `dark` set, designed; `light` is derived mechanically, d
 | `surfaceOverlay` | `#26282C` | `#F7F8FA` | the palette |
 | `textPrimary` | `#DFE1E5` | `#1E1F22` | text (≥ 4.5:1 on every surface, tested) |
 | `textSecondary` | `#9DA0A8` | `#5A5D63` | subtitles, inactive tabs, icons (≥ 3:1) |
-| `textDisabled` | `#6F737A` | `#9A9DA3` | greyed rows |
+| `textDisabled` | `#6F737A` | `#9A9DA3` | greyed rows, the gutter's line numbers (the caret's line's is `textSecondary`) |
+| `codeText` | `#BCBEC4` | `#080808` | the code's plain text and caret on every code surface, and the `variable`, `operator`, `punctuation` roles (M25 25.3, 2026-10-17; the chrome keeps `textPrimary`) |
 | `separator` | `#34363A` | `#D9DBE0` | thin lines inside an island |
 | `border` | `#45484E` | `#C9CCD2` | outlines (toggles, fields) |
 | `accent` | `#4A86E0` | `#3574F0` | focus, selection, active tab rule |
@@ -207,6 +208,7 @@ Metrics (points) and type:
 | `rowHeight` | `24` | `16…48` | native list rows (explorer, schema); grows with the font if needed |
 | `contentInset` | `12` | `0…48` | padding inside the islands' content |
 | `interfaceFontSize` | `13` | `10…24` | body size of the chrome; `small` = body − 2, `title` = body + 1 |
+| `codeLineHeight` | `1.2` | `1…2` | the code's line height as a multiple of the font's, on the editor, the SQL editor, the diff and the preview's code blocks (M25 25.3, 2026-10-17; IntelliJ's value) |
 | `readingFontSize` | `16` | `10…32` | markdown preview body; headings × 2 / 1.5 / 1.25 / 1 / 0.875 / 0.85, small × 0.875, code × 0.85 in `terminal.font` |
 | `interfaceFont` | system font | family name | the chrome font (code keeps `terminal.font`) |
 

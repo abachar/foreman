@@ -178,9 +178,43 @@ final class ThemeService {
         return [.foregroundColor: color(for: role)]
     }
 
-    /// design R9: the role's token; `textPrimary` for a role the set does not name.
+    /// design R9: the role's token; `codeText` for a role the set does not name — `variable`,
+    /// `operator` and `punctuation` are the code's own text (M25 25.3, 2026-10-17).
     func color(for role: HighlightRole) -> NSColor {
-        (tokens.syntax[role] ?? tokens.textPrimary).nsColor
+        (tokens.syntax[role] ?? tokens.codeText).nsColor
+    }
+
+    // MARK: - Code surfaces (design R6, R9; M25 25.3)
+
+    /// The paragraph style of every code text view.
+    ///
+    /// The line height is `codeLineHeight` times the font's. Set as the view's default style
+    /// **and** in its typing attributes — Neon
+    /// re-applies the typing attributes under every token it colours, so a style kept anywhere
+    /// else would be wiped at the first highlight.
+    var codeParagraphStyle: NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.lineHeightMultiple = tokens.codeLineHeight
+        return style
+    }
+
+    /// The height of one code line in points, for the surfaces that lay their lines out
+    /// themselves (the diff's rows): the font's line height times `codeLineHeight`.
+    var codeLinePitch: CGFloat {
+        Self.linePitch(of: editorFont, multiple: tokens.codeLineHeight)
+    }
+
+    /// The extra space between two lines of `font` that `codeLineHeight` asks for — what a
+    /// SwiftUI `Text` takes as `lineSpacing` to match the text views.
+    func codeLineSpacing(for font: NSFont) -> CGFloat {
+        Self.linePitch(of: font, multiple: tokens.codeLineHeight) - Self.linePitch(of: font, multiple: 1)
+    }
+
+    /// A font's line height times `multiple`, the way TextKit lays it out: ascender, descender
+    /// and leading rounded **up** to the point first (`NSLayoutManager.defaultLineHeight`), the
+    /// multiple applied after — so a text view's fragments and a SwiftUI row agree to the point.
+    nonisolated static func linePitch(of font: NSFont, multiple: Double) -> CGFloat {
+        (font.ascender - font.descender + font.leading).rounded(.up) * multiple
     }
 
     // MARK: - Git (git R6, explorer R15)
