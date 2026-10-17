@@ -749,7 +749,7 @@ final class EditorFeature {
     }
 
     /// editor R1–R3: shows `url` in the active group, or activates the tab already showing it.
-    func open(_ url: URL, preview: Bool, newGroup: Bool = false, line: Int? = nil) {
+    func open(_ url: URL, preview: Bool, newGroup: Bool = false, line: Int? = nil, title: String? = nil) {
         prune()
         let path = Workspace.persistedPath(for: url, root: workspace.root)
         if !newGroup, let existing = layout.model.active.tabs.first(where: { tabs[$0.id]?.path == path }) {
@@ -764,12 +764,13 @@ final class EditorFeature {
         }
         // editor R2: one preview per group, replaced by the next one.
         let replaced = preview && !newGroup ? layout.model.active.tabs.first { tabs[$0.id]?.isPinned == false } : nil
-        let tab = EditorTab(path: path, url: url, isPinned: !preview, line: line)
+        let tab = EditorTab(path: path, url: url, isPinned: !preview, line: line, title: title)
         opening = tab
         defer { opening = nil }
         guard
             layout.openTab(
-                kind: Self.tabKind, title: url.lastPathComponent, payload: encode(tab.payload), newGroup: newGroup,
+                kind: Self.tabKind, title: title ?? url.lastPathComponent, payload: encode(tab.payload),
+                newGroup: newGroup,
                 isPreview: preview) != nil
         else { return }
         noteRecent(path)
@@ -782,8 +783,10 @@ final class EditorFeature {
     }
 
     /// explorer R14: the file of a tab, `nil` for a tab that is not the editor's.
+    ///
+    /// `nil` for a file outside the root (R64, a library tab): the tree has no row to reveal.
     func path(of id: TabID) -> String? {
-        tabs[id]?.path
+        tabs[id]?.path.hasPrefix("/") == false ? tabs[id]?.path : nil
     }
 
     /// git R40: the file of a tab as a URL (a worktree's file lies outside the root).
@@ -826,7 +829,7 @@ final class EditorFeature {
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
             tab = EditorTab(
                 path: decoded.path, url: url, isPinned: decoded.pinned, cursor: decoded.cursor, scroll: decoded.scroll,
-                mode: decoded.mode, previewBlock: decoded.previewBlock)
+                mode: decoded.mode, previewBlock: decoded.previewBlock, title: decoded.title)
             tabs[id] = tab
             if !decoded.pinned {
                 // The layout inserts the tab right after this call; the italic follows.
@@ -889,7 +892,9 @@ final class EditorFeature {
         guard let tabsInGroup = layout.model[group: group]?.tabs else { return }
         let editorTabs = tabsInGroup.compactMap { tab in tabs[tab.id].map { (tab, $0) } }
         let titles = EditorTitles.titles(for: editorTabs.map(\.1.path))
-        for ((tab, editorTab), title) in zip(editorTabs, titles) where tab.title != title {
+        for ((tab, editorTab), computed) in zip(editorTabs, titles) {
+            let title = editorTab.title ?? computed
+            guard tab.title != title else { continue }
             layout.update(tab.id, title: title, isDirty: tab.isDirty, isPreview: !editorTab.isPinned)
         }
     }

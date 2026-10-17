@@ -9,8 +9,6 @@ import Testing
 /// No server is launched (coding rules: hermetic): the whole rule is a pure function over the
 /// response, which is exactly why it was written as one.
 struct LSPDefinitionTests {
-    private let root = URL(filePath: "/w")
-
     private func location(_ path: String, line: Int) -> Location {
         Location(
             uri: URL(filePath: path).absoluteString,
@@ -40,7 +38,7 @@ struct LSPDefinitionTests {
     // MARK: - Resolving the answer (R43, R44)
 
     @Test func opensASingleLocationOnTheLineAfterIt() {
-        let resolved = LSPServers.resolve(.optionA(location("/w/src/a.swift", line: 41)), root: root)
+        let resolved = LSPServers.resolve(.optionA(location("/w/src/a.swift", line: 41)))
         // LSP counts lines from zero, `Editor.open(…, line:)` from one.
         #expect(resolved == .found(url: URL(filePath: "/w/src/a.swift"), line: 42))
     }
@@ -48,7 +46,7 @@ struct LSPDefinitionTests {
     /// editor R43: several results, the first the server gave — no picker in v1.
     @Test func takesTheFirstOfSeveralLocations() {
         let resolved = LSPServers.resolve(
-            .optionB([location("/w/a.swift", line: 0), location("/w/b.swift", line: 7)]), root: root)
+            .optionB([location("/w/a.swift", line: 0), location("/w/b.swift", line: 7)]))
         #expect(resolved == .found(url: URL(filePath: "/w/a.swift"), line: 1))
     }
 
@@ -60,13 +58,31 @@ struct LSPDefinitionTests {
             targetRange: LSPRange(start: Position(line: 3, character: 0), end: Position(line: 9, character: 0)),
             targetSelectionRange: LSPRange(
                 start: Position(line: 5, character: 4), end: Position(line: 5, character: 8)))
-        #expect(LSPServers.resolve(.optionC([link]), root: root) == .found(url: URL(filePath: "/w/a.swift"), line: 6))
+        #expect(LSPServers.resolve(.optionC([link])) == .found(url: URL(filePath: "/w/a.swift"), line: 6))
     }
 
     @Test func doesNothingWhenTheServerFoundNothing() {
-        #expect(LSPServers.resolve(nil, root: root) == .none)
-        #expect(LSPServers.resolve(.optionB([]), root: root) == .none)
-        #expect(LSPServers.resolve(.optionC([]), root: root) == .none)
+        #expect(LSPServers.resolve(nil) == .none)
+        #expect(LSPServers.resolve(.optionB([])) == .none)
+        #expect(LSPServers.resolve(.optionC([])) == .none)
+    }
+
+    /// editor R62: a scheme the server provides content for is kept; any other still is not.
+    @Test func keepsAUriWhoseSchemeTheServerProvides() {
+        let uri = "jdt://contents/spring-web.jar/org.springframework.http/ResponseEntity.class"
+        let answer: DefinitionResponse = .optionA(
+            Location(
+                uri: uri, range: LSPRange(start: Position(line: 9, character: 0), end: Position(line: 9, character: 1)))
+        )
+        #expect(LSPServers.resolve(answer, contentSchemes: ["jdt"]) == .content(uri: uri, line: 10))
+        #expect(LSPServers.resolve(answer, contentSchemes: []) == .none)
+        #expect(LSPServers.resolve(answer, contentSchemes: ["other"]) == .none)
+        #expect(
+            LSPServers.resolve(.optionA(location("/w/src/a.swift", line: 1)), contentSchemes: ["jdt"])
+                == .found(url: URL(filePath: "/w/src/a.swift"), line: 2))
+        #expect(
+            LSPServers.resolve(.optionA(location("/x/a.swift", line: 1)), contentSchemes: ["jdt"])
+                == .found(url: URL(filePath: "/x/a.swift"), line: 2))
     }
 
     /// editor R46: a URI comes from a process and is not trusted — anything but a file is dropped,
@@ -75,20 +91,14 @@ struct LSPDefinitionTests {
     func ignoresAUriThatIsNotAFile(uri: String) {
         let target = Location(
             uri: uri, range: LSPRange(start: Position(line: 0, character: 0), end: Position(line: 0, character: 1)))
-        #expect(LSPServers.resolve(.optionA(target), root: root) == .none)
+        #expect(LSPServers.resolve(.optionA(target)) == .none)
     }
 
-    /// editor R44: the SDK header, the `.swiftinterface`, the file in `node_modules` — named, not
-    /// opened, and the banner says where it is.
-    @Test func refusesATargetOutsideTheWorkspace() {
+    /// editor R44 (amended 2026-10-17), R64: the SDK header, the `.swiftinterface`, the file in
+    /// `node_modules` — found like any other, the tab is read-only.
+    @Test func findsATargetOutsideTheWorkspace() {
         let resolved = LSPServers.resolve(
-            .optionA(location("/usr/lib/swift/String.swiftinterface", line: 0)), root: root)
-        #expect(resolved == .refused("Defined outside the workspace: /usr/lib/swift/String.swiftinterface"))
-    }
-
-    /// The prefix check must not take a sibling folder for a child (`/w` and `/workspace`).
-    @Test func doesNotTakeASiblingFolderForTheWorkspace() {
-        let resolved = LSPServers.resolve(.optionA(location("/workspace/a.swift", line: 0)), root: root)
-        #expect(resolved == .refused("Defined outside the workspace: /workspace/a.swift"))
+            .optionA(location("/usr/lib/swift/String.swiftinterface", line: 0)))
+        #expect(resolved == .found(url: URL(filePath: "/usr/lib/swift/String.swiftinterface"), line: 1))
     }
 }

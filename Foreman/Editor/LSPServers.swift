@@ -175,7 +175,7 @@ final class LSPServers {
     ///
     /// Returns `nil` in silence when there is simply no answer — no server for the extension, the
     /// server does not provide definitions, or it found nothing. A `refused` message is for the
-    /// one case the user must be told about: a definition Foreman will not open (R44).
+    /// one case the user must be told about: the server failed to start.
     func definition(in url: URL, text: NSString, location: Int) async -> Definition {
         let uri = url.absoluteString
         guard let entry = config().entry(for: url) else { return .none }
@@ -185,20 +185,32 @@ final class LSPServers {
         }
         let response = await server.definition(
             uri: uri, position: TextEditing.lspPosition(at: location, in: text))
-        return Self.resolve(response, root: root)
+        return Self.resolve(response, contentSchemes: server.contentSchemes)
+    }
+
+    /// editor R62: the text of a `.content` definition, asked of the server of the **origin**
+    /// file (the `jdt://` URI maps to no config entry); `nil` in silence when there is none.
+    func textDocumentContent(uri: String, origin url: URL) async -> String? {
+        guard let entry = config().entry(for: url),
+            let server = await server(for: ServerKey(command: entry.command, cwd: entry.cwd))
+        else { return nil }
+        return await server.textDocumentContent(uri: uri)
     }
 
     /// editor R43, R44: what a server's answer becomes — the whole rule, and no server needed.
     ///
     /// Several results resolve to the first the server gave (no picker in v1); a target that is
     /// not a `file:` URL is dropped in silence (R46: a URI from a process is not trusted); a
-    /// target outside the workspace is named rather than opened (R44).
-    nonisolated static func resolve(_ response: DefinitionResponse, root: URL) -> Definition {
+    /// target outside the workspace is found like any other (R44, amended 2026-10-17, R64: the tab
+    /// is read-only). **Amended 2026-10-17** (R62): a URI whose scheme the server provides content
+    /// for is kept as `.content`.
+    nonisolated static func resolve(_ response: DefinitionResponse, contentSchemes: [String] = []) -> Definition {
         guard let target = firstTarget(of: response) else { return .none }
-        guard let url = URL(string: target.uri), url.isFileURL else { return .none }
-        guard Workspace.contains(url, under: root) else {
-            return .refused("Defined outside the workspace: \(url.path(percentEncoded: false))")
+        guard let url = URL(string: target.uri) else { return .none }
+        if let scheme = url.scheme, contentSchemes.contains(scheme) {
+            return .content(uri: target.uri, line: target.line + 1)
         }
+        guard url.isFileURL else { return .none }
         // LSP counts lines from zero, `Editor.open(…, line:)` from one (editor R38).
         return .found(url: url, line: target.line + 1)
     }
@@ -208,6 +220,8 @@ final class LSPServers {
         case none
         case found(url: URL, line: Int)
         case refused(String)
+        /// editor R62: a document the server provides (`jdt://…`), line from one.
+        case content(uri: String, line: Int)
     }
 
     /// editor R43: the first result of an answer that may hold one, many, or links.

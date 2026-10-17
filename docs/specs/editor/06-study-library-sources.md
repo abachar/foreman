@@ -41,6 +41,8 @@ This study is the prerequisite of the `debug` domain ([`../debug/00-study.md`](.
 - A library tab in `state.json` whose cache file macOS purged: ignored at restoration (R4), no banner.
 - An out-of-root file (R64) deleted since the tab was persisted: ignored at restoration, like any file gone.
 - The explorer's *Reveal* on a library tab or an out-of-root tab (`explorer` R14): nothing to select, the action does nothing; the Finder reveal keeps working.
+- A worktree's file outside the root (`git` R40) falls under R63's gate too: no `didOpen`, no reveal. The server runs at the root and saw such a file as a loose one already; the tree has no row for it. Accepted on 2026-10-17 (26.2) rather than a second rule for one case.
+- `jdtls` names a class file `Foo.class` when no source name is attached: the cache name takes `.java` instead, so the tab is highlighted as Java (26.2).
 - A `jdt://` definition while the server is restarting (R39): no server, no request, silence — the same as a definition today.
 - The URI's last path component is empty or has no extension: `<name>` falls back to `Class.java`; highlighting follows the extension, so a fallback without one is plain text.
 

@@ -20,16 +20,54 @@ struct LSPSettingsTests {
     /// Channel 1: the object goes into `initializationOptions` as written.
     @Test func initializeCarriesTheSettingsAsInitializationOptions() {
         let params = LSPServer.initializeParams(root: URL(filePath: "/w/server"), settings: settings)
-        #expect(params.initializationOptions == settings)
+        #expect(params.initializationOptions == LSPServer.initializationOptions(settings: settings))
         #expect(params.rootUri == URL(filePath: "/w/server").absoluteString)
         // Channel 3 needs the server to know it may ask.
         #expect(params.capabilities.workspace?.configuration == true)
     }
 
+    /// editor R61: Foreman's key is merged one level under `extendedClientCapabilities`.
+    @Test func mergesTheClassFileContentsKeyIntoTheSettings() {
+        let foreman: LSPAny = ["classFileContentsSupport": true]
+        #expect(LSPServer.initializationOptions(settings: nil) == ["extendedClientCapabilities": foreman])
+        guard case .hash(var merged) = settings else { return }
+        merged["extendedClientCapabilities"] = ["classFileContentsSupport": true]
+        #expect(LSPServer.initializationOptions(settings: settings) == .hash(merged))
+        #expect(
+            LSPServer.initializationOptions(settings: ["extendedClientCapabilities": ["progressReportProvider": true]])
+                == [
+                    "extendedClientCapabilities": [
+                        "progressReportProvider": true, "classFileContentsSupport": true,
+                    ]
+                ])
+        #expect(
+            LSPServer.initializationOptions(settings: [
+                "extendedClientCapabilities": ["classFileContentsSupport": false]
+            ])
+                == ["extendedClientCapabilities": foreman])
+    }
+
+    /// editor R62: `{ text }` out of the answer; an error or a shapeless answer is `nil`.
+    @Test func decodesTheTextOfADocumentContentAnswer() {
+        #expect(LSPServer.content(of: ["text": "class A {}"]) == "class A {}")
+        #expect(LSPServer.content(of: ["text": ""]) == "")
+        #expect(LSPServer.content(of: nil) == nil)
+        #expect(LSPServer.content(of: .null) == nil)
+        #expect(LSPServer.content(of: ["message": "boom"]) == nil)
+    }
+
+    /// editor R62: the schemes come off the raw `initialize` result; absent means none.
+    @Test func readsTheContentSchemesOffTheInitializeResult() throws {
+        let with = Data(#"{"capabilities":{"workspace":{"textDocumentContent":{"schemes":["jdt"]}}}}"#.utf8)
+        let without = Data(#"{"capabilities":{}}"#.utf8)
+        #expect(try JSONDecoder().decode(LSPServer.Handshake.self, from: with).contentSchemes == ["jdt"])
+        #expect(try JSONDecoder().decode(LSPServer.Handshake.self, from: without).contentSchemes == [])
+    }
+
     /// An entry without settings announces none, and still lets the server ask (it gets `null`s).
     @Test func initializeWithoutSettingsAnnouncesNone() {
         let params = LSPServer.initializeParams(root: URL(filePath: "/w"), settings: nil)
-        #expect(params.initializationOptions == nil)
+        #expect(params.initializationOptions == ["extendedClientCapabilities": ["classFileContentsSupport": true]])
         #expect(params.capabilities.workspace?.configuration == true)
     }
 

@@ -23,7 +23,7 @@ extension EditorFeature {
             let servers = lsp
             switch event {
             case .opened:
-                servers.opened(tab.url, text: tab.currentText)
+                if isDeclarable(tab) { servers.opened(tab.url, text: tab.currentText) }
             case .changed:
                 // editor R42: a keystroke cancels the popover, pending or shown.
                 dismissHover()
@@ -62,9 +62,15 @@ extension EditorFeature {
         for tab in open {
             lsp.closed(tab.url)
         }
-        for tab in open {
+        for tab in open where isDeclarable(tab) {
             lsp.opened(tab.url, text: tab.currentText)
         }
+    }
+
+    /// editor R63, R64: a file outside the workspace root (a library's source, an SDK interface)
+    /// is not part of the project; a server told about it would answer with loose-file diagnostics.
+    private func isDeclarable(_ tab: EditorTab) -> Bool {
+        Workspace.contains(tab.url, under: workspace.root)
     }
 
     // MARK: - Hover (editor R41, R42)
@@ -199,6 +205,16 @@ extension EditorFeature {
                 open(target, preview: true, line: line)
             case .refused(let reason):
                 tab.message = reason
+            case .content(let uri, let line):
+                // editor R63: the server's text, written read-only to the cache and opened as a preview.
+                let source = LibrarySource(
+                    uri: uri, caches: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0])
+                let text = await servers.textDocumentContent(uri: uri, origin: url)
+                guard let text, !text.isEmpty, (try? source.write(text)) != nil else {
+                    tab.message = "No source for \(LibrarySource.name(of: uri))"
+                    return
+                }
+                open(source.url, preview: true, line: line, title: source.title)
             }
         }
     }

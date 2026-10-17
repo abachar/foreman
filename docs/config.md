@@ -142,6 +142,8 @@ A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settin
       "settings": {
         "java": {
           "import": { "generatesMetadataFilesAtProjectRoot": false, "exclusions": ["**/target/**"] },
+          "maven": { "downloadSources": true },
+          "eclipse": { "downloadSources": true },
           "configuration": {
             "runtimes": [{ "name": "JavaSE-21", "path": "/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home", "default": true }]
           }
@@ -151,6 +153,8 @@ A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settin
   }
 }
 ```
+
+A class in a jar opens from `jdtls` 1.61 or later (`workspace/textDocumentContent`); Foreman adds `extendedClientCapabilities.classFileContentsSupport` to the options itself (editor R61, R65).
 
 ## `git` — `Git/GitFeature.swift` (git R26)
 

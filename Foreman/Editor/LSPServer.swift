@@ -62,6 +62,9 @@ final class LSPServer {
 
     /// What the server said it can do; `nil` until it is running (editor R39).
     private(set) var capabilities: ServerCapabilities?
+    /// editor R62: the URI schemes the server provides content for (`workspace.textDocumentContent`
+    /// of LSP 3.18, which the library's typed capabilities predate); empty for most servers.
+    private(set) var contentSchemes: [String] = []
     /// editor R39: why the three features are absent, shown once in the tab's banner.
     ///
     /// Computed, not stored, and that is the whole point: the server's `stderr` and its `stdout`
@@ -229,6 +232,23 @@ final class LSPServer {
         return response ?? nil
     }
 
+    /// editor R62, R45: the text of a document the server provides (`jdt://…`), bounded by
+    /// `lsp.timeout`; `nil` on an error, a timeout or an answer without `text`.
+    func textDocumentContent(uri: DocumentUri) async -> String? {
+        guard let connection, !contentSchemes.isEmpty else { return nil }
+        let answer: LSPAny? = await withTimeout(timeout) {
+            try? await connection.sendRequest(
+                .custom("workspace/textDocumentContent", ["uri": .string(uri)], ClientRequest.NullHandler))
+        }
+        return Self.content(of: answer)
+    }
+
+    /// editor R62: `{ text }` out of the answer.
+    nonisolated static func content(of answer: LSPAny?) -> String? {
+        guard case .hash(let object)? = answer, case .string(let text)? = object["text"] else { return nil }
+        return text
+    }
+
     // MARK: - Semantic tokens (editor R58)
 
     /// editor R58: the legend of a server that announced the provider; `nil` means no tokens.
@@ -359,7 +379,8 @@ final class LSPServer {
             await stop()
             return false
         }
-        capabilities = response.capabilities
+        capabilities = response.response.capabilities
+        contentSchemes = response.contentSchemes
         failureKind = nil
         isRunning = true
         try? await connection.initialized(InitializedParams())
@@ -368,22 +389,55 @@ final class LSPServer {
         if let settings {
             try? await Self.sendSettings(settings, to: connection)
         }
-        logger.debug("\(response.serverInfo?.name ?? self.command, privacy: .private) ready")
+        logger.debug("\(response.response.serverInfo?.name ?? self.command, privacy: .private) ready")
         return true
     }
 
     /// editor R39: `initialize` bounded by `lsp.timeout`; `nil` when it refused or never answered.
-    private func handshake(_ connection: JSONRPCServerConnection) async -> InitializationResponse? {
+    private func handshake(_ connection: JSONRPCServerConnection) async -> Handshake? {
         let params = Self.initializeParams(root: root, settings: settings)
         return await withTimeout(timeout) { [weak self] in
             do {
-                return try await connection.initialize(params)
+                return try await connection.sendRequest(.initialize(params, ClientRequest.NullHandler))
             } catch {
                 // editor R39: an error answer is the server telling us why, in its own words.
                 await self?.refused(by: error)
                 return nil
             }
         }
+    }
+
+    /// editor R62: the answer to `initialize`, read once as the library's typed response and once
+    /// for the one 3.18 field it does not model.
+    nonisolated struct Handshake: Decodable, Sendable {
+        let response: InitializationResponse
+        let contentSchemes: [String]
+
+        private enum Keys: String, CodingKey { case capabilities, workspace, textDocumentContent, schemes }
+
+        init(from decoder: any Decoder) throws {
+            response = try InitializationResponse(from: decoder)
+            let root = try decoder.container(keyedBy: Keys.self)
+            let capabilities = try? root.nestedContainer(keyedBy: Keys.self, forKey: .capabilities)
+            let workspace = try? capabilities?.nestedContainer(keyedBy: Keys.self, forKey: .workspace)
+            let content = try? workspace?.nestedContainer(keyedBy: Keys.self, forKey: .textDocumentContent)
+            contentSchemes = (try? content?.decode([String].self, forKey: .schemes)) ?? []
+        }
+    }
+
+    /// editor R61: the `initializationOptions` — the user's settings plus Foreman's capability key.
+    ///
+    /// `extendedClientCapabilities.classFileContentsSupport` is merged one level under
+    /// `extendedClientCapabilities`, the key `jdtls` reads before it answers a `jdt://` location.
+    /// The user's own keys there are kept; Foreman's wins.
+    nonisolated static func initializationOptions(settings: LSPAny?) -> LSPAny {
+        var options: [String: LSPAny] = [:]
+        if case .hash(let object)? = settings { options = object }
+        var extended: [String: LSPAny] = [:]
+        if case .hash(let object)? = options["extendedClientCapabilities"] { extended = object }
+        extended["classFileContentsSupport"] = .bool(true)
+        options["extendedClientCapabilities"] = .hash(extended)
+        return .hash(options)
     }
 
     /// editor R38, R57: what `initialize` announces — the root, the settings as
@@ -393,7 +447,8 @@ final class LSPServer {
         InitializeParams(
             processId: Int(ProcessInfo.processInfo.processIdentifier),
             clientInfo: InitializeParams.ClientInfo(name: "Foreman"),
-            locale: nil, rootPath: nil, rootUri: root.absoluteString, initializationOptions: settings,
+            locale: nil, rootPath: nil, rootUri: root.absoluteString,
+            initializationOptions: initializationOptions(settings: settings),
             // editor R38: nothing is announced about position encoding, and that is the point —
             // a client silent on `general.positionEncodings` is UTF-16 by the specification, which
             // is what `NSString` already counts. The library models no such capability anyway.

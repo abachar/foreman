@@ -191,8 +191,10 @@ struct TabBarView: View {
                         TabButton(
                             tab: tab, tokens: tokens, font: theme.font(), measuringFont: theme.interfaceFont(),
                             closeFont: theme.font(.small),
+                            // editor R63: a library tab's title ends in the jar; the icon is the file's.
                             icon: layout.tabKinds[tab.kind]?.showsFileIcon == true
-                                ? FileIcon.image(named: FileIcon.name(for: tab.title)) : nil,
+                                ? FileIcon.image(named: FileIcon.name(for: tab.title.components(separatedBy: " — ")[0]))
+                                : nil,
                             isActive: tab.id == group.activeTab,
                             isActiveGroup: isActiveGroup,
                             activate: { layout.activate(tab.id, in: group.id) },

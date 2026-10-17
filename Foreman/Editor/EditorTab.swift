@@ -27,10 +27,15 @@ final class EditorTab {
         var mode = Mode.source
         /// editor R4, R14: the first visible block of the markdown preview.
         var previewBlock = 0
+        /// editor R63: a library tab's title (`Foo.java — spring-web-6.1.jar`), `nil` for a file.
+        var title: String?
 
         init(
-            path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0, mode: Mode = .source, previewBlock: Int = 0
+            path: String, pinned: Bool, cursor: Int = 0, scroll: Double = 0, mode: Mode = .source,
+            previewBlock: Int = 0,
+            title: String? = nil
         ) {
+            self.title = title
             self.path = path
             self.pinned = pinned
             self.cursor = cursor
@@ -47,6 +52,7 @@ final class EditorTab {
             scroll = try container.decodeIfPresent(Double.self, forKey: .scroll) ?? 0
             mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .source
             previewBlock = try container.decodeIfPresent(Int.self, forKey: .previewBlock) ?? 0
+            title = try container.decodeIfPresent(String.self, forKey: .title)
         }
     }
 
@@ -61,6 +67,8 @@ final class EditorTab {
     /// Relative to the root when inside it, absolute otherwise (config R10); follows a rename.
     private(set) var path: String
     private(set) var url: URL
+    /// editor R63: the title of a library tab, which is not its file name.
+    let title: String?
     /// editor R2: an unpinned tab is the group's preview, replaced by the next one.
     var isPinned: Bool
     /// editor R1: unsaved changes; never persisted (R4).
@@ -131,7 +139,9 @@ final class EditorTab {
     var onPointerLeft: (() -> Void)?
 
     var payload: Payload {
-        Payload(path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock)
+        Payload(
+            path: path, pinned: isPinned, cursor: cursor, scroll: scroll, mode: mode, previewBlock: previewBlock,
+            title: title)
     }
 
     var document: FileDocument? {
@@ -143,8 +153,9 @@ final class EditorTab {
 
     init(
         path: String, url: URL, isPinned: Bool, line: Int? = nil, cursor: Int = 0, scroll: Double = 0,
-        mode: Mode? = nil, previewBlock: Int = 0
+        mode: Mode? = nil, previewBlock: Int = 0, title: String? = nil
     ) {
+        self.title = title
         self.path = path
         self.url = url
         self.isPinned = isPinned
