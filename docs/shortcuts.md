@@ -22,7 +22,7 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 
 | Shortcut | Id | Action | Scope | Status |
 |---|---|---|---|---|
-| `cmd+shift+e` | `explorer.tree` | Show / hide the tree (the *Project* tab of the left slot since 2026-10-16) | global | 🟢 |
+| `cmd+shift+e` | `explorer.tree` | Show / hide the tree (the *Explorer* tab of the left slot; *Project* from 2026-10-16 to 2026-10-17) | global | 🟢 |
 | `↑↓` `←` `→` | — | Navigate, collapse, expand | native | 🟢 (native `NSOutlineView`) |
 | `enter` / double click | — | Open (pinned; `opt` + double click: in a new group) — decision 2026-08-28 | native | 🟢 |
 | `shift+F6` | — | Rename (IntelliJ; also the context menu) — decision 2026-08-28 | native | 🟢 |

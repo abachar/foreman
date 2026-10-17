@@ -20,9 +20,13 @@ struct PanelHeaderView<Trailing: View>: View {
                 if siblings.count > 1 {
                     HStack(spacing: 2) {
                         ForEach(siblings, id: \.id) { panel in
-                            tab(panel, isCurrent: panel.id == current)
+                            tab(panel, isCurrent: panel.id == current, showsTitle: side != .left || panel.id == current)
                         }
                     }
+                    // design R17 (amended 2026-10-17): the tabs are laid out first, the panel's own
+                    // controls give way in a narrow slot. Not `fixedSize`: a header wider than its
+                    // slot shifted the whole panel's content out of view.
+                    .layoutPriority(1)
                 } else {
                     Text(panels[current]?.title ?? "")
                         .font(theme.font(.title, weight: .medium))
@@ -50,7 +54,7 @@ struct PanelHeaderView<Trailing: View>: View {
         }
     }
 
-    private func tab(_ panel: PanelDescriptor, isCurrent: Bool) -> some View {
+    private func tab(_ panel: PanelDescriptor, isCurrent: Bool, showsTitle: Bool) -> some View {
         let tokens = theme.tokens
         return Button {
             panels.show(panel.id)
@@ -62,9 +66,9 @@ struct PanelHeaderView<Trailing: View>: View {
                         .scaledToFit()
                         .frame(width: 14, height: 14)
                 }
-                // design R17 (amended 2026-10-17, M22 22.6): only the shown tab writes its title; the
-                // others are their icon and count, their title in the tooltip.
-                if isCurrent {
+                // design R17 (amended 2026-10-17, M22 22.6): in the left slot only the shown tab
+                // writes its title, the others are their icon and count, their title in the tooltip.
+                if showsTitle {
                     Text(panel.title)
                         .lineLimit(1)
                 }
@@ -72,7 +76,7 @@ struct PanelHeaderView<Trailing: View>: View {
             }
             .font(theme.font(.title, weight: isCurrent ? .medium : .regular))
             .foregroundStyle((isCurrent ? tokens.textPrimary : tokens.textSecondary).color)
-            .padding(.horizontal, isCurrent ? 10 : 8)
+            .padding(.horizontal, showsTitle ? 10 : 8)
             .frame(maxHeight: .infinity)
             // design R5: the shown tab carries the accent rule on its bottom edge.
             .overlay(alignment: .bottom) {

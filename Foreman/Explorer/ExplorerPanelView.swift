@@ -35,21 +35,12 @@ struct ExplorerPanelView: View {
 
     private var header: some View {
         PanelHeaderView(panels: layout.panels, current: ExplorerFeature.panelID, theme: theme) {
-            Button {
-                operations.newFile(near: nil)
-            } label: {
-                Image(systemName: "doc.badge.plus")
-            }
-            .buttonStyle(.borderless)
-            .help("New File")
-            Button {
-                operations.newFolder(near: nil)
-            } label: {
-                Image(systemName: "folder.badge.plus")
-            }
-            .buttonStyle(.borderless)
-            .help("New Folder")
+            // explorer R16 (amended 2026-10-17, M22 22.7): New File and New Folder join the panel
+            // menu, so three tabs and the menu fit a narrow left slot.
             Menu {
+                Button("New File…") { operations.newFile(near: nil) }
+                Button("New Folder…") { operations.newFolder(near: nil) }
+                Divider()
                 // explorer R5: persisted, default visible.
                 Toggle("Hide Ignored Files", isOn: Bindable(model).hidesExcluded)
                 Toggle("Follow Active Tab", isOn: Bindable(model).followsActiveTab)

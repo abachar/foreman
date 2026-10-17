@@ -5,6 +5,8 @@ import SwiftUI
 @MainActor
 enum ExplorerFeature {
     static let panelID: PanelID = "explorer.tree"
+    /// explorer R25 (2026-10-17): the left slot's first tab, the workspace's real projects.
+    static let projectsPanelID: PanelID = "explorer.projects"
 
     /// What other features reach: the model (explorer R15) and the actions (R20 menu entries).
     struct Registration {
@@ -25,7 +27,8 @@ enum ExplorerFeature {
         let actions = ExplorerActions(model: model, root: workspace.root, editor: editor, layout: layout)
         layout.register(
             panel: PanelDescriptor(
-                id: panelID, title: "Project", side: .left, icon: "folder", order: 0, defaultShortcut: "cmd+shift+e",
+                // explorer R1 (amended 2026-10-17): the whole tree is the *Explorer* tab, second.
+                id: panelID, title: "Explorer", side: .left, icon: "folder", order: 1, defaultShortcut: "cmd+shift+e",
                 makeView: {
                     AnyView(
                         ExplorerPanelView(
@@ -44,6 +47,7 @@ enum ExplorerFeature {
                 // explorer R8: the first level is read when the panel is shown, off the main actor.
                 activate: { model.activate() },
                 deactivate: { model.deactivate() }))
+        registerProjects(in: layout, workspace: workspace, editor: editor, theme: theme)
         // agents R10b: `cmd+e` while the tree has the focus.
         layout.shortcuts.register(
             ShortcutAction(id: "explorer.sendToAgent", title: "Send to Agent", scope: .panel, defaultShortcut: "cmd+e")
@@ -52,6 +56,37 @@ enum ExplorerFeature {
                 actions.sendToAgent(node)
             })
         return Registration(model: model, actions: actions)
+    }
+
+    /// explorer R24, R25: the *Project* tab, first of the left slot.
+    private static func registerProjects(
+        in layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService
+    ) {
+        let model = ProjectsModel(
+            root: workspace.root, repos: { [weak workspace] in workspace?.config.repos ?? [] },
+            fsWatch: workspace.fsWatch)
+        var actions: [String: ExplorerActions] = [:]
+        layout.register(
+            panel: PanelDescriptor(
+                id: projectsPanelID, title: "Project", side: .left, icon: "shippingbox", order: 0,
+                makeView: {
+                    AnyView(
+                        ProjectsPanelView(
+                            model: model, layout: layout, theme: theme,
+                            // explorer R12, R13: pinned, or a new group on the right; never a preview.
+                            onOpen: { url, mode in editor.open(url, preview: false, newGroup: mode == .newGroup) },
+                            actions: { project in
+                                if let existing = actions[project.id] {
+                                    return existing
+                                }
+                                let created = ExplorerActions(
+                                    model: model.tree(for: project), root: project.url, editor: editor, layout: layout)
+                                actions[project.id] = created
+                                return created
+                            }))
+                },
+                activate: { model.activate() },
+                deactivate: { model.deactivate() }))
     }
 }
 

@@ -26,7 +26,7 @@ One window = one folder = one workspace. In the center, tab groups in a split tr
 
 | Feature | Surfaces | Default shortcut |
 |---|---|---|
-| Explorer | left panel *Project*: file tree | `cmd+shift+e` |
+| Explorer | left panel *Project* (real projects) and *Explorer* (file tree) | `cmd+shift+e` |
 | Editor | center tabs: file / markdown; bottom panel: content search | `cmd+p` quick open, `cmd+shift+f` |
 | Agents | toolbar buttons; one terminal tab per agent | `config.shortcuts["agents.<id>"]` |
 | Run | Run widget + palette; bottom panel *Run*: one sub-tab per command | `cmd+r` |
