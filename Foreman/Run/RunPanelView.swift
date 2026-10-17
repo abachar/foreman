@@ -73,7 +73,7 @@ struct RunPanelView: View {
                 Text(run.command(id)?.name ?? id)
                     .lineLimit(1)
             }
-            .font(theme.font(.body, weight: isSelected ? .medium : .regular))
+            .font(theme.font(.body))
             .foregroundStyle((isSelected ? tokens.textPrimary : tokens.textSecondary).color)
             .padding(.horizontal, 8)
             .frame(height: 24)

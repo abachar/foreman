@@ -89,7 +89,7 @@ struct PanelHeaderView<Trailing: View>: View {
                 }
                 PanelCountView(badge: panel.badge(), theme: theme)
             }
-            .font(theme.font(.title, weight: isCurrent ? .medium : .regular))
+            .font(theme.font(.title))
             .foregroundStyle((isCurrent ? tokens.textPrimary : tokens.textSecondary).color)
             .padding(.horizontal, padding)
             .frame(maxHeight: .infinity)
