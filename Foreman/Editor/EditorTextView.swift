@@ -133,6 +133,11 @@ struct EditorTextView: NSViewRepresentable {
             // ruler and offsets its bounds, and an x of 0 hid the first 44 pt of text (2026-08-28).
             scroll.contentView.scroll(to: NSPoint(x: scroll.contentView.bounds.origin.x, y: savedScroll))
             scroll.reflectScrolledClipView(scroll.contentView)
+            // TextKit 2 draws the fragments its viewport controller last laid out, and a
+            // programmatic scroll does not move that viewport: a tab restored lower in the file
+            // showed its gutter, guides and current line but no text until a click (2026-10-17).
+            textView.textLayoutManager?.textViewportLayoutController.layoutViewport()
+            textView.needsDisplay = true
             // editor R56: the restored position may equal the one asked for, with no bounds change.
             coordinator.sticky?.refresh()
         }
