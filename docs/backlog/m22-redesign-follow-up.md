@@ -29,6 +29,11 @@ One branch `feat/m22` from `main`, one commit per task (author, 2026-10-17). **B
 | 22.6 | **Panel tabs, title on the active one only** (the left slot only — Project, Explorer, Changes; author, 2026-10-17): the other tabs of the slot's header show their icon (and their count) alone, their title in the tooltip | design R17 amended; layout R2 | `PanelHeaderView` | — (**by eye**: a 260 pt left panel holds its three tabs and its buttons) | S | 🟢 | `feat/m22` |
 | 22.7 | **Project, Explorer, Changes**: the left slot gets three tabs — *Project* (new: the real projects of the workspace, a folder holding a manifest of `RunCatalog.manifests` plus `build.gradle`, `Cargo.toml`, `go.mod`, at the root, in the declared repos and their first-level folders; each row the folder's name and its type's icon, a click unfolds it on its files with the explorer's tree), *Explorer* (the whole tree, today's *Project*, `explorer.tree` keeps its id and `cmd+shift+e`), *Changes* | explorer R1 amended, new rules (Project view); layout R2 | `FileTreeStyle` / `NSOutlineView`, `ExplorerModel` levels | project detection over a fixture tree (types, nesting, exclusions) | M | 🟢 | `feat/m22` |
 
+## Added on the way (2026-10-17, author)
+
+- **History's actions** in a row of their own under the tabs, like Search and Problems (git R18 amended).
+- **The search hang**: see 22.4.
+
 ## Decided with the author (2026-10-17)
 
 - The Project view lists real projects by their manifest; unfolding one shows its files (author's answer to the plan).

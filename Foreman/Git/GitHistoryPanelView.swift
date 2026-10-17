@@ -10,7 +10,11 @@ struct GitHistoryPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            PanelHeaderView(panels: feature.panels, current: GitFeature.historyPanelID, theme: theme) { EmptyView() }
+            // git R18 (amended 2026-10-17): the actions in a row of their own under the tabs, as
+            // Search and Problems lay theirs out.
+            actions
+            theme.tokens.separator.color.frame(height: 1)
             if let error = model.error {
                 BannerView(text: error.description, icon: "exclamationmark.triangle", tone: .error, theme: theme)
             }
@@ -39,8 +43,8 @@ struct GitHistoryPanelView: View {
         }
     }
 
-    private var header: some View {
-        PanelHeaderView(panels: feature.panels, current: GitFeature.historyPanelID, theme: theme) {
+    private var actions: some View {
+        HStack(spacing: 8) {
             if changes.sections.count > 1 {
                 Picker(
                     "Repository",
@@ -66,7 +70,7 @@ struct GitHistoryPanelView: View {
             }
             TextField("Filter message or author", text: $filterText)
                 .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 140, maxWidth: 280)
+                .frame(minWidth: 160, maxWidth: 360)
                 .onSubmit { feature.filterHistory(filterText) }
             Picker(
                 "Branches",
@@ -82,7 +86,10 @@ struct GitHistoryPanelView: View {
                 ProgressView()
                     .controlSize(.small)
             }
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 10)
+        .frame(height: 36)
     }
 
     /// A narrowing of the log (a file, a range), closed back to the whole history.
