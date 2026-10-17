@@ -46,12 +46,52 @@ struct ReadingAidsTests {
     }
 
     @Test func lineStartsFindTheLineOfAnOffset() {
-        let starts = IndentGuides.lineStarts(of: "ab\ncd\n\nef" as NSString)
+        let starts = IndentGuides.scan("ab\ncd\n\nef", width: 4).lineStarts
         #expect(starts == [0, 3, 6, 7])
         #expect(IndentGuides.line(at: 0, starts: starts) == 1)
         #expect(IndentGuides.line(at: 4, starts: starts) == 2)
         #expect(IndentGuides.line(at: 6, starts: starts) == 3)
         #expect(IndentGuides.line(at: 8, starts: starts) == 4)
+    }
+
+    @Test func scanMatchesTheOldPassesOnMixedText() {
+        // Tabs, spaces, empty and blank lines, a CRLF line, non-ASCII after the indentation and a
+        // 4-byte emoji before a newline (M23 23.8).
+        let text = "\tif x {\n\n    \ty\na\r\n  b\n  é\n  😀x\nz😀\n   \n\t\tq"
+        let scan = IndentGuides.scan(text, width: 2)
+        // Raw [2, -, 4, 0, 1, 1, 1, 0, -, 4]; a blank line takes the smaller of its neighbours.
+        #expect(scan.levels == [2, 2, 4, 0, 1, 1, 1, 0, 0, 4])
+        #expect(IndentGuides.levels(of: text, width: 2) == scan.levels)
+        let nsText = text as NSString
+        var starts = [0]
+        var index = 0
+        while case let range = nsText.range(
+            of: "\n", range: NSRange(location: index, length: nsText.length - index)),
+            range.location != NSNotFound
+        {
+            starts.append(NSMaxRange(range))
+            index = NSMaxRange(range)
+        }
+        // `é` counts one UTF-16 unit, `😀` two.
+        #expect(starts == [0, 8, 9, 16, 19, 23, 27, 33, 37, 41])
+        #expect(scan.lineStarts == starts)
+    }
+
+    @Test func scanIsFastOnAFiftyKilobyteFile() {
+        let text = (0..<1_500).map { String(repeating: " ", count: 4 * ($0 % 4)) + "return foo(bar, baz); // comment" }
+            .joined(separator: "\n")
+        // `NSTextView.string` is a bridged `NSString`: measure that one too.
+        let bridged = NSMutableString(string: text) as String
+        let clock = ContinuousClock()
+        func median(_ text: String) -> Duration {
+            let durations = (0..<20).map { _ in clock.measure { _ = IndentGuides.scan(text, width: 4) } }.sorted()
+            return durations[durations.count / 2]
+        }
+        let native = median(text)
+        let fromNSString = median(bridged)
+        print("IndentGuides.scan on \(text.utf8.count) bytes: median \(native) native, \(fromNSString) bridged")
+        #expect(native < .milliseconds(2))
+        #expect(fromNSString < .milliseconds(2))
     }
 
     @Test func bracketsMatchAcrossStringsAndComments() throws {

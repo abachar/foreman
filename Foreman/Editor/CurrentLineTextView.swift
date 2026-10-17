@@ -75,8 +75,10 @@ class CurrentLineTextView: NSTextView {
     }
 
     private func rebuildLines() {
-        guideLevels = IndentGuides.levels(of: string, width: indentWidth)
-        lineStarts = IndentGuides.lineStarts(of: string as NSString)
+        // editor R54 (M23 23.8): one byte pass gives both.
+        let scan = IndentGuides.scan(string, width: indentWidth)
+        guideLevels = scan.levels
+        lineStarts = scan.lineStarts
     }
 
     /// The 1-based line of a UTF-16 offset, from the cached starts.

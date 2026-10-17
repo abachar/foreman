@@ -1,5 +1,3 @@
-import Foundation
-
 /// editor R55 (2026-10-16): a pair of matching brackets, by their UTF-16 offsets.
 nonisolated struct BracketPair: Equatable, Hashable, Sendable {
     let open: Int
@@ -18,27 +16,73 @@ nonisolated struct BracketPair: Equatable, Hashable, Sendable {
 
 /// editor R54 (2026-10-16, M21 21.9, view 02): the indent guides of a text.
 nonisolated enum IndentGuides {
+    /// editor R54, R6 (audit 2026-10-17 U2, M23 23.8): one UTF-8 pass gives the lines' indentation
+    /// levels and their UTF-16 starts; a grapheme walk of a 55 KB file cost 10 ms a keystroke.
+    nonisolated struct Scan: Equatable, Sendable {
+        /// How many indentation levels each line has, line `i + 1` at index `i`.
+        let levels: [Int]
+        /// Where each line starts as a UTF-16 offset, line `i + 1` at index `i`.
+        let lineStarts: [Int]
+    }
+
     /// How many indentation levels each line has, line `i + 1` at index `i`.
+    static func levels(of text: String, width: Int, tabWidth: Int = 4) -> [Int] {
+        scan(text, width: width, tabWidth: tabWidth).levels
+    }
+
+    /// The indentation levels and the line starts of a text, from one pass over its UTF-8 bytes.
     ///
     /// A tab counts `tabWidth` columns, a level is `width` columns; a blank line takes the smaller
     /// level of the nearest non-blank lines around it, so a guide runs through the blank lines of
-    /// a block and stops at the ones between two blocks.
-    static func levels(of text: String, width: Int, tabWidth: Int = 4) -> [Int] {
+    /// a block and stops at the ones between two blocks. A line's indentation is ASCII spaces and
+    /// tabs, so bytes are exact: any other byte (a `\r`, the lead byte of `é`) ends it.
+    static func scan(_ text: String, width: Int, tabWidth: Int = 4) -> Scan {
+        var text = text
+        // `NSTextView.string` bridges an `NSString`: one copy to native UTF-8 makes it contiguous.
+        text.makeContiguousUTF8()
+        let scanBytes = { (bytes: UnsafeBufferPointer<UInt8>) in scan(bytes: bytes, width: width, tabWidth: tabWidth) }
+        return text.utf8.withContiguousStorageIfAvailable(scanBytes)
+            ?? Array(text.utf8).withUnsafeBufferPointer(scanBytes)
+    }
+
+    private static func scan(bytes: UnsafeBufferPointer<UInt8>, width: Int, tabWidth: Int) -> Scan {
         let width = max(width, 1)
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        var levels: [Int?] = lines.map { line in
-            var columns = 0
-            for character in line {
-                if character == " " {
+        var levels: [Int?] = []
+        var lineStarts = [0]
+        var utf16Offset = 0
+        var columns = 0
+        // `nil` while the line is still in its indentation.
+        var level: Int?
+        for byte in bytes {
+            if byte == UInt8(ascii: "\n") {
+                levels.append(level)
+                level = nil
+                columns = 0
+                utf16Offset += 1
+                lineStarts.append(utf16Offset)
+                continue
+            }
+            if level == nil {
+                if byte == UInt8(ascii: " ") {
                     columns += 1
-                } else if character == "\t" {
+                } else if byte == UInt8(ascii: "\t") {
                     columns += tabWidth - columns % tabWidth
                 } else {
-                    return columns / width
+                    level = columns / width
                 }
             }
-            return nil
+            // UTF-16 units: one per ASCII or lead byte, two for a 4-byte lead, none for a continuation.
+            if byte < 0x80 || byte >= 0xC0 {
+                utf16Offset += byte >= 0xF0 ? 2 : 1
+            }
         }
+        levels.append(level)
+        return Scan(levels: filled(levels), lineStarts: lineStarts)
+    }
+
+    /// A blank line (`nil`) takes the smaller level of the nearest non-blank lines around it.
+    private static func filled(_ raw: [Int?]) -> [Int] {
+        var levels = raw
         var previous: [Int?] = Array(repeating: nil, count: levels.count)
         var last: Int?
         for index in levels.indices {
@@ -73,19 +117,6 @@ nonisolated enum IndentGuides {
             region.first - 1 < levels.count
         else { return nil }
         return (levels[region.first - 1] * width, (region.first + 1)...(region.last - 1))
-    }
-
-    /// Where each line starts, line `i + 1` at index `i`.
-    static func lineStarts(of text: NSString) -> [Int] {
-        var starts = [0]
-        var index = 0
-        while index < text.length {
-            let range = text.range(of: "\n", options: [], range: NSRange(location: index, length: text.length - index))
-            guard range.location != NSNotFound else { break }
-            starts.append(NSMaxRange(range))
-            index = NSMaxRange(range)
-        }
-        return starts
     }
 
     /// The 1-based line holding `offset`: the last start not past it.
