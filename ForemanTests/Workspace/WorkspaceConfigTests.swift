@@ -117,6 +117,24 @@ struct WorkspaceConfigTests {
         #expect(config.warnings.isEmpty)
     }
 
+    /// explorer R24 (amended 2026-10-17): `projects` reads like `repos`.
+    @Test func readsProjectsLikeRepos() async throws {
+        defer { fixture.remove() }
+        try fixture.makeFolder("backend")
+        try fixture.writeWorkspace(#"{ "projects": ["backend", "frontend", "!backend/tools", "!../out"] }"#)
+
+        let config = try await fixture.load()
+
+        #expect(config.projects == [fixture.root.appending(path: "backend", directoryHint: .isDirectory)])
+        #expect(config.ignoredProjects == [fixture.root.appending(path: "backend/tools", directoryHint: .isDirectory)])
+        #expect(
+            config.warnings == [
+                "Project \"frontend\" ignored: folder not found.",
+                "Project \"!../out\" ignored: outside the workspace root.",
+            ])
+        #expect(try config.section("projects", as: [String].self) == nil)
+    }
+
     @Test func dropsExclusionsOutsideTheRoot() async throws {
         defer { fixture.remove() }
         try fixture.writeWorkspace(#"{ "repos": ["!../outside"] }"#)

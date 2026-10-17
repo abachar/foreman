@@ -34,6 +34,24 @@ struct ProjectsTests {
         #expect(projects.map(\.path) == ["backend", "backend/api", "frontend"])
         #expect(projects.map(\.kind) == [.maven, .maven, .node])
         #expect(projects.first?.name == "backend")
+
+        // explorer R24 (amended 2026-10-17): `config.projects` chooses the bases — each read like a
+        // repo, itself and one level under (a manifest still required) — and the `!` entries are
+        // left out with what lies under them.
+        let declared = WorkspaceProject.detect(
+            root: root, repos: [], declared: ["backend/api", "docs"].map { root.appending(path: $0) })
+        #expect(declared.map(\.path) == ["backend/api", "backend/api/deep"])
+        let filtered = WorkspaceProject.detect(
+            root: root, repos: [root.appending(path: "backend")], ignored: [root.appending(path: "backend")])
+        #expect(filtered.map(\.path) == ["frontend"])
+    }
+
+    @Test func anExclusionCoversItsFolderAndWhatLiesUnderIt() {
+        #expect(WorkspaceProject.isIgnored("backend/tools", by: ["backend/tools"]))
+        #expect(WorkspaceProject.isIgnored("backend/tools/cli", by: ["backend/tools"]))
+        #expect(!WorkspaceProject.isIgnored("backend/tools-v2", by: ["backend/tools"]))
+        #expect(WorkspaceProject.isIgnored("anything", by: [""]))
+        #expect(!WorkspaceProject.isIgnored("backend", by: []))
     }
 
     @Test func theManifestNamesTheProject() {

@@ -63,8 +63,9 @@ enum ExplorerFeature {
         in layout: LayoutManager, workspace: Workspace, editor: EditorFeature, theme: ThemeService
     ) {
         let model = ProjectsModel(
-            root: workspace.root, repos: { [weak workspace] in workspace?.config.repos ?? [] },
+            root: workspace.root, config: { [weak workspace] in workspace?.config ?? .empty },
             fsWatch: workspace.fsWatch)
+        model.watchConfig(workspace.configChanges())
         var actions: [String: ExplorerActions] = [:]
         layout.register(
             panel: PanelDescriptor(

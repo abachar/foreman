@@ -21,11 +21,20 @@ nonisolated struct WorkspaceConfig: Sendable {
     /// amended 2026-09-09), resolved under the root.
     let ignoredRepos: [URL]
 
+    /// explorer R24 (amended 2026-10-17): the projects declared in `projects`, resolved under the
+    /// root, read like `repos`; empty when the key is absent (the projects are then scanned).
+    let projects: [URL]
+
+    /// explorer R24 (amended 2026-10-17): the `projects` entries starting with `!` — folders left
+    /// out of the Project tab and of Run's detection, with what lies under them.
+    let ignoredProjects: [URL]
+
     /// What was ignored while loading, one message each (config R11, edge cases).
     let warnings: [String]
 
     /// A workspace without any `config.json` (config R2).
-    static let empty = WorkspaceConfig(sections: [:], repos: [], ignoredRepos: [], warnings: [])
+    static let empty = WorkspaceConfig(
+        sections: [:], repos: [], ignoredRepos: [], projects: [], ignoredProjects: [], warnings: [])
 
     /// The section `name` decoded as `type`, or `nil` when no file declares it.
     func section<T: Decodable>(_ name: String, as type: T.Type) throws -> T? {
@@ -99,14 +108,19 @@ nonisolated struct WorkspaceConfig: Sendable {
             withJSONObject: base.merging(over) { _, workspace in workspace }, options: [.sortedKeys])
     }
 
-    /// The config the features see, `repos` resolved under the root (config, edge cases).
+    /// The config the features see, `repos` and `projects` resolved under the root (config, edge cases).
     nonisolated static func make(_ sections: [String: Data], root: URL) -> WorkspaceConfig {
         var warnings: [String] = []
         var sections = sections
-        let declared = sections.removeValue(forKey: "repos")
-        let repos = repos(declared: declared, root: root, warnings: &warnings)
+        let repos = folders(
+            "repos", label: "Repository", declared: sections.removeValue(forKey: "repos"), root: root,
+            warnings: &warnings)
+        let projects = folders(
+            "projects", label: "Project", declared: sections.removeValue(forKey: "projects"), root: root,
+            warnings: &warnings)
         return WorkspaceConfig(
-            sections: sections, repos: repos.declared, ignoredRepos: repos.ignored, warnings: warnings)
+            sections: sections, repos: repos.declared, ignoredRepos: repos.ignored, projects: projects.declared,
+            ignoredProjects: projects.ignored, warnings: warnings)
     }
 
     /// Reads both files and merges them; `globalFile` is `nil` when there is none to read.
@@ -145,12 +159,14 @@ nonisolated struct WorkspaceConfig: Sendable {
         return dictionary
     }
 
-    private static func repos(
-        declared: Data?, root: URL, warnings: inout [String]
+    /// `repos` and `projects` share one shape: paths under the root, `!` for an exclusion;
+    /// `label` names the kind in the warnings (`Repository`, `Project`).
+    private static func folders(
+        _ key: String, label: String, declared: Data?, root: URL, warnings: inout [String]
     ) -> (declared: [URL], ignored: [URL]) {
         guard let declared else { return ([], []) }
         guard let paths = try? JSONDecoder().decode([String].self, from: declared) else {
-            warnings.append("\"repos\" ignored: expected an array of paths.")
+            warnings.append("\"\(key)\" ignored: expected an array of paths.")
             return ([], [])
         }
         var repos: [URL] = []
@@ -161,7 +177,7 @@ nonisolated struct WorkspaceConfig: Sendable {
             let folder = root.appending(path: relative, directoryHint: .isDirectory)
             // architecture, security: a declared path never resolves outside the workspace root.
             guard Workspace.contains(folder, under: root) else {
-                warnings.append("Repository \"\(path)\" ignored: outside the workspace root.")
+                warnings.append("\(label) \"\(path)\" ignored: outside the workspace root.")
                 continue
             }
             if isExclusion {
@@ -170,7 +186,7 @@ nonisolated struct WorkspaceConfig: Sendable {
                 continue
             }
             guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else {
-                warnings.append("Repository \"\(path)\" ignored: folder not found.")
+                warnings.append("\(label) \"\(path)\" ignored: folder not found.")
                 continue
             }
             repos.append(folder)

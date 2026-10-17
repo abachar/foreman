@@ -94,22 +94,29 @@ nonisolated struct WorkspaceProject: Equatable, Sendable, Identifiable {
         Kind.manifests.first { names.contains($0.name) }?.kind
     }
 
-    /// explorer R24: where projects are looked for — the root, the declared repos, and the first
-    /// level of both — the excluded and hidden folders left out (`ExcludedPaths`).
-    static func detect(root: URL, repos: [URL]) -> [WorkspaceProject] {
+    /// explorer R24: the projects of the workspace.
+    ///
+    /// Looked for at the root, in the declared repos and one level under both, the excluded and
+    /// hidden folders left out (`ExcludedPaths`). **Amended 2026-10-17**: when `config.projects`
+    /// declares folders (`declared`), they replace the root and the repos as the bases of the scan
+    /// — each is read like a repo, itself and one level under — and its `!` entries (`ignored`)
+    /// leave out a folder and what lies under it in both cases.
+    static func detect(root: URL, repos: [URL], declared: [URL] = [], ignored: [URL] = []) -> [WorkspaceProject] {
         let root = root.standardizedFileURL
         let rootIsHome = root == FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
-        let bases = [root] + repos.map(\.standardizedFileURL)
+        let bases = declared.isEmpty ? [root] + repos.map(\.standardizedFileURL) : declared.map(\.standardizedFileURL)
         var candidates: [URL] = []
         for base in bases {
             candidates.append(base)
             candidates += subfolders(of: base)
         }
+        let ignoredPaths = ignored.map { Workspace.persistedPath(for: $0, root: root) }
         var seen: Set<String> = []
         var projects: [WorkspaceProject] = []
         for folder in candidates {
             let path = Workspace.persistedPath(for: folder, root: root)
             guard seen.insert(path).inserted, !ExcludedPaths.isExcluded(path, rootIsHome: rootIsHome),
+                !isIgnored(path, by: ignoredPaths),
                 let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)),
                 let kind = kind(of: Set(names))
             else { continue }
@@ -121,6 +128,12 @@ nonisolated struct WorkspaceProject: Equatable, Sendable, Identifiable {
                     declaredName: text.flatMap { declaredName(kind: kind, manifest: $0) }))
         }
         return projects.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+    }
+
+    /// explorer R24 (amended 2026-10-17): a `!` entry covers its folder and what lies under it;
+    /// paths relative to the root, `""` being the root.
+    static func isIgnored(_ path: String, by ignored: [String]) -> Bool {
+        ignored.contains { $0.isEmpty || path == $0 || path.hasPrefix($0 + "/") }
     }
 
     private static func subfolders(of folder: URL) -> [URL] {
@@ -145,23 +158,40 @@ final class ProjectsModel {
     var followsActiveTab = true
 
     private let root: URL
-    private let repos: () -> [URL]
+    /// The config as it stands: `repos`, `projects` and `ignoredProjects` drive the detection.
+    private let config: () -> WorkspaceConfig
     private let fsWatch: FSWatchService?
     private var trees: [String: ExplorerModel] = [:]
     private var loading: Task<Void, Never>?
+    private var configWatch: Task<Void, Never>?
+    private var isActive = false
 
-    init(root: URL, repos: @escaping () -> [URL], fsWatch: FSWatchService?) {
+    init(root: URL, config: @escaping () -> WorkspaceConfig, fsWatch: FSWatchService?) {
         self.root = root
-        self.repos = repos
+        self.config = config
         self.fsWatch = fsWatch
     }
 
     isolated deinit {
         loading?.cancel()
+        configWatch?.cancel()
+    }
+
+    /// explorer R24 (amended 2026-10-17): `config.projects` or `config.repos` may change; a shown
+    /// view reads them again at once, a hidden one when it is shown.
+    func watchConfig(_ changes: AsyncStream<WorkspaceConfig>) {
+        configWatch?.cancel()
+        configWatch = Task { [weak self] in
+            for await _ in changes {
+                guard let self, isActive else { continue }
+                reload()
+            }
+        }
     }
 
     /// layout R4: the folders are read when the view is shown, off the main actor.
     func activate() {
+        isActive = true
         reload()
         if let expanded {
             trees[expanded]?.activate()
@@ -169,6 +199,7 @@ final class ProjectsModel {
     }
 
     func deactivate() {
+        isActive = false
         loading?.cancel()
         for tree in trees.values {
             tree.deactivate()
@@ -179,9 +210,9 @@ final class ProjectsModel {
         loading?.cancel()
         isLoading = true
         let root = root
-        let repos = repos()
+        let config = config()
         loading = Task { [weak self] in
-            let found = await Self.detect(root: root, repos: repos)
+            let found = await Self.detect(root: root, config: config)
             guard !Task.isCancelled, let self else { return }
             projects = found
             isLoading = false
@@ -189,8 +220,9 @@ final class ProjectsModel {
     }
 
     @concurrent
-    private static func detect(root: URL, repos: [URL]) async -> [WorkspaceProject] {
-        WorkspaceProject.detect(root: root, repos: repos)
+    private static func detect(root: URL, config: WorkspaceConfig) async -> [WorkspaceProject] {
+        WorkspaceProject.detect(
+            root: root, repos: config.repos, declared: config.projects, ignored: config.ignoredProjects)
     }
 
     /// explorer R25: a click unfolds a project, or folds the one unfolded.

@@ -31,11 +31,12 @@ Example with every section (values are the defaults unless noted):
 }
 ```
 
-## `repos` — `Workspace/WorkspaceConfig.swift`
+## `repos`, `projects` — `Workspace/WorkspaceConfig.swift`
 
 | Key | Type | Default | Note |
 |---|---|---|---|
 | `repos` | `[string]` | absent → scan for `.git/` (depth ≤ 2, `node_modules`, `target`, `.build`, `DerivedData` skipped) | Paths relative to the root; a missing folder is dropped with a warning. An entry starting with `!` excludes that repo from git tracking (declared or scanned; `"!."` excludes the root repo) — git R1, amended 2026-09-09. No repo at all → no git panels (git R1b). |
+| `projects` | `[string]` | absent → scan for a build manifest at the root, in the declared repos and one level under both (explorer R24) | The projects of the *Project* tab, which are also the folders Run reads its detected commands from (run R14, amended 2026-10-17). Same shape as `repos`: paths relative to the root, a missing folder dropped with a warning; a declared folder replaces the root and the repos as a base of the scan and is read like a repo, itself and one level under (`"ccoe-backend"` lists its modules); an entry starting with `!` leaves that folder **and what lies under it** out of both (declared or scanned). Added 2026-10-17. |
 
 ## `commands` — `Run/RunCatalog.swift` (run R1–R3, R8)
 

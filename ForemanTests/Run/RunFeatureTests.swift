@@ -94,6 +94,18 @@ struct RunToolbarTests {
         #expect(rows[1].subtitle == "repo not found: x")
     }
 
+    /// run R15: the *Detected* line is a heading, not an entry (it was clickable, 2026-10-17).
+    @Test func theDetectedHeadingIsAHeader() {
+        var detected = command("api", "dev")
+        detected = RunCommand(
+            id: detected.id, repo: detected.repo, name: detected.name, command: detected.command, cwd: detected.cwd,
+            env: [:], problem: nil, source: "package.json")
+        let rows = RunFeature.menuRows([command(".", "test"), detected]) { _ in .none }
+        #expect(rows.map(\.id) == ["run.root:test", "run.detected", "run.api:dev"])
+        #expect(rows.map(\.isHeader) == [false, true, false])
+        #expect(rows[1].isEnabled == false)
+    }
+
     /// run R6b (amended 2026-10-16): the widget's icon carries the current command's last state.
     @Test func theWidgetIconFollowsTheState() {
         #expect(RunWidget.Icon(nil) == .none)

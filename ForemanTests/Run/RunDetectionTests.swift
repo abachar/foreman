@@ -17,9 +17,13 @@ struct RunDetectionTests {
         try text.write(to: base.appending(path: name), atomically: true, encoding: .utf8)
     }
 
-    private func detect(_ repos: [String] = []) -> [RunCommand] {
+    /// run R14 (amended 2026-10-17): the folders read are the workspace's projects (explorer R24).
+    private func detect(_ repos: [String] = [], ignored: [String] = []) -> [RunCommand] {
         defer { try? FileManager.default.removeItem(at: root) }
-        return RunCatalog.detect(root: root, repos: repos.map { root.appending(path: $0) })
+        let projects = WorkspaceProject.detect(
+            root: root, repos: repos.map { root.appending(path: $0) }, ignored: ignored.map { root.appending(path: $0) }
+        )
+        return RunCatalog.detect(root: root, folders: projects.map(\.url))
     }
 
     @Test func packageScriptsUseTheLockfilesPackageManager() throws {
@@ -58,6 +62,13 @@ struct RunDetectionTests {
         try write("package.json", #"{ "scripts": { "dev": "x" } }"#, in: "node_modules")
         try write("package.json", #"{ "scripts": { "dev": "x" } }"#, in: ".hidden")
         #expect(detect().map(\.id) == ["api:dev"])
+    }
+
+    /// run R14 (amended 2026-10-17): a project left out of the Project tab is left out of Run.
+    @Test func anIgnoredProjectYieldsNoCommand() throws {
+        try write("package.json", #"{ "scripts": { "dev": "x" } }"#)
+        try write("package.json", #"{ "scripts": { "dev": "x" } }"#, in: "api")
+        #expect(detect(ignored: ["api"]).map(\.id) == ["root:dev"])
     }
 
     @Test func aMalformedManifestYieldsNothing() throws {

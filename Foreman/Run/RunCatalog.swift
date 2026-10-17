@@ -133,14 +133,13 @@ nonisolated enum RunCatalog {
         "package.json", "pom.xml", "Package.swift", "Makefile", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock",
     ]
 
-    /// run R14: the commands the manifests declare, read-only, at the root, in the declared repos
-    /// and in the root's first-level folders (a monorepo: `server/package.json`); an unreadable
+    /// run R14 (amended 2026-10-17): the commands the manifests declare, read-only, in `folders`
+    /// — the workspace's projects (explorer R24), so `config.projects` chooses them; an unreadable
     /// or malformed manifest yields nothing.
-    static func detect(root: URL, repos: [URL]) -> [RunCommand] {
+    static func detect(root: URL, folders: [URL]) -> [RunCommand] {
         var commands: [RunCommand] = []
         let root = root.standardizedFileURL
-        let folders = [root] + repos.map(\.standardizedFileURL) + firstLevelFolders(of: root)
-        for repoURL in folders.uniqued() where isDirectory(repoURL) {
+        for repoURL in folders.map(\.standardizedFileURL).uniqued() where isDirectory(repoURL) {
             let repo = repoURL == root ? "." : Workspace.persistedPath(for: repoURL, root: root)
             func add(_ name: String, _ command: String, from source: String) {
                 guard isValid(name: name) else { return }
@@ -176,15 +175,6 @@ nonisolated enum RunCatalog {
     static func merge(declared: [RunCommand], detected: [RunCommand]) -> [RunCommand] {
         let ids = Set(declared.map(\.id))
         return declared + detected.filter { !ids.contains($0.id) }
-    }
-
-    /// run R14: the root's visible, non-excluded folders, sorted.
-    private static func firstLevelFolders(of root: URL) -> [URL] {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false))) ?? []
-        return names.sorted()
-            .filter { !$0.hasPrefix(".") && !ExcludedPaths.isExcluded($0) }
-            .map { root.appending(path: $0).standardizedFileURL }
-            .filter(isDirectory)
     }
 
     /// run R14: the package manager the lockfile says, `npm` by default.

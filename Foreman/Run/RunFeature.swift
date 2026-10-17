@@ -60,6 +60,8 @@ final class RunFeature {
         let subtitle: String
         let badge: ToolbarBadge
         let isEnabled: Bool
+        /// run R15: the *Detected* heading, a section header and not an entry.
+        var isHeader = false
     }
 
     private let layout: LayoutManager
@@ -160,18 +162,21 @@ final class RunFeature {
     private func redetect() {
         detection?.cancel()
         let root = workspace.root
-        let repos = workspace.config.repos
+        let config = workspace.config
         detection = Task { [weak self] in
-            let found = await Self.detect(root: root, repos: repos)
+            let found = await Self.detect(root: root, config: config)
             guard !Task.isCancelled, let self else { return }
             detected = found
             publish()
         }
     }
 
+    /// run R14 (amended 2026-10-17): the folders read are the workspace's projects (explorer R24).
     @concurrent
-    private static func detect(root: URL, repos: [URL]) async -> [RunCommand] {
-        RunCatalog.detect(root: root, repos: repos)
+    private static func detect(root: URL, config: WorkspaceConfig) async -> [RunCommand] {
+        let projects = WorkspaceProject.detect(
+            root: root, repos: config.repos, declared: config.projects, ignored: config.ignoredProjects)
+        return RunCatalog.detect(root: root, folders: projects.map(\.url))
     }
 
     private func publish() {
@@ -500,8 +505,8 @@ final class RunFeature {
             if command.source != nil, !rows.contains(where: { $0.id == "run.detected" }) {
                 rows.append(
                     MenuRow(
-                        id: "run.detected", title: "Detected", subtitle: "from the project's manifests", badge: .none,
-                        isEnabled: false))
+                        id: "run.detected", title: "Detected", subtitle: "from the projects' manifests", badge: .none,
+                        isEnabled: false, isHeader: true))
             }
             rows.append(
                 MenuRow(
@@ -521,7 +526,7 @@ final class RunFeature {
             // layout R37: a command the user gave a shortcut says so in the menu (`config.shortcuts`).
             ToolbarMenuEntry(
                 id: row.id, title: row.title, subtitle: row.subtitle, badge: row.badge,
-                shortcut: layout.shortcuts.shortcut(for: row.id)
+                shortcut: layout.shortcuts.shortcut(for: row.id), isEnabled: row.isEnabled, isHeader: row.isHeader
             ) { [weak self] in
                 guard row.isEnabled, let id = self?.commands.first(where: { Self.kind(of: $0.id) == row.id })?.id
                 else { return }

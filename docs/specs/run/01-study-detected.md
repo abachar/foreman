@@ -8,7 +8,7 @@ Most repos already declare their commands: `package.json` scripts, a Maven `pom.
 
 ## Functional rules
 
-- R14 — **Detection** per folder — the root, `config.repos` (`run` R2), and the root's first-level folders that are neither hidden nor on the shared exclusion list (a monorepo: `server/package.json`; decided on 2026-08-28 in use, the `git` R1 auto-detection is not consulted) — at that folder only, read-only:
+- R14 — **Detection** per folder — the root, `config.repos` (`run` R2), and the root's first-level folders that are neither hidden nor on the shared exclusion list (a monorepo: `server/package.json`; decided on 2026-08-28 in use, the `git` R1 auto-detection is not consulted) — **amended 2026-10-17** (author, on `ccoe`): the folders read are the workspace's **projects** of `explorer` R24 — the same scan (root, declared repos, one level under both) or the list `config.projects` declares, minus its `!` exclusions — so the Project tab and the *Detected* commands name the same folders and a project hidden from one is hidden from the other — at that folder only, read-only:
   - `package.json` → one command per `scripts` entry: `<pm> run <name>` with `<pm>` = `pnpm` if `pnpm-lock.yaml` exists, `yarn` if `yarn.lock`, `bun` if `bun.lockb`/`bun.lock`, `npm` otherwise;
   - `pom.xml` → `mvn test`, `mvn package`, `mvn verify`;
   - `Package.swift` → `swift build`, `swift test`;
