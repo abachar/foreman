@@ -10,9 +10,14 @@ import os
 /// message. Everything the adapter says is untrusted content (debug R12): it is decoded, never run.
 actor DAPSession {
     /// The breakpoints of one file, sent by `setBreakpoints` once the adapter is ready (debug R4, R9).
-    struct FileBreakpoints: Equatable, Sendable {
+    nonisolated struct FileBreakpoints: Equatable, Sendable {
         var path: String
         var lines: [Int]
+
+        /// The request's body: the path, the lines in the order given.
+        var arguments: DAPSetBreakpointsArguments {
+            DAPSetBreakpointsArguments(source: DAPSource(path: path), breakpoints: lines.map { .init(line: $0) })
+        }
     }
 
     /// Why a request did not come back with a body.
@@ -93,22 +98,32 @@ actor DAPSession {
     /// breakpoints and `configurationDone`; the request's own answer ends the start.
     ///
     /// Adapters answer `launch` late (`lldb-dap` only after `configurationDone`), so it is sent
-    /// first and awaited last.
-    func start(_ request: DebugCommand.Request, arguments: LSPAny, breakpoints: [FileBreakpoints] = []) async throws {
+    /// first and awaited last. The adapter's answer to each file's breakpoints is returned, by path.
+    @discardableResult
+    func start(
+        _ request: DebugCommand.Request, arguments: LSPAny, breakpoints: [FileBreakpoints] = []
+    ) async throws
+        -> [String: DAPSetBreakpointsResponse]
+    {
         slots[Self.initializedKey] = .sent
         let capabilities: DAPCapabilities = try await send(
             "initialize", DAPInitializeArguments(adapterID: adapterID), as: DAPCapabilities.self)
         let launch = try await post(request.rawValue, arguments)
         try await answer(to: Self.initializedKey, "the initialized event")
+        var answers: [String: DAPSetBreakpointsResponse] = [:]
         for file in breakpoints {
-            let arguments = DAPSetBreakpointsArguments(
-                source: DAPSource(path: file.path), breakpoints: file.lines.map { .init(line: $0) })
-            try await send("setBreakpoints", arguments)
+            answers[file.path] = try await setBreakpoints(file)
         }
         if capabilities.supportsConfigurationDoneRequest != false {
             try await send("configurationDone", DAPEmpty())
         }
         try await answer(to: launch, request.rawValue)
+        return answers
+    }
+
+    /// debug R4: the whole set of one file, which replaces what the adapter had for it.
+    func setBreakpoints(_ file: FileBreakpoints) async throws -> DAPSetBreakpointsResponse {
+        try await send("setBreakpoints", file.arguments, as: DAPSetBreakpointsResponse.self)
     }
 
     /// `disconnect`, then — if the adapter does not end within the timeout — `SIGTERM`, and

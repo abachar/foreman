@@ -47,6 +47,19 @@ final class LineNumberRulerView: NSRulerView {
             needsDisplay = true
         }
     }
+    /// debug R4: a dot on every line with a breakpoint, right of the diagnostics' — filled when the
+    /// adapter verified it, hollow before a session and when it refused it.
+    var breakpointDots: [Int: Bool] = [:] {
+        didSet {
+            guard breakpointDots != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+    var breakpointColor = NSColor.systemRed {
+        didSet { needsDisplay = true }
+    }
+    /// debug R4: a click on the numbers; `nil` where the tab takes no breakpoint.
+    var onToggleBreakpoint: ((Int) -> Void)?
     private static let dotDiameter: CGFloat = 6
     private static let chevronWidth: CGFloat = 14
     /// The UTF-16 offset where each line starts, line `i + 1` at `lineStarts[i]`: the draw looks
@@ -152,6 +165,21 @@ final class LineNumberRulerView: NSRulerView {
                         x: 3, y: y + lineHeight / 2 - diameter / 2, width: diameter, height: diameter)
                 ).fill()
             }
+            // debug R4: the breakpoint's dot, next to the diagnostics'.
+            if let verified = breakpointDots[current] {
+                let dot = NSRect(
+                    x: 3 + Self.dotDiameter + 2, y: y + lineHeight / 2 - Self.dotDiameter / 2,
+                    width: Self.dotDiameter, height: Self.dotDiameter)
+                breakpointColor.setFill()
+                breakpointColor.setStroke()
+                if verified {
+                    NSBezierPath(ovalIn: dot).fill()
+                } else {
+                    let ring = NSBezierPath(ovalIn: dot.insetBy(dx: 0.5, dy: 0.5))
+                    ring.lineWidth = 1
+                    ring.stroke()
+                }
+            }
             // editor R27 (amended 2026-10-16): the markers next to the code — opening on a region's
             // first line, closing on its closer's — the caret's block brighter.
             if let marker = markers[current] {
@@ -179,13 +207,13 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
-    /// editor R27: a click on a marker folds or unfolds its region.
+    /// editor R27: a click on a marker folds or unfolds its region; debug R4: a click on the numbers,
+    /// left of the markers, toggles a breakpoint.
     ///
-    /// Anywhere else in the gutter a click does nothing: `NSRulerView`'s own handling would
-    /// offer to add a ruler marker.
+    /// Nothing else in the gutter answers: `NSRulerView`'s own handling would offer to add a ruler marker.
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        guard point.x >= ruleThickness - Self.chevronWidth - 4, let textView,
+        guard let textView,
             let layoutManager = textView.textLayoutManager,
             let contentManager = layoutManager.textContentManager
         else { return }
@@ -194,6 +222,10 @@ final class LineNumberRulerView: NSRulerView {
         let offset = contentManager.offset(
             from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
         let line = line(at: offset)
+        guard point.x >= ruleThickness - Self.chevronWidth - 4 else {
+            onToggleBreakpoint?(line)
+            return
+        }
         let markers = FoldMarkers.markers(regions: foldRegions, folded: foldedLines, active: nil)
         guard let marker = markers[line] else { return }
         onToggleFold?(marker.region.first)

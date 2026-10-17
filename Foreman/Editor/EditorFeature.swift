@@ -40,6 +40,10 @@ final class EditorFeature {
     /// editor R42: the character the popover is about; a move within it asks nothing again.
     var hoverLocation: Int?
     private var gitWatch: Task<Void, Never>?
+    /// debug R4, R5: a tab was bound to its view, and a tab's text just loaded; set by `DebugFeature`,
+    /// which the editor does not know.
+    var tabBound: ((EditorTab) -> Void)?
+    var tabLoaded: ((EditorTab) -> Void)?
     /// editor R19: most recent first, 50 at most, persisted in the `editor` section.
     private(set) var recentPaths: [String] = []
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "editor")
@@ -414,6 +418,11 @@ final class EditorFeature {
         tabs.values.filter { $0.document != nil }
     }
 
+    /// Every tab the feature has, loaded or not (debug R4, R5 mark them all).
+    var openTabs: [EditorTab] {
+        Array(tabs.values)
+    }
+
     /// editor R40: every open tab on `url` — the same file can be open in two groups (R1).
     func tabsShowing(_ url: URL) -> [EditorTab] {
         tabs.values.filter { $0.url == url }
@@ -749,12 +758,18 @@ final class EditorFeature {
     }
 
     /// editor R1–R3: shows `url` in the active group, or activates the tab already showing it.
-    func open(_ url: URL, preview: Bool, newGroup: Bool = false, line: Int? = nil, title: String? = nil) {
+    ///
+    /// `revealOnly` (debug R5): the line is shown if it is off screen, the caret stays where it is.
+    func open(
+        _ url: URL, preview: Bool, newGroup: Bool = false, line: Int? = nil, title: String? = nil,
+        revealOnly: Bool = false
+    ) {
         prune()
         let path = Workspace.persistedPath(for: url, root: workspace.root)
         if !newGroup, let existing = layout.model.active.tabs.first(where: { tabs[$0.id]?.path == path }) {
             if let tab = tabs[existing.id] {
                 tab.requestedLine = line
+                tab.revealsLineOnly = revealOnly
                 if !preview {
                     pin(existing.id, tab)
                 }
@@ -765,6 +780,7 @@ final class EditorFeature {
         // editor R2: one preview per group, replaced by the next one.
         let replaced = preview && !newGroup ? layout.model.active.tabs.first { tabs[$0.id]?.isPinned == false } : nil
         let tab = EditorTab(path: path, url: url, isPinned: !preview, line: line, title: title)
+        tab.revealsLineOnly = revealOnly
         opening = tab
         defer { opening = nil }
         guard
@@ -842,6 +858,7 @@ final class EditorFeature {
             }
         }
         bindLSP(tab)
+        tabBound?(tab)
         return AnyView(
             EditorTabView(
                 tab: tab, theme: theme, highlighter: highlighter, root: workspace.root,

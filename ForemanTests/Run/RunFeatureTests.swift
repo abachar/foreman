@@ -1,4 +1,5 @@
 import Foundation
+import JSONRPC
 import Testing
 
 @testable import Foreman
@@ -56,6 +57,16 @@ struct RunPaletteTests {
             cwd: root, env: [:], problem: problem)
     }
 
+    /// debug R3: `Debug <command>` follows the command, and a query for it finds it.
+    @Test func aDebuggableCommandGetsADebugItem() {
+        let commands = [command(".", "lint"), command("backend", "dev")]
+        let items = RunFeature.items(commands, recents: [], query: "", debuggable: { $0.name == "dev" })
+        #expect(items.map(\.id) == ["root:lint", "backend:dev", RunFeature.debugID("backend:dev")])
+        let found = RunFeature.items(commands, recents: [], query: "debug backend", debuggable: { $0.name == "dev" })
+        #expect(found.first?.id == RunFeature.debugID("backend:dev"))
+        #expect(RunFeature.items(commands, recents: [], query: "").map(\.id) == ["root:lint", "backend:dev"])
+    }
+
     @Test func withoutAQueryRecentsComeFirstThenTheCatalogOrder() {
         let commands = [command(".", "lint"), command("backend", "build"), command("backend", "test")]
         let items = RunFeature.items(commands, recents: ["backend:test", "gone:x"], query: "")
@@ -92,6 +103,17 @@ struct RunToolbarTests {
         #expect(rows.map(\.badge) == [.dot(.blue), .none])
         #expect(rows.map(\.isEnabled) == [true, false])
         #expect(rows[1].subtitle == "repo not found: x")
+    }
+
+    /// debug R3: a command that can be debugged is followed by its 🐞 row, the ▶ row untouched.
+    @Test func aDebuggableCommandGetsADebugRowAfterIt() {
+        var dev = command("api", "dev")
+        dev.debug = DebugCommand(adapter: "java", request: .attach, arguments: .hash([:]))
+        let rows = RunFeature.menuRows(
+            [command(".", "test"), dev], debuggable: { $0.name == "dev" }, badge: { _ in .none })
+        #expect(rows.map(\.id) == ["run.root:test", "run.api:dev", RunFeature.debugID("api:dev")])
+        #expect(rows[2].title == "\u{1F41E} Debug api \u{203A} dev")
+        #expect(rows[2].isEnabled)
     }
 
     /// run R15: the *Detected* line is a heading, not an entry (it was clickable, 2026-10-17).

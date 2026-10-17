@@ -64,6 +64,14 @@ final class RunFeature {
         var isHeader = false
     }
 
+    /// debug R3: the 🐞 entry of a command is a row of the menu and an item of the palette whose id is
+    /// the command's behind this mark; the ▶ of the command itself debugs nothing.
+    nonisolated static let debugMark = "\u{1F41E} "
+
+    nonisolated static func debugID(_ commandID: String) -> String {
+        debugMark + commandID
+    }
+
     private let layout: LayoutManager
     private let workspace: Workspace
     private let terminal: TerminalService
@@ -96,6 +104,15 @@ final class RunFeature {
     private var configWatch: Task<Void, Never>?
     private var eventsWatch: Task<Void, Never>?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "run")
+    /// debug R11: the adapter's words on a command's sub-tab, until its next launch or the dismissal.
+    private(set) var banners: [String: String] = [:]
+    /// debug R3, R9: set by `DebugFeature`, which Run does not know — whether a command is offered as
+    /// Debug, starting its session, and a sub-tab closing (the session of its command ends).
+    var canDebug: (RunCommand) -> Bool = { _ in false }
+    var startDebug: (String) -> Void = { _ in }
+    var subTabClosed: (String) -> Void = { _ in }
+    /// debug R6: the commands changed (the Debug panel exists while one carries `debug`).
+    var commandsChanged: () -> Void = {}
 
     init(layout: LayoutManager, workspace: Workspace, terminal: TerminalService, palette: Palette, theme: ThemeService)
     {
@@ -186,6 +203,7 @@ final class RunFeature {
         }
         show(!commands.isEmpty)
         restoreSessions()
+        commandsChanged()
     }
 
     /// run R6b (2026-08-29), layout R36: the button and the palette exist only with a command.
@@ -241,6 +259,7 @@ final class RunFeature {
         }
         recents.removeAll { $0 == id }
         recents.insert(id, at: 0)
+        banners[id] = nil
         let session: TabID
         switch Self.launchAction(session: sessions[id], state: sessions[id].flatMap { terminal.tab($0)?.state }) {
         case .spawn:
@@ -275,6 +294,20 @@ final class RunFeature {
         persist()
     }
 
+    /// debug R11: one banner on the command's sub-tab; `false` when the command has none (a launch
+    /// that runs nothing), and the caller says it elsewhere.
+    func showBanner(_ text: String, for id: String) -> Bool {
+        guard sessions[id] != nil else { return false }
+        banners[id] = text
+        select(id)
+        layout.panels.show(Self.panelID)
+        return true
+    }
+
+    func dismissBanner(for id: String) {
+        banners[id] = nil
+    }
+
     /// The sub-tab shown in the Run panel.
     func select(_ id: String) {
         guard sessions[id] != nil, selected != id else { return }
@@ -287,6 +320,8 @@ final class RunFeature {
         guard let session = sessions[id] else { return }
         Task { [weak self] in
             guard let self, await terminal.confirmClose(session) else { return }
+            subTabClosed(id)
+            banners[id] = nil
             terminal.closed(session)
             pendingRelaunches.removeValue(forKey: session)?.cancel()
             lastStops[session] = nil
@@ -410,14 +445,20 @@ final class RunFeature {
             results: { [weak self] query in
                 guard let self else { return PaletteSource.Results(items: []) }
                 return PaletteSource.Results(
-                    items: Self.items(commands, recents: recents, query: query),
+                    items: Self.items(commands, recents: recents, query: query, debuggable: canDebug),
                     notice: commands.isEmpty ? "No commands in .foreman/config.json" : nil)
             },
             // run R6 (amended 2026-10-16): one session per command, `cmd+enter` launches it too.
-            select: { [weak self] item, _ in self?.launch(item.id) },
+            select: { [weak self] item, _ in
+                if item.id.hasPrefix(Self.debugMark) {
+                    self?.startDebug(String(item.id.dropFirst(Self.debugMark.count)))
+                } else {
+                    self?.launch(item.id)
+                }
+            },
             secondary: { [weak self] item in
                 // run R6: opt+enter copies the command text.
-                guard let command = self?.command(item.id) else { return }
+                guard let command = self?.command(String(item.id.trimmingPrefix(Self.debugMark))) else { return }
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(command.command, forType: .string)
             })
@@ -427,20 +468,34 @@ final class RunFeature {
     /// run R5: recents first then the catalog order, or the fuzzy ranking on `repo name`.
     ///
     /// A greyed command shows its reason instead of its text.
-    nonisolated static func items(_ commands: [RunCommand], recents: [String], query: String) -> [PaletteItem] {
-        let ordered: [RunCommand]
+    ///
+    /// debug R3: a command that can be debugged also gets a *Debug* item, matched on `debug repo name`.
+    nonisolated static func items(
+        _ commands: [RunCommand], recents: [String], query: String,
+        debuggable: (RunCommand) -> Bool = { _ in false }
+    ) -> [PaletteItem] {
+        let ordered: [(command: RunCommand, isDebug: Bool)]
         if query.isEmpty {
             let recent = recents.compactMap { id in commands.first { $0.id == id } }
-            ordered = recent + commands.filter { !recents.contains($0.id) }
+            ordered = (recent + commands.filter { !recents.contains($0.id) }).flatMap { command in
+                [(command, false)] + (debuggable(command) ? [(command, true)] : [])
+            }
         } else {
-            let byKey = Dictionary(commands.map { ("\($0.repo) \($0.name)", $0) }) { first, _ in first }
+            var byKey: [String: (command: RunCommand, isDebug: Bool)] = [:]
+            for command in commands {
+                byKey["\(command.repo) \(command.name)"] = byKey["\(command.repo) \(command.name)"] ?? (command, false)
+                if debuggable(command) {
+                    byKey["debug \(command.repo) \(command.name)"] = (command, true)
+                }
+            }
             let matches = FuzzyMatcher(config: .smithWaterman)
                 .topMatches(byKey.keys, against: query, limit: Palette.limit)
             ordered = matches.compactMap { byKey[$0.candidate] }
         }
-        return ordered.map { command in
+        return ordered.map { command, isDebug in
             PaletteItem(
-                id: command.id, title: PaletteItem.highlighted(command.title, matching: query),
+                id: isDebug ? debugID(command.id) : command.id,
+                title: PaletteItem.highlighted(isDebug ? "Debug \(command.title)" : command.title, matching: query),
                 subtitle: command.subtitle)
         }
     }
@@ -498,7 +553,11 @@ final class RunFeature {
     }
 
     /// run R6b: every command with its state.
-    nonisolated static func menuRows(_ commands: [RunCommand], badge: (String) -> ToolbarBadge) -> [MenuRow] {
+    ///
+    /// debug R3: a command that can be debugged is followed by its 🐞 row.
+    nonisolated static func menuRows(
+        _ commands: [RunCommand], debuggable: (RunCommand) -> Bool = { _ in false }, badge: (String) -> ToolbarBadge
+    ) -> [MenuRow] {
         var rows: [MenuRow] = []
         for command in commands {
             // run R15: the detected ones after the declared ones, under one heading.
@@ -512,12 +571,19 @@ final class RunFeature {
                 MenuRow(
                     id: kind(of: command.id), title: command.title, subtitle: command.subtitle,
                     badge: command.problem == nil ? badge(command.id) : .none, isEnabled: command.problem == nil))
+            if let debug = command.debug, debuggable(command) {
+                rows.append(
+                    MenuRow(
+                        id: debugID(command.id), title: "\(debugMark)Debug \(command.title)",
+                        subtitle: "\(debug.request.rawValue) \u{00B7} \(debug.adapter)", badge: .none,
+                        isEnabled: true))
+            }
         }
         return rows
     }
 
     private func menuEntries() -> [ToolbarMenuEntry] {
-        Self.menuRows(commands) { id in
+        Self.menuRows(commands, debuggable: canDebug) { id in
             // run R6b (amended 2026-10-16): the last state stays in the menu, there is no tab to visit.
             guard let tab = sessions[id], let terminalTab = terminal.tab(tab) else { return .none }
             return Self.badge(RunState(terminalTab.state), marked: true)
@@ -528,9 +594,12 @@ final class RunFeature {
                 id: row.id, title: row.title, subtitle: row.subtitle, badge: row.badge,
                 shortcut: layout.shortcuts.shortcut(for: row.id), isEnabled: row.isEnabled, isHeader: row.isHeader
             ) { [weak self] in
-                guard row.isEnabled, let id = self?.commands.first(where: { Self.kind(of: $0.id) == row.id })?.id
-                else { return }
-                self?.launch(id)
+                guard row.isEnabled else { return }
+                if row.id.hasPrefix(Self.debugMark) {
+                    self?.startDebug(String(row.id.dropFirst(Self.debugMark.count)))
+                } else if let id = self?.commands.first(where: { Self.kind(of: $0.id) == row.id })?.id {
+                    self?.launch(id)
+                }
             }
         }
     }

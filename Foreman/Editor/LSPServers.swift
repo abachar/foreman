@@ -188,13 +188,31 @@ final class LSPServers {
         return Self.resolve(response, contentSchemes: server.contentSchemes)
     }
 
-    /// editor R62: the text of a `.content` definition, asked of the server of the **origin**
-    /// file (the `jdt://` URI maps to no config entry); `nil` in silence when there is none.
-    func textDocumentContent(uri: String, origin url: URL) async -> String? {
-        guard let entry = config().entry(for: url),
+    /// editor R62: the text of a `.content` definition.
+    ///
+    /// Asked of the server declared for the extension of the **origin** file (the `jdt://` URI maps to no config entry); `nil` in silence
+    /// when there is none. The debugger asks with its adapter's extension (debug R5).
+    func textDocumentContent(uri: String, extensionKey key: String) async -> String? {
+        guard let entry = config().entry(forKey: key),
             let server = await server(for: ServerKey(command: entry.command, cwd: entry.cwd))
         else { return nil }
         return await server.textDocumentContent(uri: uri)
+    }
+
+    /// debug R1: `command` executed by the server declared for the extension `key` (started if it is
+    /// not running), with no arguments; `nil` when there is no such server or it gave no answer.
+    func executeCommand(_ command: String, arguments: [LSPAny]? = nil, extensionKey key: String) async -> LSPAny? {
+        guard let entry = config().entry(forKey: key),
+            let server = await server(for: ServerKey(command: entry.command, cwd: entry.cwd))
+        else { return nil }
+        return await server.executeCommand(command, arguments: arguments)
+    }
+
+    /// debug R11: whether `lsp` declares a server for the extension `key`, and why it will not run
+    /// when it does not (the banner's words of editor R39).
+    func declaration(forExtension key: String) -> (declared: Bool, failure: String?) {
+        guard let entry = config().entry(forKey: key) else { return (false, nil) }
+        return (true, servers[ServerKey(command: entry.command, cwd: entry.cwd)]?.failure)
     }
 
     /// editor R43, R44: what a server's answer becomes — the whole rule, and no server needed.

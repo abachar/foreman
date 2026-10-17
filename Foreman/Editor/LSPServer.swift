@@ -243,6 +243,30 @@ final class LSPServer {
         return Self.content(of: answer)
     }
 
+    /// debug R1: `workspace/executeCommand`, bounded by `lsp.timeout`.
+    ///
+    /// `nil` on an error (logged), a timeout, or an answer of `null`. The caller reads the answer.
+    func executeCommand(_ command: String, arguments: [LSPAny]? = nil) async -> LSPAny? {
+        guard let connection, isRunning else { return nil }
+        let params = Self.executeParams(for: command, arguments: arguments)
+        let logger = logger
+        let answer: LSPAny? = await withTimeout(timeout) {
+            do {
+                return try await connection.sendRequest(
+                    .workspaceExecuteCommand(params, ClientRequest.NullHandler))
+            } catch {
+                logger.debug("\(command, privacy: .public): \(error.localizedDescription, privacy: .private)")
+                return nil
+            }
+        }
+        return answer ?? nil
+    }
+
+    /// debug R1: the request's params for a command id.
+    nonisolated static func executeParams(for command: String, arguments: [LSPAny]? = nil) -> ExecuteCommandParams {
+        ExecuteCommandParams(command: command, arguments: arguments)
+    }
+
     /// editor R62: `{ text }` out of the answer.
     nonisolated static func content(of answer: LSPAny?) -> String? {
         guard case .hash(let object)? = answer, case .string(let text)? = object["text"] else { return nil }

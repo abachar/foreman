@@ -123,7 +123,11 @@ nonisolated struct LSPCatalog: Decodable, Equatable, Sendable {
     /// The key is built by `FormatterCatalog.key(for:)`: the two sections index files the same way,
     /// and one rule written twice is one rule that can drift.
     func entry(for url: URL) -> Entry? {
-        commands[FormatterCatalog.key(for: url).lowercased()]
+        entry(forKey: FormatterCatalog.key(for: url))
+    }
+
+    func entry(forKey key: String) -> Entry? {
+        commands[key.lowercased()]
     }
 
     private struct Detailed: Decodable {

@@ -16,6 +16,12 @@ struct RunPanelView: View {
             if let selected = run.selected, let session = run.sessions[selected] {
                 bar(selected: selected, session: session)
                 tokens.separator.color.frame(height: 1)
+                // debug R11: the adapter's own words, until the command is launched again.
+                if let banner = run.banners[selected] {
+                    BannerView(
+                        text: banner, icon: "ladybug", tone: .error, theme: theme,
+                        onDismiss: { run.dismissBanner(for: selected) })
+                }
                 if let view = terminal.view(for: session) {
                     view
                         // One surface per session: SwiftUI must not reuse the previous one's view.

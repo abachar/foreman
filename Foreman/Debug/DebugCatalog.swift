@@ -18,8 +18,13 @@ nonisolated struct DebugCatalog: Decodable, Equatable, Sendable {
         /// Speaks DAP on stdio: the user's text, run by `$SHELL -l -c`.
         case command(String)
         /// A `workspace/executeCommand` sent to the `lsp.<extension>` server, which answers the
-        /// TCP port of an adapter it hosts (M27 27.4: decoded here, not yet run).
+        /// TCP port of an adapter it hosts (debug R1, M27 27.4).
         case server(String)
+
+        var isServer: Bool {
+            if case .server = self { return true }
+            return false
+        }
     }
 
     var timeout: Duration = .seconds(DebugCatalog.defaultTimeout)

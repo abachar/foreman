@@ -76,6 +76,18 @@ Scope: `global`, `tab(kind)` (a tab of that kind is active), `panel` (a panel ha
 | `enter` / `cmd+enter` / `opt+enter` / `escape` | — | Palette: launch / new tab / copy / close | native | 🟢 |
 | `cmd+.` | `run.stop` | Stop the process of the Run panel's shown sub-tab (`SIGINT`, second press < 2 s → `SIGTERM`); no effect when the Run panel is not shown (amended 2026-10-16, M21 21.5: no more `run.*` tabs) | panel | 🟢 (amended 2026-10-16) |
 
+## Debug (`debug` R7)
+
+| Shortcut | Id | Action | Scope | Status |
+|---|---|---|---|---|
+| `ctrl+cmd+r` | `debug.start` | Debug the Run widget's current command (needs a command with `debug` whose adapter is declared; absent without a `debug` section) | global | 🟢 (2026-10-17) |
+| `cmd+\` | `debug.toggleBreakpoint` | Toggle a breakpoint on the caret's line (the gutter's numbers do the same on a click) | tab(editor.file) | 🟢 (2026-10-17) |
+| `cmd+shift+y` | `debug.panel` | Debug panel, bottom slot (needs `config.debug` and a command with `debug`, `debug` R6) | global | 🟢 (2026-10-17) |
+| `ctrl+cmd+y` | `debug.continue` | Continue the paused session; bound only while it is paused | global | 🟢 (2026-10-17) |
+| `f6` | `debug.stepOver` | Step over; bound only while paused (`f1`…`f12` are valid keys since M27 27.3) | global | 🟢 (2026-10-17) |
+| `f7` | `debug.stepInto` | Step into; bound only while paused | global | 🟢 (2026-10-17) |
+| `f8` | `debug.stepOut` | Step out; bound only while paused | global | 🟢 (2026-10-17) |
+
 ## Git (`git`)
 
 | Shortcut | Id | Action | Scope | Status |

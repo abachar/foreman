@@ -132,6 +132,15 @@ final class EditorTab {
     /// editor R40, R41: what the server says about this file right now; replaced whole, never
     /// merged — a batch is the server's complete opinion of the file (`publishDiagnostics`).
     var diagnostics: [EditorDiagnostic] = []
+    /// debug R4: the breakpoints of this file, line → verified by the adapter; pushed by `DebugFeature`.
+    var breakpoints: [Int: Bool] = [:]
+    /// debug R5: the paused line, `nil` when the program is not stopped in this file.
+    var pausedLine: Int?
+    /// debug R5: `requestedLine` is only shown, the caret stays where the user left it.
+    var revealsLineOnly = false
+    /// debug R4: a click on the gutter's numbers, and what an edit did to the lines of the text.
+    var onToggleBreakpoint: ((Int) -> Void)?
+    var onLinesEdited: ((BreakpointStore.Edit) -> Void)?
     /// editor R43: `cmd+click` at that character offset; set by `EditorFeature`.
     var onCommandClick: ((Int) -> Void)?
     /// editor R42: the pointer moved to that character offset, or left the text.

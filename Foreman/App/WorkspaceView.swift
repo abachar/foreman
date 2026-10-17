@@ -99,7 +99,8 @@ struct WorkspaceView: View {
                     layout: layout, workspace: workspace, terminal: terminal, palette: palette, theme: theme)
                 self.run = run
                 // debug R10: created here, nothing shown and nothing running until a session starts.
-                debug = DebugFeature(workspace: workspace, run: run)
+                debug = DebugFeature(
+                    workspace: workspace, run: run, editor: editor, layout: layout, theme: theme)
                 // layout R30 (amended 2026-10-16): the project widget leads the toolbar.
                 ProjectWidget.register(
                     in: layout, folder: folder, theme: theme, appDelegate: appDelegate,

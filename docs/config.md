@@ -142,6 +142,7 @@ A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settin
       "command": "env JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home jdtls --jvm-arg=-javaagent:/Users/me/.m2/repository/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar -data /Users/me/Projects/ccoe/.foreman/jdtls",
       "cwd": "ccoe-backend/src",
       "settings": {
+        "bundles": ["/Users/me/.m2/repository/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/com.microsoft.java.debug.plugin-0.53.1.jar"],
         "java": {
           "import": { "generatesMetadataFilesAtProjectRoot": false, "exclusions": ["**/target/**"] },
           "maven": { "downloadSources": true },
@@ -156,6 +157,8 @@ A Maven backend under `jdtls` (the `ccoe` workspace, 2026-10-17): without settin
 }
 ```
 
+The `bundles` key (an `initializationOptions` key `jdtls` reads, next to `java`) is for the debugger: the jar comes from Maven Central (`mvn dependency:get -Dartifact=com.microsoft.java:com.microsoft.java.debug.plugin:0.53.1`), `jdtls` loads it as a bundle and answers `vscode.java.startDebugSession` with a port (see `debug`).
+
 A class in a jar opens from `jdtls` 1.61 or later (`workspace/textDocumentContent`); Foreman adds `extendedClientCapabilities.classFileContentsSupport` to the options itself (editor R61, R65).
 
 ## `debug` — `Debug/DebugCatalog.swift` (debug R1, R2, R9)
@@ -167,7 +170,7 @@ One debug adapter per lowercased file extension, the `lsp` section's shape. Noth
 | `timeout` | `number` seconds | `10` | `1…60`, clamped. Bounds every request to the adapter, the TCP connection and `disconnect` before the process is `SIGTERM`ed (then `SIGKILL`ed a second later). |
 | `<ext>` | `string` or `{ command }` or `{ server }` | — | Exactly one of `command` and `server`; both or neither → warning, the entry is dropped, the section stays. A string is the short form of `command`. |
 | `<ext>.command` | `string` | — | An adapter speaking DAP on **stdio**: the text is run by `$SHELL -l -c` with the login environment (`xcrun lldb-dap`); its `stderr` goes to the `debug` log. The first word must be in the `PATH`. |
-| `<ext>.server` | `string` | — | A command id sent through `workspace/executeCommand` to the `lsp.<ext>` server, which answers the TCP port of an adapter it hosts (`vscode.java.startDebugSession` with the `java-debug` bundle). Decoded since M27 27.1, **not run until 27.4** (a session logs "not supported yet"). |
+| `<ext>.server` | `string` | — | A command id sent through `workspace/executeCommand` to the `lsp.<ext>` server, which answers the TCP port of an adapter it hosts (`vscode.java.startDebugSession` with the `java-debug` bundle). Run since M27 27.4: the server of `lsp.<ext>` (started if it is not running, bounded by `lsp.timeout`) executes the id with no arguments; the answer is a port (a number or a numeric string, else the session fails with the answer quoted), Foreman connects to `localhost:<port>`. The session ends with a banner when that connection closes, which is the language server stopping or restarting. |
 
 ```json
 {
@@ -178,8 +181,8 @@ One debug adapter per lowercased file extension, the `lsp` section's shape. Noth
   },
   "commands": {
     "ccoe-backend": {
-      "run": {
-        "run": "mvn spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005",
+      "api": {
+        "run": "mvn spring-boot:run -Dspring-boot.run.jvmArguments=\"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005\"",
         "debug": { "adapter": "java", "request": "attach", "arguments": { "hostName": "localhost", "port": 5005 } }
       }
     },

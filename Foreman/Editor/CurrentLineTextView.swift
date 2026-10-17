@@ -10,6 +10,17 @@ class CurrentLineTextView: NSTextView {
         didSet { needsDisplay = true }
     }
 
+    /// debug R5: the paused line, painted like the current one in a second colour.
+    var pausedLine: Int? {
+        didSet {
+            guard pausedLine != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+    var pausedLineColor: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+
     /// editor R53 (2026-10-16): the column of the print margin, `nil` for none.
     var printMarginColumn: Int? {
         didSet {
@@ -205,6 +216,10 @@ class CurrentLineTextView: NSTextView {
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        if let paused = pausedLine, let frame = lineRect(paused), frame.intersects(rect) {
+            pausedLineColor.setFill()
+            frame.fill()
+        }
         if let line = currentLineRect, line.intersects(rect) {
             currentLineColor.setFill()
             line.fill()
@@ -319,14 +334,22 @@ class CurrentLineTextView: NSTextView {
 
     /// The full-width rect of the caret's paragraph; `nil` with a selection (nothing painted).
     private var currentLineRect: NSRect? {
+        selectedRange().length == 0 ? paragraphRect(atOffset: selectedRange().location) : nil
+    }
+
+    /// The full-width rect of the paragraph holding the UTF-16 `offset`.
+    private func paragraphRect(atOffset offset: Int) -> NSRect? {
         guard let layoutManager = textLayoutManager, let contentManager = layoutManager.textContentManager,
-            selectedRange().length == 0,
-            let location = contentManager.location(
-                contentManager.documentRange.location, offsetBy: selectedRange().location),
+            let location = contentManager.location(contentManager.documentRange.location, offsetBy: offset),
             let fragment = layoutManager.textLayoutFragment(for: location)
         else { return nil }
         let frame = fragment.layoutFragmentFrame
         return NSRect(
             x: 0, y: frame.minY + textContainerInset.height, width: bounds.width, height: max(frame.height, 1))
+    }
+
+    /// debug R5: the full-width rect of the 1-based `line`; `nil` past the end.
+    func lineRect(_ line: Int) -> NSRect? {
+        lineStarts.indices.contains(line - 1) ? paragraphRect(atOffset: lineStarts[line - 1]) : nil
     }
 }

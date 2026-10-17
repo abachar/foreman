@@ -29,7 +29,8 @@ struct EditorTabView: View {
                 } else {
                     EditorTextView(
                         tab: tab, document: document, theme: theme, highlighter: highlighter,
-                        diagnostics: tab.diagnostics, printMargin: printMargin())
+                        diagnostics: tab.diagnostics, breakpoints: tab.breakpoints, pausedLine: tab.pausedLine,
+                        printMargin: printMargin())
                 }
             case .failed(let error):
                 ContentUnavailableView {

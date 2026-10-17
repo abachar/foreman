@@ -15,6 +15,9 @@ struct EditorTextView: NSViewRepresentable {
     /// editor R41: passed in rather than read off the tab, so the SwiftUI body observes it and
     /// `updateNSView` runs when a batch arrives.
     let diagnostics: [EditorDiagnostic]
+    /// debug R4, R5: passed in for the same reason — the dots and the paused line.
+    let breakpoints: [Int: Bool]
+    let pausedLine: Int?
     /// editor R53: the column of the print margin, `nil` for none.
     let printMargin: Int?
 
@@ -76,6 +79,26 @@ struct EditorTextView: NSViewRepresentable {
         // editor R6: the gutter.
         let ruler = LineNumberRulerView(textView: textView, font: theme.editorFont)
         ruler.onToggleFold = { [weak tab] line in tab?.toggleFold(atLine: line) }
+        ruler.onToggleBreakpoint = { [weak tab] line in tab?.onToggleBreakpoint?(line) }
+        // debug R4: what an edit did to the lines, read before the text view re-reads its line starts.
+        context.coordinator.editObserver = NotificationCenter.default.addObserver(
+            forName: NSTextStorage.didProcessEditingNotification, object: textView.textStorage, queue: nil
+        ) { [weak tab, weak textView] _ in
+            MainActor.assumeIsolated {
+                guard let tab, let textView, let storage = textView.textStorage,
+                    storage.editedMask.contains(.editedCharacters)
+                else { return }
+                let range = storage.editedRange
+                let old = storage.length - storage.changeInLength
+                if let edit = BreakpointStore.Edit.make(
+                    oldStarts: textView.lineStarts, oldTextLength: old, location: range.location,
+                    oldLength: range.length - storage.changeInLength,
+                    replacement: (storage.string as NSString).substring(with: range))
+                {
+                    tab.onLinesEdited?(edit)
+                }
+            }
+        }
         scroll.verticalRulerView = ruler
         scroll.hasVerticalRuler = true
         scroll.rulersVisible = true
@@ -191,8 +214,21 @@ struct EditorTextView: NSViewRepresentable {
             regions: tab.foldRegions, brackets: tab.bracketPairs,
             indentWidth: IndentGuides.width(of: tab.indentUnit))
         applyDiagnostics(to: textView, ruler: scroll.verticalRulerView as? LineNumberRulerView)
+        (scroll.verticalRulerView as? LineNumberRulerView)?.breakpointDots = breakpoints
+        textView.pausedLine = pausedLine
         guard let line = tab.requestedLine else { return }
         tab.requestedLine = nil
+        if tab.revealsLineOnly {
+            // debug R5: after the restoration of the scroll, which is queued; the caret is not moved.
+            tab.revealsLineOnly = false
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView, let frame = textView.lineRect(line), !textView.visibleRect.contains(frame) else {
+                    return
+                }
+                textView.scroll(NSPoint(x: 0, y: max(0, frame.midY - textView.visibleRect.height / 2)))
+            }
+            return
+        }
         // editor R3: the cursor goes to the line and the line is shown.
         let location = TextEditing.location(ofLine: line, in: textView.string as NSString)
         textView.setSelectedRange(NSRange(location: location, length: 0))
@@ -216,12 +252,16 @@ struct EditorTextView: NSViewRepresentable {
         }
     }
 
+    /// debug R5: the paused line's tint; the current line is opaque, so a status colour needs its own alpha.
+    static let pausedLineAlpha = 0.28
+
     static func paint(_ textView: CurrentLineTextView, ruler: LineNumberRulerView?, tokens: ThemeService.Tokens) {
         applyLineHeight(tokens.codeLineHeight, to: textView)
         let background = tokens.surface.nsColor
+        let paused = tokens.statusOrange.nsColor(alpha: Self.pausedLineAlpha)
         let colorsChanged =
             textView.backgroundColor != background || textView.currentLineColor != tokens.surfaceSunken.nsColor
-            || textView.textColor != tokens.codeText.nsColor
+            || textView.textColor != tokens.codeText.nsColor || textView.pausedLineColor != paused
         guard colorsChanged else { return }
         textView.backgroundColor = background
         // design R9 (M25 25.3): the code's text is `codeText`, a step under the chrome's.
@@ -229,6 +269,9 @@ struct EditorTextView: NSViewRepresentable {
         textView.insertionPointColor = tokens.codeText.nsColor
         textView.selectedTextAttributes = [.backgroundColor: tokens.accent.nsColor(alpha: 0.35)]
         textView.currentLineColor = tokens.surfaceSunken.nsColor
+        // debug R5, design R6: a status colour, no new token; translucent so the text stays readable.
+        textView.pausedLineColor = paused
+        ruler?.breakpointColor = tokens.statusRed.nsColor
         // design R25 (2026-10-16): the print margin and the gutter's edge are separators.
         textView.printMarginColor = tokens.separator.nsColor
         textView.guideColor = tokens.separator.nsColor
@@ -294,6 +337,8 @@ struct EditorTextView: NSViewRepresentable {
         /// editor R4: bounds changes count only once the saved position was restored.
         var isScrollRestored = false
         var reloadVersion = 0
+        /// debug R4: the observer of the storage's edits.
+        var editObserver: (any NSObjectProtocol)?
         /// Weak: the tab owns the coordinator (`textCoordinator`); a strong back reference would
         /// keep both — and the whole text stack — alive after the tab closes.
         private weak var tab: EditorTab?
@@ -309,6 +354,9 @@ struct EditorTextView: NSViewRepresentable {
             attaching?.cancel()
             if let scrollObserver {
                 NotificationCenter.default.removeObserver(scrollObserver)
+            }
+            if let editObserver {
+                NotificationCenter.default.removeObserver(editObserver)
             }
         }
 

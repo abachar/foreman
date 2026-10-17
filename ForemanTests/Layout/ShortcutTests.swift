@@ -12,6 +12,8 @@ struct ShortcutTests {
         ("escape", "escape", Shortcut.Modifiers([])),
         ("ctrl+[", "[", Shortcut.Modifiers.control),
         ("cmd+9", "9", Shortcut.Modifiers.command),
+        ("F6", "f6", Shortcut.Modifiers([])),
+        ("ctrl+cmd+y", "y", Shortcut.Modifiers([.control, .command])),
     ])
     func parsesModifiersAndKey(text: String, key: String, modifiers: Shortcut.Modifiers) {
         let shortcut = Shortcut(parsing: text)
@@ -20,7 +22,7 @@ struct ShortcutTests {
         #expect(shortcut?.modifiers == modifiers)
     }
 
-    @Test(arguments: ["", "cmd+", "+g", "cmd+cmd+g", "super+g", "cmd+gg", "cmd+home"])
+    @Test(arguments: ["", "cmd+", "+g", "cmd+cmd+g", "super+g", "cmd+gg", "cmd+home", "f13", "f0"])
     func rejectsWhatIsNotAShortcut(text: String) {
         #expect(Shortcut(parsing: text) == nil)
     }

@@ -23,6 +23,7 @@ extension EditorFeature {
             let servers = lsp
             switch event {
             case .opened:
+                tabLoaded?(tab)
                 if isDeclarable(tab) { servers.opened(tab.url, text: tab.currentText) }
             case .changed:
                 // editor R42: a keystroke cancels the popover, pending or shown.
@@ -206,16 +207,24 @@ extension EditorFeature {
             case .refused(let reason):
                 tab.message = reason
             case .content(let uri, let line):
-                // editor R63: the server's text, written read-only to the cache and opened as a preview.
-                let source = LibrarySource(
-                    uri: uri, caches: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0])
-                let text = await servers.textDocumentContent(uri: uri, origin: url)
-                guard let text, !text.isEmpty, (try? source.write(text)) != nil else {
+                if await openLibrarySource(uri: uri, extensionKey: FormatterCatalog.key(for: url), line: line) == nil {
                     tab.message = "No source for \(LibrarySource.name(of: uri))"
-                    return
                 }
-                open(source.url, preview: true, line: line, title: source.title)
             }
         }
+    }
+
+    /// editor R63: the server's text for `uri`, asked of the server declared for the extension
+    /// `extensionKey`, written read-only to the cache and opened as a preview.
+    ///
+    /// `revealOnly` is the debugger's (debug R5): the caret stays. `nil` when the server has no text.
+    @discardableResult
+    func openLibrarySource(uri: String, extensionKey: String, line: Int?, revealOnly: Bool = false) async -> URL? {
+        let source = LibrarySource(
+            uri: uri, caches: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0])
+        let text = await lsp.textDocumentContent(uri: uri, extensionKey: extensionKey)
+        guard let text, !text.isEmpty, (try? source.write(text)) != nil else { return nil }
+        open(source.url, preview: true, line: line, title: source.title, revealOnly: revealOnly)
+        return source.url
     }
 }

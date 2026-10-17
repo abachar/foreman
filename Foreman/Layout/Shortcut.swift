@@ -16,7 +16,11 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
     let key: String
     let modifiers: Modifiers
 
-    static let namedKeys: Set<String> = ["left", "right", "up", "down", "escape", "return", "tab", "space", "delete"]
+    static let namedKeys: Set<String> =
+        Set(["left", "right", "up", "down", "escape", "return", "tab", "space", "delete"]).union(functionKeys)
+
+    /// `f1` … `f12` (debug R7: `f6`, `f7` and `f8` step); AppKit's `NSF1FunctionKey` … in order.
+    private static let functionKeys = Set((1...12).map { "f\($0)" })
 
     /// `opt` is the Option key (layout, decision 2026-08-26); `alt` stays accepted in `config.json`.
     private static let modifierNames: [(String, Modifiers)] = [
@@ -52,7 +56,7 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
             UInt32(NSLeftArrowFunctionKey): "left", UInt32(NSRightArrowFunctionKey): "right",
             UInt32(NSUpArrowFunctionKey): "up", UInt32(NSDownArrowFunctionKey): "down",
             0x1B: "escape", 0x0D: "return", 0x09: "tab", 0x20: "space", 0x7F: "delete",
-        ]
+        ].merging((1...12).map { (UInt32(NSF1FunctionKey + $0 - 1), "f\($0)") }) { first, _ in first }
         if let name = named[scalar.value] {
             key = name
         } else if characters.count == 1, !scalar.properties.isWhitespace, scalar.value >= 0x20 {
@@ -92,7 +96,7 @@ nonisolated struct Shortcut: Hashable, Sendable, CustomStringConvertible {
         "left": character(NSLeftArrowFunctionKey), "right": character(NSRightArrowFunctionKey),
         "up": character(NSUpArrowFunctionKey), "down": character(NSDownArrowFunctionKey),
         "escape": "\u{1B}", "return": "\r", "tab": "\t", "space": " ", "delete": "\u{8}",
-    ]
+    ].merging((1...12).map { ("f\($0)", character(NSF1FunctionKey + $0 - 1)) }) { first, _ in first }
 
     /// One of AppKit's `NS…FunctionKey` constants as the string a key equivalent takes.
     static func character(_ functionKey: Int) -> String {
