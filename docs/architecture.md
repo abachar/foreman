@@ -103,4 +103,4 @@ Rejected: libghostty (zig build, unstable API, nothing the product needs), libgi
 
 - Workspace opened < 500 ms to the first frame; panel < 100 ms; typing with no synchronous work.
 - Nothing at startup that could wait; disk read level by level; bursts smoothed at the producer (FSEvents, `state.json`, process output).
-- Measure before optimising: a non-trivial optimisation quotes a number. The three budgets are `os_signpost` intervals (`App/Perf.swift`), measured in M6 6.5 (`backlog/m6-polish.md`, 2026-08-27).
+- Measure before optimising: a non-trivial optimisation quotes a number. The three budgets are `os_signpost` intervals (`App/Perf.swift`), measured in M6 6.5 (`backlog/m6-polish.md`, 2026-08-27). M23 23.1 (2026-10-17) adds `explorer.reload`, `diff.render` and `editor.keystroke` to measure the hot paths of [`audit-2026-10-17.md`](audits/audit-2026-10-17.md).

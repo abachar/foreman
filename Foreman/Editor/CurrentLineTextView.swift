@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 /// design R22: the caret's paragraph is painted across the full width in `currentLineColor`.
 ///
@@ -59,7 +60,10 @@ class CurrentLineTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
+        // The synchronous work after one edit, a whole-buffer scan (audit 2026-10-17 U2).
+        let interval = Perf.signposter.beginInterval("editor.keystroke", id: Perf.signposter.makeSignpostID())
         rebuildLines()
+        Perf.signposter.endInterval("editor.keystroke", interval)
         needsDisplay = true
     }
 

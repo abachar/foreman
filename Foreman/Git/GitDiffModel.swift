@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import SwiftUI
+import os
 
 /// The two grounds a diff line can have, read from the theme once per render.
 nonisolated struct DiffTint: Sendable {
@@ -174,6 +175,8 @@ final class GitDiffModel {
 
     /// Highlights each file once (the grammar from its name, editor R12), then colors the lines.
     private func render(_ diff: GitDiff) async {
+        let interval = Perf.signposter.beginInterval("diff.render", id: Perf.signposter.makeSignpostID())
+        defer { Perf.signposter.endInterval("diff.render", interval) }
         // The theme is read once, here, so the slicing below needs nothing from the main actor.
         let tint = DiffTint(
             added: Color(nsColor: theme.diffLineBackground(added: true)),
@@ -185,6 +188,8 @@ final class GitDiffModel {
             let highlighted = language == nil ? nil : await highlighter.highlight(code, language: language ?? .json)
             guard !Task.isCancelled else { return }
             rendered[file.id] = await Self.render(file, highlighted: highlighted, tint: tint)
+            // One event per file shows which file of a large diff holds the time (audit 2026-10-17 M2).
+            Perf.signposter.emitEvent("diff.render.file")
         }
         self.rendered = rendered
     }

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import os
 
 /// The tree itself: `NSOutlineView` with a lazy data source (explorer, technical options).
 ///
@@ -344,6 +345,11 @@ struct ExplorerOutlineView: NSViewRepresentable {
             // Several levels may have changed since the last update (explorer R9, a burst):
             // then everything is reloaded; items keep their identity so nothing is lost (R10).
             let isFullReload = version - self.version != 1
+            // Measured before anything is optimised (audit 2026-10-17 U4): an agent's status bursts land here.
+            let interval = Perf.signposter.beginInterval(
+                "explorer.reload", id: Perf.signposter.makeSignpostID(),
+                "\(isFullReload ? "full" : "partial", privacy: .public)")
+            defer { Perf.signposter.endInterval("explorer.reload", interval) }
             let path = isFullReload ? "" : model.lastLoaded ?? ""
             self.version = version
             let reloaded = path.isEmpty ? nil : items[path]
