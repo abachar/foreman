@@ -73,6 +73,20 @@ struct ThemeServiceTests {
         #expect(theme.isDark(systemIsDark: false))
     }
 
+    /// audit 2026-10-17 U5: `tokens` is stored, refreshed by `apply`, not rebuilt per read.
+    @Test func tokensAreRefreshedByApply() async throws {
+        defer { fixture.remove() }
+        let theme = ThemeService()
+        theme.apply(try await fixture.load(after: ##"{ "theme": { "accent": "#123456" } }"##))
+        #expect(theme.tokens.accent == ThemeColor(0x1234_56))
+        #expect(theme.tokens == theme.tokens)
+
+        theme.apply(try await fixture.load(after: #"{ "terminal": { "theme": "light" } }"#))
+        #expect(theme.tokens == ThemeService.Tokens.light.applying(theme.overrides))
+        theme.apply(try await fixture.load(after: #"{ "terminal": { "theme": "dark" } }"#))
+        #expect(theme.tokens == ThemeService.Tokens.dark.applying(theme.overrides))
+    }
+
     @Test func palettesHaveSixteenAnsiColors() {
         let theme = ThemeService()
         #expect(theme.terminalPalette(dark: true).ansi.count == 16)

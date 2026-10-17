@@ -52,6 +52,22 @@ struct GitRepoTests {
         #expect(GitRepo(url: root, root: root).id == ".")
     }
 
+    /// audit 2026-10-17 U5: resolved once, the same as the static function.
+    @Test func aRepoCarriesItsCanonicalPath() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try makeFolder("a")
+        let folder = root.appending(path: "a/")
+        #expect(folder.path(percentEncoded: false).hasSuffix("/"))
+        let repo = GitRepo(id: "a", url: folder)
+        #expect(repo.canonicalPath == GitRepo.canonicalPath(folder))
+        #expect(!repo.canonicalPath.hasSuffix("/"))
+        // The temporary directory lives under `/var`, a symlink to `/private/var`: both spellings
+        // give one path.
+        #expect(folder.path(percentEncoded: false).hasPrefix("/var/"))
+        let privateSpelling = URL(filePath: "/private" + folder.path(percentEncoded: false))
+        #expect(GitRepo(id: "a", url: privateSpelling).canonicalPath == repo.canonicalPath)
+    }
+
     @Test func ignoredReposLeaveTheScanAndTheDeclaredList() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         try makeFolder("a/.git")

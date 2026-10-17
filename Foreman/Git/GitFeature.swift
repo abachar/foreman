@@ -1089,7 +1089,8 @@ final class GitFeature {
     }
 
     private func reveal(_ cwd: URL) {
-        guard let id = GitModel.owner(of: cwd, among: model.sections.map(\.repo)) else { return }
+        guard let id = GitModel.owner(ofCanonicalPath: GitRepo.canonicalPath(cwd), among: model.sections.map(\.repo))
+        else { return }
         model.reveal(id)
         workspace.setState("git", to: model.persisted)
     }
@@ -1105,9 +1106,9 @@ final class GitFeature {
     func holder(of branch: GitBranch, besides id: String) -> GitModel.Section? {
         guard let path = branch.worktreePath, let section = model.section(id) else { return nil }
         let group = section.repo.parent ?? section.id
+        let target = GitRepo.canonicalPath(URL(filePath: path))
         return model.sections.first {
-            ($0.id == group || $0.repo.parent == group) && $0.id != id
-                && GitRepo.canonicalPath($0.repo.url) == GitRepo.canonicalPath(URL(filePath: path))
+            ($0.id == group || $0.repo.parent == group) && $0.id != id && $0.repo.canonicalPath == target
         }
     }
 

@@ -149,10 +149,11 @@ struct GitWorktreeChildTests {
             GitRepo(id: ".", url: URL(filePath: "/work")),
             GitRepo(id: "app", url: URL(filePath: "/work/app")),
         ]
-        #expect(GitModel.owner(of: URL(filePath: "/work/app/src"), among: repos) == "app")
-        #expect(GitModel.owner(of: URL(filePath: "/work/docs"), among: repos) == ".")
-        #expect(GitModel.owner(of: URL(filePath: "/work/application"), among: repos) == ".")
-        #expect(GitModel.owner(of: URL(filePath: "/tmp"), among: repos) == nil)
+        #expect(GitModel.owner(ofCanonicalPath: "/work/app/src", among: repos) == "app")
+        #expect(GitModel.owner(ofCanonicalPath: "/work/docs", among: repos) == ".")
+        #expect(GitModel.owner(ofCanonicalPath: "/work/application", among: repos) == ".")
+        #expect(GitModel.owner(ofCanonicalPath: "/work", among: repos) == ".")
+        #expect(GitModel.owner(ofCanonicalPath: "/elsewhere", among: repos) == nil)
     }
 
     /// git R10 (amended 2026-10-16): the commit area goes where the user last worked.

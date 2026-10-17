@@ -100,6 +100,25 @@ struct GitModelTests {
         #expect(GitModel.Section.isCollapsed(manually: true, hasChanges: true))
     }
 
+    /// audit 2026-10-17 U5: the lists are built once per status, and read from there.
+    @Test @MainActor func aSectionsListsFollowItsStatus() throws {
+        let model = GitModel()
+        model.setRepos(repos)
+        #expect(try #require(model.section(".")).isCollapsed == false)
+        let ignored = GitStatusEntry(path: "out.o", index: .ignored, worktree: .ignored)
+        model.setStatus(".", GitStatus(head: .branch("main"), entries: [ignored]))
+        #expect(try #require(model.section(".")).isCollapsed)
+        let changed = GitStatusEntry(path: "a.swift", index: .modified, worktree: .modified)
+        let status = GitStatus(head: .branch("main"), entries: [changed, ignored])
+        model.setStatus(".", status)
+        let section = try #require(model.section("."))
+        #expect(section.sections == GitSections(status.entries))
+        #expect(!section.isCollapsed)
+        // A rediscovery keeps the known section's lists.
+        model.setRepos(repos)
+        #expect(try #require(model.section(".")).sections == GitSections(status.entries))
+    }
+
     // MARK: - git R23
 
     /// The sheet is presented off the observed model, so opening it and its async load both invalidate.

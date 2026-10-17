@@ -70,9 +70,22 @@ nonisolated struct GitAgentSession: Equatable, Sendable, Identifiable {
     /// The agent's icon, as `IconImage.resolve` reads it.
     let icon: String
     let cwd: URL
+    /// `GitRepo.canonicalPath(cwd)`, resolved once when the session is built, never in a `body`
+    /// (audit 2026-10-17 U5).
+    let canonicalCwd: String
     let isRunning: Bool
     /// The tab rang (terminal R7).
     let isMarked: Bool
+
+    init(id: TabID, title: String, icon: String, cwd: URL, isRunning: Bool, isMarked: Bool) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.cwd = cwd
+        canonicalCwd = GitRepo.canonicalPath(cwd)
+        self.isRunning = isRunning
+        self.isMarked = isMarked
+    }
 }
 
 /// git R34b: a top-level repo and its worktrees, as the panel lays them out.
@@ -92,7 +105,13 @@ final class GitModel {
     struct Section: Identifiable {
         var repo: GitRepo
         /// `nil` until the first `status` answers.
-        var status: GitStatus?
+        var status: GitStatus? {
+            didSet { lists = GitSections(status?.entries ?? []) }
+        }
+        /// git R6: the three lists of `status`, built once per status rather than per read.
+        ///
+        /// Audit 2026-10-17 U5: `isCollapsed` and `commitTarget` read them in a `body`.
+        private(set) var lists = GitSections([])
         var error: GitError?
         var isLoading = false
         /// git R2: persisted.
@@ -117,13 +136,12 @@ final class GitModel {
         }
 
         var sections: GitSections {
-            GitSections(status?.entries ?? [])
+            lists
         }
 
         /// git R2: collapsed by hand, or automatically while there is nothing to show.
         var isCollapsed: Bool {
-            Self.isCollapsed(
-                manually: isManuallyCollapsed, hasChanges: status.map { !GitSections($0.entries).isEmpty } ?? true)
+            Self.isCollapsed(manually: isManuallyCollapsed, hasChanges: status == nil || !lists.isEmpty)
         }
 
         nonisolated static func isCollapsed(manually: Bool, hasChanges: Bool) -> Bool {
@@ -206,9 +224,10 @@ final class GitModel {
     /// agent's state changes.
     var groups: [GitRepoGroup] {
         let tops = sections.filter { $0.repo.parent == nil }
+        let repos = sections.map(\.repo)
+        let busy = Set(agentSessions.compactMap { Self.owner(ofCanonicalPath: $0.canonicalCwd, among: repos) })
         return tops.map { top in
             let children = sections.filter { $0.repo.parent == top.id }
-            let busy = Set(agentSessions.compactMap { Self.owner(of: $0.cwd, among: sections.map(\.repo)) })
             return GitRepoGroup(
                 top: top, children: children.filter { busy.contains($0.id) } + children.filter { !busy.contains($0.id) }
             )
@@ -250,15 +269,14 @@ final class GitModel {
     /// git R34c: the sessions running in the working copy `id`, by title.
     func agentSessions(in id: String) -> [GitAgentSession] {
         let repos = sections.map(\.repo)
-        return agentSessions.filter { Self.owner(of: $0.cwd, among: repos) == id }
+        return agentSessions.filter { Self.owner(ofCanonicalPath: $0.canonicalCwd, among: repos) == id }
     }
 
-    /// git R34c: the working copy whose folder contains `cwd`, the deepest one.
-    nonisolated static func owner(of cwd: URL, among repos: [GitRepo]) -> String? {
-        let path = GitRepo.canonicalPath(cwd)
-        return repos.map { ($0.id, GitRepo.canonicalPath($0.url)) }
-            .filter { path == $0.1 || path.hasPrefix($0.1 + "/") }
-            .max { $0.1.count < $1.1.count }?.0
+    /// git R34c: the working copy whose folder contains `path` (canonical, see
+    /// `GitRepo.canonicalPath`), the deepest one; strings only, no syscall.
+    nonisolated static func owner(ofCanonicalPath path: String, among repos: [GitRepo]) -> String? {
+        repos.filter { path == $0.canonicalPath || path.hasPrefix($0.canonicalPath + "/") }
+            .max { $0.canonicalPath.count < $1.canonicalPath.count }?.id
     }
 
     // MARK: - Reveal (git R36, agents R5b)

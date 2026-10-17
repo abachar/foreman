@@ -6,6 +6,9 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
     /// `"."` or the path relative to the root; stable, used in `state.json`.
     let id: String
     let url: URL
+    /// `canonicalPath(url)`, resolved once here so a comparison in a `body` makes no syscall
+    /// (audit 2026-10-17 U5).
+    let canonicalPath: String
     /// git R33: the repo this one is a worktree of; `nil` for a top-level section.
     var parent: String?
     /// git R34, R38: git's lock reason (`""` without one); `nil` when not locked.
@@ -19,6 +22,7 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
     init(id: String, url: URL) {
         self.id = id
         self.url = url.standardizedFileURL
+        canonicalPath = Self.canonicalPath(url)
     }
 
     init(url: URL, root: URL) {
@@ -73,7 +77,7 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
     /// main folder is another repo found moves under that one (no duplicate), a bare or prunable
     /// entry is skipped, and a repo's own folder is not its own child.
     static func arrange(_ repos: [GitRepo], worktrees: [String: [GitWorktree]], root: URL) -> [GitRepo] {
-        let byPath = Dictionary(repos.map { (canonicalPath($0.url), $0) }) { first, _ in first }
+        let byPath = Dictionary(repos.map { ($0.canonicalPath, $0) }) { first, _ in first }
         let owned = Set(
             repos.filter { repo in
                 guard let main = worktrees[repo.id]?.first, let owner = byPath[canonicalPath(main.folder)] else {
@@ -85,7 +89,7 @@ nonisolated struct GitRepo: Identifiable, Hashable, Sendable {
         var result: [GitRepo] = []
         for repo in repos where !owned.contains(repo.id) {
             result.append(repo)
-            let own = canonicalPath(repo.url)
+            let own = repo.canonicalPath
             result += (worktrees[repo.id] ?? [])
                 .filter { !$0.isBare && !$0.isPrunable && canonicalPath($0.folder) != own }
                 .map { worktree in

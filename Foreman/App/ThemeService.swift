@@ -76,21 +76,25 @@ final class ThemeService {
     /// design R11: the user's `theme` section, applied over both sets.
     private(set) var overrides = Tokens.Overrides.none
     /// The system appearance, observed so `tokens` follows it without a view in the loop.
-    private(set) var systemIsDark: Bool
+    private(set) var systemIsDark: Bool {
+        didSet { refreshTokens() }
+    }
+    /// design R10: the set of the current mode, with the overrides.
+    ///
+    /// Stored, refreshed in `apply` and on an appearance change: Neon reads it per token (audit
+    /// 2026-10-17 U5).
+    private(set) var tokens: Tokens
     private var appearanceObservation: NSKeyValueObservation?
     private let logger = Logger(subsystem: "dev.crafters.foreman", category: "theme")
 
     init() {
-        systemIsDark = Self.isDark(NSApp?.effectiveAppearance)
-        appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] app, _ in
-            let dark = Self.isDark(app.effectiveAppearance)
+        let dark = Self.isDark(NSApp?.effectiveAppearance)
+        systemIsDark = dark
+        tokens = (dark ? Tokens.dark : Tokens.light).applying(.none)
+        appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, change in
+            let dark = Self.isDark(change.newValue)
             Task { @MainActor in self?.systemIsDark = dark }
         }
-    }
-
-    /// design R10: the set of the current mode, with the overrides.
-    var tokens: Tokens {
-        (isDark(systemIsDark: systemIsDark) ? Tokens.dark : Tokens.light).applying(overrides)
     }
 
     nonisolated static func isDark(_ appearance: NSAppearance?) -> Bool {
@@ -110,17 +114,28 @@ final class ThemeService {
         }
         let section = (try? config.section("theme", as: [String: JSONValue].self)) ?? nil
         let themeOverrides = Tokens.overrides(from: section)
-        if themeOverrides != overrides {
+        let overridesChanged = themeOverrides != overrides
+        if overridesChanged {
             overrides = themeOverrides
-            for warning in themeOverrides.warnings {
-                logger.warning("\(warning, privacy: .public)")
-            }
-            // design, edge cases: a user value that breaks R7 is applied anyway, and said once.
-            for pair in tokens.contrastPairs
-            where ThemeColor.contrastRatio(pair.foreground, pair.background) < pair.minimum {
-                logger.warning("theme: \(pair.name, privacy: .public) is under the contrast R7 asks for")
-            }
         }
+        // The mode or the overrides may have changed; the warnings below read the fresh set.
+        refreshTokens()
+        guard overridesChanged else { return }
+        for warning in themeOverrides.warnings {
+            logger.warning("\(warning, privacy: .public)")
+        }
+        // design, edge cases: a user value that breaks R7 is applied anyway, and said once.
+        for pair in tokens.contrastPairs
+        where ThemeColor.contrastRatio(pair.foreground, pair.background) < pair.minimum {
+            logger.warning("theme: \(pair.name, privacy: .public) is under the contrast R7 asks for")
+        }
+    }
+
+    /// Assigned only on a real change, so a reload that changes nothing redraws nothing.
+    private func refreshTokens() {
+        let fresh = (isDark(systemIsDark: systemIsDark) ? Tokens.dark : Tokens.light).applying(overrides)
+        guard fresh != tokens else { return }
+        tokens = fresh
     }
 
     /// terminal R14: `system` follows the window's appearance; `light`/`dark` force one.
